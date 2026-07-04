@@ -3,7 +3,7 @@ import type { ServerResponse } from 'node:http';
 import { PGlite } from '@electric-sql/pglite';
 import {
   ensureSchema, listRecords, createRecord, updateRecordById, deleteRecordById, restoreRecords,
-  type Sql,
+  countRecords, seedSize, type Sql,
 } from './api/_db';
 
 // Backend de DESENVOLVIMENTO apenas: reimplementa as rotas /api usando um
@@ -83,6 +83,10 @@ export function devApiPlugin(): Plugin {
           if (path === '/api/restore') {
             if (method === 'POST') return send(res, 200, await restoreRecords(sql));
             return send(res, 405, { error: 'Método não permitido' });
+          }
+
+          if (path === '/api/health') {
+            return send(res, 200, { ok: true, dbConnected: true, seedSize: seedSize(), recordCount: await countRecords(sql) });
           }
 
           return send(res, 404, { error: 'Rota não encontrada' });

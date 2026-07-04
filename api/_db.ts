@@ -2,8 +2,12 @@
 // via Neon) e pelo middleware de desenvolvimento (pglite). Toda a lógica SQL
 // fica aqui, parametrizada por um executor `Sql` para ser testável e portável.
 import { neon } from '@neondatabase/serverless';
-import { INITIAL_RECORDS } from '../src/data/RiskData';
+import initialRecords from '../src/data/initialRecords.json';
 import type { RiskRecord } from '../src/types';
+
+// Dados-semente importados como JSON (empacotados de forma confiável pelo
+// bundler das funções serverless do Vercel).
+const INITIAL_RECORDS = initialRecords as RiskRecord[];
 
 /** Executor SQL mínimo: recebe texto parametrizado ($1, $2, …) e retorna as linhas. */
 export type Sql = (text: string, params?: unknown[]) => Promise<Record<string, unknown>[]>;
@@ -92,9 +96,21 @@ export async function ensureSchema(sql: Sql): Promise<void> {
     )
   `);
   const rows = await sql('select count(*)::int as count from risk_records');
-  if (Number(rows[0]?.count ?? 0) === 0) {
+  const count = Number(rows[0]?.count ?? 0);
+  if (count === 0) {
+    console.log(`[db] tabela vazia — populando com ${INITIAL_RECORDS.length} registros iniciais`);
     await seed(sql);
   }
+}
+
+/** Quantidade de registros-semente disponíveis no bundle (diagnóstico). */
+export function seedSize(): number {
+  return INITIAL_RECORDS.length;
+}
+
+export async function countRecords(sql: Sql): Promise<number> {
+  const rows = await sql('select count(*)::int as count from risk_records');
+  return Number(rows[0]?.count ?? 0);
 }
 
 /** Insere os registros iniciais preservando a ordem original. */
