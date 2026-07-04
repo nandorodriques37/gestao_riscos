@@ -3,6 +3,7 @@ import type { RiskRecord, StoredRiskRecord } from '../types';
 import {
   fetchRecords, createRecordApi, patchRecordApi, deleteRecordApi, restoreRecordsApi,
 } from '../lib/api';
+import { nextRetryDelay } from '../lib/retryBackoff';
 
 const CACHE_KEY = 'riskMatrix.cache.v1';
 const FLUSH_DELAY = 600;
@@ -49,6 +50,7 @@ export function useRecords(): UseRecords {
 
   const pending = useRef<Map<string, Partial<RiskRecord>>>(new Map());
   const timers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const retryAttempts = useRef<Map<string, number>>(new Map());
   const mounted = useRef(true);
 
   const commit = useCallback((next: StoredRiskRecord[]) => {
@@ -64,11 +66,16 @@ export function useRecords(): UseRecords {
     if (!patch) return;
     try {
       await patchRecordApi(id, patch);
+      retryAttempts.current.delete(id);
       if (mounted.current) setError(null);
     } catch (err) {
-      // devolve o patch para a fila para nova tentativa em edições/flush futuros
+      // devolve o patch para a fila e agenda um retry automático com backoff,
+      // para não depender de uma edição futura ou do flush do modal para sincronizar
       const merged = { ...patch, ...(pending.current.get(id) || {}) };
       pending.current.set(id, merged);
+      const attempt = retryAttempts.current.get(id) ?? 0;
+      retryAttempts.current.set(id, attempt + 1);
+      timers.current.set(id, setTimeout(() => { void flushOne(id); }, nextRetryDelay(attempt)));
       if (mounted.current) setError(err instanceof Error ? err.message : 'Falha ao salvar');
     }
   }, []);
@@ -80,6 +87,7 @@ export function useRecords(): UseRecords {
       return next;
     });
     pending.current.set(id, { ...(pending.current.get(id) || {}), ...patch });
+    retryAttempts.current.delete(id);
     const existing = timers.current.get(id);
     if (existing) clearTimeout(existing);
     timers.current.set(id, setTimeout(() => { void flushOne(id); }, FLUSH_DELAY));
@@ -114,6 +122,7 @@ export function useRecords(): UseRecords {
 
   const deleteRecordById = useCallback(async (id: string) => {
     pending.current.delete(id);
+    retryAttempts.current.delete(id);
     const timer = timers.current.get(id);
     if (timer) { clearTimeout(timer); timers.current.delete(id); }
     setRecords(prev => {
@@ -132,6 +141,7 @@ export function useRecords(): UseRecords {
 
   const restore = useCallback(async () => {
     pending.current.clear();
+    retryAttempts.current.clear();
     timers.current.forEach(t => clearTimeout(t));
     timers.current.clear();
     const data = await restoreRecordsApi();
