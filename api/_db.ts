@@ -2,12 +2,8 @@
 // via Neon) e pelo middleware de desenvolvimento (pglite). Toda a lógica SQL
 // fica aqui, parametrizada por um executor `Sql` para ser testável e portável.
 import { neon } from '@neondatabase/serverless';
-import initialRecords from '../src/data/initialRecords.json';
+import { INITIAL_RECORDS } from './_seed.js';
 import type { RiskRecord } from '../src/types';
-
-// Dados-semente importados como JSON (empacotados de forma confiável pelo
-// bundler das funções serverless do Vercel).
-const INITIAL_RECORDS = initialRecords as RiskRecord[];
 
 /** Executor SQL mínimo: recebe texto parametrizado ($1, $2, …) e retorna as linhas. */
 export type Sql = (text: string, params?: unknown[]) => Promise<Record<string, unknown>[]>;

@@ -1,11 +1,8 @@
-import type { RiskRecord } from '../types';
-import initialRecords from './initialRecords.json';
-
-// Registros iniciais do levantamento de riscos. Os dados vivem em
-// `initialRecords.json` (importado como dado puro) para serem empacotados de
-// forma confiável tanto pelo Vite (front) quanto pelo bundler das funções
-// serverless do Vercel (seed do banco). Em produção os dados vêm da API/banco.
-export const INITIAL_RECORDS: RiskRecord[] = initialRecords as RiskRecord[];
+// Fonte única dos registros iniciais: `api/_seed.ts`. O front usa esses dados
+// apenas para derivar as listas de sugestão (datalists); em produção os
+// registros vêm da API/banco. O backend usa o mesmo módulo para o seed.
+export { INITIAL_RECORDS } from '../../api/_seed';
+import { INITIAL_RECORDS } from '../../api/_seed';
 
 export const AREAS: string[] = [...new Set(INITIAL_RECORDS.map(r => r.area).filter(Boolean))];
 export const ROTINAS: string[] = [...new Set(INITIAL_RECORDS.map(r => r.rotina).filter(Boolean))];

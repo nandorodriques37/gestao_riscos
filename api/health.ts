@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { neonSql, ensureSchema, countRecords, seedSize } from './_db';
+import { neonSql, ensureSchema, countRecords, seedSize } from './_db.js';
 
 // Diagnóstico: confirma conexão com o banco, garante o schema/seed e reporta
 // a contagem de registros e o tamanho do seed embarcado no bundle.
