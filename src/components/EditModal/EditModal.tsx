@@ -1,5 +1,8 @@
+import { useEffect, useRef } from 'react';
 import type { RiskRecord } from '../../types';
 import { computeScore, computePrioriz, round1, round2, scoreColor, priorizColor } from '../../lib/calculations';
+
+const FOCUSABLE = 'a[href], button:not([disabled]), input, select, textarea, [tabindex]:not([tabindex="-1"])';
 
 interface EditModalProps {
   record: RiskRecord;
@@ -30,10 +33,45 @@ export function EditModal({
 }: EditModalProps) {
   const score = computeScore(record);
   const prioriz = computePrioriz(record);
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  // Foco inicial no primeiro campo e retorno do foco ao elemento anterior ao fechar.
+  useEffect(() => {
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    const first = cardRef.current?.querySelector<HTMLElement>(FOCUSABLE);
+    first?.focus();
+    return () => previouslyFocused?.focus?.();
+  }, []);
+
+  // Retém o foco dentro do modal (Tab/Shift+Tab cíclicos).
+  function handleTrapKeyDown(e: React.KeyboardEvent) {
+    if (e.key !== 'Tab' || !cardRef.current) return;
+    const items = Array.from(cardRef.current.querySelectorAll<HTMLElement>(FOCUSABLE))
+      .filter(el => el.offsetParent !== null);
+    if (items.length === 0) return;
+    const first = items[0];
+    const last = items[items.length - 1];
+    const active = document.activeElement;
+    if (e.shiftKey && active === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && active === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  }
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-card" onClick={e => e.stopPropagation()}>
+      <div
+        ref={cardRef}
+        className="modal-card"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Editar registro de risco"
+        onClick={e => e.stopPropagation()}
+        onKeyDown={handleTrapKeyDown}
+      >
         <div className="modal-header">
           <div>
             <div className="modal-title">Editar registro</div>

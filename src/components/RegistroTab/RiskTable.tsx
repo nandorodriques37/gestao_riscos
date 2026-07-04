@@ -2,6 +2,7 @@ import type { ColWidths, SortDir, SortKey } from '../../types';
 import type { EnrichedRow } from '../../lib/rows';
 import { COLUMNS } from './columns';
 import { RiskTableRow } from './RiskTableRow';
+import { onActivateKey } from '../../lib/a11y';
 
 interface RiskTableProps {
   rows: EnrichedRow[];
@@ -41,14 +42,19 @@ export function RiskTable({ rows, colWidths, onColWidthChange, sortKey, sortDir,
             {COLUMNS.map(col => {
               const width = colWidths[col.id] ?? col.width;
               const sortable = !!col.sortKey;
-              const arrow = sortable && sortKey === col.sortKey ? (sortDir === 'asc' ? ' ▲' : ' ▼') : '';
+              const isSorted = sortable && sortKey === col.sortKey;
+              const arrow = isSorted ? (sortDir === 'asc' ? ' ▲' : ' ▼') : '';
+              const ariaSort = isSorted ? (sortDir === 'asc' ? 'ascending' : 'descending') : sortable ? 'none' : undefined;
               return (
                 <th
                   key={col.id}
                   className={`${col.red ? 'th-red' : ''} ${sortable ? 'sortable' : ''}`}
                   style={{ width }}
-                  title="Arraste a borda direita para redimensionar"
+                  title={sortable ? 'Clique para ordenar · arraste a borda para redimensionar' : 'Arraste a borda direita para redimensionar'}
+                  aria-sort={ariaSort}
+                  tabIndex={sortable ? 0 : undefined}
                   onClick={sortable ? () => onSort(col.sortKey as NonNullable<SortKey>) : undefined}
+                  onKeyDown={sortable ? onActivateKey(() => onSort(col.sortKey as NonNullable<SortKey>)) : undefined}
                 >
                   {col.label}{arrow}
                   <div

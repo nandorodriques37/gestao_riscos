@@ -53,11 +53,14 @@ export function devApiPlugin(): Plugin {
     configureServer(server) {
       server.middlewares.use(async (req, res, next) => {
         const url = req.url || '';
-        if (!url.startsWith('/api/')) return next();
+        const path = url.split('?')[0];
+        // Só interceptamos as rotas de API (sem extensão). Requisições de módulo
+        // sob /api/ — ex.: /api/_seed.ts, importado pelo front — têm extensão de
+        // arquivo e devem seguir para o Vite servir o módulo, não virar 404.
+        if (!path.startsWith('/api/') || /\.[a-z0-9]+$/i.test(path)) return next();
 
         try {
           const sql = await getSql();
-          const path = url.split('?')[0];
           const method = (req.method || 'GET').toUpperCase();
 
           if (path === '/api/records') {

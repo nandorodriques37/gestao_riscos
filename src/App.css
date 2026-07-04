@@ -1491,3 +1491,20 @@ table.risk-table {
 .modal-btn-done:hover {
   background: #28486F;
 }
+
+/* ── Acessibilidade ──────────────────────────────────────────────
+   Anel de foco visível para navegação por teclado. Aparece só com
+   :focus-visible (teclado), não no clique de mouse — assim recompõe
+   o foco que os `outline: none` dos controles de formulário removem. */
+:focus-visible {
+  outline: 2px solid #5B8DEF;
+  outline-offset: 2px;
+}
+
+/* Linhas da tabela e células do heatmap: foco por dentro para não ser
+   cortado pelo scroll do contêiner. */
+.risk-table tbody tr:focus-visible,
+.heatmap-cell:focus-visible {
+  outline: 2px solid #5B8DEF;
+  outline-offset: -2px;
+}
