@@ -1,0 +1,1402 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+  * { box-sizing: border-box; font-variant-numeric: tabular-nums; }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+</style>
+</helmet>
+<div style="min-height:100vh; background:#F3F5F8; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif; color:#0F172A; display:flex; flex-direction:column;">
+
+  <!-- datalists for suggestions (used inside the edit modal) -->
+  <datalist id="dl-area"><sc-for list="{{ areaOptions }}" as="opt" hint-placeholder-count="3"><option value="{{ opt }}"></option></sc-for></datalist>
+  <datalist id="dl-rotina"><sc-for list="{{ rotinaOptions }}" as="opt" hint-placeholder-count="3"><option value="{{ opt }}"></option></sc-for></datalist>
+  <datalist id="dl-categoria"><sc-for list="{{ categoriaOptions }}" as="opt" hint-placeholder-count="3"><option value="{{ opt }}"></option></sc-for></datalist>
+  <datalist id="dl-recurso"><sc-for list="{{ recursoOptions }}" as="opt" hint-placeholder-count="3"><option value="{{ opt }}"></option></sc-for></datalist>
+  <datalist id="dl-responsavel"><sc-for list="{{ responsavelOptions }}" as="opt" hint-placeholder-count="3"><option value="{{ opt }}"></option></sc-for></datalist>
+
+  <!-- Top bar -->
+  <div style="background:linear-gradient(135deg,#1E3A5F 0%,#152B47 100%); padding:20px 30px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px; box-shadow:0 4px 18px rgba(15,23,42,0.18);">
+    <div style="display:flex; align-items:center; gap:14px;">
+      <div style="width:42px; height:42px; border-radius:11px; background:linear-gradient(135deg,#5B8DEF,#3E6FD9); display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800; font-size:14px; letter-spacing:0.3px; box-shadow:0 3px 10px rgba(59,110,220,0.4);">RM</div>
+      <div>
+        <div style="color:#fff; font-size:19px; font-weight:700; letter-spacing:0.1px;">Gestão da Matriz de Risco</div>
+        <div style="color:#93A9C4; font-size:12.5px; margin-top:1px;">Registro de riscos, ações e priorização</div>
+      </div>
+    </div>
+    <div style="display:flex; gap:4px; background:rgba(255,255,255,0.07); padding:5px; border-radius:11px;">
+      <button onClick="{{ goRegistro }}" style="{{ tabBtnStyleRegistro }}" style-hover="{{ tabBtnHoverRegistro }}">Registro de Riscos e Ações</button>
+      <button onClick="{{ goGraficos }}" style="{{ tabBtnStyleGraficos }}" style-hover="{{ tabBtnHoverGraficos }}">Gráficos</button>
+      <button onClick="{{ goPriorizacao }}" style="{{ tabBtnStylePriorizacao }}" style-hover="{{ tabBtnHoverPriorizacao }}">Resumo de Priorização</button>
+    </div>
+  </div>
+
+  <!-- TAB 1: REGISTRO -->
+  <sc-if value="{{ isRegistro }}" hint-placeholder-val="{{ true }}">
+  <div style="padding:22px 26px; display:flex; flex-direction:column; gap:14px;">
+
+    <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
+      <div style="display:flex; gap:14px; flex-wrap:wrap;">
+        <div style="background:#fff; border-top:3px solid #1E3A5F; border-radius:10px; padding:10px 18px; box-shadow:0 1px 2px rgba(15,23,42,0.04), 0 6px 16px rgba(15,23,42,0.05); min-width:130px;">
+          <div style="font-size:10.5px; color:#8A97A6; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">Riscos mapeados</div>
+          <div style="font-size:24px; font-weight:800; color:#1E3A5F; margin-top:2px;">{{ totalRiscos }}</div>
+        </div>
+        <div style="background:#fff; border-top:3px solid #D97706; border-radius:10px; padding:10px 18px; box-shadow:0 1px 2px rgba(15,23,42,0.04), 0 6px 16px rgba(15,23,42,0.05); min-width:130px;">
+          <div style="font-size:10.5px; color:#8A97A6; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">Em andamento</div>
+          <div style="font-size:24px; font-weight:800; color:#B45309; margin-top:2px;">{{ totalEmAndamento }}</div>
+        </div>
+        <div style="background:#fff; border-top:3px solid #15803D; border-radius:10px; padding:10px 18px; box-shadow:0 1px 2px rgba(15,23,42,0.04), 0 6px 16px rgba(15,23,42,0.05); min-width:130px;">
+          <div style="font-size:10.5px; color:#8A97A6; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">Concluídas</div>
+          <div style="font-size:24px; font-weight:800; color:#15803D; margin-top:2px;">{{ totalConcluido }}</div>
+        </div>
+        <div style="background:#fff; border-top:3px solid #DC2626; border-radius:10px; padding:10px 18px; box-shadow:0 1px 2px rgba(15,23,42,0.04), 0 6px 16px rgba(15,23,42,0.05); min-width:130px;">
+          <div style="font-size:10.5px; color:#8A97A6; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">Priorização crítica</div>
+          <div style="font-size:24px; font-weight:800; color:#DC2626; margin-top:2px;">{{ totalCritico }}</div>
+        </div>
+        <div style="background:#fff; border-top:3px solid #5B8DEF; border-radius:10px; padding:10px 18px; box-shadow:0 1px 2px rgba(15,23,42,0.04), 0 6px 16px rgba(15,23,42,0.05); min-width:160px;">
+          <div style="font-size:10.5px; color:#8A97A6; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">Completude</div>
+          <div style="display:flex; align-items:baseline; gap:6px; margin-top:2px;">
+            <div style="font-size:24px; font-weight:800; color:#3E6FD9;">{{ completude }}%</div>
+            <span style="font-size:11px; color:#9AA7B4;">campos preenchidos</span>
+          </div>
+          <div style="height:6px; background:#EEF2F6; border-radius:99px; margin-top:7px; overflow:hidden;"><div style="{{ completudeBarStyle }}"></div></div>
+        </div>
+      </div>
+      <div style="display:flex; gap:8px; align-items:center;">
+        <button onClick="{{ resetData }}" style="background:#fff; color:#64748B; border:1px solid #DCE3EA; border-radius:8px; padding:10px 14px; font-size:13px; font-weight:600; cursor:pointer;" style-hover="background:#F1F5F9;" title="Restaurar os dados originais">↺ Restaurar</button>
+        <button onClick="{{ exportCSV }}" style="background:#fff; color:#1E3A5F; border:1px solid #C6D5E5; border-radius:8px; padding:10px 14px; font-size:13px; font-weight:700; cursor:pointer;" style-hover="background:#EAF1FA;">↓ Exportar CSV</button>
+        <button onClick="{{ addRow }}" style="background:#1E3A5F; color:#fff; border:none; border-radius:8px; padding:11px 20px; font-size:13px; font-weight:700; cursor:pointer; box-shadow:0 2px 8px rgba(30,58,95,0.3);" style-hover="background:#28486F;">+ Adicionar registro</button>
+      </div>
+    </div>
+
+    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+      <input value="{{ search }}" onChange="{{ onSearchChange }}" placeholder="Buscar por risco, ação, área, responsável…" style="flex:1; min-width:240px; max-width:420px; padding:10px 14px; border-radius:8px; border:1px solid #DCE3EA; font-size:13px; background:#fff; outline:none; color:#0F172A;"/>
+      <div style="display:flex; gap:6px;">
+        <button onClick="{{ setFilterTodos }}" style="{{ filterBtnStyleTodos }}">Todos</button>
+        <button onClick="{{ setFilterNaoIniciado }}" style="{{ filterBtnStyleNaoIniciado }}">Não iniciado</button>
+        <button onClick="{{ setFilterEmAndamento }}" style="{{ filterBtnStyleEmAndamento }}">Em andamento</button>
+        <button onClick="{{ setFilterConcluido }}" style="{{ filterBtnStyleConcluido }}">Concluído</button>
+      </div>
+      <select value="{{ areaFilter }}" onChange="{{ onAreaFilter }}" style="{{ selectFilterStyle }}">
+        <sc-for list="{{ areaFilterOptions }}" as="opt" hint-placeholder-count="4"><option value="{{ opt }}">{{ opt }}</option></sc-for>
+      </select>
+      <select value="{{ categoriaFilter }}" onChange="{{ onCategoriaFilter }}" style="{{ selectFilterStyle }}">
+        <sc-for list="{{ categoriaFilterOptions }}" as="opt" hint-placeholder-count="3"><option value="{{ opt }}">{{ opt }}</option></sc-for>
+      </select>
+      <div style="font-size:12px; color:#8A97A6; margin-left:auto;">{{ visibleCount }} de {{ totalCount }} registros · clique em uma linha para editar</div>
+    </div>
+
+    <div style="background:#fff; border:1px solid #E4E9EF; border-radius:12px; overflow:auto; max-height:62vh; box-shadow:0 1px 2px rgba(15,23,42,0.04), 0 10px 24px rgba(15,23,42,0.04);">
+      <table style="border-collapse:collapse; font-size:12.5px; width:max-content;">
+        <thead>
+          <tr>
+            <sc-for list="{{ headerCols }}" as="col" hint-placeholder-count="19">
+              <th onClick="{{ col.onClick }}" style="{{ col.style }}" title="Arraste a borda direita para redimensionar">{{ col.label }}<div onMouseDown="{{ col.onGripDown }}" onClick="{{ col.onGripClick }}" style="{{ col.gripStyle }}" style-hover="background:rgba(255,255,255,0.35);"></div></th>
+            </sc-for>
+          </tr>
+        </thead>
+        <tbody>
+          <sc-for list="{{ visibleRows }}" as="row" hint-placeholder-count="10">
+            <tr onClick="{{ row.onOpen }}" style="{{ row.trStyle }}" style-hover="background:#EAF1FA;">
+              <td style="{{ tdStyle }}" title="{{ row.area }}">{{ row.area }}</td>
+              <td style="{{ tdStyle }}" title="{{ row.rotina }}">{{ row.rotina }}</td>
+              <td style="{{ tdStyle }}" title="{{ row.categoria }}">{{ row.categoria }}</td>
+              <td style="{{ tdStyleRisco }}" title="{{ row.risco }}">{{ row.risco }}</td>
+              <td style="{{ tdStyleCenter }}"><span style="{{ row.respostaBadgeStyle }}">{{ row.respostaText }}</span></td>
+              <td style="{{ tdStyleCenter }}">{{ row.probabDisplay }}</td>
+              <td style="{{ tdStyleCenter }}">{{ row.impactDisplay }}</td>
+              <td style="{{ tdStyleCenter }}"><span style="{{ row.scoreBadgeStyle }}">{{ row.scoreDisplay }}</span></td>
+              <td style="{{ tdStyle }}" title="{{ row.acoes }}">{{ row.acoes }}</td>
+              <td style="{{ tdStyle }}" title="{{ row.resultado }}">{{ row.resultado }}</td>
+              <td style="{{ tdStyleCenter }}">{{ row.esforcoDisplay }}</td>
+              <td style="{{ tdStyleCenter }}">{{ row.impacto2Display }}</td>
+              <td style="{{ tdStyleCenter }}">{{ row.gravidadeDisplay }}</td>
+              <td style="{{ tdStyleCenter }}"><span style="{{ row.priorizBadgeStyle }}">{{ row.priorizDisplay }}</span></td>
+              <td style="{{ tdStyle }}" title="{{ row.recurso }}">{{ row.recurso }}</td>
+              <td style="{{ tdStyle }}" title="{{ row.responsavel }}">{{ row.responsavel }}</td>
+              <td style="{{ tdStyleCenter }}"><span style="{{ row.statusBadgeStyle }}">{{ row.statusText }}</span></td>
+              <td style="{{ tdStyle }}" title="{{ row.obs }}">{{ row.obs }}</td>
+              <td style="{{ tdStyleCenter }}"><button onClick="{{ row.onDelete }}" style="background:none; border:none; color:#A9B4BF; font-size:16px; cursor:pointer; font-weight:700; padding:4px 8px; border-radius:6px;" style-hover="background:#FEE2E2; color:#DC2626;">×</button></td>
+            </tr>
+          </sc-for>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  </sc-if>
+
+  <!-- TAB 2: GRAFICOS -->
+  <sc-if value="{{ isGraficos }}" hint-placeholder-val="{{ false }}">
+  <div style="padding:26px 28px; display:flex; flex-direction:column; gap:20px;">
+
+    <!-- Active cross-filter banner -->
+    <sc-if value="{{ graphFilterActive }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; background:#EAF1FA; border:1px solid #C6D5E5; border-radius:12px; padding:12px 18px;">
+        <span style="font-size:12px; font-weight:700; color:#64748B; text-transform:uppercase; letter-spacing:0.5px;">Filtro ativo</span>
+        <span style="font-size:13px; font-weight:700; color:#fff; background:#1E3A5F; padding:4px 13px; border-radius:20px;">{{ graphFilterLabel }}</span>
+        <span style="font-size:12px; color:#64748B;">{{ riskListCount }} risco(s) neste recorte · todos os indicadores abaixo refletem o filtro</span>
+        <button onClick="{{ clearGraphFilter }}" style="margin-left:auto; background:#fff; border:1px solid #C6D5E5; color:#1E3A5F; border-radius:20px; padding:6px 14px; font-size:12px; font-weight:700; cursor:pointer;" style-hover="background:#F1F5F9;">Limpar filtro ×</button>
+      </div>
+    </sc-if>
+
+    <!-- Summary KPI strip -->
+    <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:16px;">
+      <div style="background:#fff; border:1px solid #E4E9EF; border-radius:12px; padding:16px 20px; box-shadow:0 1px 2px rgba(15,23,42,0.04), 0 6px 16px rgba(15,23,42,0.04);">
+        <div style="font-size:10.5px; color:#8A97A6; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">Riscos avaliados</div>
+        <div style="font-size:28px; font-weight:800; color:#1E3A5F; margin-top:3px;">{{ totalAvaliados }}<span style="font-size:15px; color:#B3BEC9; font-weight:700;"> / {{ totalRiscos }}</span></div>
+      </div>
+      <div style="background:#fff; border:1px solid #E4E9EF; border-radius:12px; padding:16px 20px; box-shadow:0 1px 2px rgba(15,23,42,0.04), 0 6px 16px rgba(15,23,42,0.04);">
+        <div style="font-size:10.5px; color:#8A97A6; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">Score médio (P × I)</div>
+        <div style="font-size:28px; font-weight:800; color:#B8901F; margin-top:3px;">{{ scoreMedio }}</div>
+      </div>
+      <div style="background:#fff; border:1px solid #E4E9EF; border-radius:12px; padding:16px 20px; box-shadow:0 1px 2px rgba(15,23,42,0.04), 0 6px 16px rgba(15,23,42,0.04);">
+        <div style="font-size:10.5px; color:#8A97A6; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">Riscos críticos</div>
+        <div style="font-size:28px; font-weight:800; color:#DC2626; margin-top:3px;">{{ criticosCount }}</div>
+      </div>
+      <div style="background:#fff; border:1px solid #E4E9EF; border-radius:12px; padding:16px 20px; box-shadow:0 1px 2px rgba(15,23,42,0.04), 0 6px 16px rgba(15,23,42,0.04);">
+        <div style="font-size:10.5px; color:#8A97A6; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">Ações concluídas</div>
+        <div style="font-size:28px; font-weight:800; color:#15803D; margin-top:3px;">{{ pctConcluido }}%</div>
+      </div>
+    </div>
+
+    <!-- Heatmap + criticality distribution -->
+    <div style="display:grid; grid-template-columns:1.35fr 1fr; gap:20px; align-items:stretch;">
+      <div style="background:#fff; border:1px solid #E4E9EF; border-radius:14px; padding:22px; box-shadow:0 1px 2px rgba(15,23,42,0.04), 0 10px 24px rgba(15,23,42,0.05);">
+        <div style="font-size:15px; font-weight:700; color:#1E3A5F;">Mapa de Calor · Probabilidade × Impacto</div>
+        <div style="font-size:12px; color:#8A97A6; margin-top:2px; margin-bottom:18px;">Número de riscos em cada célula do grid 5×5 — cor pela criticidade (P × I)</div>
+        <div style="display:flex; gap:8px;">
+          <div style="display:flex; align-items:center; flex-shrink:0;">
+            <span style="font-size:10.5px; color:#8A97A6; font-weight:700; letter-spacing:0.5px; writing-mode:vertical-rl; transform:rotate(180deg);">IMPACTO →</span>
+          </div>
+          <div style="flex-shrink:0; display:flex; flex-direction:column; gap:6px;">
+            <sc-for list="{{ heatImpactLabels }}" as="im" hint-placeholder-count="5">
+              <div style="width:16px; height:50px; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:#8A97A6;">{{ im }}</div>
+            </sc-for>
+            <div style="height:15px;"></div>
+          </div>
+          <div style="flex:1; display:flex; flex-direction:column; gap:6px; min-width:0;">
+            <div style="display:grid; grid-template-columns:repeat(5,1fr); gap:6px;">
+              <sc-for list="{{ heatCells }}" as="c" hint-placeholder-count="25">
+                <div onClick="{{ c.onClick }}" title="{{ c.tooltip }}" style="{{ c.style }}" style-hover="transform:scale(1.06);">{{ c.label }}</div>
+              </sc-for>
+            </div>
+            <div style="display:grid; grid-template-columns:repeat(5,1fr); gap:6px;">
+              <div style="text-align:center; font-size:11px; font-weight:700; color:#8A97A6;">1</div>
+              <div style="text-align:center; font-size:11px; font-weight:700; color:#8A97A6;">2</div>
+              <div style="text-align:center; font-size:11px; font-weight:700; color:#8A97A6;">3</div>
+              <div style="text-align:center; font-size:11px; font-weight:700; color:#8A97A6;">4</div>
+              <div style="text-align:center; font-size:11px; font-weight:700; color:#8A97A6;">5</div>
+            </div>
+            <div style="text-align:center; font-size:10.5px; color:#8A97A6; font-weight:700; letter-spacing:0.5px; margin-top:2px;">PROBABILIDADE →</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="background:#fff; border:1px solid #E4E9EF; border-radius:14px; padding:22px; box-shadow:0 1px 2px rgba(15,23,42,0.04), 0 10px 24px rgba(15,23,42,0.05); display:flex; flex-direction:column;">
+        <div style="font-size:15px; font-weight:700; color:#1E3A5F;">Distribuição por Criticidade</div>
+        <div style="font-size:12px; color:#8A97A6; margin-top:2px; margin-bottom:18px;">{{ totalAvaliados }} riscos avaliados por nível de score inerente</div>
+        <div style="display:flex; align-items:center; gap:24px; flex-wrap:wrap; flex:1;">
+          <div style="width:150px; height:150px; border-radius:50%; background:{{ critDonutBg }}; flex-shrink:0; display:flex; align-items:center; justify-content:center;">
+            <div style="width:92px; height:92px; border-radius:50%; background:#fff; display:flex; flex-direction:column; align-items:center; justify-content:center; box-shadow:inset 0 0 0 1px #EEF2F6;">
+              <div style="font-size:24px; font-weight:800; color:#1E3A5F;">{{ totalAvaliados }}</div>
+              <div style="font-size:9.5px; color:#8A97A6; font-weight:700; letter-spacing:0.4px;">RISCOS</div>
+            </div>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:11px; flex:1; min-width:150px;">
+            <sc-for list="{{ critLegend }}" as="c" hint-placeholder-count="4">
+              <div onClick="{{ c.onClick }}" title="Clique para filtrar toda a aba por esta criticidade" style="display:flex; align-items:center; gap:10px; cursor:pointer; border-radius:8px; padding:3px 5px; margin:-3px -5px;" style-hover="background:#F3F7FC;">
+                <span style="width:12px; height:12px; border-radius:4px; background:{{ c.color }}; display:inline-block; flex-shrink:0;"></span>
+                <span style="font-size:13px; color:#334155; flex:1; font-weight:500;">{{ c.label }}</span>
+                <span style="font-size:13px; font-weight:800; color:#1E3A5F;">{{ c.count }}</span>
+                <span style="font-size:11.5px; color:#9AA7B4; width:38px; text-align:right;">{{ c.pct }}%</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Risk descriptions (reflects the active cross-filter) -->
+    <div style="background:#fff; border:1px solid #E4E9EF; border-radius:14px; padding:22px; box-shadow:0 1px 2px rgba(15,23,42,0.04), 0 10px 24px rgba(15,23,42,0.05);">
+      <div style="font-size:15px; font-weight:700; color:#1E3A5F;">Descrição dos Riscos</div>
+      <div style="font-size:12px; color:#8A97A6; margin-top:2px; margin-bottom:14px;">{{ riskListCount }} risco(s) — clique em qualquer gráfico desta aba para filtrar esta lista e todos os indicadores</div>
+      <div style="border:1px solid #E4E9EF; border-radius:10px; overflow:hidden; max-height:380px; overflow-y:auto;">
+        <table style="width:100%; border-collapse:collapse; font-size:12.5px;">
+          <thead>
+            <tr>
+              <th style="text-align:left; padding:9px 14px; color:#8A97A6; font-weight:700; font-size:11px; background:#F8FAFC; border-bottom:1px solid #E4E9EF; position:sticky; top:0;">Risco</th>
+              <th style="text-align:left; padding:9px 14px; color:#8A97A6; font-weight:700; font-size:11px; background:#F8FAFC; border-bottom:1px solid #E4E9EF; position:sticky; top:0; width:180px;">Área · Categoria</th>
+              <th style="text-align:center; padding:9px 10px; color:#8A97A6; font-weight:700; font-size:11px; background:#F8FAFC; border-bottom:1px solid #E4E9EF; position:sticky; top:0; width:70px;">Score</th>
+              <th style="text-align:center; padding:9px 10px; color:#8A97A6; font-weight:700; font-size:11px; background:#F8FAFC; border-bottom:1px solid #E4E9EF; position:sticky; top:0; width:130px;">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <sc-for list="{{ riskList }}" as="rk" hint-placeholder-count="8">
+              <tr style="border-bottom:1px solid #F1F5F9;">
+                <td style="padding:10px 14px; color:#334155; line-height:1.4;">{{ rk.risco }}</td>
+                <td style="padding:10px 14px; color:#8A97A6; font-size:11.5px;">{{ rk.combo }}</td>
+                <td style="padding:10px 10px; text-align:center;"><span style="{{ rk.scoreBadgeStyle }}">{{ rk.scoreDisplay }}</span></td>
+                <td style="padding:10px 10px; text-align:center;"><span style="{{ rk.statusBadgeStyle }}">{{ rk.statusText }}</span></td>
+              </tr>
+            </sc-for>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; align-items:stretch;">
+      <div style="background:#fff; border:1px solid #E4E9EF; border-radius:14px; padding:22px; box-shadow:0 1px 2px rgba(15,23,42,0.04), 0 10px 24px rgba(15,23,42,0.05);">
+        <div style="font-size:15px; font-weight:700; color:#1E3A5F;">Risco por Categoria</div>
+        <div style="font-size:12px; color:#8A97A6; margin-top:2px; margin-bottom:18px;">Score inerente total (probabilidade × impacto) por categoria — barras coloridas pela criticidade</div>
+        <div style="display:flex; flex-direction:column; gap:13px;">
+          <sc-for list="{{ categoryBars }}" as="bar" hint-placeholder-count="3">
+            <div onClick="{{ bar.onClick }}" title="Clique para filtrar toda a aba por este item" style="display:flex; align-items:center; gap:12px; cursor:pointer; border-radius:8px; padding:3px 5px; margin:-3px -5px;" style-hover="background:#F3F7FC;">
+              <div style="width:120px; flex-shrink:0; font-size:12.5px; font-weight:600; color:#334155; text-align:right; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="{{ bar.name }}">{{ bar.name }}</div>
+              <div style="flex:1; display:flex; align-items:center; gap:10px; min-width:0;">
+                <div style="height:26px; width:{{ bar.pct }}%; min-width:3px; background:{{ bar.color }}; border-radius:6px;"></div>
+                <span style="font-size:12.5px; font-weight:800; color:#1E3A5F;">{{ bar.score }}</span>
+                <span style="font-size:11px; color:#9AA7B4; white-space:nowrap;">{{ bar.meta }}</span>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="background:#fff; border:1px solid #E4E9EF; border-radius:14px; padding:22px; box-shadow:0 1px 2px rgba(15,23,42,0.04), 0 10px 24px rgba(15,23,42,0.05);">
+        <div style="font-size:15px; font-weight:700; color:#1E3A5F;">Risco por Área</div>
+        <div style="font-size:12px; color:#8A97A6; margin-top:2px; margin-bottom:18px;">Score inerente total (probabilidade × impacto) por área — barras coloridas pela criticidade</div>
+        <div style="display:flex; flex-direction:column; gap:13px;">
+          <sc-for list="{{ areaBars }}" as="bar" hint-placeholder-count="3">
+            <div onClick="{{ bar.onClick }}" title="Clique para filtrar toda a aba por este item" style="display:flex; align-items:center; gap:12px; cursor:pointer; border-radius:8px; padding:3px 5px; margin:-3px -5px;" style-hover="background:#F3F7FC;">
+              <div style="width:120px; flex-shrink:0; font-size:12.5px; font-weight:600; color:#334155; text-align:right; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="{{ bar.name }}">{{ bar.name }}</div>
+              <div style="flex:1; display:flex; align-items:center; gap:10px; min-width:0;">
+                <div style="height:26px; width:{{ bar.pct }}%; min-width:3px; background:{{ bar.color }}; border-radius:6px;"></div>
+                <span style="font-size:12.5px; font-weight:800; color:#1E3A5F;">{{ bar.score }}</span>
+                <span style="font-size:11px; color:#9AA7B4; white-space:nowrap;">{{ bar.meta }}</span>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex; gap:16px; margin-top:-4px; flex-wrap:wrap;">
+      <div style="display:flex; align-items:center; gap:6px; font-size:11.5px; color:#64748B;"><span style="width:12px; height:12px; border-radius:3px; background:#DC2626; display:inline-block;"></span>Crítico</div>
+      <div style="display:flex; align-items:center; gap:6px; font-size:11.5px; color:#64748B;"><span style="width:12px; height:12px; border-radius:3px; background:#D97706; display:inline-block;"></span>Alto</div>
+      <div style="display:flex; align-items:center; gap:6px; font-size:11.5px; color:#64748B;"><span style="width:12px; height:12px; border-radius:3px; background:#B8901F; display:inline-block;"></span>Médio</div>
+      <div style="display:flex; align-items:center; gap:6px; font-size:11.5px; color:#64748B;"><span style="width:12px; height:12px; border-radius:3px; background:#15803D; display:inline-block;"></span>Baixo</div>
+    </div>
+
+    <div style="background:#fff; border:1px solid #E4E9EF; border-radius:14px; padding:22px; box-shadow:0 1px 2px rgba(15,23,42,0.04), 0 10px 24px rgba(15,23,42,0.05);">
+      <div style="font-size:15px; font-weight:700; color:#1E3A5F;">Risco por Rotina</div>
+      <div style="font-size:12px; color:#8A97A6; margin-top:2px; margin-bottom:18px;">Score inerente total (probabilidade × impacto) por rotina — barras coloridas pela criticidade</div>
+      <div style="display:flex; flex-direction:column; gap:11px;">
+        <sc-for list="{{ rotinaBars }}" as="bar" hint-placeholder-count="9">
+          <div onClick="{{ bar.onClick }}" title="Clique para filtrar toda a aba por este item" style="display:flex; align-items:center; gap:14px; cursor:pointer; border-radius:8px; padding:3px 5px; margin:-3px -5px;" style-hover="background:#F3F7FC;">
+            <div style="width:230px; flex-shrink:0; font-size:12.5px; font-weight:600; color:#334155; text-align:right; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="{{ bar.name }}">{{ bar.name }}</div>
+            <div style="flex:1; display:flex; align-items:center; gap:10px; min-width:0;">
+              <div style="height:24px; width:{{ bar.pct }}%; min-width:3px; background:{{ bar.color }}; border-radius:6px;"></div>
+              <span style="font-size:12.5px; font-weight:800; color:#1E3A5F;">{{ bar.score }}</span>
+              <span style="font-size:11px; color:#9AA7B4; white-space:nowrap;">{{ bar.meta }}</span>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+      <div style="display:flex; gap:16px; margin-top:18px; padding-top:14px; border-top:1px solid #F1F5F9; flex-wrap:wrap;">
+        <div style="display:flex; align-items:center; gap:6px; font-size:11.5px; color:#64748B;"><span style="width:12px; height:12px; border-radius:3px; background:#DC2626; display:inline-block;"></span>Crítico</div>
+        <div style="display:flex; align-items:center; gap:6px; font-size:11.5px; color:#64748B;"><span style="width:12px; height:12px; border-radius:3px; background:#D97706; display:inline-block;"></span>Alto</div>
+        <div style="display:flex; align-items:center; gap:6px; font-size:11.5px; color:#64748B;"><span style="width:12px; height:12px; border-radius:3px; background:#B8901F; display:inline-block;"></span>Médio</div>
+        <div style="display:flex; align-items:center; gap:6px; font-size:11.5px; color:#64748B;"><span style="width:12px; height:12px; border-radius:3px; background:#15803D; display:inline-block;"></span>Baixo</div>
+      </div>
+    </div>
+
+    <div style="background:#fff; border:1px solid #E4E9EF; border-radius:14px; padding:22px; box-shadow:0 1px 2px rgba(15,23,42,0.04), 0 10px 24px rgba(15,23,42,0.05);">
+      <div style="font-size:15px; font-weight:700; color:#1E3A5F;">Status das Ações</div>
+      <div style="font-size:12px; color:#8A97A6; margin-top:2px; margin-bottom:16px;">Distribuição das {{ totalAcoesComStatus }} ações registradas</div>
+      <div style="display:flex; align-items:center; gap:32px; flex-wrap:wrap;">
+        <div style="width:176px; height:176px; border-radius:50%; background:{{ donutBg }}; flex-shrink:0; display:flex; align-items:center; justify-content:center;">
+          <div style="width:110px; height:110px; border-radius:50%; background:#fff; display:flex; flex-direction:column; align-items:center; justify-content:center; box-shadow:inset 0 0 0 1px #EEF2F6;">
+            <div style="font-size:26px; font-weight:800; color:#1E3A5F;">{{ totalAcoesComStatus }}</div>
+            <div style="font-size:10px; color:#8A97A6; font-weight:700; letter-spacing:0.4px;">AÇÕES</div>
+          </div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:12px;">
+          <sc-for list="{{ statusLegend }}" as="s" hint-placeholder-count="3">
+            <div onClick="{{ s.onClick }}" title="Clique para filtrar toda a aba por este status" style="display:flex; align-items:center; gap:10px; cursor:pointer; border-radius:8px; padding:3px 5px; margin:-3px -5px;" style-hover="background:#F3F7FC;">
+              <span style="width:12px; height:12px; border-radius:4px; background:{{ s.color }}; display:inline-block;"></span>
+              <span style="font-size:13px; color:#334155; min-width:120px; font-weight:500;">{{ s.label }}</span>
+              <span style="font-size:13px; font-weight:700; color:#1E3A5F;">{{ s.count }}</span>
+              <span style="font-size:11.5px; color:#9AA7B4;">({{ s.pct }}%)</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+
+    <div style="background:#fff; border:1px solid #E4E9EF; border-radius:14px; padding:22px; box-shadow:0 1px 2px rgba(15,23,42,0.04), 0 10px 24px rgba(15,23,42,0.05);">
+      <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+        <div>
+          <div style="font-size:15px; font-weight:700; color:#1E3A5F;">Ações por Recurso · Andamento</div>
+          <div style="font-size:12px; color:#8A97A6; margin-top:2px; margin-bottom:16px;">Carga de ações por recurso, segmentada pelo status de execução</div>
+        </div>
+        <div style="display:flex; gap:14px; flex-wrap:wrap; padding-top:2px;">
+          <div style="display:flex; align-items:center; gap:6px; font-size:11.5px; color:#64748B;"><span style="width:12px; height:12px; border-radius:3px; background:#94A3B8; display:inline-block;"></span>Não iniciado</div>
+          <div style="display:flex; align-items:center; gap:6px; font-size:11.5px; color:#64748B;"><span style="width:12px; height:12px; border-radius:3px; background:#D97706; display:inline-block;"></span>Em andamento</div>
+          <div style="display:flex; align-items:center; gap:6px; font-size:11.5px; color:#64748B;"><span style="width:12px; height:12px; border-radius:3px; background:#15803D; display:inline-block;"></span>Concluído</div>
+        </div>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <sc-for list="{{ recStatusBars }}" as="b" hint-placeholder-count="5">
+          <div onClick="{{ b.onClick }}" title="Clique para filtrar toda a aba por este recurso" style="display:flex; align-items:center; gap:14px; cursor:pointer; border-radius:8px; padding:3px 5px; margin:-3px -5px;" style-hover="background:#F3F7FC;">
+            <div style="width:190px; flex-shrink:0; font-size:12.5px; font-weight:600; color:#334155; text-align:right; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="{{ b.name }}">{{ b.name }}</div>
+            <div style="flex:1; display:flex; align-items:center; gap:10px; min-width:0;">
+              <div style="height:24px; width:{{ b.wrapPct }}%; min-width:14px; display:flex; border-radius:6px; overflow:hidden; box-shadow:0 1px 2px rgba(15,23,42,0.08);">
+                <div style="width:{{ b.niW }}%; background:#94A3B8;"></div>
+                <div style="width:{{ b.eaW }}%; background:#D97706;"></div>
+                <div style="width:{{ b.ccW }}%; background:#15803D;"></div>
+              </div>
+              <span style="font-size:12.5px; font-weight:800; color:#1E3A5F; flex-shrink:0;">{{ b.total }}</span>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+  </div>
+  </sc-if>
+
+  <!-- TAB 3: PRIORIZACAO -->
+  <sc-if value="{{ isPriorizacao }}" hint-placeholder-val="{{ false }}">
+  <div style="padding:26px 28px; display:flex; flex-direction:column; gap:20px;">
+
+    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+      <span style="font-size:12.5px; color:#64748B; font-weight:600;">Filtrar por status:</span>
+      <button onClick="{{ setPrioStatusTodos }}" style="{{ prioStatusBtnTodos }}">Todos</button>
+      <button onClick="{{ setPrioStatusNaoIniciado }}" style="{{ prioStatusBtnNaoIniciado }}">Não iniciado</button>
+      <button onClick="{{ setPrioStatusEmAndamento }}" style="{{ prioStatusBtnEmAndamento }}">Em andamento</button>
+      <button onClick="{{ setPrioStatusConcluido }}" style="{{ prioStatusBtnConcluido }}">Concluído</button>
+      <span style="font-size:12px; color:#9AA7B4; margin-left:4px;">{{ prioVisibleCount }} de {{ prioTotalCount }} ações</span>
+    </div>
+
+    <div style="background:#fff; border:1px solid #E4E9EF; border-radius:14px; padding:22px; box-shadow:0 1px 2px rgba(15,23,42,0.04), 0 10px 24px rgba(15,23,42,0.05);">
+      <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+        <div>
+          <div style="font-size:15px; font-weight:700; color:#1E3A5F;">Matriz Esforço × Impacto</div>
+          <div style="font-size:12px; color:#8A97A6; margin-top:2px;">Número = ranking de priorização · Tamanho = gravidade · Cor = nível de priorização · Clique para destacar</div>
+        </div>
+        <div style="display:flex; gap:14px; flex-wrap:wrap; padding-top:4px;">
+          <div style="display:flex; align-items:center; gap:6px; font-size:11.5px; color:#64748B;"><span style="width:12px; height:12px; border-radius:50%; background:#DC2626; display:inline-block;"></span>Crítica</div>
+          <div style="display:flex; align-items:center; gap:6px; font-size:11.5px; color:#64748B;"><span style="width:12px; height:12px; border-radius:50%; background:#D97706; display:inline-block;"></span>Alta</div>
+          <div style="display:flex; align-items:center; gap:6px; font-size:11.5px; color:#64748B;"><span style="width:12px; height:12px; border-radius:50%; background:#B8901F; display:inline-block;"></span>Média</div>
+          <div style="display:flex; align-items:center; gap:6px; font-size:11.5px; color:#64748B;"><span style="width:12px; height:12px; border-radius:50%; background:#15803D; display:inline-block;"></span>Baixa</div>
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:minmax(380px,7fr) minmax(300px,5fr); gap:22px; margin-top:16px; align-items:start;">
+
+        <!-- Quadrant chart -->
+        <div style="display:flex; gap:8px;">
+          <div style="display:flex; align-items:center; flex-shrink:0;">
+            <span style="font-size:10.5px; color:#8A97A6; font-weight:700; letter-spacing:0.5px; writing-mode:vertical-rl; transform:rotate(180deg);">IMPACTO →</span>
+          </div>
+          <div style="flex:1; min-width:0;">
+            <div style="position:relative; width:100%; aspect-ratio:1/0.85; border:1px solid #E4E9EF; border-radius:10px; overflow:hidden;">
+              <!-- quadrant tints -->
+              <div style="position:absolute; left:0; top:0; width:50%; height:50%; background:#F0F9F1;"></div>
+              <div style="position:absolute; left:50%; top:0; width:50%; height:50%; background:#F3F6FB;"></div>
+              <div style="position:absolute; left:0; top:50%; width:50%; height:50%; background:#F8FAFC;"></div>
+              <div style="position:absolute; left:50%; top:50%; width:50%; height:50%; background:#FDF6EC;"></div>
+              <div style="position:absolute; left:50%; top:0; bottom:0; width:1px; background:#DDE5EC;"></div>
+              <div style="position:absolute; top:50%; left:0; right:0; height:1px; background:#DDE5EC;"></div>
+              <!-- quadrant captions -->
+              <sc-for list="{{ quadrantPills }}" as="qp" hint-placeholder-count="4">
+                <div onClick="{{ qp.onClick }}" title="Clique para filtrar o ranking por este quadrante" style="{{ qp.style }}" style-hover="{{ qp.hoverStyle }}">{{ qp.title }}<div style="{{ qp.subStyle }}">{{ qp.subtitle }}</div></div>
+              </sc-for>
+              <!-- bubbles -->
+              <sc-for list="{{ matrixPoints }}" as="pt" hint-placeholder-count="10">
+                <div onClick="{{ pt.onClick }}" title="{{ pt.tooltip }}" style="{{ pt.style }}" style-hover="{{ pt.hoverStyle }}">{{ pt.num }}</div>
+              </sc-for>
+            </div>
+            <div style="display:flex; justify-content:space-between; margin-top:6px; padding-left:2px;">
+              <span style="font-size:10px; color:#B3BEC9;">menor esforço</span>
+              <span style="font-size:10.5px; color:#8A97A6; font-weight:700; letter-spacing:0.5px;">ESFORÇO →</span>
+              <span style="font-size:10px; color:#B3BEC9;">maior esforço</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Synced ranked list -->
+        <div style="border:1px solid #E4E9EF; border-radius:10px; overflow:hidden; display:flex; flex-direction:column; max-height:520px;">
+          <div style="background:#F8FAFC; padding:10px 14px; display:flex; align-items:center; gap:8px; border-bottom:1px solid #E4E9EF; flex-shrink:0;">
+            <span style="font-size:11px; font-weight:800; color:#64748B; text-transform:uppercase; letter-spacing:0.5px; flex:1;">{{ matrixListTitle }}</span>
+            <sc-if value="{{ matrixFilterActive }}" hint-placeholder-val="{{ false }}">
+              <button onClick="{{ clearMatrixFilter }}" style="background:#1E3A5F; color:#fff; border:none; border-radius:12px; padding:4px 12px; font-size:11px; font-weight:700; cursor:pointer;" style-hover="background:#28486F;">Limpar filtro ×</button>
+            </sc-if>
+          </div>
+          <div style="overflow-y:auto;">
+            <sc-for list="{{ matrixList }}" as="item" hint-placeholder-count="8">
+              <div onClick="{{ item.onClick }}" style="{{ item.style }}" style-hover="background:#F3F7FC;">
+                <span style="{{ item.numStyle }}">{{ item.num }}</span>
+                <div style="flex:1; min-width:0;">
+                  <div style="font-size:12px; color:#334155; line-height:1.35; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;">{{ item.acoes }}</div>
+                  <div style="font-size:10.5px; color:#9AA7B4; margin-top:2px;">E {{ item.esforco }} · I {{ item.impacto2 }} · G {{ item.gravidade }}</div>
+                </div>
+                <span style="{{ item.badgeStyle }}">{{ item.prioriz }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div style="background:#fff; border:1px solid #E4E9EF; border-radius:14px; padding:22px; box-shadow:0 1px 2px rgba(15,23,42,0.04), 0 10px 24px rgba(15,23,42,0.05);">
+      <div style="font-size:15px; font-weight:700; color:#1E3A5F;">Resumo de Priorização por Recurso</div>
+      <div style="font-size:12px; color:#8A97A6; margin-top:2px; margin-bottom:16px;">Ações ordenadas por priorização dentro de cada recurso, com médias por grupo</div>
+
+      <div style="display:flex; flex-direction:column; gap:20px;">
+        <sc-for list="{{ priorityGroups }}" as="grp" hint-placeholder-count="4">
+          <div style="border:1px solid #E4E9EF; border-radius:10px; overflow:hidden;">
+            <div style="display:flex; align-items:center; gap:10px; background:#1E3A5F; color:#fff; padding:10px 16px; font-size:12.5px; font-weight:700;">
+              <span style="flex:1;">{{ grp.name }}</span>
+              <span style="opacity:0.8; font-weight:500; font-size:11.5px;">Esforço {{ grp.avgEsforco }} · Impacto {{ grp.avgImpacto }} · Gravidade {{ grp.avgGravidade }}</span>
+              <span style="background:rgba(255,255,255,0.16); padding:4px 12px; border-radius:12px;">Priorização média {{ grp.avgPrioriz }}</span>
+            </div>
+            <table style="width:100%; border-collapse:collapse; font-size:12.5px;">
+              <thead>
+                <tr style="background:#F8FAFC;">
+                  <th style="text-align:left; padding:8px 14px; color:#8A97A6; font-weight:700; font-size:11px; border-bottom:1px solid #E4E9EF;">Ação</th>
+                  <th style="text-align:left; padding:8px 14px; color:#8A97A6; font-weight:700; font-size:11px; border-bottom:1px solid #E4E9EF; width:190px;">Área · Rotina · Categoria</th>
+                  <th style="text-align:center; padding:8px 10px; color:#8A97A6; font-weight:700; font-size:11px; border-bottom:1px solid #E4E9EF; width:70px;">Esforço</th>
+                  <th style="text-align:center; padding:8px 10px; color:#8A97A6; font-weight:700; font-size:11px; border-bottom:1px solid #E4E9EF; width:70px;">Impacto</th>
+                  <th style="text-align:center; padding:8px 10px; color:#8A97A6; font-weight:700; font-size:11px; border-bottom:1px solid #E4E9EF; width:80px;">Gravidade</th>
+                  <th style="text-align:center; padding:8px 10px; color:#8A97A6; font-weight:700; font-size:11px; border-bottom:1px solid #E4E9EF; width:96px;">Priorização</th>
+                </tr>
+              </thead>
+              <tbody>
+                <sc-for list="{{ grp.actions }}" as="act" hint-placeholder-count="3">
+                  <tr style="border-bottom:1px solid #F1F5F9;">
+                    <td style="padding:9px 14px; color:#334155;">{{ act.acoes }}</td>
+                    <td style="padding:9px 14px; color:#8A97A6; font-size:11.5px;">{{ act.combo }}</td>
+                    <td style="padding:9px 10px; text-align:center; color:#334155;">{{ act.esforco }}</td>
+                    <td style="padding:9px 10px; text-align:center; color:#334155;">{{ act.impacto2 }}</td>
+                    <td style="padding:9px 10px; text-align:center; color:#334155;">{{ act.gravidade }}</td>
+                    <td style="padding:9px 10px; text-align:center;"><span style="padding:3px 11px; border-radius:10px; font-weight:700; color:#fff; background:{{ act.priorizColor }}; font-size:12px;">{{ act.prioriz }}</span></td>
+                  </tr>
+                </sc-for>
+              </tbody>
+            </table>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+  </div>
+  </sc-if>
+
+  <!-- EDIT MODAL -->
+  <sc-if value="{{ isEditing }}" hint-placeholder-val="{{ false }}">
+  <div onClick="{{ closeEdit }}" style="position:fixed; inset:0; background:rgba(15,23,42,0.52); backdrop-filter:blur(2px); display:flex; align-items:center; justify-content:center; z-index:50; padding:24px; animation:none;">
+    <div onClick="{{ stopClick }}" style="background:#fff; width:100%; max-width:780px; max-height:88vh; border-radius:16px; overflow:hidden; box-shadow:0 24px 60px rgba(15,23,42,0.35); display:flex; flex-direction:column;">
+
+      <div style="display:flex; align-items:center; justify-content:space-between; padding:18px 24px; border-bottom:1px solid #E4E9EF; flex-shrink:0;">
+        <div>
+          <div style="font-size:16px; font-weight:700; color:#0F172A;">Editar registro</div>
+          <div style="font-size:12px; color:#8A97A6; margin-top:1px;">Alterações são salvas automaticamente</div>
+        </div>
+        <button onClick="{{ closeEdit }}" style="background:#F1F5F9; border:none; width:32px; height:32px; border-radius:8px; font-size:16px; color:#475569; cursor:pointer;" style-hover="background:#E2E8F0;">×</button>
+      </div>
+
+      <div style="padding:22px 24px; overflow-y:auto; display:flex; flex-direction:column; gap:20px;">
+
+        <div>
+          <div style="{{ modalSectionTitle }}">Identificação</div>
+          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;">
+            <div><div style="{{ modalLabel }}">Área</div><input value="{{ editingRow.area }}" onChange="{{ editingRow.onArea }}" list="dl-area" style="{{ modalInput }}"/></div>
+            <div><div style="{{ modalLabel }}">Rotina</div><input value="{{ editingRow.rotina }}" onChange="{{ editingRow.onRotina }}" list="dl-rotina" style="{{ modalInput }}"/></div>
+            <div><div style="{{ modalLabel }}">Categoria</div><input value="{{ editingRow.categoria }}" onChange="{{ editingRow.onCategoria }}" list="dl-categoria" style="{{ modalInput }}"/></div>
+          </div>
+          <div style="margin-top:12px;"><div style="{{ modalLabel }}">Risco</div><textarea value="{{ editingRow.risco }}" onChange="{{ editingRow.onRisco }}" style="{{ modalTextarea }}" rows="2"></textarea></div>
+        </div>
+
+        <div>
+          <div style="{{ modalSectionTitle }}">Avaliação do Risco Inerente</div>
+          <div style="display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:12px; align-items:end;">
+            <div><div style="{{ modalLabel }}">Resposta</div>
+              <select value="{{ editingRow.resposta }}" onChange="{{ editingRow.onResposta }}" style="{{ modalInput }}">
+                <option value="">—</option>
+                <sc-for list="{{ respostaOptions }}" as="opt" hint-placeholder-count="4"><option value="{{ opt }}">{{ opt }}</option></sc-for>
+              </select>
+            </div>
+            <div><div style="{{ modalLabel }}">Probabilidade (0-5)</div><input type="number" min="0" max="5" step="1" value="{{ editingRow.probab }}" onChange="{{ editingRow.onProbab }}" style="{{ modalInput }}"/></div>
+            <div><div style="{{ modalLabel }}">Impacto (0-5)</div><input type="number" min="0" max="5" step="1" value="{{ editingRow.impact }}" onChange="{{ editingRow.onImpact }}" style="{{ modalInput }}"/></div>
+            <div><div style="{{ modalLabel }}">Score</div><div style="{{ editingRow.scoreBadgeStyleModal }}">{{ editingRow.scoreDisplay }}</div></div>
+          </div>
+        </div>
+
+        <div>
+          <div style="{{ modalSectionTitle }}">Plano de Ação</div>
+          <div style="display:flex; flex-direction:column; gap:12px;">
+            <div><div style="{{ modalLabel }}">Ações</div><textarea value="{{ editingRow.acoes }}" onChange="{{ editingRow.onAcoes }}" style="{{ modalTextarea }}" rows="2"></textarea></div>
+            <div><div style="{{ modalLabel }}">Resultado Esperado</div><textarea value="{{ editingRow.resultado }}" onChange="{{ editingRow.onResultado }}" style="{{ modalTextarea }}" rows="2"></textarea></div>
+          </div>
+        </div>
+
+        <div>
+          <div style="{{ modalSectionTitle }}">Priorização do Esforço</div>
+          <div style="display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:12px;">
+            <div><div style="{{ modalLabel }}">Esforço (0-5)</div><input type="number" min="0" max="5" step="0.5" value="{{ editingRow.esforco }}" onChange="{{ editingRow.onEsforco }}" style="{{ modalInput }}"/></div>
+            <div><div style="{{ modalLabel }}">Impacto (0-5)</div><input type="number" min="0" max="5" step="0.5" value="{{ editingRow.impacto2 }}" onChange="{{ editingRow.onImpacto2 }}" style="{{ modalInput }}"/></div>
+            <div><div style="{{ modalLabel }}">Gravidade (0-5)</div><input type="number" min="0" max="5" step="0.5" value="{{ editingRow.gravidade }}" onChange="{{ editingRow.onGravidade }}" style="{{ modalInput }}"/></div>
+            <div><div style="{{ modalLabel }}">Priorização</div><div style="{{ editingRow.priorizBadgeStyleModal }}">{{ editingRow.priorizDisplay }}</div></div>
+          </div>
+        </div>
+
+        <div>
+          <div style="{{ modalSectionTitle }}">Gestão e Acompanhamento</div>
+          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;">
+            <div><div style="{{ modalLabel }}">Recurso</div><input value="{{ editingRow.recurso }}" onChange="{{ editingRow.onRecurso }}" list="dl-recurso" style="{{ modalInput }}"/></div>
+            <div><div style="{{ modalLabel }}">Responsável</div><input value="{{ editingRow.responsavel }}" onChange="{{ editingRow.onResponsavel }}" list="dl-responsavel" style="{{ modalInput }}"/></div>
+            <div><div style="{{ modalLabel }}">Status</div>
+              <select value="{{ editingRow.status }}" onChange="{{ editingRow.onStatus }}" style="{{ modalInput }}">
+                <sc-for list="{{ statusSelectOptions }}" as="opt" hint-placeholder-count="3"><option value="{{ opt.value }}">{{ opt.label }}</option></sc-for>
+              </select>
+            </div>
+          </div>
+          <div style="margin-top:12px;"><div style="{{ modalLabel }}">Observação</div><textarea value="{{ editingRow.obs }}" onChange="{{ editingRow.onObs }}" style="{{ modalTextarea }}" rows="2"></textarea></div>
+        </div>
+
+      </div>
+
+      <div style="display:flex; align-items:center; justify-content:space-between; padding:16px 24px; border-top:1px solid #E4E9EF; flex-shrink:0;">
+        <button onClick="{{ editingRow.onDelete }}" style="background:#FEF2F2; color:#DC2626; border:none; border-radius:8px; padding:10px 16px; font-size:13px; font-weight:700; cursor:pointer;" style-hover="background:#FEE2E2;">Excluir registro</button>
+        <button onClick="{{ closeEdit }}" style="background:#1E3A5F; color:#fff; border:none; border-radius:8px; padding:10px 20px; font-size:13px; font-weight:700; cursor:pointer;" style-hover="background:#28486F;">Concluído</button>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = {
+    tab: 'registro',
+    records: [],
+    editingIndex: null,
+    selectedRank: null,
+    selectedQuadrant: null,
+    prioStatusFilter: 'Todos',
+    search: '',
+    statusFilter: 'Todos',
+    areaFilter: 'Todos',
+    categoriaFilter: 'Todos',
+    sortKey: null,
+    sortDir: 'desc',
+    graphFilter: null,
+    colWidths: {},
+    areaOptions: [], rotinaOptions: [], categoriaOptions: [], recursoOptions: [], responsavelOptions: []
+  };
+  _persistKey = 'riskMatrix.records.v1';
+
+  componentDidMount() {
+    import('./RiskData.js').then(mod => {
+      this._defaults = mod.INITIAL_RECORDS.map(r => ({ ...r }));
+      let records = this._defaults.map(r => ({ ...r }));
+      try {
+        const saved = localStorage.getItem(this._persistKey);
+        if (saved) { const p = JSON.parse(saved); if (Array.isArray(p) && p.length) records = p; }
+      } catch (e) {}
+      this.setState({
+        records,
+        areaOptions: mod.AREAS,
+        rotinaOptions: mod.ROTINAS,
+        categoriaOptions: mod.CATEGORIAS,
+        recursoOptions: mod.RECURSOS,
+        responsavelOptions: mod.RESPONSAVEIS
+      });
+    });
+    this._onKeyDown = (e) => { if (e.key === 'Escape') this.closeEdit(); };
+    window.addEventListener('keydown', this._onKeyDown);
+  }
+
+  componentWillUnmount() {
+    window.removeEventListener('keydown', this._onKeyDown);
+  }
+
+  componentDidUpdate() {
+    const recs = this.state.records;
+    if (recs && recs.length && recs !== this._lastPersisted) {
+      this._lastPersisted = recs;
+      try { localStorage.setItem(this._persistKey, JSON.stringify(recs)); } catch (e) {}
+    }
+  }
+
+  resetData() {
+    if (!window.confirm('Restaurar os dados originais? Todas as edições feitas aqui serão perdidas.')) return;
+    const records = (this._defaults || []).map(r => ({ ...r }));
+    try { localStorage.removeItem(this._persistKey); } catch (e) {}
+    this.setState({ records, editingIndex: null });
+  }
+
+  exportCSV() {
+    const cols = [['area','Área'],['rotina','Rotina'],['categoria','Categoria'],['risco','Risco'],['resposta','Resposta'],['probab','Probabilidade'],['impact','Impacto'],['score','Score'],['acoes','Ações'],['resultado','Resultado Esperado'],['esforco','Esforço'],['impacto2','Impacto2'],['gravidade','Gravidade'],['prioriz','Priorização'],['recurso','Recurso'],['responsavel','Responsável'],['status','Status'],['obs','Observação']];
+    const esc = v => { v = (v == null ? '' : String(v)); return '"' + v.replace(/"/g, '""') + '"'; };
+    const lines = [cols.map(c => esc(c[1])).join(';')];
+    this.state.records.forEach(r => {
+      lines.push(cols.map(c => {
+        if (c[0] === 'status') return esc(this.normStatus(r.status));
+        if (c[0] === 'score') { const sc = this.computeScore(r); return esc(sc == null ? '' : this.round1(sc)); }
+        if (c[0] === 'prioriz') { const p = this.computePrioriz(r); return esc(p == null ? '' : this.round2(p)); }
+        return esc(r[c[0]]);
+      }).join(';'));
+    });
+    const blob = new Blob(['\ufeff' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'matriz-de-risco.csv';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  _cols = [
+    { id: 'area', label: 'Área', w: 150 },
+    { id: 'rotina', label: 'Rotina', w: 160 },
+    { id: 'categoria', label: 'Categoria', w: 110 },
+    { id: 'risco', label: 'Riscos', w: 270, red: true },
+    { id: 'resposta', label: 'Resposta', w: 100 },
+    { id: 'probab', label: 'Probab.', w: 64, sort: 'probab' },
+    { id: 'impact', label: 'Impact.', w: 64, sort: 'impact' },
+    { id: 'score', label: 'Score', w: 64, sort: 'score' },
+    { id: 'acoes', label: 'Ações', w: 250 },
+    { id: 'resultado', label: 'Resultado Esperado', w: 220 },
+    { id: 'esforco', label: 'ESFORÇO', w: 76 },
+    { id: 'impacto2', label: 'IMPACTO2', w: 80 },
+    { id: 'gravidade', label: 'GRAVIDADE', w: 84 },
+    { id: 'prioriz', label: 'PRIORIZAÇÃO', w: 100, sort: 'prioriz' },
+    { id: 'recurso', label: 'Recurso', w: 160 },
+    { id: 'responsavel', label: 'Responsável', w: 140 },
+    { id: 'status', label: 'Status', w: 118 },
+    { id: 'obs', label: 'Observação', w: 170 },
+    { id: '_del', label: '', w: 36 }
+  ];
+
+  startColResize(e, id, startW) {
+    e.preventDefault();
+    e.stopPropagation();
+    const startX = e.clientX;
+    const onMove = (ev) => {
+      const w = Math.max(44, startW + (ev.clientX - startX));
+      this.setState(s => ({ colWidths: { ...(s.colWidths || {}), [id]: w } }));
+    };
+    const onUp = () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+      document.body.style.userSelect = '';
+    };
+    document.body.style.userSelect = 'none';
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }
+
+  round1(n) { return Math.round(n * 10) / 10; }
+  round2(n) { return Math.round(n * 100) / 100; }
+
+  computeScore(r) {
+    if (r.probab == null || r.impact == null) return null;
+    return r.probab * r.impact;
+  }
+  computePrioriz(r) {
+    if (r.esforco == null || r.esforco === 0 || r.impacto2 == null || r.gravidade == null) return null;
+    return r.impacto2 / r.esforco + r.gravidade;
+  }
+
+  normStatus(st) {
+    if (!st) return 'Não iniciado';
+    const u = st.toUpperCase();
+    if (u.includes('ANDAMENTO')) return 'Em andamento';
+    if (u.includes('CONCLU')) return 'Concluído';
+    return st;
+  }
+
+  updateCell(i, field, value, isNumber) {
+    this.setState(s => {
+      const records = s.records.slice();
+      const rec = { ...records[i] };
+      if (isNumber) rec[field] = value === '' ? null : parseFloat(value);
+      else rec[field] = value;
+      records[i] = rec;
+      return { records };
+    });
+  }
+
+  setGraphFilter(gf) {
+    this.setState(s => {
+      const cur = s.graphFilter;
+      if (cur && JSON.stringify(cur) === JSON.stringify(gf)) return { graphFilter: null };
+      return { graphFilter: gf };
+    });
+  }
+  clearGraphFilter() { this.setState({ graphFilter: null }); }
+
+  matchGraphFilter(rec, gf) {
+    if (!gf) return true;
+    switch (gf.type) {
+      case 'categoria': return rec.categoria === gf.value;
+      case 'area': return rec.area === gf.value;
+      case 'rotina': return rec.rotina === gf.value;
+      case 'recurso': return (rec.recurso && rec.recurso.trim() !== '' ? rec.recurso : 'Sem recurso definido') === gf.value;
+      case 'status': return this.normStatus(rec.status) === gf.value;
+      case 'criticidade': {
+        const sc = this.computeScore(rec);
+        if (sc == null) return false;
+        const t = sc > 14 ? 'Crítico' : sc > 9 ? 'Alto' : sc > 4 ? 'Médio' : 'Baixo';
+        return t === gf.value;
+      }
+      case 'heat': return rec.probab === gf.prob && rec.impact === gf.imp;
+      default: return true;
+    }
+  }
+
+  graphFilterLabel(gf) {
+    if (!gf) return '';
+    if (gf.type === 'heat') return 'Probabilidade ' + gf.prob + ' × Impacto ' + gf.imp;
+    const names = { categoria: 'Categoria', area: 'Área', rotina: 'Rotina', recurso: 'Recurso', status: 'Status', criticidade: 'Criticidade' };
+    return (names[gf.type] || gf.type) + ': ' + gf.value;
+  }
+
+  openEdit(i) { this.setState({ editingIndex: i }); }
+  closeEdit() { this.setState({ editingIndex: null }); }
+
+  addRow() {
+    this.setState(s => {
+      const records = [...s.records, {
+        area: '', rotina: '', categoria: '', risco: '', resposta: '',
+        probab: null, impact: null, acoes: '', resultado: '',
+        esforco: null, impacto2: null, gravidade: null,
+        recurso: '', responsavel: '', status: '', obs: ''
+      }];
+      return { records, editingIndex: records.length - 1 };
+    });
+  }
+
+  deleteRow(i) {
+    if (!window.confirm('Tem certeza que deseja excluir este registro?')) return;
+    this.setState(s => ({ records: s.records.filter((_, idx) => idx !== i), editingIndex: null }));
+  }
+
+  scoreColor(score) {
+    if (score == null) return '#94A3B8';
+    if (score <= 4) return '#15803D';
+    if (score <= 9) return '#B8901F';
+    if (score <= 14) return '#D97706';
+    return '#DC2626';
+  }
+
+  priorizColor(p) {
+    if (p == null) return '#94A3B8';
+    if (p >= 6) return '#DC2626';
+    if (p >= 4.5) return '#D97706';
+    if (p >= 3) return '#B8901F';
+    return '#15803D';
+  }
+
+  badge(kind, text) {
+    const map = {
+      slate: { bg: '#F1F5F9', fg: '#475569' },
+      blue: { bg: '#DBEAFE', fg: '#1D4ED8' },
+      green: { bg: '#DCFCE7', fg: '#15803D' },
+      amber: { bg: '#FEF3C7', fg: '#B45309' },
+      red: { bg: '#FEE2E2', fg: '#B91C1C' },
+      purple: { bg: '#EDE9FE', fg: '#6D28D9' },
+      orange: { bg: '#FFEDD5', fg: '#C2410C' }
+    };
+    const c = map[kind] || map.slate;
+    return `display:inline-block; padding:1px 9px; border-radius:20px; font-size:11px; font-weight:700; background:${c.bg}; color:${c.fg}; white-space:nowrap;`;
+  }
+
+  respostaKind(v) {
+    if (v === 'Mitigar') return 'blue';
+    if (v === 'Aceitar') return 'slate';
+    if (v === 'Transferir') return 'purple';
+    if (v === 'Evitar') return 'red';
+    return 'slate';
+  }
+
+  statusKind(norm) {
+    if (norm === 'Em andamento') return 'amber';
+    if (norm === 'Concluído') return 'green';
+    return 'slate';
+  }
+
+  niceMax(v) {
+    if (v <= 0) return 10;
+    const mag = Math.pow(10, Math.floor(Math.log10(v)));
+    const norm = v / mag;
+    let n;
+    if (norm <= 1) n = 1; else if (norm <= 2) n = 2; else if (norm <= 4) n = 4;
+    else if (norm <= 5) n = 5; else if (norm <= 8) n = 8; else n = 10;
+    return n * mag;
+  }
+
+  buildScoreBars(records, field) {
+    const agg = {};
+    records.forEach(r => {
+      if (!r[field]) return;
+      const sc = this.computeScore(r);
+      if (sc == null) return;
+      if (!agg[r[field]]) agg[r[field]] = { sum: 0, count: 0 };
+      agg[r[field]].sum += sc;
+      agg[r[field]].count += 1;
+    });
+    const raw = Object.entries(agg).map(([name, v]) => ({ name, sum: v.sum, count: v.count })).sort((a, b) => b.sum - a.sum);
+    const maxSum = Math.max(...raw.map(b => b.sum), 1);
+    const tierColor = ratio => {
+      if (ratio >= 0.75) return '#DC2626';
+      if (ratio >= 0.5) return '#D97706';
+      if (ratio >= 0.25) return '#B8901F';
+      return '#15803D';
+    };
+    return raw.map(b => ({
+      name: b.name,
+      score: this.round1(b.sum),
+      count: b.count,
+      pct: Math.max(2, (b.sum / maxSum) * 100),
+      color: tierColor(b.sum / maxSum),
+      meta: b.count + (b.count > 1 ? ' riscos' : ' risco')
+    }));
+  }
+
+  groupSum(records, field) {
+    const map = {};
+    records.forEach(r => {
+      const key = r[field];
+      if (!key) return;
+      if (r.probab == null && r.impact == null) return;
+      if (!map[key]) map[key] = { probab: 0, impact: 0, score: 0 };
+      map[key].probab += (r.probab || 0);
+      map[key].impact += (r.impact || 0);
+      const sc = this.computeScore(r);
+      map[key].score += (sc || 0);
+    });
+    return Object.entries(map).map(([name, v]) => ({ name, ...v })).sort((a, b) => b.score - a.score);
+  }
+
+  buildBubbleChart(entries, mode, dims) {
+    const { W, H, padL, padR, padT, padB } = dims;
+    const plotW = W - padL - padR, plotH = H - padT - padB;
+    const xAxisLabelTopPct = ((padT + plotH + 14) / H) * 100;
+    const yAxisLabelLeftPct = ((padL - 8) / W) * 100;
+    if (!entries.length) {
+      const ticks = [0, 1, 2, 3, 4].map(i => {
+        const x = padL + (i / 4) * plotW, y = padT + plotH - (i / 4) * plotH;
+        return { val: 0, x, y, xPct: (x / W) * 100, yPct: (y / H) * 100 };
+      });
+      return { points: [], ticks, xAxisLabelTopPct, yAxisLabelLeftPct };
+    }
+    const rawMax = Math.max(...entries.flatMap(e => [e.probab, e.impact]), 1);
+    const niceMax = this.niceMax(rawMax);
+    const maxScore = Math.max(...entries.map(e => e.score), 1);
+    const xOf = v => padL + (v / niceMax) * plotW;
+    const yOf = v => padT + plotH - (v / niceMax) * plotH;
+    const rMin = dims.rMin || 24, rMax = dims.rMax || 58;
+
+    const bluePalette = ['#2F5FA8', '#5B8DEF', '#9DBEEA'];
+    const multiPalette = ['#5B8DEF', '#8CB369', '#D9756C', '#F2B880', '#9B8AC4', '#4FB0C6'];
+    const peach = '#EFA96C';
+
+    const points = entries.map((e, i) => {
+      const r = rMin + Math.sqrt(e.score / maxScore) * (rMax - rMin);
+      const cx = xOf(e.impact), cy = yOf(e.probab);
+      const fontSize = r >= 34 ? 11.5 : 10;
+      const inside = r >= 28;
+      const labelTop = inside ? cy : cy + r + 13;
+      let color;
+      if (mode === 'multi') color = multiPalette[i % multiPalette.length];
+      else if (mode === 'blue') color = bluePalette[i % bluePalette.length];
+      else color = peach;
+      return {
+        name: e.name, cx, cy, r,
+        color, stroke: color,
+        xPct: (cx / W) * 100,
+        labelTopPct: (labelTop / H) * 100,
+        labelWidthPct: Math.max((2.6 * r) / W * 100, 22),
+        fontSize,
+        labelColor: inside ? '#ffffff' : '#334155'
+      };
+    });
+    const ticks = [0, 0.25, 0.5, 0.75, 1].map(f => {
+      const val = Math.round(niceMax * f);
+      const x = xOf(val), y = yOf(val);
+      return { val, x, y, xPct: (x / W) * 100, yPct: (y / H) * 100 };
+    });
+    return { points, ticks, niceMax, xAxisLabelTopPct, yAxisLabelLeftPct };
+  }
+
+  renderVals() {
+    const s = this.state;
+    const tab = s.tab;
+
+    const rows = s.records.map((r, i) => {
+      const score = this.computeScore(r);
+      const prioriz = this.computePrioriz(r);
+      const normSt = this.normStatus(r.status);
+      return {
+        idx: i,
+        area: r.area || '', rotina: r.rotina || '', categoria: r.categoria || '',
+        risco: r.risco || '', resposta: r.resposta || '',
+        respostaText: r.resposta || '—',
+        respostaBadgeStyle: this.badge(this.respostaKind(r.resposta), r.resposta),
+        probab: r.probab ?? '', impact: r.impact ?? '',
+        probabDisplay: r.probab ?? '—', impactDisplay: r.impact ?? '—',
+        scoreDisplay: score != null ? this.round1(score) : '—',
+        scoreBadgeStyle: `display:inline-block; min-width:28px; padding:1px 8px; border-radius:7px; font-weight:800; font-size:12px; color:#fff; background:${this.scoreColor(score)};`,
+        scoreBadgeStyleModal: `display:inline-flex; align-items:center; justify-content:center; height:40px; border-radius:8px; font-weight:800; font-size:15px; color:#fff; background:${this.scoreColor(score)};`,
+        acoes: r.acoes || '', resultado: r.resultado || '',
+        esforco: r.esforco ?? '', impacto2: r.impacto2 ?? '', gravidade: r.gravidade ?? '',
+        esforcoDisplay: r.esforco ?? '—', impacto2Display: r.impacto2 ?? '—', gravidadeDisplay: r.gravidade ?? '—',
+        priorizDisplay: prioriz != null ? this.round2(prioriz) : '—',
+        priorizBadgeStyle: `display:inline-block; min-width:28px; padding:1px 8px; border-radius:7px; font-weight:800; font-size:12px; color:#fff; background:${this.priorizColor(prioriz)};`,
+        priorizBadgeStyleModal: `display:inline-flex; align-items:center; justify-content:center; height:40px; border-radius:8px; font-weight:800; font-size:15px; color:#fff; background:${this.priorizColor(prioriz)};`,
+        recurso: r.recurso || '', responsavel: r.responsavel || '',
+        status: r.status || '', statusNorm: normSt, statusText: normSt,
+        statusBadgeStyle: this.badge(this.statusKind(normSt), normSt),
+        obs: r.obs || '',
+        rowBg: i % 2 === 0 ? '#ffffff' : '#F7FAFD',
+        trStyle: `background:${i % 2 === 0 ? '#ffffff' : '#F7FAFD'}; cursor:pointer;`,
+        onArea: e => this.updateCell(i, 'area', e.target.value),
+        onRotina: e => this.updateCell(i, 'rotina', e.target.value),
+        onCategoria: e => this.updateCell(i, 'categoria', e.target.value),
+        onRisco: e => this.updateCell(i, 'risco', e.target.value),
+        onResposta: e => this.updateCell(i, 'resposta', e.target.value),
+        onProbab: e => this.updateCell(i, 'probab', e.target.value, true),
+        onImpact: e => this.updateCell(i, 'impact', e.target.value, true),
+        onAcoes: e => this.updateCell(i, 'acoes', e.target.value),
+        onResultado: e => this.updateCell(i, 'resultado', e.target.value),
+        onEsforco: e => this.updateCell(i, 'esforco', e.target.value, true),
+        onImpacto2: e => this.updateCell(i, 'impacto2', e.target.value, true),
+        onGravidade: e => this.updateCell(i, 'gravidade', e.target.value, true),
+        onRecurso: e => this.updateCell(i, 'recurso', e.target.value),
+        onResponsavel: e => this.updateCell(i, 'responsavel', e.target.value),
+        onStatus: e => this.updateCell(i, 'status', e.target.value),
+        onObs: e => this.updateCell(i, 'obs', e.target.value),
+        onOpen: () => this.openEdit(i),
+        onDelete: e => { e.stopPropagation(); this.deleteRow(i); }
+      };
+    });
+
+    const totalCount = rows.length;
+    const search = (s.search || '').toLowerCase().trim();
+    let visibleRows = rows.filter(row => {
+      if (s.statusFilter !== 'Todos' && row.statusNorm !== s.statusFilter) return false;
+      if (s.areaFilter !== 'Todos' && row.area !== s.areaFilter) return false;
+      if (s.categoriaFilter !== 'Todos' && row.categoria !== s.categoriaFilter) return false;
+      if (!search) return true;
+      return [row.area, row.rotina, row.categoria, row.risco, row.acoes, row.recurso, row.responsavel].join(' ').toLowerCase().includes(search);
+    });
+    if (s.sortKey) {
+      const dir = s.sortDir === 'asc' ? 1 : -1;
+      const val = (row) => {
+        const rec = s.records[row.idx];
+        if (s.sortKey === 'score') return this.computeScore(rec);
+        if (s.sortKey === 'prioriz') return this.computePrioriz(rec);
+        if (s.sortKey === 'probab') return rec.probab;
+        if (s.sortKey === 'impact') return rec.impact;
+        return null;
+      };
+      visibleRows = visibleRows.slice().sort((a, b) => {
+        const va = val(a), vb = val(b);
+        if (va == null && vb == null) return 0;
+        if (va == null) return 1;
+        if (vb == null) return -1;
+        return (va - vb) * dir;
+      });
+    }
+    const sortArrow = k => s.sortKey === k ? (s.sortDir === 'asc' ? ' ▲' : ' ▼') : '';
+    const toggleSort = k => this.setState(st => st.sortKey === k
+      ? { sortDir: st.sortDir === 'asc' ? 'desc' : 'asc' }
+      : { sortKey: k, sortDir: 'desc' });
+
+    // --- Completude do preenchimento ---
+    const compFields = ['risco','probab','impact','acoes','esforco','impacto2','gravidade','recurso','responsavel','status'];
+    let compFilled = 0;
+    const compTotal = s.records.length * compFields.length;
+    s.records.forEach(r => compFields.forEach(f => { if (r[f] != null && r[f] !== '') compFilled++; }));
+    const completude = compTotal ? Math.round((compFilled / compTotal) * 100) : 0;
+
+    const totalRiscos = s.records.filter(r => r.risco).length;
+    const totalEmAndamento = rows.filter(r => r.statusNorm === 'Em andamento').length;
+    const totalConcluido = rows.filter(r => r.statusNorm === 'Concluído').length;
+    const totalCritico = rows.filter(r => this.priorizColor(this.computePrioriz(r.esforco != null ? r : { esforco: null })) === '#DC2626').length;
+    // recompute properly using raw records for critico
+    const totalCriticoReal = s.records.filter(r => {
+      const p = this.computePrioriz(r);
+      return p != null && p >= 6;
+    }).length;
+
+    // --- Graph cross-filter (Gráficos tab only) ---
+    const gf = s.graphFilter;
+    const gfRecords = gf ? s.records.filter(r => this.matchGraphFilter(r, gf)) : s.records;
+    const gfRows = gf ? rows.filter(row => this.matchGraphFilter(s.records[row.idx], gf)) : rows;
+    const graphFilterActive = !!gf;
+    const graphFilterLabel = this.graphFilterLabel(gf);
+    const graphFilterType = gf ? gf.type : null;
+
+    // Risk description list for the current selection
+    const riskList = gfRows
+      .map(r => ({
+        risco: (r.risco && r.risco.trim() !== '') ? r.risco : '(sem descrição)',
+        combo: [r.area, r.categoria].filter(Boolean).join(' · '),
+        scoreDisplay: r.scoreDisplay,
+        scoreBadgeStyle: r.scoreBadgeStyle,
+        statusText: r.statusText,
+        statusBadgeStyle: r.statusBadgeStyle,
+        _score: this.computeScore(s.records[r.idx])
+      }))
+      .sort((a, b) => (b._score == null ? -1 : b._score) - (a._score == null ? -1 : a._score));
+    const riskListCount = riskList.length;
+
+    // --- Status donut (action rows only) ---
+    const actionRows = gfRows.filter(r => r.acoes && r.acoes.trim() !== '');
+    const totalAcoesComStatus = actionRows.length;
+    const statusColors = { 'Não iniciado': '#94A3B8', 'Em andamento': '#D97706', 'Concluído': '#15803D' };
+    const statusOrder = ['Não iniciado', 'Em andamento', 'Concluído'];
+    let cursor = 0;
+    const gradParts = [];
+    const statusLegend = statusOrder.map(label => {
+      const count = actionRows.filter(r => r.statusNorm === label).length;
+      const pct = totalAcoesComStatus ? Math.round((count / totalAcoesComStatus) * 100) : 0;
+      const start = cursor;
+      cursor += pct;
+      gradParts.push(`${statusColors[label]} ${start}% ${cursor}%`);
+      return { label, color: statusColors[label], count, pct, onClick: () => this.setGraphFilter({ type: 'status', value: label }) };
+    });
+    const donutBg = totalAcoesComStatus ? `conic-gradient(${gradParts.join(',')})` : '#F1F5F9';
+
+    // --- Bubble charts (respect graph cross-filter) ---
+    const withBarClick = (bars, type) => bars.map(b => ({ ...b, onClick: () => this.setGraphFilter({ type, value: b.name }) }));
+    const categoryBars = withBarClick(this.buildScoreBars(gfRecords, 'categoria'), 'categoria');
+    const areaBars = withBarClick(this.buildScoreBars(gfRecords, 'area'), 'area');
+    const rotinaBars = withBarClick(this.buildScoreBars(gfRecords, 'rotina'), 'rotina');
+
+    // --- Distribuição por criticidade (risco inerente) ---
+    const scoredVals = gfRecords.map(r => this.computeScore(r)).filter(sc => sc != null);
+    const totalAvaliados = scoredVals.length;
+    const critDefs = [
+      { label: 'Crítico', color: '#DC2626', test: sc => sc > 14 },
+      { label: 'Alto', color: '#D97706', test: sc => sc > 9 && sc <= 14 },
+      { label: 'Médio', color: '#B8901F', test: sc => sc > 4 && sc <= 9 },
+      { label: 'Baixo', color: '#15803D', test: sc => sc <= 4 }
+    ];
+    let critAcc = 0;
+    const critGrad = [];
+    const critLegend = critDefs.map(d => {
+      const count = scoredVals.filter(d.test).length;
+      const start = totalAvaliados ? (critAcc / totalAvaliados) * 100 : 0;
+      critAcc += count;
+      const end = totalAvaliados ? (critAcc / totalAvaliados) * 100 : 0;
+      if (count > 0) critGrad.push(`${d.color} ${start}% ${end}%`);
+      return { label: d.label, color: d.color, count, pct: totalAvaliados ? Math.round((count / totalAvaliados) * 100) : 0, onClick: () => this.setGraphFilter({ type: 'criticidade', value: d.label }) };
+    });
+    const critDonutBg = totalAvaliados ? `conic-gradient(${critGrad.join(',')})` : '#EEF2F6';
+    const scoreMedio = totalAvaliados ? this.round1(scoredVals.reduce((a, b) => a + b, 0) / totalAvaliados) : '—';
+    const criticosCount = scoredVals.filter(sc => sc > 14).length;
+
+    // --- Mapa de calor 5×5 (Probabilidade × Impacto) — flat cell list for a CSS grid ---
+    const heatCells = [];
+    for (let imp = 5; imp >= 1; imp--) {
+      for (let prob = 1; prob <= 5; prob++) {
+        const count = gfRecords.filter(r => r.probab === prob && r.impact === imp).length;
+        const color = this.scoreColor(prob * imp);
+        const pp = prob, ii = imp;
+        heatCells.push({
+          count, label: count > 0 ? String(count) : '',
+          tooltip: `Probabilidade ${prob} · Impacto ${imp} — ${count} ${count === 1 ? 'risco' : 'riscos'}` + (count > 0 ? ' · clique para filtrar' : ''),
+          onClick: count > 0 ? (() => this.setGraphFilter({ type: 'heat', prob: pp, imp: ii })) : (() => {}),
+          style: `height:50px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:15px; transition:transform 0.12s; cursor:${count > 0 ? 'pointer' : 'default'}; background:${count > 0 ? color : color + '24'}; color:${count > 0 ? '#fff' : 'transparent'}; box-shadow:${count > 0 ? '0 2px 6px rgba(15,23,42,0.12)' : 'none'};`
+        });
+      }
+    }
+    const heatImpactLabels = [5, 4, 3, 2, 1];
+
+    // --- Ações por recurso com status ---
+    const recStatusMap = {};
+    actionRows.forEach(r => {
+      const key = (r.recurso && r.recurso.trim() !== '') ? r.recurso : 'Sem recurso definido';
+      if (!recStatusMap[key]) recStatusMap[key] = { ni: 0, ea: 0, cc: 0, total: 0 };
+      const st = r.statusNorm;
+      if (st === 'Concluído') recStatusMap[key].cc++;
+      else if (st === 'Em andamento') recStatusMap[key].ea++;
+      else recStatusMap[key].ni++;
+      recStatusMap[key].total++;
+    });
+    const maxRecTotal = Math.max(...Object.values(recStatusMap).map(v => v.total), 1);
+    const recStatusBars = Object.entries(recStatusMap).map(([name, v]) => ({
+      name, total: v.total, ni: v.ni, ea: v.ea, cc: v.cc,
+      wrapPct: Math.max(5, (v.total / maxRecTotal) * 100),
+      niW: (v.ni / v.total) * 100, eaW: (v.ea / v.total) * 100, ccW: (v.cc / v.total) * 100,
+      onClick: () => this.setGraphFilter({ type: 'recurso', value: name })
+    })).sort((a, b) => b.total - a.total);
+    const pctConcluido = totalAcoesComStatus ? Math.round((actionRows.filter(r => r.statusNorm === 'Concluído').length / totalAcoesComStatus) * 100) : 0;
+
+    // --- Priorization tab ---
+    const actionableAll = s.records
+      .map((r, i) => ({ r, i, score: this.computeScore(r), prioriz: this.computePrioriz(r) }))
+      .filter(x => x.prioriz != null);
+    const prioTotalCount = actionableAll.length;
+    const prioStatusFilter = s.prioStatusFilter;
+    const actionable = prioStatusFilter === 'Todos'
+      ? actionableAll
+      : actionableAll.filter(x => this.normStatus(x.r.status) === prioStatusFilter);
+    const prioVisibleCount = actionable.length;
+    const prioStatusBtn = active => `padding:6px 13px; border-radius:20px; border:1px solid ${active ? '#1E3A5F' : '#DCE3EA'}; font-size:12px; font-weight:600; cursor:pointer; background:${active ? '#1E3A5F' : '#fff'}; color:${active ? '#fff' : '#475569'};`;
+
+    // Rank by priorização (desc) and build numbered quadrant points + synced list
+    const ranked = actionable.slice().sort((a, b) => b.prioriz - a.prioriz);
+    const selectedRank = s.selectedRank;
+    const selectedQuadrant = s.selectedQuadrant;
+
+    const quadrantOf = r => {
+      const highImpact = r.impacto2 >= 2.5, highEffort = r.esforco >= 2.5;
+      if (highImpact && !highEffort) return 'qw';
+      if (highImpact && highEffort) return 'ga';
+      if (!highImpact && !highEffort) return 'bp';
+      return 'rv';
+    };
+
+    // spread overlapping points that share the same (esforco, impacto)
+    const posGroups = {};
+    ranked.forEach((x, ri) => {
+      const key = x.r.esforco + '|' + x.r.impacto2;
+      if (!posGroups[key]) posGroups[key] = [];
+      posGroups[key].push(ri);
+    });
+    const offsets = {}; // rankIndex -> {dx, dy} in %
+    Object.values(posGroups).forEach(group => {
+      if (group.length === 1) { offsets[group[0]] = { dx: 0, dy: 0 }; return; }
+      const spread = Math.min(3.2, 1.6 + group.length * 0.35);
+      group.forEach((ri, gi) => {
+        const ang = (gi / group.length) * Math.PI * 2 - Math.PI / 2;
+        offsets[ri] = { dx: Math.cos(ang) * spread, dy: Math.sin(ang) * spread };
+      });
+    });
+
+    const pad = 7; // % padding inside the plot so bubbles don't clip
+    const matrixPoints = ranked.map((x, ri) => {
+      const o = offsets[ri];
+      const clampX = v => Math.min(Math.max(v, 5), 95);
+      const clampY = v => Math.min(Math.max(v, 13), 87);
+      const xPct = clampX(pad + (x.r.esforco / 5) * (100 - 2 * pad) + o.dx);
+      const yPct = clampY(100 - (pad + (x.r.impacto2 / 5) * (100 - 2 * pad)) + o.dy);
+      const size = 22 + (x.r.gravidade || 0) * 3.6;
+      const color = this.priorizColor(x.prioriz);
+      const isSel = selectedRank === ri;
+      const quadDim = selectedQuadrant != null && quadrantOf(x.r) !== selectedQuadrant;
+      const dimmed = (selectedRank != null && !isSel) || quadDim;
+      return {
+        num: ri + 1,
+        tooltip: (x.r.acoes || '(sem descrição)') + ' — Priorização ' + this.round2(x.prioriz),
+        onClick: () => this.setState({ selectedRank: isSel ? null : ri, selectedQuadrant: null }),
+        style: `position:absolute; left:${xPct}%; top:${yPct}%; width:${size}px; height:${size}px; transform:translate(-50%,-50%)${isSel ? ' scale(1.25)' : ''}; border-radius:50%; background:${color}; opacity:${dimmed ? 0.25 : 0.92}; color:#fff; font-size:${size >= 30 ? 12 : 10.5}px; font-weight:800; display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:${isSel ? '0 0 0 3px #fff, 0 0 0 5px ' + color + ', 0 4px 12px rgba(15,23,42,0.3)' : '0 1px 4px rgba(15,23,42,0.2)'}; transition:all 0.15s; z-index:${isSel ? 10 : 1};`,
+        hoverStyle: dimmed ? 'opacity:0.6;' : 'opacity:1;'
+      };
+    });
+
+    const matrixList = ranked.map((x, ri) => {
+      const isSel = selectedRank === ri;
+      const color = this.priorizColor(x.prioriz);
+      return {
+        num: ri + 1,
+        quadrant: quadrantOf(x.r),
+        rankIndex: ri,
+        acoes: x.r.acoes || '(sem descrição)',
+        esforco: x.r.esforco ?? '—', impacto2: x.r.impacto2 ?? '—', gravidade: x.r.gravidade ?? '—',
+        prioriz: this.round2(x.prioriz),
+        onClick: () => this.setState({ selectedRank: isSel ? null : ri, selectedQuadrant: null }),
+        style: `display:flex; align-items:center; gap:10px; padding:9px 14px; border-bottom:1px solid #F1F5F9; cursor:pointer; background:${isSel ? '#EAF1FA' : 'transparent'}; border-left:3px solid ${isSel ? '#1E3A5F' : 'transparent'};`,
+        numStyle: `flex-shrink:0; width:24px; height:24px; border-radius:50%; background:${color}; color:#fff; font-size:11px; font-weight:800; display:flex; align-items:center; justify-content:center;`,
+        badgeStyle: `flex-shrink:0; padding:3px 9px; border-radius:10px; font-weight:800; font-size:11.5px; color:#fff; background:${color};`
+      };
+    });
+
+    // Filter the list: bubble click → only that action; quadrant click → only that quadrant
+    const quadrantNames = { qw: 'Quick Wins', ga: 'Grandes Apostas', bp: 'Baixa Prioridade', rv: 'Reavaliar' };
+    let matrixListFiltered = matrixList;
+    let matrixListTitle = 'Ranking de priorização';
+    if (selectedRank != null) {
+      matrixListFiltered = matrixList.filter(it => it.rankIndex === selectedRank);
+      matrixListTitle = 'Ação selecionada';
+    } else if (selectedQuadrant != null) {
+      matrixListFiltered = matrixList.filter(it => it.quadrant === selectedQuadrant);
+      matrixListTitle = quadrantNames[selectedQuadrant] + ' · ' + matrixListFiltered.length + (matrixListFiltered.length === 1 ? ' ação' : ' ações');
+    }
+    const matrixFilterActive = selectedRank != null || selectedQuadrant != null;
+
+    const quadrantDefs = [
+      { key: 'qw', title: 'QUICK WINS', subtitle: 'alto impacto · baixo esforço', color: '#15803D', sub: '#6B9E74', border: 'rgba(21,128,61,0.18)', pos: 'left:25%; top:8px;' },
+      { key: 'ga', title: 'GRANDES APOSTAS', subtitle: 'alto impacto · alto esforço', color: '#5B7FB5', sub: '#8CA5C8', border: 'rgba(91,127,181,0.2)', pos: 'left:75%; top:8px;' },
+      { key: 'bp', title: 'BAIXA PRIORIDADE', subtitle: 'baixo impacto · baixo esforço', color: '#94A3B8', sub: '#AEB9C6', border: 'rgba(148,163,184,0.25)', pos: 'left:25%; bottom:8px;' },
+      { key: 'rv', title: 'REAVALIAR', subtitle: 'baixo impacto · alto esforço', color: '#C2811C', sub: '#D0A25E', border: 'rgba(194,129,28,0.2)', pos: 'left:75%; bottom:8px;' }
+    ];
+    const quadrantPills = quadrantDefs.map(q => {
+      const active = selectedQuadrant === q.key;
+      return {
+        title: q.title, subtitle: q.subtitle,
+        onClick: () => this.setState({ selectedQuadrant: active ? null : q.key, selectedRank: null }),
+        style: `position:absolute; ${q.pos} transform:translateX(-50%); z-index:12; cursor:pointer; text-align:center; background:${active ? q.color : 'rgba(255,255,255,0.88)'}; border:1px solid ${active ? q.color : q.border}; border-radius:20px; padding:4px 14px; font-size:11px; font-weight:800; color:${active ? '#fff' : q.color}; letter-spacing:0.4px; white-space:nowrap; box-shadow:0 1px 4px rgba(15,23,42,${active ? '0.2' : '0.06'}); transition:all 0.15s;`,
+        hoverStyle: active ? '' : `background:#fff; border-color:${q.color}; box-shadow:0 2px 8px rgba(15,23,42,0.12);`,
+        subStyle: `font-weight:500; color:${active ? 'rgba(255,255,255,0.8)' : q.sub}; font-size:9.5px; letter-spacing:0;`
+      };
+    });
+
+    const groupsMap = {};
+    actionable.forEach(x => {
+      const key = x.r.recurso && x.r.recurso.trim() !== '' ? x.r.recurso : 'Sem recurso definido';
+      if (!groupsMap[key]) groupsMap[key] = [];
+      groupsMap[key].push(x);
+    });
+    const priorityGroups = Object.entries(groupsMap).map(([name, items]) => {
+      items.sort((a, b) => b.prioriz - a.prioriz);
+      const avg = f => this.round2(items.reduce((sum, x) => sum + (x.r[f] ?? 0), 0) / items.length);
+      return {
+        name,
+        avgEsforco: avg('esforco'), avgImpacto: avg('impacto2'), avgGravidade: avg('gravidade'),
+        avgPrioriz: this.round2(items.reduce((sum, x) => sum + x.prioriz, 0) / items.length),
+        actions: items.map(x => ({
+          acoes: x.r.acoes || '(sem descrição)',
+          combo: [x.r.area, x.r.rotina, x.r.categoria].filter(Boolean).join(' · '),
+          esforco: x.r.esforco ?? '—', impacto2: x.r.impacto2 ?? '—', gravidade: x.r.gravidade ?? '—',
+          prioriz: this.round2(x.prioriz),
+          priorizColor: this.priorizColor(x.prioriz)
+        }))
+      };
+    });
+    priorityGroups.sort((a, b) => b.avgPrioriz - a.avgPrioriz);
+
+    const tabBtn = active => `padding:10px 16px; border-radius:8px; border:none; font-size:12.5px; font-weight:700; cursor:pointer; transition:background 0.15s; background:${active ? '#fff' : 'transparent'}; color:${active ? '#1E3A5F' : '#C6D5E5'};`;
+    const filterBtn = active => `padding:7px 14px; border-radius:20px; border:1px solid ${active ? '#1E3A5F' : '#DCE3EA'}; font-size:12px; font-weight:600; cursor:pointer; background:${active ? '#1E3A5F' : '#fff'}; color:${active ? '#fff' : '#475569'};`;
+
+    const thStyleNavy = 'background:#1E3A5F; color:#fff; font-weight:700; font-size:11px; padding:7px 12px; text-align:left; position:sticky; top:0; z-index:2; border-right:1px solid rgba(255,255,255,0.1); white-space:nowrap;';
+    const thStyleRed = thStyleNavy.replace('#1E3A5F', '#9C3F3A');
+
+    const cw = s.colWidths || {};
+    const headerCols = this._cols.map(c => {
+      const width = cw[c.id] != null ? cw[c.id] : c.w;
+      const base = c.red ? thStyleRed : thStyleNavy;
+      const sortable = !!c.sort;
+      return {
+        id: c.id,
+        label: sortable ? c.label + sortArrow(c.sort) : c.label,
+        style: base + ` width:${width}px; position:relative;` + (sortable ? ' cursor:pointer;' : ''),
+        onClick: sortable ? (() => toggleSort(c.sort)) : (() => {}),
+        onGripDown: (e) => this.startColResize(e, c.id, width),
+        onGripClick: (e) => e.stopPropagation(),
+        gripStyle: 'position:absolute; top:0; right:0; width:8px; height:100%; cursor:col-resize; z-index:3;'
+      };
+    });
+
+    const cellBase = 'padding:2px 12px; border-right:1px solid #F1F5F9; border-bottom:1px solid #F1F5F9; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:0; color:#334155; line-height:1.25;';
+
+    const modalInput = 'width:100%; border:1px solid #DCE3EA; border-radius:8px; padding:9px 11px; font-size:13px; font-family:inherit; color:#0F172A; outline:none; background:#fff;';
+
+    return {
+      isRegistro: tab === 'registro', isGraficos: tab === 'graficos', isPriorizacao: tab === 'priorizacao',
+      goRegistro: () => this.setState({ tab: 'registro' }),
+      goGraficos: () => this.setState({ tab: 'graficos' }),
+      goPriorizacao: () => this.setState({ tab: 'priorizacao' }),
+      tabBtnStyleRegistro: tabBtn(tab === 'registro'), tabBtnHoverRegistro: tab === 'registro' ? '' : 'color:#fff;',
+      tabBtnStyleGraficos: tabBtn(tab === 'graficos'), tabBtnHoverGraficos: tab === 'graficos' ? '' : 'color:#fff;',
+      tabBtnStylePriorizacao: tabBtn(tab === 'priorizacao'), tabBtnHoverPriorizacao: tab === 'priorizacao' ? '' : 'color:#fff;',
+
+      rows, visibleRows, addRow: () => this.addRow(),
+      totalRiscos, totalEmAndamento, totalConcluido, totalCritico: totalCriticoReal,
+      totalCount, visibleCount: visibleRows.length,
+
+      search: s.search, onSearchChange: e => this.setState({ search: e.target.value }),
+      setFilterTodos: () => this.setState({ statusFilter: 'Todos' }),
+      setFilterNaoIniciado: () => this.setState({ statusFilter: 'Não iniciado' }),
+      setFilterEmAndamento: () => this.setState({ statusFilter: 'Em andamento' }),
+      setFilterConcluido: () => this.setState({ statusFilter: 'Concluído' }),
+      filterBtnStyleTodos: filterBtn(s.statusFilter === 'Todos'),
+      filterBtnStyleNaoIniciado: filterBtn(s.statusFilter === 'Não iniciado'),
+      filterBtnStyleEmAndamento: filterBtn(s.statusFilter === 'Em andamento'),
+      filterBtnStyleConcluido: filterBtn(s.statusFilter === 'Concluído'),
+
+      areaFilter: s.areaFilter, categoriaFilter: s.categoriaFilter,
+      areaFilterOptions: ['Todos', ...s.areaOptions],
+      categoriaFilterOptions: ['Todos', ...s.categoriaOptions],
+      onAreaFilter: e => this.setState({ areaFilter: e.target.value }),
+      onCategoriaFilter: e => this.setState({ categoriaFilter: e.target.value }),
+      selectFilterStyle: 'padding:8px 11px; border-radius:20px; border:1px solid #DCE3EA; font-size:12px; font-weight:600; color:#475569; background:#fff; cursor:pointer; outline:none;',
+      sortScore: () => toggleSort('score'), sortPrioriz: () => toggleSort('prioriz'),
+      sortProbab: () => toggleSort('probab'), sortImpact: () => toggleSort('impact'),
+      arrowScore: sortArrow('score'), arrowPrioriz: sortArrow('prioriz'),
+      arrowProbab: sortArrow('probab'), arrowImpact: sortArrow('impact'),
+      completude,
+      completudeBarStyle: `height:100%; width:${completude}%; background:linear-gradient(90deg,#5B8DEF,#3E6FD9); border-radius:99px; transition:width 0.3s;`,
+      exportCSV: () => this.exportCSV(), resetData: () => this.resetData(),
+
+      thStyleNavy, thStyleRed, headerCols,
+      tdStyle: cellBase,
+      tdStyleRisco: cellBase + 'background:#FBEEED;',
+      tdStyleCenter: cellBase.replace('text-align:left;', '') + 'text-align:center;',
+
+      respostaOptions: ['Mitigar', 'Aceitar', 'Transferir', 'Evitar'],
+      statusSelectOptions: [{ value: '', label: 'Não iniciado' }, { value: 'Em andamento', label: 'Em andamento' }, { value: 'Concluído', label: 'Concluído' }],
+
+      areaOptions: s.areaOptions, rotinaOptions: s.rotinaOptions, categoriaOptions: s.categoriaOptions,
+      recursoOptions: s.recursoOptions, responsavelOptions: s.responsavelOptions,
+
+      categoryBars, areaBars, rotinaBars,
+      donutBg, totalAcoesComStatus, statusLegend,
+      critLegend, critDonutBg, totalAvaliados, scoreMedio, criticosCount, pctConcluido,
+      heatCells, heatImpactLabels, recStatusBars,
+      graphFilterActive, graphFilterLabel, riskList, riskListCount,
+      clearGraphFilter: () => this.clearGraphFilter(),
+      matrixPoints, matrixList: matrixListFiltered, matrixListTitle, matrixFilterActive,
+      clearMatrixFilter: () => this.setState({ selectedRank: null, selectedQuadrant: null }),
+      quadrantPills, priorityGroups,
+      prioTotalCount, prioVisibleCount,
+      setPrioStatusTodos: () => this.setState({ prioStatusFilter: 'Todos' }),
+      setPrioStatusNaoIniciado: () => this.setState({ prioStatusFilter: 'Não iniciado' }),
+      setPrioStatusEmAndamento: () => this.setState({ prioStatusFilter: 'Em andamento' }),
+      setPrioStatusConcluido: () => this.setState({ prioStatusFilter: 'Concluído' }),
+      prioStatusBtnTodos: prioStatusBtn(prioStatusFilter === 'Todos'),
+      prioStatusBtnNaoIniciado: prioStatusBtn(prioStatusFilter === 'Não iniciado'),
+      prioStatusBtnEmAndamento: prioStatusBtn(prioStatusFilter === 'Em andamento'),
+      prioStatusBtnConcluido: prioStatusBtn(prioStatusFilter === 'Concluído'),
+
+      isEditing: s.editingIndex != null,
+      editingRow: s.editingIndex != null && rows[s.editingIndex] ? rows[s.editingIndex] : {
+        area: '', rotina: '', categoria: '', risco: '', resposta: '', probab: '', impact: '',
+        scoreDisplay: '—', scoreBadgeStyleModal: '', acoes: '', resultado: '',
+        esforco: '', impacto2: '', gravidade: '', priorizDisplay: '—', priorizBadgeStyleModal: '',
+        recurso: '', responsavel: '', status: '', obs: '',
+        onArea: () => {}, onRotina: () => {}, onCategoria: () => {}, onRisco: () => {}, onResposta: () => {},
+        onProbab: () => {}, onImpact: () => {}, onAcoes: () => {}, onResultado: () => {},
+        onEsforco: () => {}, onImpacto2: () => {}, onGravidade: () => {}, onRecurso: () => {},
+        onResponsavel: () => {}, onStatus: () => {}, onObs: () => {}, onDelete: () => {}
+      },
+      closeEdit: () => this.closeEdit(),
+      stopClick: e => e.stopPropagation(),
+      modalSectionTitle: 'font-size:11px; font-weight:800; color:#64748B; text-transform:uppercase; letter-spacing:0.6px; margin-bottom:10px; padding-bottom:8px; border-bottom:1px solid #F1F5F9;',
+      modalLabel: 'font-size:11.5px; font-weight:600; color:#64748B; margin-bottom:5px;',
+      modalInput,
+      modalTextarea: modalInput + ' resize:vertical; min-height:40px; line-height:1.4;'
+    };
+  }
+}
+
+</script>
+</body>
+</html>
