@@ -31,6 +31,28 @@ npm run dev
 npm run build
 ```
 
+O resultado estático é gerado em `dist/`.
+
+## Deploy no Vercel
+
+O projeto já vem configurado para o Vercel (`vercel.json`):
+
+- **Framework:** Vite · **Build:** `npm run build` · **Output:** `dist`
+- SPA fallback (`rewrites`) apontando todas as rotas para `index.html`.
+
+Basta importar o repositório no Vercel — as configurações são detectadas
+automaticamente, sem ajustes no painel. Como o app é 100% client-side (sem
+backend), a persistência dos registros continua em `localStorage` no
+navegador do usuário.
+
+Para publicar pela CLI:
+
+```bash
+npm i -g vercel
+vercel        # deploy de preview
+vercel --prod # deploy de produção
+```
+
 ## Referência de design
 
 Este projeto foi implementado a partir do pacote de handoff em
