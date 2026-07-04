@@ -2,6 +2,7 @@ import type { Quadrant } from '../../types';
 import type { MatrixPoint } from './matrixPoints';
 import { QUADRANT_DEFS } from './quadrant';
 import { onActivateKey } from '../../lib/a11y';
+import { EmptyState } from '../common/EmptyState';
 
 interface QuadrantMatrixProps {
   points: MatrixPoint[];
@@ -44,6 +45,11 @@ export function QuadrantMatrix({ points, selectedQuadrant, onBubbleClick, onQuad
               </div>
             );
           })}
+          {points.length === 0 && (
+            <div className="empty-state-overlay">
+              <EmptyState message="Nenhuma ação para exibir neste filtro." />
+            </div>
+          )}
           {points.map(pt => (
             <div
               key={pt.rankIndex}

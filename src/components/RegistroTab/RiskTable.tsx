@@ -1,8 +1,10 @@
+import { useEffect, useRef } from 'react';
 import type { ColWidths, SortDir, SortKey } from '../../types';
 import type { EnrichedRow } from '../../lib/rows';
 import { COLUMNS } from './columns';
 import { RiskTableRow } from './RiskTableRow';
 import { onActivateKey } from '../../lib/a11y';
+import { EmptyState } from '../common/EmptyState';
 
 interface RiskTableProps {
   rows: EnrichedRow[];
@@ -13,6 +15,7 @@ interface RiskTableProps {
   onSort: (key: NonNullable<SortKey>) => void;
   onOpenEdit: (idx: number) => void;
   onDeleteRow: (idx: number) => void;
+  emptyMessage?: string;
 }
 
 function startColResize(e: React.MouseEvent, id: string, startWidth: number, onWidthChange: (id: string, w: number) => void) {
@@ -33,9 +36,20 @@ function startColResize(e: React.MouseEvent, id: string, startWidth: number, onW
   window.addEventListener('mouseup', onUp);
 }
 
-export function RiskTable({ rows, colWidths, onColWidthChange, sortKey, sortDir, onSort, onOpenEdit, onDeleteRow }: RiskTableProps) {
+export function RiskTable({ rows, colWidths, onColWidthChange, sortKey, sortDir, onSort, onOpenEdit, onDeleteRow, emptyMessage }: RiskTableProps) {
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const isEmpty = rows.length === 0 && !!emptyMessage;
+
+  // A tabela tem 19 colunas e rola horizontalmente; se ficasse rolada (ex.:
+  // usuário excluiu registros pelo botão da última coluna) a mensagem de
+  // vazio, centralizada na largura total da linha, sairia da área visível.
+  // Volta o scroll ao início sempre que não há linhas para mostrar.
+  useEffect(() => {
+    if (isEmpty && wrapRef.current) wrapRef.current.scrollLeft = 0;
+  }, [isEmpty]);
+
   return (
-    <div className="table-wrap">
+    <div className="table-wrap" ref={wrapRef}>
       <table className="risk-table">
         <thead>
           <tr>
@@ -73,6 +87,7 @@ export function RiskTable({ rows, colWidths, onColWidthChange, sortKey, sortDir,
           ))}
         </tbody>
       </table>
+      {isEmpty && <EmptyState message={emptyMessage} />}
     </div>
   );
 }

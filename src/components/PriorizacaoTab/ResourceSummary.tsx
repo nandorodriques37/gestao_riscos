@@ -1,4 +1,5 @@
 import type { PriorityGroup } from './priorityGroups';
+import { EmptyState } from '../common/EmptyState';
 
 interface ResourceSummaryProps {
   groups: PriorityGroup[];
@@ -10,6 +11,7 @@ export function ResourceSummary({ groups }: ResourceSummaryProps) {
       <div className="section-title">Resumo de Priorização por Recurso</div>
       <div className="section-subtitle">Ações ordenadas por priorização dentro de cada recurso, com médias por grupo</div>
       <div className="priority-groups">
+        {groups.length === 0 && <EmptyState message="Nenhuma ação neste filtro." />}
         {groups.map(grp => (
           <div key={grp.name} className="priority-group">
             <div className="priority-group-header">
