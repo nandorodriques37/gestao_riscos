@@ -12,6 +12,12 @@ dist
 dist-ssr
 *.local
 
+# Local dev database (pglite) and env
+.pglite-dev
+.env
+.env.local
+.vercel
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

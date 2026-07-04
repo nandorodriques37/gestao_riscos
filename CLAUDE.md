@@ -14,8 +14,9 @@ App web de página única para **registro, análise e priorização de riscos co
 Os `.dc.html` são **referência de design, não código de produção**. Recrie no framework do codebase.
 
 ## Stack
-- **React + TypeScript** (a lógica do protótipo mapeia quase 1:1). Componentes sugeridos: `TopBar`, `RegistroTab`, `GraficosTab`, `PriorizacaoTab`, `EditModal`.
-- Estado local (useState/useReducer). Persistir `records` em `localStorage` sob `riskMatrix.records.v1` até haver backend.
+- **React + TypeScript** (a lógica do protótipo mapeia quase 1:1). Componentes: `TopBar`, `RegistroTab`, `GraficosTab`, `PriorizacaoTab`, `EditModal`.
+- **Backend:** dados centralizados em Postgres (Neon) via funções serverless em `api/`. Toda a lógica SQL fica em `api/_db.ts` (executor `Sql` injetável). O front consome a API (`src/lib/api.ts` + hook `src/hooks/useRecords.ts`) com atualização otimista, *debounce* de escrita e polling. `localStorage` (`riskMatrix.cache.v1`) é só cache/fallback.
+- **Dev:** `npm run dev` sobe a mesma API com Postgres embarcado (pglite) via `vite-plugin-dev-api.ts` — sem precisar de banco. Produção usa Neon (`DATABASE_URL`).
 - Sem lib de charts obrigatória — heatmap/donuts/barras são CSS (grid, conic-gradient, larguras %).
 
 ## Regras de negócio (não alterar sem pedido)

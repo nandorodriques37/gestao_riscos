@@ -17,6 +17,11 @@ export interface RiskRecord {
   obs: string;
 }
 
+/** Registro como vem do backend — igual a RiskRecord, mas com id do banco. */
+export interface StoredRiskRecord extends RiskRecord {
+  id: string;
+}
+
 export type Tab = 'registro' | 'graficos' | 'priorizacao';
 
 export type StatusFilterValue = 'Todos' | 'Não iniciado' | 'Em andamento' | 'Concluído';

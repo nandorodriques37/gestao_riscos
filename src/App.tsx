@@ -1,99 +1,135 @@
 import { useEffect, useState } from 'react';
-import type { RiskRecord, Tab } from './types';
+import type { Tab } from './types';
 import { TopBar } from './components/TopBar/TopBar';
 import { RegistroTab } from './components/RegistroTab/RegistroTab';
 import { GraficosTab } from './components/GraficosTab/GraficosTab';
 import { PriorizacaoTab } from './components/PriorizacaoTab/PriorizacaoTab';
 import { EditModal } from './components/EditModal/EditModal';
 import { AREAS, ROTINAS, CATEGORIAS, RECURSOS, RESPONSAVEIS } from './data/RiskData';
-import { loadInitialRecords, cloneDefaults, persistRecords, clearPersistedRecords } from './lib/storage';
+import { useRecords } from './hooks/useRecords';
 import { downloadRecordsCSV } from './lib/csv';
 import './App.css';
 
-function emptyRecord(): RiskRecord {
-  return {
-    area: '', rotina: '', categoria: '', risco: '', resposta: '',
-    probab: null, impact: null, acoes: '', resultado: '',
-    esforco: null, impacto2: null, gravidade: null,
-    recurso: '', responsavel: '', status: '', obs: '',
-  };
-}
+const POLL_INTERVAL = 15000;
 
 function App() {
   const [tab, setTab] = useState<Tab>('registro');
-  const [records, setRecords] = useState<RiskRecord[]>(loadInitialRecords);
-  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
-  useEffect(() => {
-    persistRecords(records);
-  }, [records]);
+  const {
+    records, loading, error,
+    hasPendingWrites, updateRecordById, addRecord, deleteRecordById,
+    restore, refresh, flushPending, clearError,
+  } = useRecords();
 
+  // Fecha o modal com Escape (sincronizando o que estiver pendente).
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setEditingIndex(null);
+      if (e.key === 'Escape') { setEditingId(null); void flushPending(); }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, []);
+  }, [flushPending]);
 
-  function updateRecord(idx: number, patch: Partial<RiskRecord>) {
-    setRecords(prev => {
-      const next = prev.slice();
-      next[idx] = { ...next[idx], ...patch };
-      return next;
-    });
+  // Mantém a matriz atualizada com o servidor (dados compartilhados pelo time),
+  // sem atrapalhar quem está editando ou com gravações pendentes.
+  useEffect(() => {
+    const canSync = () => editingId == null && !hasPendingWrites();
+    const interval = setInterval(() => { if (canSync()) void refresh(); }, POLL_INTERVAL);
+    const onFocus = () => { if (canSync()) void refresh(); };
+    window.addEventListener('focus', onFocus);
+    return () => { clearInterval(interval); window.removeEventListener('focus', onFocus); };
+  }, [editingId, hasPendingWrites, refresh]);
+
+  function handleOpenEdit(idx: number) {
+    const rec = records[idx];
+    if (rec) setEditingId(rec.id);
   }
 
-  function addRow() {
-    setRecords(prev => {
-      const next = [...prev, emptyRecord()];
-      setEditingIndex(next.length - 1);
-      return next;
-    });
-  }
-
-  function deleteRow(idx: number) {
+  async function handleDeleteRow(idx: number) {
+    const rec = records[idx];
+    if (!rec) return;
     if (!window.confirm('Tem certeza que deseja excluir este registro?')) return;
-    setRecords(prev => prev.filter((_, i) => i !== idx));
-    setEditingIndex(null);
+    if (editingId === rec.id) setEditingId(null);
+    await deleteRecordById(rec.id);
   }
 
-  function resetData() {
+  async function handleAddRow() {
+    try {
+      const created = await addRecord();
+      setEditingId(created.id);
+    } catch {
+      // erro já sinalizado pelo hook (banner)
+    }
+  }
+
+  async function handleResetData() {
     if (!window.confirm('Restaurar os dados originais? Todas as edições feitas aqui serão perdidas.')) return;
-    clearPersistedRecords();
-    setRecords(cloneDefaults());
-    setEditingIndex(null);
+    setEditingId(null);
+    try {
+      await restore();
+    } catch {
+      // erro já sinalizado pelo hook (banner)
+    }
   }
 
-  const editingRecord = editingIndex != null ? records[editingIndex] : null;
+  function handleCloseModal() {
+    setEditingId(null);
+    void flushPending();
+  }
+
+  async function handleDeleteFromModal() {
+    if (!editingId) return;
+    if (!window.confirm('Tem certeza que deseja excluir este registro?')) return;
+    const id = editingId;
+    setEditingId(null);
+    await deleteRecordById(id);
+  }
+
+  const editingRecord = editingId != null ? records.find(r => r.id === editingId) ?? null : null;
+  const showLoading = loading && records.length === 0;
 
   return (
     <div className="app-shell">
       <TopBar tab={tab} onChangeTab={setTab} />
 
-      {tab === 'registro' && (
-        <RegistroTab
-          records={records}
-          onOpenEdit={setEditingIndex}
-          onDeleteRow={deleteRow}
-          onAddRow={addRow}
-          onResetData={resetData}
-          onExportCSV={() => downloadRecordsCSV(records)}
-          areaOptions={AREAS}
-          categoriaOptions={CATEGORIAS}
-        />
+      {error && (
+        <div className="error-banner">
+          <span>{error}</span>
+          <button onClick={() => { clearError(); void refresh(); }}>Tentar novamente</button>
+          <button className="error-banner-dismiss" onClick={clearError}>×</button>
+        </div>
       )}
 
-      {tab === 'graficos' && <GraficosTab records={records} />}
+      {showLoading ? (
+        <div className="app-loading">Carregando matriz de risco…</div>
+      ) : (
+        <>
+          {tab === 'registro' && (
+            <RegistroTab
+              records={records}
+              onOpenEdit={handleOpenEdit}
+              onDeleteRow={handleDeleteRow}
+              onAddRow={handleAddRow}
+              onResetData={handleResetData}
+              onExportCSV={() => downloadRecordsCSV(records)}
+              areaOptions={AREAS}
+              categoriaOptions={CATEGORIAS}
+            />
+          )}
 
-      {tab === 'priorizacao' && <PriorizacaoTab records={records} />}
+          {tab === 'graficos' && <GraficosTab records={records} />}
 
-      {editingIndex != null && editingRecord && (
+          {tab === 'priorizacao' && <PriorizacaoTab records={records} />}
+        </>
+      )}
+
+      {editingRecord && (
         <EditModal
           record={editingRecord}
-          onUpdate={patch => updateRecord(editingIndex, patch)}
-          onClose={() => setEditingIndex(null)}
-          onDelete={() => deleteRow(editingIndex)}
+          onUpdate={patch => updateRecordById(editingRecord.id, patch)}
+          onClose={handleCloseModal}
+          onDelete={handleDeleteFromModal}
           areaOptions={AREAS}
           rotinaOptions={ROTINAS}
           categoriaOptions={CATEGORIAS}
