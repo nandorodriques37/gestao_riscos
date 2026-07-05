@@ -63,6 +63,52 @@
   line-height: 1;
 }
 
+/* ---------- Snackbar de "desfazer exclusão" ---------- */
+.undo-snackbar {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: #1E3A5F;
+  color: #fff;
+  padding: 12px 14px 12px 18px;
+  border-radius: 10px;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.28);
+  font-size: 13px;
+  z-index: 50;
+}
+
+.undo-snackbar-action {
+  background: none;
+  border: none;
+  color: #5B8DEF;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 4px 6px;
+}
+
+.undo-snackbar-action:hover {
+  color: #8FB0F5;
+}
+
+.undo-snackbar-dismiss {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+
+.undo-snackbar-dismiss:hover {
+  color: #fff;
+}
+
 /* ---------- Top bar ---------- */
 .topbar {
   background: linear-gradient(135deg, #1E3A5F 0%, #152B47 100%);

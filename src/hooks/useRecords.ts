@@ -38,8 +38,8 @@ export interface UseRecords {
   hasPendingWrites: () => boolean;
   saveStatus: Record<string, SaveStatus>;
   updateRecordById: (id: string, patch: Partial<RiskRecord>) => void;
-  addRecord: () => Promise<StoredRiskRecord>;
-  deleteRecordById: (id: string) => Promise<void>;
+  addRecord: (data?: Partial<RiskRecord>) => Promise<StoredRiskRecord>;
+  deleteRecordById: (id: string) => Promise<boolean>;
   restore: () => Promise<void>;
   refresh: () => Promise<void>;
   flushPending: () => Promise<void>;
@@ -121,8 +121,8 @@ export function useRecords(): UseRecords {
     }
   }, [commit]);
 
-  const addRecord = useCallback(async () => {
-    const created = await createRecordApi({});
+  const addRecord = useCallback(async (data?: Partial<RiskRecord>) => {
+    const created = await createRecordApi(data ?? {});
     setRecords(prev => {
       const next = [...prev, created];
       writeCache(next);
@@ -150,9 +150,11 @@ export function useRecords(): UseRecords {
     try {
       await deleteRecordApi(id);
       if (mounted.current) setError(null);
+      return true;
     } catch (err) {
       if (mounted.current) setError(err instanceof Error ? err.message : 'Falha ao excluir');
       await refresh();
+      return false;
     }
   }, [refresh]);
 
