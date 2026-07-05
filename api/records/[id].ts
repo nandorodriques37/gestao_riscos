@@ -14,12 +14,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (req.method === 'PATCH') {
       const body = (typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body) || {};
-      const updated = await updateRecordById(sql, id, body);
-      if (!updated) {
+      const { expectedVersion, ...patch } = body;
+      const result = await updateRecordById(sql, id, patch, expectedVersion);
+      if (result.status === 'not_found') {
         res.status(404).json({ error: 'Registro não encontrado' });
         return;
       }
-      res.status(200).json(updated);
+      if (result.status === 'conflict') {
+        res.status(409).json(result.record);
+        return;
+      }
+      res.status(200).json(result.record);
       return;
     }
 

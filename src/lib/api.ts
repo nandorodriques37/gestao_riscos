@@ -2,6 +2,16 @@ import type { RiskRecord, StoredRiskRecord } from '../types';
 
 const BASE = '/api';
 
+/** Outra pessoa alterou o registro entre a leitura e a gravação (concorrência otimista). */
+export class ConflictError extends Error {
+  current: StoredRiskRecord;
+  constructor(current: StoredRiskRecord) {
+    super('Este registro foi alterado por outra pessoa enquanto você editava.');
+    this.name = 'ConflictError';
+    this.current = current;
+  }
+}
+
 async function parse<T>(res: Response): Promise<T> {
   if (!res.ok) {
     let msg = `Erro ${res.status}`;
@@ -28,12 +38,14 @@ export async function createRecordApi(rec: Partial<RiskRecord> = {}): Promise<St
   }));
 }
 
-export async function patchRecordApi(id: string, patch: Partial<RiskRecord>): Promise<StoredRiskRecord> {
-  return parse(await fetch(`${BASE}/records/${encodeURIComponent(id)}`, {
+export async function patchRecordApi(id: string, patch: Partial<RiskRecord>, expectedVersion?: number): Promise<StoredRiskRecord> {
+  const res = await fetch(`${BASE}/records/${encodeURIComponent(id)}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(patch),
-  }));
+    body: JSON.stringify({ ...patch, expectedVersion }),
+  });
+  if (res.status === 409) throw new ConflictError(await res.json());
+  return parse(res);
 }
 
 export async function deleteRecordApi(id: string): Promise<void> {

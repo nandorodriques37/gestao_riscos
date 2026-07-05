@@ -73,8 +73,10 @@ export function devApiPlugin(): Plugin {
           if (idMatch) {
             const id = decodeURIComponent(idMatch[1]);
             if (method === 'PATCH') {
-              const updated = await updateRecordById(sql, id, (await readJsonBody(req)) as Record<string, unknown>);
-              return updated ? send(res, 200, updated) : send(res, 404, { error: 'Registro não encontrado' });
+              const { expectedVersion, ...patch } = (await readJsonBody(req)) as Record<string, unknown> & { expectedVersion?: number };
+              const result = await updateRecordById(sql, id, patch, expectedVersion);
+              if (result.status === 'not_found') return send(res, 404, { error: 'Registro não encontrado' });
+              return send(res, result.status === 'conflict' ? 409 : 200, result.record);
             }
             if (method === 'DELETE') {
               const ok = await deleteRecordById(sql, id);

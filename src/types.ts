@@ -17,9 +17,11 @@ export interface RiskRecord {
   obs: string;
 }
 
-/** Registro como vem do backend — igual a RiskRecord, mas com id do banco. */
+/** Registro como vem do backend — igual a RiskRecord, mas com id e versão do banco. */
 export interface StoredRiskRecord extends RiskRecord {
   id: string;
+  /** Incrementada a cada gravação; usada para detectar edição concorrente. */
+  version: number;
 }
 
 export type Tab = 'registro' | 'graficos' | 'priorizacao';

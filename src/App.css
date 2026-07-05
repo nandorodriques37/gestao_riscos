@@ -1421,6 +1421,7 @@ table.risk-table {
 .modal-subtitle-saving { color: #B8901F; }
 .modal-subtitle-saved { color: #15803D; }
 .modal-subtitle-error { color: #DC2626; font-weight: 600; }
+.modal-subtitle-conflict { color: #6D28D9; font-weight: 600; }
 
 .modal-close {
   background: #F1F5F9;

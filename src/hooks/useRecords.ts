@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { RiskRecord, StoredRiskRecord } from '../types';
 import {
-  fetchRecords, createRecordApi, patchRecordApi, deleteRecordApi, restoreRecordsApi,
+  fetchRecords, createRecordApi, patchRecordApi, deleteRecordApi, restoreRecordsApi, ConflictError,
 } from '../lib/api';
 import { nextRetryDelay } from '../lib/retryBackoff';
 
 const CACHE_KEY = 'riskMatrix.cache.v1';
 const FLUSH_DELAY = 600;
 
-export type SaveStatus = 'saving' | 'saved' | 'error';
+export type SaveStatus = 'saving' | 'saved' | 'error' | 'conflict';
 
 function readCache(): StoredRiskRecord[] {
   try {
@@ -56,6 +56,9 @@ export function useRecords(): UseRecords {
   const timers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const retryAttempts = useRef<Map<string, number>>(new Map());
   const mounted = useRef(true);
+  const recordsRef = useRef<StoredRiskRecord[]>(records);
+
+  useEffect(() => { recordsRef.current = records; }, [records]);
 
   const commit = useCallback((next: StoredRiskRecord[]) => {
     setRecords(next);
@@ -68,14 +71,37 @@ export function useRecords(): UseRecords {
     const timer = timers.current.get(id);
     if (timer) { clearTimeout(timer); timers.current.delete(id); }
     if (!patch) return;
+    const expectedVersion = recordsRef.current.find(r => r.id === id)?.version;
     try {
-      await patchRecordApi(id, patch);
+      const updated = await patchRecordApi(id, patch, expectedVersion);
       retryAttempts.current.delete(id);
       if (mounted.current) {
         setError(null);
         setSaveStatus(s => ({ ...s, [id]: 'saved' }));
+        // sincroniza version/updated_at (e qualquer normalização do servidor)
+        // para que o próximo flush deste registro compare contra o valor certo
+        setRecords(prev => {
+          const next = prev.map(r => (r.id === id ? updated : r));
+          writeCache(next);
+          return next;
+        });
       }
     } catch (err) {
+      if (err instanceof ConflictError) {
+        // Outra pessoa gravou este registro nesse meio-tempo. Reaplicar o mesmo
+        // patch só repetiria o conflito, então descartamos a edição pendente e
+        // sincronizamos com a versão do servidor — sem retry automático aqui.
+        if (mounted.current) {
+          setSaveStatus(s => ({ ...s, [id]: 'conflict' }));
+          setError('Este registro foi alterado por outra pessoa enquanto você editava. Os dados foram atualizados.');
+          setRecords(prev => {
+            const next = prev.map(r => (r.id === id ? err.current : r));
+            writeCache(next);
+            return next;
+          });
+        }
+        return;
+      }
       // devolve o patch para a fila e agenda um retry automático com backoff,
       // para não depender de uma edição futura ou do flush do modal para sincronizar
       const merged = { ...patch, ...(pending.current.get(id) || {}) };

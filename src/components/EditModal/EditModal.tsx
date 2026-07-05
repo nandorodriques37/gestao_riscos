@@ -9,6 +9,7 @@ const SAVE_STATUS_TEXT: Record<SaveStatus, string> = {
   saving: 'Salvando…',
   saved: 'Alterações salvas',
   error: 'Falha ao salvar — tentando novamente…',
+  conflict: 'Alterado por outra pessoa — dados atualizados',
 };
 
 interface EditModalProps {
