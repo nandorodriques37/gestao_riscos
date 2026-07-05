@@ -1,11 +1,19 @@
 import { useEffect, useRef } from 'react';
 import type { RiskRecord } from '../../types';
+import type { SaveStatus } from '../../hooks/useRecords';
 import { computeScore, computePrioriz, round1, round2, scoreColor, priorizColor } from '../../lib/calculations';
 
 const FOCUSABLE = 'a[href], button:not([disabled]), input, select, textarea, [tabindex]:not([tabindex="-1"])';
 
+const SAVE_STATUS_TEXT: Record<SaveStatus, string> = {
+  saving: 'Salvando…',
+  saved: 'Alterações salvas',
+  error: 'Falha ao salvar — tentando novamente…',
+};
+
 interface EditModalProps {
   record: RiskRecord;
+  saveStatus?: SaveStatus;
   onUpdate: (patch: Partial<RiskRecord>) => void;
   onClose: () => void;
   onDelete: () => void;
@@ -28,7 +36,7 @@ function numOrNull(value: string): number | null {
 }
 
 export function EditModal({
-  record, onUpdate, onClose, onDelete,
+  record, saveStatus, onUpdate, onClose, onDelete,
   areaOptions, rotinaOptions, categoriaOptions, recursoOptions, responsavelOptions,
 }: EditModalProps) {
   const score = computeScore(record);
@@ -75,7 +83,9 @@ export function EditModal({
         <div className="modal-header">
           <div>
             <div className="modal-title">Editar registro</div>
-            <div className="modal-subtitle">Alterações são salvas automaticamente</div>
+            <div className={`modal-subtitle${saveStatus ? ` modal-subtitle-${saveStatus}` : ''}`} role="status" aria-live="polite">
+              {saveStatus ? SAVE_STATUS_TEXT[saveStatus] : 'Alterações são salvas automaticamente'}
+            </div>
           </div>
           <button className="modal-close" onClick={onClose}>×</button>
         </div>

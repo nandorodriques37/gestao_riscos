@@ -1372,6 +1372,10 @@ table.risk-table {
   margin-top: 1px;
 }
 
+.modal-subtitle-saving { color: #B8901F; }
+.modal-subtitle-saved { color: #15803D; }
+.modal-subtitle-error { color: #DC2626; font-weight: 600; }
+
 .modal-close {
   background: #F1F5F9;
   border: none;

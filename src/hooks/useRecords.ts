@@ -8,6 +8,8 @@ import { nextRetryDelay } from '../lib/retryBackoff';
 const CACHE_KEY = 'riskMatrix.cache.v1';
 const FLUSH_DELAY = 600;
 
+export type SaveStatus = 'saving' | 'saved' | 'error';
+
 function readCache(): StoredRiskRecord[] {
   try {
     const raw = localStorage.getItem(CACHE_KEY);
@@ -34,6 +36,7 @@ export interface UseRecords {
   loading: boolean;
   error: string | null;
   hasPendingWrites: () => boolean;
+  saveStatus: Record<string, SaveStatus>;
   updateRecordById: (id: string, patch: Partial<RiskRecord>) => void;
   addRecord: () => Promise<StoredRiskRecord>;
   deleteRecordById: (id: string) => Promise<void>;
@@ -47,6 +50,7 @@ export function useRecords(): UseRecords {
   const [records, setRecords] = useState<StoredRiskRecord[]>(readCache);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [saveStatus, setSaveStatus] = useState<Record<string, SaveStatus>>({});
 
   const pending = useRef<Map<string, Partial<RiskRecord>>>(new Map());
   const timers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
@@ -67,7 +71,10 @@ export function useRecords(): UseRecords {
     try {
       await patchRecordApi(id, patch);
       retryAttempts.current.delete(id);
-      if (mounted.current) setError(null);
+      if (mounted.current) {
+        setError(null);
+        setSaveStatus(s => ({ ...s, [id]: 'saved' }));
+      }
     } catch (err) {
       // devolve o patch para a fila e agenda um retry automático com backoff,
       // para não depender de uma edição futura ou do flush do modal para sincronizar
@@ -76,7 +83,10 @@ export function useRecords(): UseRecords {
       const attempt = retryAttempts.current.get(id) ?? 0;
       retryAttempts.current.set(id, attempt + 1);
       timers.current.set(id, setTimeout(() => { void flushOne(id); }, nextRetryDelay(attempt)));
-      if (mounted.current) setError(err instanceof Error ? err.message : 'Falha ao salvar');
+      if (mounted.current) {
+        setError(err instanceof Error ? err.message : 'Falha ao salvar');
+        setSaveStatus(s => ({ ...s, [id]: 'error' }));
+      }
     }
   }, []);
 
@@ -88,6 +98,7 @@ export function useRecords(): UseRecords {
     });
     pending.current.set(id, { ...(pending.current.get(id) || {}), ...patch });
     retryAttempts.current.delete(id);
+    setSaveStatus(s => ({ ...s, [id]: 'saving' }));
     const existing = timers.current.get(id);
     if (existing) clearTimeout(existing);
     timers.current.set(id, setTimeout(() => { void flushOne(id); }, FLUSH_DELAY));
@@ -125,6 +136,12 @@ export function useRecords(): UseRecords {
     retryAttempts.current.delete(id);
     const timer = timers.current.get(id);
     if (timer) { clearTimeout(timer); timers.current.delete(id); }
+    setSaveStatus(s => {
+      if (!(id in s)) return s;
+      const rest = { ...s };
+      delete rest[id];
+      return rest;
+    });
     setRecords(prev => {
       const next = prev.filter(r => r.id !== id);
       writeCache(next);
@@ -145,7 +162,7 @@ export function useRecords(): UseRecords {
     timers.current.forEach(t => clearTimeout(t));
     timers.current.clear();
     const data = await restoreRecordsApi();
-    if (mounted.current) { commit(data); setError(null); }
+    if (mounted.current) { commit(data); setError(null); setSaveStatus({}); }
   }, [commit]);
 
   const hasPendingWrites = useCallback(() => pending.current.size > 0, []);
@@ -173,7 +190,7 @@ export function useRecords(): UseRecords {
 
   return {
     records, loading, error,
-    hasPendingWrites, updateRecordById, addRecord, deleteRecordById,
+    hasPendingWrites, saveStatus, updateRecordById, addRecord, deleteRecordById,
     restore, refresh, flushPending, clearError,
   };
 }

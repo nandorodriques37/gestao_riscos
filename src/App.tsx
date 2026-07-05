@@ -18,7 +18,7 @@ function App() {
 
   const {
     records, loading, error,
-    hasPendingWrites, updateRecordById, addRecord, deleteRecordById,
+    hasPendingWrites, saveStatus, updateRecordById, addRecord, deleteRecordById,
     restore, refresh, flushPending, clearError,
   } = useRecords();
 
@@ -127,6 +127,7 @@ function App() {
       {editingRecord && (
         <EditModal
           record={editingRecord}
+          saveStatus={saveStatus[editingRecord.id]}
           onUpdate={patch => updateRecordById(editingRecord.id, patch)}
           onClose={handleCloseModal}
           onDelete={handleDeleteFromModal}
