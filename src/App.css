@@ -1587,3 +1587,140 @@ table.risk-table {
   outline: 2px solid #5B8DEF;
   outline-offset: -2px;
 }
+
+/* ---------- Resumo por recurso: scroll horizontal em telas estreitas
+   em vez de cortar colunas (Esforço/Impacto/Gravidade/Priorização) ---------- */
+.priority-group-table-wrap {
+  overflow-x: auto;
+}
+
+/* ---------- Cartões de risco (alternativa à tabela em telas estreitas) ----------
+   Escondidos por padrão; a media query abaixo troca a visibilidade com
+   `.table-wrap` — nunca aparecem ao mesmo tempo. */
+.risk-card-list {
+  display: none;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.risk-card {
+  background: #fff;
+  border: 1px solid #E4E9EF;
+  border-radius: 12px;
+  padding: 14px 16px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 6px 16px rgba(15, 23, 42, 0.05);
+  cursor: pointer;
+}
+
+.risk-card:hover {
+  border-color: #C6D5E5;
+}
+
+.risk-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.risk-card-combo {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: #8A97A6;
+}
+
+.risk-card-risco {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #0F172A;
+  line-height: 1.35;
+  margin-top: 4px;
+}
+
+.risk-card-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.risk-card-meta {
+  font-size: 12px;
+  color: #8A97A6;
+  margin-top: 8px;
+}
+
+/* ---------- Layout responsivo (telas estreitas: celular / tablet retrato) ---------- */
+@media (max-width: 760px) {
+  .topbar {
+    padding: 16px 18px;
+  }
+
+  .topbar-subtitle {
+    display: none;
+  }
+
+  .topbar-tabs {
+    flex-wrap: wrap;
+  }
+
+  .tab-page,
+  .tab-page-lg {
+    padding: 16px;
+  }
+
+  .grid-2,
+  .grid-heat,
+  .kpi-grid-4 {
+    grid-template-columns: 1fr;
+  }
+
+  /* A tabela de 19 colunas dá lugar a um cartão por registro. */
+  .table-wrap {
+    display: none;
+  }
+
+  .risk-card-list {
+    display: flex;
+  }
+
+  /* Matriz esforço × impacto empilhada acima do ranking, em vez de lado a lado
+     (o layout desktop tem largura mínima combinada de ~680px). */
+  .matrix-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .ranked-list-panel {
+    max-height: 420px;
+  }
+
+  .modal-overlay {
+    padding: 10px;
+  }
+
+  .modal-card {
+    max-height: 94vh;
+  }
+
+  .modal-header,
+  .modal-footer {
+    padding: 14px 16px;
+  }
+
+  .modal-body {
+    padding: 16px;
+  }
+
+  .modal-grid-3,
+  .modal-grid-4 {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  /* Nome do recurso + médias + priorização média não cabem numa linha só. */
+  .priority-group-header {
+    flex-wrap: wrap;
+    row-gap: 4px;
+  }
+}
