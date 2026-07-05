@@ -84,9 +84,22 @@ export function RegistroTab({
   }
 
   const emptyMessage = rows.length === 0
-    ? 'Nenhum registro cadastrado ainda. Clique em "+ Adicionar registro" para começar.'
+    ? 'Nenhum registro cadastrado ainda.'
     : visibleRows.length === 0
       ? 'Nenhum registro encontrado com esses filtros.'
+      : undefined;
+
+  const emptyAction = rows.length === 0
+    ? { label: '+ Adicionar registro', onClick: onAddRow }
+    : visibleRows.length === 0
+      ? {
+          label: 'Limpar filtros', onClick: () => {
+            setSearch('');
+            setStatusFilter('Todos');
+            setAreaFilter('Todos');
+            setCategoriaFilter('Todos');
+          },
+        }
       : undefined;
 
   return (
@@ -131,6 +144,7 @@ export function RegistroTab({
         onOpenEdit={onOpenEdit}
         onDeleteRow={onDeleteRow}
         emptyMessage={emptyMessage}
+        emptyAction={emptyAction}
       />
     </div>
   );

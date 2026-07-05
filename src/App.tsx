@@ -131,7 +131,14 @@ function App() {
       )}
 
       {showLoading ? (
-        <div className="app-loading">Carregando matriz de risco…</div>
+        <div className="app-loading" role="status" aria-label="Carregando matriz de risco…">
+          <div className="skeleton-kpis">
+            {Array.from({ length: 5 }).map((_, i) => <div key={i} className="skeleton-kpi" />)}
+          </div>
+          <div className="skeleton-table">
+            {Array.from({ length: 8 }).map((_, i) => <div key={i} className="skeleton-row" />)}
+          </div>
+        </div>
       ) : (
         <>
           {tab === 'registro' && (
