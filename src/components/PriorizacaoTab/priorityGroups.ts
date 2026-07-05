@@ -1,5 +1,5 @@
 import type { ActionableItem } from './actionable';
-import { priorizColor, round2 } from '../../lib/calculations';
+import { priorizTier, round2, type TierKind } from '../../lib/calculations';
 
 export interface PriorityGroupAction {
   acoes: string;
@@ -8,7 +8,7 @@ export interface PriorityGroupAction {
   impacto2: number | string;
   gravidade: number | string;
   prioriz: number;
-  priorizColor: string;
+  tier: TierKind;
 }
 
 export interface PriorityGroup {
@@ -45,7 +45,7 @@ export function buildPriorityGroups(actionable: ActionableItem[]): PriorityGroup
         impacto2: x.record.impacto2 ?? '—',
         gravidade: x.record.gravidade ?? '—',
         prioriz: round2(x.prioriz),
-        priorizColor: priorizColor(x.prioriz),
+        tier: priorizTier(x.prioriz),
       })),
     };
   });
