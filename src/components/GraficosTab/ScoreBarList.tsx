@@ -15,6 +15,7 @@ export function ScoreBarList({ bars, nameWidthClass, rotina, onClick }: ScoreBar
           key={bar.name}
           className={`bar-row${rotina ? ' rotina' : ''}`}
           title="Clique para filtrar toda a aba por este item"
+          aria-label={`${bar.name}: score total ${bar.score}, ${bar.meta}. Clique para filtrar.`}
           onClick={() => onClick(bar.name)}
         >
           <div className={`bar-name${nameWidthClass ? ' ' + nameWidthClass : ''}`} title={bar.name}>{bar.name}</div>
