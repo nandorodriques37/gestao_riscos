@@ -1,5 +1,6 @@
 import type { RiskRecord } from '../../types';
 import { scoreColor } from '../../lib/calculations';
+import { onActivateKey } from '../../lib/a11y';
 
 interface HeatmapProps {
   records: RiskRecord[];
@@ -21,16 +22,22 @@ export function Heatmap({ records, onCellClick }: HeatmapProps) {
           <div style={{ height: 15 }} />
         </div>
         <div className="heatmap-grid-wrap">
-          <div className="heatmap-grid">
+          <div className="heatmap-grid" role="group" aria-label="Mapa de calor de probabilidade por impacto, grade 5 por 5">
             {IMPACT_ROWS.flatMap(imp => PROB_COLS.map(prob => {
               const count = records.filter(r => r.probab === prob && r.impact === imp).length;
               const color = scoreColor(prob * imp);
+              const clickable = count > 0;
+              const label = `Probabilidade ${prob} · Impacto ${imp} — ${count} ${count === 1 ? 'risco' : 'riscos'}` + (clickable ? ' · clique para filtrar' : '');
               return (
                 <div
                   key={`${prob}-${imp}`}
                   className="heatmap-cell"
-                  title={`Probabilidade ${prob} · Impacto ${imp} — ${count} ${count === 1 ? 'risco' : 'riscos'}` + (count > 0 ? ' · clique para filtrar' : '')}
-                  onClick={count > 0 ? () => onCellClick(prob, imp) : undefined}
+                  title={label}
+                  role={clickable ? 'button' : 'img'}
+                  tabIndex={clickable ? 0 : undefined}
+                  aria-label={label}
+                  onClick={clickable ? () => onCellClick(prob, imp) : undefined}
+                  onKeyDown={clickable ? onActivateKey(() => onCellClick(prob, imp)) : undefined}
                   style={{
                     background: count > 0 ? color : color + '24',
                     color: count > 0 ? '#fff' : 'transparent',

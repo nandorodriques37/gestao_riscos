@@ -1,4 +1,5 @@
 import { BADGE_COLORS, round1, scoreColor, statusKind } from '../../lib/calculations';
+import { EmptyState } from '../common/EmptyState';
 
 export interface RiskListItem {
   risco: string;
@@ -28,25 +29,31 @@ export function RiskDescriptionTable({ riskList, count }: RiskDescriptionTablePr
             </tr>
           </thead>
           <tbody>
-            {riskList.map((rk, i) => {
-              const statusColors = BADGE_COLORS[statusKind(rk.normSt)];
-              return (
-                <tr key={i}>
-                  <td>{rk.risco}</td>
-                  <td className="muted">{rk.combo}</td>
-                  <td className="center">
-                    <span className="score-badge" style={{ background: scoreColor(rk.score) }}>
-                      {rk.score != null ? round1(rk.score) : '—'}
-                    </span>
-                  </td>
-                  <td className="center">
-                    <span className="badge" style={{ background: statusColors.bg, color: statusColors.fg }}>
-                      {rk.normSt}
-                    </span>
-                  </td>
-                </tr>
-              );
-            })}
+            {riskList.length === 0 ? (
+              <tr>
+                <td colSpan={4}><EmptyState message="Nenhum risco encontrado com esse recorte." /></td>
+              </tr>
+            ) : (
+              riskList.map((rk, i) => {
+                const statusColors = BADGE_COLORS[statusKind(rk.normSt)];
+                return (
+                  <tr key={i}>
+                    <td>{rk.risco}</td>
+                    <td className="muted">{rk.combo}</td>
+                    <td className="center">
+                      <span className="score-badge" style={{ background: scoreColor(rk.score) }}>
+                        {rk.score != null ? round1(rk.score) : '—'}
+                      </span>
+                    </td>
+                    <td className="center">
+                      <span className="badge" style={{ background: statusColors.bg, color: statusColors.fg }}>
+                        {rk.normSt}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })
+            )}
           </tbody>
         </table>
       </div>

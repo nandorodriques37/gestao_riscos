@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import type { Tab } from './types';
+import { useEffect, useRef, useState } from 'react';
+import type { RiskRecord, StoredRiskRecord, Tab } from './types';
 import { TopBar } from './components/TopBar/TopBar';
 import { RegistroTab } from './components/RegistroTab/RegistroTab';
 import { GraficosTab } from './components/GraficosTab/GraficosTab';
@@ -11,16 +11,42 @@ import { downloadRecordsCSV } from './lib/csv';
 import './App.css';
 
 const POLL_INTERVAL = 15000;
+const UNDO_TIMEOUT = 8000;
 
 function App() {
   const [tab, setTab] = useState<Tab>('registro');
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [pendingUndo, setPendingUndo] = useState<Partial<RiskRecord> | null>(null);
+  const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const {
     records, loading, error,
-    hasPendingWrites, updateRecordById, addRecord, deleteRecordById,
+    hasPendingWrites, saveStatus, updateRecordById, addRecord, deleteRecordById,
     restore, refresh, flushPending, clearError,
   } = useRecords();
+
+  // Fecha o snackbar de "desfazer" quando o componente desmonta.
+  useEffect(() => () => {
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+  }, []);
+
+  function scheduleUndo(record: StoredRiskRecord) {
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+    const { id: _id, ...data } = record;
+    setPendingUndo(data);
+    undoTimerRef.current = setTimeout(() => setPendingUndo(null), UNDO_TIMEOUT);
+  }
+
+  function handleUndoDelete() {
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+    if (pendingUndo) void addRecord(pendingUndo);
+    setPendingUndo(null);
+  }
+
+  function dismissUndo() {
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+    setPendingUndo(null);
+  }
 
   // Fecha o modal com Escape (sincronizando o que estiver pendente).
   useEffect(() => {
@@ -51,7 +77,8 @@ function App() {
     if (!rec) return;
     if (!window.confirm('Tem certeza que deseja excluir este registro?')) return;
     if (editingId === rec.id) setEditingId(null);
-    await deleteRecordById(rec.id);
+    const ok = await deleteRecordById(rec.id);
+    if (ok) scheduleUndo(rec);
   }
 
   async function handleAddRow() {
@@ -82,8 +109,10 @@ function App() {
     if (!editingId) return;
     if (!window.confirm('Tem certeza que deseja excluir este registro?')) return;
     const id = editingId;
+    const rec = records.find(r => r.id === id);
     setEditingId(null);
-    await deleteRecordById(id);
+    const ok = await deleteRecordById(id);
+    if (ok && rec) scheduleUndo(rec);
   }
 
   const editingRecord = editingId != null ? records.find(r => r.id === editingId) ?? null : null;
@@ -127,6 +156,7 @@ function App() {
       {editingRecord && (
         <EditModal
           record={editingRecord}
+          saveStatus={saveStatus[editingRecord.id]}
           onUpdate={patch => updateRecordById(editingRecord.id, patch)}
           onClose={handleCloseModal}
           onDelete={handleDeleteFromModal}
@@ -136,6 +166,14 @@ function App() {
           recursoOptions={RECURSOS}
           responsavelOptions={RESPONSAVEIS}
         />
+      )}
+
+      {pendingUndo && (
+        <div className="undo-snackbar" role="status" aria-live="polite">
+          <span>Registro excluído.</span>
+          <button className="undo-snackbar-action" onClick={handleUndoDelete}>Desfazer</button>
+          <button className="undo-snackbar-dismiss" onClick={dismissUndo} aria-label="Fechar aviso">×</button>
+        </div>
       )}
     </div>
   );

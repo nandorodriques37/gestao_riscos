@@ -1,5 +1,6 @@
 import type { EnrichedRow } from '../../lib/rows';
 import { round1, round2, scoreColor, priorizColor, respostaKind, statusKind, BADGE_COLORS } from '../../lib/calculations';
+import { onActivateKey } from '../../lib/a11y';
 
 interface RiskTableRowProps {
   row: EnrichedRow;
@@ -15,6 +16,10 @@ export function RiskTableRow({ row, onOpen, onDelete }: RiskTableRowProps) {
   return (
     <tr
       onClick={() => onOpen(idx)}
+      onKeyDown={onActivateKey(() => onOpen(idx))}
+      tabIndex={0}
+      role="button"
+      aria-label={`Editar risco: ${r.risco || 'sem descrição'}`}
       style={{ background: idx % 2 === 0 ? '#ffffff' : '#F7FAFD' }}
     >
       <td title={r.area}>{r.area}</td>

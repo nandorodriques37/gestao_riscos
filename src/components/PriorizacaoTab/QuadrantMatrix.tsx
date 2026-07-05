@@ -1,6 +1,8 @@
 import type { Quadrant } from '../../types';
 import type { MatrixPoint } from './matrixPoints';
 import { QUADRANT_DEFS } from './quadrant';
+import { onActivateKey } from '../../lib/a11y';
+import { EmptyState } from '../common/EmptyState';
 
 interface QuadrantMatrixProps {
   points: MatrixPoint[];
@@ -31,19 +33,34 @@ export function QuadrantMatrix({ points, selectedQuadrant, onBubbleClick, onQuad
                 key={q.key}
                 className={`quadrant-pill ${POS_CLASS[q.key]} ${PILL_CLASS[q.key]}${active ? ' active' : ''}`}
                 title="Clique para filtrar o ranking por este quadrante"
+                role="button"
+                tabIndex={0}
+                aria-pressed={active}
+                aria-label={`Filtrar por quadrante ${q.title}`}
                 onClick={() => onQuadrantClick(q.key)}
+                onKeyDown={onActivateKey(() => onQuadrantClick(q.key))}
               >
                 {q.title}
                 <div className="quadrant-pill-sub">{q.subtitle}</div>
               </div>
             );
           })}
+          {points.length === 0 && (
+            <div className="empty-state-overlay">
+              <EmptyState message="Nenhuma ação para exibir neste filtro." />
+            </div>
+          )}
           {points.map(pt => (
             <div
               key={pt.rankIndex}
               className={`matrix-bubble${pt.dimmed ? ' dimmed' : ''}`}
               title={pt.tooltip}
+              role="button"
+              tabIndex={0}
+              aria-pressed={pt.isSelected}
+              aria-label={pt.tooltip}
               onClick={() => onBubbleClick(pt.rankIndex)}
+              onKeyDown={onActivateKey(() => onBubbleClick(pt.rankIndex))}
               style={{
                 left: `${pt.xPct}%`,
                 top: `${pt.yPct}%`,
