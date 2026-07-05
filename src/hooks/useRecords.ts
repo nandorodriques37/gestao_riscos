@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { RiskRecord, StoredRiskRecord } from '../types';
 import {
-  fetchRecords, createRecordApi, patchRecordApi, deleteRecordApi, restoreRecordsApi,
+  fetchRecords, createRecordApi, patchRecordApi, deleteRecordApi, restoreRecordsApi, ConflictError,
 } from '../lib/api';
+import { nextRetryDelay } from '../lib/retryBackoff';
 
 const CACHE_KEY = 'riskMatrix.cache.v1';
 const FLUSH_DELAY = 600;
+
+export type SaveStatus = 'saving' | 'saved' | 'error' | 'conflict';
 
 function readCache(): StoredRiskRecord[] {
   try {
@@ -33,9 +36,10 @@ export interface UseRecords {
   loading: boolean;
   error: string | null;
   hasPendingWrites: () => boolean;
+  saveStatus: Record<string, SaveStatus>;
   updateRecordById: (id: string, patch: Partial<RiskRecord>) => void;
-  addRecord: () => Promise<StoredRiskRecord>;
-  deleteRecordById: (id: string) => Promise<void>;
+  addRecord: (data?: Partial<RiskRecord>) => Promise<StoredRiskRecord>;
+  deleteRecordById: (id: string) => Promise<boolean>;
   restore: () => Promise<void>;
   refresh: () => Promise<void>;
   flushPending: () => Promise<void>;
@@ -46,10 +50,15 @@ export function useRecords(): UseRecords {
   const [records, setRecords] = useState<StoredRiskRecord[]>(readCache);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [saveStatus, setSaveStatus] = useState<Record<string, SaveStatus>>({});
 
   const pending = useRef<Map<string, Partial<RiskRecord>>>(new Map());
   const timers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const retryAttempts = useRef<Map<string, number>>(new Map());
   const mounted = useRef(true);
+  const recordsRef = useRef<StoredRiskRecord[]>(records);
+
+  useEffect(() => { recordsRef.current = records; }, [records]);
 
   const commit = useCallback((next: StoredRiskRecord[]) => {
     setRecords(next);
@@ -62,14 +71,48 @@ export function useRecords(): UseRecords {
     const timer = timers.current.get(id);
     if (timer) { clearTimeout(timer); timers.current.delete(id); }
     if (!patch) return;
+    const expectedVersion = recordsRef.current.find(r => r.id === id)?.version;
     try {
-      await patchRecordApi(id, patch);
-      if (mounted.current) setError(null);
+      const updated = await patchRecordApi(id, patch, expectedVersion);
+      retryAttempts.current.delete(id);
+      if (mounted.current) {
+        setError(null);
+        setSaveStatus(s => ({ ...s, [id]: 'saved' }));
+        // sincroniza version/updated_at (e qualquer normalização do servidor)
+        // para que o próximo flush deste registro compare contra o valor certo
+        setRecords(prev => {
+          const next = prev.map(r => (r.id === id ? updated : r));
+          writeCache(next);
+          return next;
+        });
+      }
     } catch (err) {
-      // devolve o patch para a fila para nova tentativa em edições/flush futuros
+      if (err instanceof ConflictError) {
+        // Outra pessoa gravou este registro nesse meio-tempo. Reaplicar o mesmo
+        // patch só repetiria o conflito, então descartamos a edição pendente e
+        // sincronizamos com a versão do servidor — sem retry automático aqui.
+        if (mounted.current) {
+          setSaveStatus(s => ({ ...s, [id]: 'conflict' }));
+          setError('Este registro foi alterado por outra pessoa enquanto você editava. Os dados foram atualizados.');
+          setRecords(prev => {
+            const next = prev.map(r => (r.id === id ? err.current : r));
+            writeCache(next);
+            return next;
+          });
+        }
+        return;
+      }
+      // devolve o patch para a fila e agenda um retry automático com backoff,
+      // para não depender de uma edição futura ou do flush do modal para sincronizar
       const merged = { ...patch, ...(pending.current.get(id) || {}) };
       pending.current.set(id, merged);
-      if (mounted.current) setError(err instanceof Error ? err.message : 'Falha ao salvar');
+      const attempt = retryAttempts.current.get(id) ?? 0;
+      retryAttempts.current.set(id, attempt + 1);
+      timers.current.set(id, setTimeout(() => { void flushOne(id); }, nextRetryDelay(attempt)));
+      if (mounted.current) {
+        setError(err instanceof Error ? err.message : 'Falha ao salvar');
+        setSaveStatus(s => ({ ...s, [id]: 'error' }));
+      }
     }
   }, []);
 
@@ -80,6 +123,8 @@ export function useRecords(): UseRecords {
       return next;
     });
     pending.current.set(id, { ...(pending.current.get(id) || {}), ...patch });
+    retryAttempts.current.delete(id);
+    setSaveStatus(s => ({ ...s, [id]: 'saving' }));
     const existing = timers.current.get(id);
     if (existing) clearTimeout(existing);
     timers.current.set(id, setTimeout(() => { void flushOne(id); }, FLUSH_DELAY));
@@ -102,8 +147,8 @@ export function useRecords(): UseRecords {
     }
   }, [commit]);
 
-  const addRecord = useCallback(async () => {
-    const created = await createRecordApi({});
+  const addRecord = useCallback(async (data?: Partial<RiskRecord>) => {
+    const created = await createRecordApi(data ?? {});
     setRecords(prev => {
       const next = [...prev, created];
       writeCache(next);
@@ -114,8 +159,15 @@ export function useRecords(): UseRecords {
 
   const deleteRecordById = useCallback(async (id: string) => {
     pending.current.delete(id);
+    retryAttempts.current.delete(id);
     const timer = timers.current.get(id);
     if (timer) { clearTimeout(timer); timers.current.delete(id); }
+    setSaveStatus(s => {
+      if (!(id in s)) return s;
+      const rest = { ...s };
+      delete rest[id];
+      return rest;
+    });
     setRecords(prev => {
       const next = prev.filter(r => r.id !== id);
       writeCache(next);
@@ -124,18 +176,21 @@ export function useRecords(): UseRecords {
     try {
       await deleteRecordApi(id);
       if (mounted.current) setError(null);
+      return true;
     } catch (err) {
       if (mounted.current) setError(err instanceof Error ? err.message : 'Falha ao excluir');
       await refresh();
+      return false;
     }
   }, [refresh]);
 
   const restore = useCallback(async () => {
     pending.current.clear();
+    retryAttempts.current.clear();
     timers.current.forEach(t => clearTimeout(t));
     timers.current.clear();
     const data = await restoreRecordsApi();
-    if (mounted.current) { commit(data); setError(null); }
+    if (mounted.current) { commit(data); setError(null); setSaveStatus({}); }
   }, [commit]);
 
   const hasPendingWrites = useCallback(() => pending.current.size > 0, []);
@@ -163,7 +218,7 @@ export function useRecords(): UseRecords {
 
   return {
     records, loading, error,
-    hasPendingWrites, updateRecordById, addRecord, deleteRecordById,
+    hasPendingWrites, saveStatus, updateRecordById, addRecord, deleteRecordById,
     restore, refresh, flushPending, clearError,
   };
 }

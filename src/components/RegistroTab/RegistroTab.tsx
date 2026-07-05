@@ -83,6 +83,12 @@ export function RegistroTab({
     setColWidths(prev => ({ ...prev, [id]: width }));
   }
 
+  const emptyMessage = rows.length === 0
+    ? 'Nenhum registro cadastrado ainda. Clique em "+ Adicionar registro" para começar.'
+    : visibleRows.length === 0
+      ? 'Nenhum registro encontrado com esses filtros.'
+      : undefined;
+
   return (
     <div className="tab-page">
       <div className="toolbar-row">
@@ -124,6 +130,7 @@ export function RegistroTab({
         onSort={handleSort}
         onOpenEdit={onOpenEdit}
         onDeleteRow={onDeleteRow}
+        emptyMessage={emptyMessage}
       />
     </div>
   );

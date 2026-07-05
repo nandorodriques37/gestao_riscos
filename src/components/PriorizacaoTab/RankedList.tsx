@@ -1,4 +1,5 @@
 import type { RankedListItem } from './matrixPoints';
+import { EmptyState } from '../common/EmptyState';
 
 interface RankedListProps {
   items: RankedListItem[];
@@ -19,6 +20,7 @@ export function RankedList({ items, title, filterActive, selectedRank, onItemCli
         )}
       </div>
       <div className="ranked-list-body">
+        {items.length === 0 && <EmptyState message="Nenhuma ação neste filtro." />}
         {items.map(item => (
           <button
             key={item.rankIndex}

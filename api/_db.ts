@@ -10,7 +10,14 @@ export type Sql = (text: string, params?: unknown[]) => Promise<Record<string, u
 
 export interface StoredRiskRecord extends RiskRecord {
   id: string;
+  version: number;
 }
+
+/** Resultado de uma tentativa de atualização com checagem de concorrência otimista. */
+export type UpdateOutcome =
+  | { status: 'ok'; record: StoredRiskRecord }
+  | { status: 'conflict'; record: StoredRiskRecord }
+  | { status: 'not_found' };
 
 /** Campos editáveis do registro (na ordem das colunas da tabela). */
 export const RECORD_FIELDS = [
@@ -57,6 +64,7 @@ function rowToRecord(row: Record<string, unknown>): StoredRiskRecord {
     responsavel: (row.responsavel as string) ?? '',
     status: (row.status as string) ?? '',
     obs: (row.obs as string) ?? '',
+    version: Number(row.version ?? 1),
   };
 }
 
@@ -88,9 +96,12 @@ export async function ensureSchema(sql: Sql): Promise<void> {
       status      text not null default '',
       obs         text not null default '',
       created_at  timestamptz not null default now(),
-      updated_at  timestamptz not null default now()
+      updated_at  timestamptz not null default now(),
+      version     integer not null default 1
     )
   `);
+  // Migração para bancos já existentes (criados antes da coluna `version`).
+  await sql('alter table risk_records add column if not exists version integer not null default 1');
   const rows = await sql('select count(*)::int as count from risk_records');
   const count = Number(rows[0]?.count ?? 0);
   if (count === 0) {
@@ -140,22 +151,40 @@ export async function createRecord(sql: Sql, data: Partial<RiskRecord>): Promise
   return rowToRecord(rows[0]);
 }
 
-export async function updateRecordById(sql: Sql, id: string, patch: Partial<RiskRecord>): Promise<StoredRiskRecord | null> {
+/**
+ * Atualiza um registro. Se `expectedVersion` for informado, a gravação só é
+ * aplicada se a versão no banco ainda for essa (concorrência otimista) — evita
+ * que a edição de um usuário sobrescreva silenciosamente a de outro no mesmo
+ * campo. Sem `expectedVersion`, atualiza incondicionalmente (compatibilidade).
+ */
+export async function updateRecordById(
+  sql: Sql, id: string, patch: Partial<RiskRecord>, expectedVersion?: number,
+): Promise<UpdateOutcome> {
   const entries = Object.entries(patch).filter(([k]) => FIELD_SET.has(k));
   if (entries.length === 0) {
     const rows = await sql('select * from risk_records where id = $1', [id]);
-    return rows[0] ? rowToRecord(rows[0]) : null;
+    return rows[0] ? { status: 'ok', record: rowToRecord(rows[0]) } : { status: 'not_found' };
   }
   const params: unknown[] = [];
   const sets = entries.map(([k, v]) => {
     params.push(fieldValue({ [k]: v } as Partial<RiskRecord>, k as RecordField));
     return `${k} = $${params.length}`;
   });
-  sets.push('updated_at = now()');
+  sets.push('updated_at = now()', 'version = version + 1');
   params.push(id);
-  const text = `update risk_records set ${sets.join(', ')} where id = $${params.length} returning *`;
+  let text = `update risk_records set ${sets.join(', ')} where id = $${params.length}`;
+  if (expectedVersion != null) {
+    params.push(expectedVersion);
+    text += ` and version = $${params.length}`;
+  }
+  text += ' returning *';
   const rows = await sql(text, params);
-  return rows[0] ? rowToRecord(rows[0]) : null;
+  if (rows[0]) return { status: 'ok', record: rowToRecord(rows[0]) };
+
+  // Nenhuma linha batida: distingue "não existe" de "existe, mas a versão mudou".
+  const current = await sql('select * from risk_records where id = $1', [id]);
+  if (!current[0]) return { status: 'not_found' };
+  return { status: 'conflict', record: rowToRecord(current[0]) };
 }
 
 export async function deleteRecordById(sql: Sql, id: string): Promise<boolean> {

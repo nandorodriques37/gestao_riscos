@@ -21,7 +21,13 @@ export function ResourceStackedBars({ bars, onClick }: ResourceStackedBarsProps)
       </div>
       <div className="bar-list">
         {bars.map(b => (
-          <button key={b.name} className="bar-row" title="Clique para filtrar toda a aba por este recurso" onClick={() => onClick(b.name)}>
+          <button
+            key={b.name}
+            className="bar-row"
+            title="Clique para filtrar toda a aba por este recurso"
+            aria-label={`${b.name}: ${b.ni} não iniciado, ${b.ea} em andamento, ${b.cc} concluído — ${b.total} no total. Clique para filtrar.`}
+            onClick={() => onClick(b.name)}
+          >
             <div className="bar-name resource" title={b.name}>{b.name}</div>
             <div className="bar-track">
               <div className="stack-fill-wrap" style={{ width: `${b.wrapPct}%`, minWidth: 14 }}>
