@@ -23,7 +23,7 @@ function App() {
   const {
     records, loading, error,
     hasPendingWrites, saveStatus, updateRecordById, addRecord, deleteRecordById,
-    restore, refresh, flushPending, clearError,
+    refresh, flushPending, clearError,
   } = useRecords();
 
   // Fecha o snackbar de "desfazer" quando o componente desmonta.
@@ -91,16 +91,6 @@ function App() {
     }
   }
 
-  async function handleResetData() {
-    if (!window.confirm('Restaurar os dados originais? Todas as edições feitas aqui serão perdidas.')) return;
-    setEditingId(null);
-    try {
-      await restore();
-    } catch {
-      // erro já sinalizado pelo hook (banner)
-    }
-  }
-
   function handleCloseModal() {
     setEditingId(null);
     void flushPending();
@@ -148,7 +138,6 @@ function App() {
               onOpenEdit={handleOpenEdit}
               onDeleteRow={handleDeleteRow}
               onAddRow={handleAddRow}
-              onResetData={handleResetData}
               onExportCSV={() => downloadRecordsCSV(records)}
               areaOptions={AREAS}
               categoriaOptions={CATEGORIAS}
