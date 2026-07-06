@@ -4,6 +4,7 @@ import { TopBar } from './components/TopBar/TopBar';
 import { RegistroTab } from './components/RegistroTab/RegistroTab';
 import { GraficosTab } from './components/GraficosTab/GraficosTab';
 import { PriorizacaoTab } from './components/PriorizacaoTab/PriorizacaoTab';
+import { TarefasTab } from './components/TarefasTab/TarefasTab';
 import { EditModal } from './components/EditModal/EditModal';
 import { AREAS, ROTINAS, CATEGORIAS, RECURSOS, RESPONSAVEIS } from './data/RiskData';
 import { useRecords } from './hooks/useRecords';
@@ -122,7 +123,7 @@ function App() {
     <div className="app-shell">
       <TopBar tab={tab} onChangeTab={setTab} />
 
-      {error && (
+      {tab !== 'tarefas' && error && (
         <div className="error-banner">
           <span>{error}</span>
           <button onClick={() => { clearError(); void refresh(); }}>Tentar novamente</button>
@@ -130,7 +131,7 @@ function App() {
         </div>
       )}
 
-      {showLoading ? (
+      {tab !== 'tarefas' && showLoading ? (
         <div className="app-loading">Carregando matriz de risco…</div>
       ) : (
         <>
@@ -150,6 +151,8 @@ function App() {
           {tab === 'graficos' && <GraficosTab records={records} />}
 
           {tab === 'priorizacao' && <PriorizacaoTab records={records} />}
+
+          {tab === 'tarefas' && <TarefasTab />}
         </>
       )}
 
