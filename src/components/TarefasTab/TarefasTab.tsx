@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { TaskStatusFilterValue, TaskSortKey } from '../../types';
+import type { ColWidths, TaskStatusFilterValue, TaskSortKey } from '../../types';
 import { useTasks } from '../../hooks/useTasks';
 import { buildTaskRows, type EnrichedTaskRow } from '../../lib/taskRows';
 import { computeAvaliacao } from '../../lib/taskCalculations';
@@ -33,6 +33,7 @@ export function TarefasTab() {
   const [tipoFilter, setTipoFilter] = useState('Todos');
   const [sortKey, setSortKey] = useState<TaskSortKey>('gut');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const [colWidths, setColWidths] = useState<ColWidths>({});
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -93,6 +94,10 @@ export function TarefasTab() {
       setSortKey(key);
       setSortDir('desc');
     }
+  }
+
+  function handleColWidthChange(id: string, width: number) {
+    setColWidths(prev => ({ ...prev, [id]: width }));
   }
 
   function handleOpenEdit(idx: number) {
@@ -188,6 +193,8 @@ export function TarefasTab() {
 
           <TarefasTable
             rows={visibleRows}
+            colWidths={colWidths}
+            onColWidthChange={handleColWidthChange}
             sortKey={sortKey}
             sortDir={sortDir}
             onSort={handleSort}
