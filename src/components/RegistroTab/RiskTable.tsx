@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
-import type { ColWidths, SortDir, SortKey } from '../../types';
+import type { ColWidths, Density, SortDir, SortKey } from '../../types';
 import type { EnrichedRow } from '../../lib/rows';
-import { COLUMNS } from './columns';
+import { COLUMNS, GROUP_RUNS } from './columns';
 import { RiskTableRow } from './RiskTableRow';
 import { RiskCardList } from './RiskCardList';
 import { onActivateKey } from '../../lib/a11y';
@@ -17,6 +17,8 @@ interface RiskTableProps {
   onOpenEdit: (idx: number) => void;
   onDeleteRow: (idx: number) => void;
   emptyMessage?: string;
+  emptyAction?: { label: string; onClick: () => void };
+  density: Density;
 }
 
 function startColResize(e: React.MouseEvent, id: string, startWidth: number, onWidthChange: (id: string, w: number) => void) {
@@ -37,7 +39,7 @@ function startColResize(e: React.MouseEvent, id: string, startWidth: number, onW
   window.addEventListener('mouseup', onUp);
 }
 
-export function RiskTable({ rows, colWidths, onColWidthChange, sortKey, sortDir, onSort, onOpenEdit, onDeleteRow, emptyMessage }: RiskTableProps) {
+export function RiskTable({ rows, colWidths, onColWidthChange, sortKey, sortDir, onSort, onOpenEdit, onDeleteRow, emptyMessage, emptyAction, density }: RiskTableProps) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const isEmpty = rows.length === 0 && !!emptyMessage;
 
@@ -49,12 +51,26 @@ export function RiskTable({ rows, colWidths, onColWidthChange, sortKey, sortDir,
     if (isEmpty && wrapRef.current) wrapRef.current.scrollLeft = 0;
   }, [isEmpty]);
 
+  // Alterna classes que só mostram a sombra das colunas/cabeçalho fixos quando
+  // há conteúdo escondido atrás deles (nada a mostrar em scrollLeft/Top 0).
+  function handleScroll() {
+    const el = wrapRef.current;
+    if (!el) return;
+    el.classList.toggle('is-scrolled-x', el.scrollLeft > 0);
+    el.classList.toggle('is-scrolled-y', el.scrollTop > 0);
+  }
+
   return (
     <>
       {/* Desktop: tabela completa com scroll horizontal (ver App.css — escondida em telas estreitas). */}
-      <div className="table-wrap" ref={wrapRef}>
+      <div className={`table-wrap${density === 'compact' ? ' density-compact' : ''}`} ref={wrapRef} onScroll={handleScroll}>
         <table className="risk-table">
           <thead>
+            <tr className="group-row">
+              {GROUP_RUNS.map((run, i) => (
+                <th key={i} colSpan={run.span} scope="colgroup">{run.label}</th>
+              ))}
+            </tr>
             <tr>
               {COLUMNS.map(col => {
                 const width = colWidths[col.id] ?? col.width;
@@ -62,10 +78,12 @@ export function RiskTable({ rows, colWidths, onColWidthChange, sortKey, sortDir,
                 const isSorted = sortable && sortKey === col.sortKey;
                 const arrow = isSorted ? (sortDir === 'asc' ? ' ▲' : ' ▼') : '';
                 const ariaSort = isSorted ? (sortDir === 'asc' ? 'ascending' : 'descending') : sortable ? 'none' : undefined;
+                const stickyClass = col.id === 'area' ? 'sticky-col-left' : col.id === '_del' ? 'sticky-col-right' : '';
                 return (
                   <th
                     key={col.id}
-                    className={`${col.red ? 'th-red' : ''} ${sortable ? 'sortable' : ''}`}
+                    scope="col"
+                    className={`${col.red ? 'th-red' : ''} ${sortable ? 'sortable' : ''} ${stickyClass}`}
                     style={{ width }}
                     title={sortable ? 'Clique para ordenar · arraste a borda para redimensionar' : 'Arraste a borda direita para redimensionar'}
                     aria-sort={ariaSort}
@@ -95,7 +113,7 @@ export function RiskTable({ rows, colWidths, onColWidthChange, sortKey, sortDir,
       {/* Mobile: um cartão por registro (ver App.css — escondida em telas largas). */}
       <RiskCardList rows={rows} onOpen={onOpenEdit} onDelete={onDeleteRow} />
 
-      {isEmpty && <EmptyState message={emptyMessage} />}
+      {isEmpty && <EmptyState message={emptyMessage} action={emptyAction} />}
     </>
   );
 }

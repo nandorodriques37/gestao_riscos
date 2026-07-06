@@ -41,6 +41,9 @@ export type GraphFilter =
 
 export type ColWidths = Record<string, number>;
 
+/** Densidade das linhas da tabela de registro (persistida entre sessões). */
+export type Density = 'comfortable' | 'compact';
+
 /** Tarefa do dia a dia, priorizada pela Matriz GUT (Gravidade × Urgência × Tendência). */
 export interface Task {
   tipo: string;

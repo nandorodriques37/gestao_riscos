@@ -1,5 +1,5 @@
 import type { EnrichedRow } from '../../lib/rows';
-import { round1, round2, scoreColor, priorizColor, respostaKind, statusKind, BADGE_COLORS } from '../../lib/calculations';
+import { round1, round2, scoreTier, priorizTier, respostaKind, statusKind, BADGE_COLORS, TIER_CHIP_COLORS } from '../../lib/calculations';
 import { onActivateKey } from '../../lib/a11y';
 
 interface RiskTableRowProps {
@@ -12,6 +12,8 @@ export function RiskTableRow({ row, onOpen, onDelete }: RiskTableRowProps) {
   const { record: r, score, prioriz, normSt, idx } = row;
   const respostaColors = BADGE_COLORS[respostaKind(r.resposta)];
   const statusColors = BADGE_COLORS[statusKind(normSt)];
+  const scoreChip = TIER_CHIP_COLORS[scoreTier(score)];
+  const priorizChip = TIER_CHIP_COLORS[priorizTier(prioriz)];
 
   return (
     <tr
@@ -20,9 +22,8 @@ export function RiskTableRow({ row, onOpen, onDelete }: RiskTableRowProps) {
       tabIndex={0}
       role="button"
       aria-label={`Editar risco: ${r.risco || 'sem descrição'}`}
-      style={{ background: idx % 2 === 0 ? '#ffffff' : '#F7FAFD' }}
     >
-      <td title={r.area}>{r.area}</td>
+      <td className="sticky-col-left" title={r.area}>{r.area}</td>
       <td title={r.rotina}>{r.rotina}</td>
       <td title={r.categoria}>{r.categoria}</td>
       <td className="risco-cell" title={r.risco}>{r.risco}</td>
@@ -34,7 +35,8 @@ export function RiskTableRow({ row, onOpen, onDelete }: RiskTableRowProps) {
       <td className="center">{r.probab ?? '—'}</td>
       <td className="center">{r.impact ?? '—'}</td>
       <td className="center">
-        <span className="score-badge" style={{ background: scoreColor(score) }}>
+        <span className="tier-chip" style={{ background: scoreChip.bg, color: scoreChip.fg }}>
+          <span className="tier-dot" style={{ background: scoreChip.dot }} />
           {score != null ? round1(score) : '—'}
         </span>
       </td>
@@ -44,7 +46,8 @@ export function RiskTableRow({ row, onOpen, onDelete }: RiskTableRowProps) {
       <td className="center">{r.impacto2 ?? '—'}</td>
       <td className="center">{r.gravidade ?? '—'}</td>
       <td className="center">
-        <span className="score-badge" style={{ background: priorizColor(prioriz) }}>
+        <span className="tier-chip" style={{ background: priorizChip.bg, color: priorizChip.fg }}>
+          <span className="tier-dot" style={{ background: priorizChip.dot }} />
           {prioriz != null ? round2(prioriz) : '—'}
         </span>
       </td>
@@ -56,7 +59,7 @@ export function RiskTableRow({ row, onOpen, onDelete }: RiskTableRowProps) {
         </span>
       </td>
       <td title={r.obs}>{r.obs}</td>
-      <td className="center">
+      <td className="center sticky-col-right">
         <button
           className="delete-btn"
           onClick={e => { e.stopPropagation(); onDelete(idx); }}

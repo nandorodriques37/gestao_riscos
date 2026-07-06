@@ -1,5 +1,5 @@
 import type { EnrichedRow } from '../../lib/rows';
-import { round1, round2, scoreColor, priorizColor, respostaKind, statusKind, BADGE_COLORS } from '../../lib/calculations';
+import { round1, round2, scoreTier, priorizTier, respostaKind, statusKind, BADGE_COLORS, TIER_CHIP_COLORS } from '../../lib/calculations';
 import { onActivateKey } from '../../lib/a11y';
 
 interface RiskCardListProps {
@@ -21,6 +21,8 @@ export function RiskCardList({ rows, onOpen, onDelete }: RiskCardListProps) {
         const { record: r, score, prioriz, normSt, idx } = row;
         const respostaColors = BADGE_COLORS[respostaKind(r.resposta)];
         const statusColors = BADGE_COLORS[statusKind(normSt)];
+        const scoreChip = TIER_CHIP_COLORS[scoreTier(score)];
+        const priorizChip = TIER_CHIP_COLORS[priorizTier(prioriz)];
         return (
           <div
             key={idx}
@@ -46,10 +48,12 @@ export function RiskCardList({ rows, onOpen, onDelete }: RiskCardListProps) {
               <span className="badge" style={{ background: respostaColors.bg, color: respostaColors.fg }}>
                 {r.resposta || '—'}
               </span>
-              <span className="score-badge" style={{ background: scoreColor(score) }}>
+              <span className="tier-chip" style={{ background: scoreChip.bg, color: scoreChip.fg }}>
+                <span className="tier-dot" style={{ background: scoreChip.dot }} />
                 {score != null ? round1(score) : '—'}
               </span>
-              <span className="score-badge" style={{ background: priorizColor(prioriz) }}>
+              <span className="tier-chip" style={{ background: priorizChip.bg, color: priorizChip.fg }}>
+                <span className="tier-dot" style={{ background: priorizChip.dot }} />
                 {prioriz != null ? round2(prioriz) : '—'}
               </span>
               <span className="badge" style={{ background: statusColors.bg, color: statusColors.fg }}>

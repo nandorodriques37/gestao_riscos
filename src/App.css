@@ -1,3 +1,48 @@
+/* ---------- Tokens ----------
+   Reaproveitam os mesmos valores hex já documentados no design handoff — só
+   formalizam em variáveis. Aplicados apenas nos blocos reescritos para o
+   redesign da aba Registro (KPI, toolbar, tabela, badges, empty state, risk
+   cards, ajustes leves do modal); o resto do app (Gráficos/Priorização/
+   TopBar) permanece com os valores fixos que já tinha. */
+:root {
+  --surface: #fff;
+  --surface-app: #F3F5F8;
+  --border: #E4E9EF;
+  --border-soft: #F1F5F9;
+  --border-input: #DCE3EA;
+
+  --text-strong: #0F172A;
+  --text: #334155;
+  --text-muted: #64748B;
+  --text-faint: #8A97A6;
+
+  --navy: #1E3A5F;
+  --navy-hover: #28486F;
+  --navy-dark: #152B47;
+  --accent: #5B8DEF;
+  --accent-dark: #3E6FD9;
+  --accent-tint: #EAF1FA;
+
+  --risco-header: #9C3F3A;
+  --risco-cell: #FBEEED;
+
+  --tier-baixo: #15803D;
+  --tier-medio: #B8901F;
+  --tier-alto: #D97706;
+  --tier-critico: #DC2626;
+  --tier-null: #94A3B8;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-pill: 20px;
+
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04), 0 6px 16px rgba(15, 23, 42, 0.05);
+  --shadow-md: 0 4px 10px rgba(15, 23, 42, 0.06), 0 12px 28px rgba(15, 23, 42, 0.07);
+  --shadow-scroll: 0 6px 12px -6px rgba(15, 23, 42, 0.18);
+  --shadow-modal: 0 24px 60px rgba(15, 23, 42, 0.35);
+}
+
 /* ---------- App shell ---------- */
 .app-shell {
   min-height: 100vh;
@@ -10,7 +55,7 @@
   padding: 22px 26px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 16px;
 }
 
 .tab-page-lg {
@@ -20,11 +65,76 @@
   gap: 20px;
 }
 
+/* Entrada sutil ao trocar de aba (as abas desmontam/remontam na troca, então a
+   animação dispara a cada troca e também no primeiro carregamento). */
+@media (prefers-reduced-motion: no-preference) {
+  .tab-page,
+  .tab-page-lg {
+    animation: tab-enter 0.22s ease both;
+  }
+
+  @keyframes tab-enter {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+  }
+}
+
 .app-loading {
-  padding: 60px 26px;
-  text-align: center;
-  color: #64748B;
-  font-size: 14px;
+  padding: 22px 26px;
+}
+
+.skeleton-kpis {
+  display: flex;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.skeleton-kpi {
+  flex: 1;
+  min-width: 130px;
+  height: 66px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  background: var(--border-soft);
+  position: relative;
+  overflow: hidden;
+}
+
+.skeleton-table {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 8px 0;
+  box-shadow: var(--shadow-sm);
+}
+
+.skeleton-row {
+  height: 32px;
+  margin: 8px 16px;
+  border-radius: 6px;
+  background: var(--border-soft);
+  position: relative;
+  overflow: hidden;
+}
+
+.skeleton-kpi::after,
+.skeleton-row::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.7), transparent);
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
 }
 
 .error-banner {
@@ -47,7 +157,7 @@
   background: #fff;
   border: 1px solid #FECACA;
   color: #B91C1C;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   padding: 5px 12px;
   font-size: 12.5px;
   font-weight: 700;
@@ -72,10 +182,10 @@
   display: flex;
   align-items: center;
   gap: 14px;
-  background: #1E3A5F;
+  background: var(--navy);
   color: #fff;
   padding: 12px 14px 12px 18px;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   box-shadow: 0 10px 24px rgba(15, 23, 42, 0.28);
   font-size: 13px;
   z-index: 50;
@@ -130,7 +240,7 @@
 .topbar-logo {
   width: 42px;
   height: 42px;
-  border-radius: 11px;
+  border-radius: var(--radius-md);
   background: linear-gradient(135deg, #5B8DEF, #3E6FD9);
   display: flex;
   align-items: center;
@@ -161,12 +271,12 @@
   gap: 4px;
   background: rgba(255, 255, 255, 0.07);
   padding: 5px;
-  border-radius: 11px;
+  border-radius: var(--radius-md);
 }
 
 .tab-btn {
   padding: 10px 16px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   border: none;
   font-size: 12.5px;
   font-weight: 700;
@@ -178,20 +288,22 @@
 
 .tab-btn:hover:not(.active) {
   color: #fff;
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .tab-btn.active {
   background: #fff;
-  color: #1E3A5F;
+  color: var(--navy);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.25);
 }
 
 /* ---------- Generic card / section ---------- */
 .card {
-  background: #fff;
-  border: 1px solid #E4E9EF;
-  border-radius: 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
   padding: 22px;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 10px 24px rgba(15, 23, 42, 0.05);
+  box-shadow: var(--shadow-sm);
 }
 
 .section-title {
@@ -242,28 +354,55 @@
 }
 
 .kpi-card {
-  background: #fff;
-  border-radius: 10px;
-  padding: 10px 18px;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 6px 16px rgba(15, 23, 42, 0.05);
-  min-width: 130px;
-  border-top: 3px solid transparent;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 14px 18px;
+  box-shadow: var(--shadow-sm);
+  min-width: 150px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
 }
 
 .kpi-card.wide {
-  min-width: 160px;
+  min-width: 190px;
+}
+
+.kpi-icon {
+  flex: none;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.kpi-body {
+  min-width: 0;
+  flex: 1;
 }
 
 .kpi-label {
   font-size: 10.5px;
-  color: #8A97A6;
+  color: var(--text-faint);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
 .kpi-value {
-  font-size: 24px;
+  font-size: 22px;
   font-weight: 800;
   margin-top: 2px;
 }
@@ -291,7 +430,7 @@
 .kpi-progress-bar {
   height: 100%;
   border-radius: 99px;
-  background: linear-gradient(90deg, #5B8DEF, #3E6FD9);
+  background: linear-gradient(90deg, var(--accent), var(--accent-dark));
   transition: width 0.3s;
 }
 
@@ -303,15 +442,24 @@
 }
 
 .kpi-tile {
-  background: #fff;
-  border: 1px solid #E4E9EF;
-  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
   padding: 16px 20px;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 6px 16px rgba(15, 23, 42, 0.04);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.kpi-tile:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
 }
 
 .kpi-tile-value {
-  font-size: 28px;
+  font-size: 26px;
   font-weight: 800;
   margin-top: 3px;
 }
@@ -392,12 +540,17 @@
   min-width: 240px;
   max-width: 420px;
   padding: 10px 14px;
-  border-radius: 8px;
-  border: 1px solid #DCE3EA;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-input);
   font-size: 13px;
-  background: #fff;
+  background: var(--surface);
   outline: none;
-  color: #0F172A;
+  color: var(--text-strong);
+  transition: border-color 0.15s ease;
+}
+
+.search-input:focus {
+  border-color: var(--accent);
 }
 
 .filter-pills {
@@ -407,71 +560,129 @@
 
 .filter-pill {
   padding: 7px 14px;
-  border-radius: 20px;
-  border: 1px solid #DCE3EA;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-input);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
-  background: #fff;
-  color: #475569;
+  background: var(--surface);
+  color: var(--text);
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.filter-pill:hover {
+  border-color: #C6D5E5;
 }
 
 .filter-pill.active {
-  background: #1E3A5F;
-  border-color: #1E3A5F;
+  background: var(--navy);
+  border-color: var(--navy);
   color: #fff;
 }
 
 .select-filter {
   padding: 8px 11px;
-  border-radius: 20px;
-  border: 1px solid #DCE3EA;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-input);
   font-size: 12px;
   font-weight: 600;
-  color: #475569;
-  background: #fff;
+  color: var(--text);
+  background: var(--surface);
   cursor: pointer;
   outline: none;
 }
 
+.density-toggle {
+  display: flex;
+  gap: 2px;
+  background: var(--surface);
+  border: 1px solid var(--border-input);
+  border-radius: var(--radius-pill);
+  padding: 3px;
+}
+
+.density-toggle button {
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 4px 11px;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.density-toggle button:hover:not(.active) {
+  background: var(--border-soft);
+}
+
+.density-toggle button.active {
+  background: var(--navy);
+  color: #fff;
+}
+
 .filter-count {
   font-size: 12px;
-  color: #8A97A6;
+  color: var(--text-faint);
   margin-left: auto;
 }
 
 /* ---------- Table (Registro tab) ---------- */
 .table-wrap {
-  background: #fff;
-  border: 1px solid #E4E9EF;
-  border-radius: 12px;
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
   overflow: auto;
   max-height: 62vh;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 10px 24px rgba(15, 23, 42, 0.04);
+  box-shadow: var(--shadow-sm);
 }
 
 table.risk-table {
   border-collapse: collapse;
-  font-size: 12.5px;
+  font-size: 13px;
   width: max-content;
 }
 
-.risk-table th {
-  background: #1E3A5F;
-  color: #fff;
+/* Linha de grupo (seções do EditModal) — só sticky-top, altura fixa para que
+   a linha de colunas logo abaixo saiba por quanto compensar seu próprio `top`. */
+.risk-table thead tr.group-row th {
+  height: 24px;
+  padding: 0 12px;
+  background: var(--navy);
+  color: rgba(255, 255, 255, 0.85);
   font-weight: 700;
-  font-size: 11px;
-  padding: 7px 12px;
-  text-align: left;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  text-align: center;
   position: sticky;
   top: 0;
+  z-index: 2;
+  border-right: 1px solid rgba(255, 255, 255, 0.12);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.16);
+  white-space: nowrap;
+  box-sizing: border-box;
+}
+
+.risk-table th {
+  background: var(--navy);
+  color: #fff;
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.2px;
+  padding: 8px 12px;
+  text-align: left;
+  position: sticky;
+  top: 24px;
   z-index: 2;
   border-right: 1px solid rgba(255, 255, 255, 0.1);
   white-space: nowrap;
 }
 
 .risk-table th.th-red {
-  background: #9C3F3A;
+  background: var(--risco-header);
 }
 
 .risk-table th.sortable {
@@ -493,15 +704,14 @@ table.risk-table {
 }
 
 .risk-table td {
-  padding: 2px 12px;
-  border-right: 1px solid #F1F5F9;
-  border-bottom: 1px solid #F1F5F9;
+  padding: 5px 12px;
+  border-bottom: 1px solid var(--border-soft);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   max-width: 0;
-  color: #334155;
-  line-height: 1.25;
+  color: var(--text);
+  line-height: 1.3;
 }
 
 .risk-table td.center {
@@ -509,15 +719,61 @@ table.risk-table {
 }
 
 .risk-table td.risco-cell {
-  background: #FBEEED;
+  background: var(--risco-cell);
 }
 
 .risk-table tbody tr {
   cursor: pointer;
+  background: var(--surface);
 }
 
-.risk-table tbody tr:hover {
-  background: #EAF1FA;
+.risk-table tbody tr:hover td {
+  background: var(--accent-tint);
+}
+
+/* Colunas fixas (Área à esquerda, excluir à direita) — permanecem visíveis ao
+   rolar as 19 colunas. Fundo opaco explícito para não deixar o conteúdo
+   scrollado transparecer por baixo. */
+.risk-table .sticky-col-left,
+.risk-table .sticky-col-right {
+  position: sticky;
+  z-index: 1;
+  background: var(--surface);
+}
+
+.risk-table th.sticky-col-left,
+.risk-table th.sticky-col-right {
+  z-index: 3;
+  background: var(--navy);
+}
+
+.risk-table .sticky-col-left {
+  left: 0;
+}
+
+.risk-table .sticky-col-right {
+  right: 0;
+}
+
+.risk-table tbody tr:hover td.sticky-col-left,
+.risk-table tbody tr:hover td.sticky-col-right {
+  background: var(--accent-tint);
+}
+
+/* Modo compacto: mais linhas por tela (densidade da versão original). */
+.table-wrap.density-compact .risk-table td {
+  padding: 2px 12px;
+  font-size: 12.5px;
+}
+
+/* Sombra sutil que só aparece quando há conteúdo escondido atrás da coluna
+   fixa (ver toggle de classe is-scrolled-x em RiskTable.tsx). */
+.table-wrap.is-scrolled-x .sticky-col-left {
+  box-shadow: var(--shadow-scroll);
+}
+
+.table-wrap.is-scrolled-x .sticky-col-right {
+  box-shadow: -6px 0 12px -6px rgba(15, 23, 42, 0.18);
 }
 
 .delete-btn {
@@ -540,31 +796,47 @@ table.risk-table {
 .badge {
   display: inline-block;
   padding: 1px 9px;
-  border-radius: 20px;
+  border-radius: var(--radius-pill);
   font-size: 11px;
   font-weight: 700;
   white-space: nowrap;
 }
 
-.score-badge {
-  display: inline-block;
-  min-width: 28px;
-  padding: 1px 8px;
-  border-radius: 7px;
-  font-weight: 800;
-  font-size: 12px;
-  color: #fff;
+/* Chip suave (fundo pastel + texto forte + bolinha) para Score/Priorização —
+   mesmas cores de faixa de scoreColor/priorizColor, só muda a apresentação. */
+.tier-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 9px 2px 7px;
+  border-radius: var(--radius-pill);
+  font-weight: 700;
+  font-size: 11.5px;
+  white-space: nowrap;
 }
 
-.badge-modal {
+.tier-dot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.tier-chip-lg {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 8px;
   height: 40px;
-  border-radius: 8px;
+  padding: 0 16px;
+  border-radius: var(--radius-sm);
   font-weight: 800;
   font-size: 15px;
-  color: #fff;
+}
+
+.tier-chip-lg .tier-dot {
+  width: 8px;
+  height: 8px;
 }
 
 /* ---------- Cross-filter banner (Gráficos tab) ---------- */
@@ -573,9 +845,9 @@ table.risk-table {
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
-  background: #EAF1FA;
+  background: var(--accent-tint);
   border: 1px solid #C6D5E5;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   padding: 12px 18px;
 }
 
@@ -769,7 +1041,7 @@ table.risk-table {
 }
 
 .legend-item:hover {
-  background: #F3F7FC;
+  background: var(--accent-tint);
 }
 
 .legend-swatch {
@@ -861,7 +1133,7 @@ table.risk-table {
 }
 
 .bar-row:hover {
-  background: #F3F7FC;
+  background: var(--accent-tint);
 }
 
 .bar-name {
@@ -956,8 +1228,8 @@ table.risk-table {
 
 /* ---------- Risk description table (Gráficos tab) ---------- */
 .desc-table-wrap {
-  border: 1px solid #E4E9EF;
-  border-radius: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
   overflow: hidden;
   max-height: 380px;
   overflow-y: auto;
@@ -1041,8 +1313,8 @@ table.risk-table {
   position: relative;
   width: 100%;
   aspect-ratio: 1 / 0.85;
-  border: 1px solid #E4E9EF;
-  border-radius: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
   overflow: hidden;
 }
 
@@ -1174,8 +1446,8 @@ table.risk-table {
 
 /* ---------- Priorização — ranked list ---------- */
 .ranked-list-panel {
-  border: 1px solid #E4E9EF;
-  border-radius: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -1225,7 +1497,8 @@ table.risk-table {
   align-items: center;
   gap: 10px;
   padding: 9px 14px;
-  border-bottom: 1px solid #F1F5F9;
+  border: none;
+  border-bottom: 1px solid var(--border-soft);
   cursor: pointer;
   border-left: 3px solid transparent;
   width: 100%;
@@ -1234,12 +1507,12 @@ table.risk-table {
 }
 
 .ranked-item:hover {
-  background: #F3F7FC;
+  background: var(--accent-tint);
 }
 
 .ranked-item.selected {
-  background: #EAF1FA;
-  border-left-color: #1E3A5F;
+  background: var(--accent-tint);
+  border-left-color: var(--navy);
 }
 
 .ranked-item-num {
@@ -1276,13 +1549,8 @@ table.risk-table {
   margin-top: 2px;
 }
 
-.ranked-item-badge {
+.ranked-item .tier-chip {
   flex-shrink: 0;
-  padding: 3px 9px;
-  border-radius: 10px;
-  font-weight: 800;
-  font-size: 11.5px;
-  color: #fff;
 }
 
 /* ---------- Priorização — resource summary ---------- */
@@ -1293,8 +1561,8 @@ table.risk-table {
 }
 
 .priority-group {
-  border: 1px solid #E4E9EF;
-  border-radius: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
   overflow: hidden;
 }
 
@@ -1364,14 +1632,6 @@ table.risk-table {
   font-size: 11.5px;
 }
 
-.prioriz-pill {
-  padding: 3px 11px;
-  border-radius: 10px;
-  font-weight: 700;
-  color: #fff;
-  font-size: 12px;
-}
-
 /* ---------- Edit modal ---------- */
 .modal-overlay {
   position: fixed;
@@ -1386,13 +1646,13 @@ table.risk-table {
 }
 
 .modal-card {
-  background: #fff;
+  background: var(--surface);
   width: 100%;
   max-width: 780px;
   max-height: 88vh;
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   overflow: hidden;
-  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.35);
+  box-shadow: var(--shadow-modal);
   display: flex;
   flex-direction: column;
 }
@@ -1545,21 +1805,41 @@ table.risk-table {
 
 /* ---------- Estado vazio (filtros sem resultado / sem dados) ---------- */
 .empty-state {
-  padding: 36px 20px;
+  padding: 40px 20px;
   text-align: center;
-  color: #8A97A6;
+  color: var(--text-faint);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.empty-state-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--border-soft);
+  color: var(--text-faint);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  margin-bottom: 12px;
 }
 
 .empty-state-message {
   font-size: 13px;
   font-weight: 600;
-  color: #64748B;
+  color: var(--text-muted);
 }
 
 .empty-state-hint {
   font-size: 12px;
   color: #9AA7B4;
   margin-top: 4px;
+}
+
+.empty-state-action {
+  margin-top: 16px;
 }
 
 .empty-state-overlay {
@@ -1604,16 +1884,19 @@ table.risk-table {
 }
 
 .risk-card {
-  background: #fff;
-  border: 1px solid #E4E9EF;
-  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
   padding: 14px 16px;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 6px 16px rgba(15, 23, 42, 0.05);
+  box-shadow: var(--shadow-sm);
   cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
 }
 
 .risk-card:hover {
   border-color: #C6D5E5;
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
 }
 
 .risk-card-top {
@@ -1628,13 +1911,13 @@ table.risk-table {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.4px;
-  color: #8A97A6;
+  color: var(--text-faint);
 }
 
 .risk-card-risco {
   font-size: 13.5px;
   font-weight: 600;
-  color: #0F172A;
+  color: var(--text-strong);
   line-height: 1.35;
   margin-top: 4px;
 }
@@ -1648,7 +1931,7 @@ table.risk-table {
 
 .risk-card-meta {
   font-size: 12px;
-  color: #8A97A6;
+  color: var(--text-faint);
   margin-top: 8px;
 }
 
@@ -1680,6 +1963,13 @@ table.risk-table {
   /* A tabela de 19 colunas dá lugar a um cartão por registro. */
   .table-wrap {
     display: none;
+  }
+
+  /* Colunas fixas não fazem sentido no card-list; sem efeito prático já que
+     .table-wrap está oculto nesta faixa, mas deixa a intenção explícita. */
+  .risk-table .sticky-col-left,
+  .risk-table .sticky-col-right {
+    position: static;
   }
 
   .risk-card-list {

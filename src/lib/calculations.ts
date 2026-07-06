@@ -54,6 +54,39 @@ export function priorizColor(p: number | null): string {
   return '#15803D';
 }
 
+export type TierKind = 'baixo' | 'medio' | 'alto' | 'critico' | 'null';
+
+/** Faixa de criticidade do score — mesmos limiares de scoreColor. */
+export function scoreTier(score: number | null): TierKind {
+  if (score == null) return 'null';
+  if (score <= 4) return 'baixo';
+  if (score <= 9) return 'medio';
+  if (score <= 14) return 'alto';
+  return 'critico';
+}
+
+/** Faixa de priorização — mesmos limiares de priorizColor. */
+export function priorizTier(p: number | null): TierKind {
+  if (p == null) return 'null';
+  if (p >= 6) return 'critico';
+  if (p >= 4.5) return 'alto';
+  if (p >= 3) return 'medio';
+  return 'baixo';
+}
+
+/**
+ * Cores do chip suave (fundo pastel + texto + bolinha) usado para Score e
+ * Priorização. A bolinha (`dot`) usa sempre o hex exato de scoreColor/
+ * priorizColor — a faixa de cor em si não muda, só a apresentação visual.
+ */
+export const TIER_CHIP_COLORS: Record<TierKind, { dot: string; bg: string; fg: string }> = {
+  baixo: { dot: '#15803D', bg: '#DCFCE7', fg: '#15803D' },
+  medio: { dot: '#B8901F', bg: '#FBF3DA', fg: '#8A6D17' },
+  alto: { dot: '#D97706', bg: '#FEF3C7', fg: '#B45309' },
+  critico: { dot: '#DC2626', bg: '#FEE2E2', fg: '#B91C1C' },
+  null: { dot: '#94A3B8', bg: '#F1F5F9', fg: '#475569' },
+};
+
 /** Cor por "tier" relativo ao maior valor do grupo (barras de Categoria/Área/Rotina). */
 export function tierColor(ratio: number): string {
   if (ratio >= 0.75) return '#DC2626';
