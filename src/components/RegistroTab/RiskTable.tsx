@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import type { ColWidths, SortDir, SortKey } from '../../types';
+import type { ColWidths, Density, SortDir, SortKey } from '../../types';
 import type { EnrichedRow } from '../../lib/rows';
 import { COLUMNS, GROUP_RUNS } from './columns';
 import { RiskTableRow } from './RiskTableRow';
@@ -18,6 +18,7 @@ interface RiskTableProps {
   onDeleteRow: (idx: number) => void;
   emptyMessage?: string;
   emptyAction?: { label: string; onClick: () => void };
+  density: Density;
 }
 
 function startColResize(e: React.MouseEvent, id: string, startWidth: number, onWidthChange: (id: string, w: number) => void) {
@@ -38,7 +39,7 @@ function startColResize(e: React.MouseEvent, id: string, startWidth: number, onW
   window.addEventListener('mouseup', onUp);
 }
 
-export function RiskTable({ rows, colWidths, onColWidthChange, sortKey, sortDir, onSort, onOpenEdit, onDeleteRow, emptyMessage, emptyAction }: RiskTableProps) {
+export function RiskTable({ rows, colWidths, onColWidthChange, sortKey, sortDir, onSort, onOpenEdit, onDeleteRow, emptyMessage, emptyAction, density }: RiskTableProps) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const isEmpty = rows.length === 0 && !!emptyMessage;
 
@@ -62,7 +63,7 @@ export function RiskTable({ rows, colWidths, onColWidthChange, sortKey, sortDir,
   return (
     <>
       {/* Desktop: tabela completa com scroll horizontal (ver App.css — escondida em telas estreitas). */}
-      <div className="table-wrap" ref={wrapRef} onScroll={handleScroll}>
+      <div className={`table-wrap${density === 'compact' ? ' density-compact' : ''}`} ref={wrapRef} onScroll={handleScroll}>
         <table className="risk-table">
           <thead>
             <tr className="group-row">

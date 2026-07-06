@@ -40,3 +40,6 @@ export type GraphFilter =
   | null;
 
 export type ColWidths = Record<string, number>;
+
+/** Densidade das linhas da tabela de registro (persistida entre sessões). */
+export type Density = 'comfortable' | 'compact';
