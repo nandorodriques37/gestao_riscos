@@ -5,6 +5,9 @@ import {
   ensureSchema, listRecords, createRecord, updateRecordById, deleteRecordById, restoreRecords,
   countRecords, seedSize, type Sql,
 } from './api/_db';
+import {
+  ensureTasksSchema, listTasks, createTask, updateTaskById, deleteTaskById,
+} from './api/_tasksDb';
 
 // Backend de DESENVOLVIMENTO apenas: reimplementa as rotas /api usando um
 // Postgres embarcado (pglite) para que `npm run dev` funcione sem o Neon.
@@ -22,6 +25,7 @@ function getSql(): Promise<Sql> {
         return result.rows as Record<string, unknown>[];
       };
       await ensureSchema(sql);
+      await ensureTasksSchema(sql);
       return sql;
     })();
   }
@@ -87,6 +91,28 @@ export function devApiPlugin(): Plugin {
 
           if (path === '/api/restore') {
             if (method === 'POST') return send(res, 200, await restoreRecords(sql));
+            return send(res, 405, { error: 'Método não permitido' });
+          }
+
+          if (path === '/api/tasks') {
+            if (method === 'GET') return send(res, 200, await listTasks(sql));
+            if (method === 'POST') return send(res, 201, await createTask(sql, (await readJsonBody(req)) as Record<string, unknown>));
+            return send(res, 405, { error: 'Método não permitido' });
+          }
+
+          const taskIdMatch = path.match(/^\/api\/tasks\/([^/]+)$/);
+          if (taskIdMatch) {
+            const id = decodeURIComponent(taskIdMatch[1]);
+            if (method === 'PATCH') {
+              const { expectedVersion, ...patch } = (await readJsonBody(req)) as Record<string, unknown> & { expectedVersion?: number };
+              const result = await updateTaskById(sql, id, patch, expectedVersion);
+              if (result.status === 'not_found') return send(res, 404, { error: 'Tarefa não encontrada' });
+              return send(res, result.status === 'conflict' ? 409 : 200, result.task);
+            }
+            if (method === 'DELETE') {
+              const ok = await deleteTaskById(sql, id);
+              return ok ? send(res, 200, { ok: true }) : send(res, 404, { error: 'Tarefa não encontrada' });
+            }
             return send(res, 405, { error: 'Método não permitido' });
           }
 

@@ -9,6 +9,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'registro', label: 'Registro de Riscos e Ações' },
   { id: 'graficos', label: 'Gráficos' },
   { id: 'priorizacao', label: 'Resumo de Priorização' },
+  { id: 'tarefas', label: 'Gestão de Tarefas' },
 ];
 
 export function TopBar({ tab, onChangeTab }: TopBarProps) {

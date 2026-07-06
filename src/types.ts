@@ -24,7 +24,7 @@ export interface StoredRiskRecord extends RiskRecord {
   version: number;
 }
 
-export type Tab = 'registro' | 'graficos' | 'priorizacao';
+export type Tab = 'registro' | 'graficos' | 'priorizacao' | 'tarefas';
 
 export type StatusFilterValue = 'Todos' | 'Não iniciado' | 'Em andamento' | 'Concluído';
 
@@ -43,3 +43,27 @@ export type ColWidths = Record<string, number>;
 
 /** Densidade das linhas da tabela de registro (persistida entre sessões). */
 export type Density = 'comfortable' | 'compact';
+
+/** Tarefa do dia a dia, priorizada pela Matriz GUT (Gravidade × Urgência × Tendência). */
+export interface Task {
+  tipo: string;
+  tarefa: string;
+  detalhes: string;
+  g: number | null;
+  u: number | null;
+  t: number | null;
+  status: string;
+  responsavel: string;
+  obs: string;
+}
+
+/** Tarefa como vem do backend — igual a Task, mas com id e versão do banco. */
+export interface StoredTask extends Task {
+  id: string;
+  /** Incrementada a cada gravação; usada para detectar edição concorrente. */
+  version: number;
+}
+
+export type TaskStatusFilterValue = 'Todos' | 'A fazer' | 'Em andamento' | 'Concluída';
+
+export type TaskSortKey = 'g' | 'u' | 't' | 'gut' | null;
