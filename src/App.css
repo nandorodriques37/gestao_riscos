@@ -704,7 +704,7 @@ table.risk-table {
 }
 
 .risk-table td {
-  padding: 8px 12px;
+  padding: 5px 12px;
   border-bottom: 1px solid var(--border-soft);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -760,9 +760,9 @@ table.risk-table {
   background: var(--accent-tint);
 }
 
-/* Modo compacto: mais linhas por tela (densidade próxima da versão original). */
+/* Modo compacto: mais linhas por tela (densidade da versão original). */
 .table-wrap.density-compact .risk-table td {
-  padding: 3px 12px;
+  padding: 2px 12px;
   font-size: 12.5px;
 }
 
