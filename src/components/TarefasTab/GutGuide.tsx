@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { TIER_CHIP_COLORS } from '../../lib/calculations';
+import type { TierKind } from '../../lib/calculations';
 
 const NOTAS = [
   { nota: 5, gravidade: 'Extremamente grave', urgencia: 'Ação imediata', tendencia: 'Piora muito rápido' },
@@ -8,11 +10,11 @@ const NOTAS = [
   { nota: 1, gravidade: 'Sem gravidade', urgencia: 'Sem pressa', tendencia: 'Não muda' },
 ];
 
-const FAIXAS = [
-  { label: 'Crítica', faixa: '100 – 125', cor: '#DC2626' },
-  { label: 'Alta', faixa: '60 – 99', cor: '#D97706' },
-  { label: 'Média', faixa: '30 – 59', cor: '#B8901F' },
-  { label: 'Baixa', faixa: '1 – 29', cor: '#15803D' },
+const FAIXAS: { label: string; faixa: string; tier: TierKind }[] = [
+  { label: 'Crítica', faixa: '100 – 125', tier: 'critico' },
+  { label: 'Alta', faixa: '60 – 99', tier: 'alto' },
+  { label: 'Média', faixa: '30 – 59', tier: 'medio' },
+  { label: 'Baixa', faixa: '1 – 29', tier: 'baixo' },
 ];
 
 export function GutGuide() {
@@ -54,11 +56,15 @@ export function GutGuide() {
           </table>
           <div className="gut-guide-title" style={{ marginTop: 14 }}>Faixas de prioridade</div>
           <div className="gut-guide-faixas">
-            {FAIXAS.map(f => (
-              <span key={f.label} className="score-badge" style={{ background: f.cor }}>
-                {f.label} · {f.faixa}
-              </span>
-            ))}
+            {FAIXAS.map(f => {
+              const chip = TIER_CHIP_COLORS[f.tier];
+              return (
+                <span key={f.label} className="tier-chip" style={{ background: chip.bg, color: chip.fg }}>
+                  <span className="tier-dot" style={{ background: chip.dot }} />
+                  {f.label} · {f.faixa}
+                </span>
+              );
+            })}
           </div>
         </div>
       )}

@@ -1,13 +1,7 @@
 import type { EnrichedTaskRow } from '../../lib/taskRows';
-import { gutColor, taskStatusKind } from '../../lib/taskCalculations';
-import type { TaskBadgeKind } from '../../lib/taskCalculations';
+import { BADGE_COLORS, TIER_CHIP_COLORS } from '../../lib/calculations';
+import { gutTier, taskStatusKind } from '../../lib/taskCalculations';
 import { onActivateKey } from '../../lib/a11y';
-
-const STATUS_COLORS: Record<TaskBadgeKind, { bg: string; fg: string }> = {
-  slate: { bg: '#F1F5F9', fg: '#475569' },
-  amber: { bg: '#FEF3C7', fg: '#B45309' },
-  green: { bg: '#DCFCE7', fg: '#15803D' },
-};
 
 interface TarefasTableRowProps {
   row: EnrichedTaskRow;
@@ -17,7 +11,8 @@ interface TarefasTableRowProps {
 
 export function TarefasTableRow({ row, onOpen, onDelete }: TarefasTableRowProps) {
   const { task: t, gut, prioridade, rank, normSt, idx } = row;
-  const statusColors = STATUS_COLORS[taskStatusKind(normSt)];
+  const statusColors = BADGE_COLORS[taskStatusKind(normSt)];
+  const gutChip = TIER_CHIP_COLORS[gutTier(gut)];
 
   return (
     <tr
@@ -35,10 +30,16 @@ export function TarefasTableRow({ row, onOpen, onDelete }: TarefasTableRowProps)
       <td className="center">{t.u ?? '—'}</td>
       <td className="center">{t.t ?? '—'}</td>
       <td className="center">
-        <span className="score-badge" style={{ background: gutColor(gut) }}>{gut ?? '—'}</span>
+        <span className="tier-chip" style={{ background: gutChip.bg, color: gutChip.fg }}>
+          <span className="tier-dot" style={{ background: gutChip.dot }} />
+          {gut ?? '—'}
+        </span>
       </td>
       <td className="center">
-        <span className="score-badge" style={{ background: gutColor(gut) }}>{prioridade ?? '—'}</span>
+        <span className="tier-chip" style={{ background: gutChip.bg, color: gutChip.fg }}>
+          <span className="tier-dot" style={{ background: gutChip.dot }} />
+          {prioridade ?? '—'}
+        </span>
       </td>
       <td className="center">{rank ?? '—'}</td>
       <td className="center">

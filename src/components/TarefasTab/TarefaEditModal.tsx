@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react';
 import type { Task } from '../../types';
 import type { TaskSaveStatus } from '../../hooks/useTasks';
-import { computeGUT, gutColor, prioridadeLabel } from '../../lib/taskCalculations';
+import { TIER_CHIP_COLORS } from '../../lib/calculations';
+import { computeGUT, gutTier, prioridadeLabel } from '../../lib/taskCalculations';
 
 const FOCUSABLE = 'a[href], button:not([disabled]), input, select, textarea, [tabindex]:not([tabindex="-1"])';
 
@@ -37,6 +38,7 @@ export function TarefaEditModal({
 }: TarefaEditModalProps) {
   const gut = computeGUT(task);
   const prioridade = prioridadeLabel(gut);
+  const gutChip = TIER_CHIP_COLORS[gutTier(gut)];
   const cardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -135,7 +137,8 @@ export function TarefaEditModal({
               </div>
               <div>
                 <div className="modal-field-label">GUT</div>
-                <div className="badge-modal" style={{ background: gutColor(gut) }}>
+                <div className="tier-chip-lg" style={{ background: gutChip.bg, color: gutChip.fg }}>
+                  <span className="tier-dot" style={{ background: gutChip.dot }} />
                   {gut ?? '—'}{prioridade ? ` · ${prioridade}` : ''}
                 </div>
               </div>

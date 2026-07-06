@@ -2044,6 +2044,13 @@ table.risk-table {
   color: #0F172A;
 }
 
+/* A tabela de Registro tem uma linha extra de cabeçalho (group-row) que a
+   aba Tarefas não usa, então o cabeçalho de colunas gruda direto no topo
+   (sem o `top: 24px` pensado para compensar aquela linha). */
+.tarefas-table-wrap .risk-table th {
+  top: 0;
+}
+
 .gut-guide {
   position: relative;
 }
@@ -2051,7 +2058,7 @@ table.risk-table {
 .gut-guide-panel {
   position: absolute;
   top: calc(100% + 8px);
-  right: 0;
+  left: 0;
   z-index: 20;
   width: 420px;
   max-width: 90vw;
@@ -2109,11 +2116,4 @@ table.risk-table {
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 8px;
-}
-
-@media (max-width: 760px) {
-  .gut-guide-panel {
-    right: auto;
-    left: 0;
-  }
 }

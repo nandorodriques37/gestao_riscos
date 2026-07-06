@@ -1,4 +1,5 @@
 import type { Task } from '../types';
+import type { BadgeKind, TierKind } from './calculations';
 
 /** GUT = Gravidade × Urgência × Tendência; null se faltar alguma nota. */
 export function computeGUT(t: Pick<Task, 'g' | 'u' | 't'>): number | null {
@@ -13,6 +14,15 @@ export function gutColor(gut: number | null): string {
   if (gut >= 60) return '#D97706';
   if (gut >= 30) return '#B8901F';
   return '#15803D';
+}
+
+/** Faixa de GUT — mesmos limiares de gutColor, para o chip suave (tier-chip). */
+export function gutTier(gut: number | null): TierKind {
+  if (gut == null) return 'null';
+  if (gut >= 100) return 'critico';
+  if (gut >= 60) return 'alto';
+  if (gut >= 30) return 'medio';
+  return 'baixo';
 }
 
 /** Rótulo de prioridade — mesmas faixas de gutColor. */
@@ -32,9 +42,7 @@ export function normTaskStatus(status: string | null | undefined): string {
   return status;
 }
 
-export type TaskBadgeKind = 'slate' | 'amber' | 'green';
-
-export function taskStatusKind(norm: string): TaskBadgeKind {
+export function taskStatusKind(norm: string): BadgeKind {
   if (norm === 'Em andamento') return 'amber';
   if (norm === 'Concluída') return 'green';
   return 'slate';
