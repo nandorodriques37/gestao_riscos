@@ -1,6 +1,11 @@
-import type { StatusFilterValue } from '../../types';
+import type { Density, StatusFilterValue } from '../../types';
 
 const STATUS_PILLS: StatusFilterValue[] = ['Todos', 'Não iniciado', 'Em andamento', 'Concluído'];
+
+const DENSITY_OPTIONS: { value: Density; label: string; title: string }[] = [
+  { value: 'comfortable', label: 'Confortável', title: 'Linhas com mais respiro' },
+  { value: 'compact', label: 'Compacto', title: 'Mais linhas visíveis por tela' },
+];
 
 interface FilterBarProps {
   search: string;
@@ -15,6 +20,8 @@ interface FilterBarProps {
   categoriaOptions: string[];
   visibleCount: number;
   totalCount: number;
+  density: Density;
+  onDensityChange: (v: Density) => void;
 }
 
 export function FilterBar({
@@ -23,6 +30,7 @@ export function FilterBar({
   areaFilter, onAreaFilterChange, areaOptions,
   categoriaFilter, onCategoriaFilterChange, categoriaOptions,
   visibleCount, totalCount,
+  density, onDensityChange,
 }: FilterBarProps) {
   return (
     <div className="filter-row">
@@ -51,6 +59,19 @@ export function FilterBar({
         <option value="Todos">Todos</option>
         {categoriaOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
       </select>
+      <div className="density-toggle" role="group" aria-label="Densidade da tabela">
+        {DENSITY_OPTIONS.map(opt => (
+          <button
+            key={opt.value}
+            className={density === opt.value ? 'active' : ''}
+            title={opt.title}
+            aria-pressed={density === opt.value}
+            onClick={() => onDensityChange(opt.value)}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
       <div className="filter-count">{visibleCount} de {totalCount} registros · clique em uma linha para editar</div>
     </div>
   );

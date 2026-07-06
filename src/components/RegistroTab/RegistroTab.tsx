@@ -1,10 +1,44 @@
-import { useMemo, useState } from 'react';
-import type { RiskRecord, ColWidths, SortDir, SortKey, StatusFilterValue } from '../../types';
+import { useEffect, useMemo, useState } from 'react';
+import type { RiskRecord, ColWidths, Density, SortDir, SortKey, StatusFilterValue } from '../../types';
 import { buildRows, type EnrichedRow } from '../../lib/rows';
 import { computeCompletude } from '../../lib/calculations';
 import { KpiCards } from './KpiCards';
 import { FilterBar } from './FilterBar';
 import { RiskTable } from './RiskTable';
+
+const COL_WIDTHS_KEY = 'riskMatrix.colWidths.v1';
+const DENSITY_KEY = 'riskMatrix.density.v1';
+const COL_WIDTHS_SAVE_DELAY = 300;
+
+/** Larguras salvas na sessão anterior; descarta entradas inválidas (mín. 44px, igual ao resize). */
+function readColWidths(): ColWidths {
+  try {
+    const raw = localStorage.getItem(COL_WIDTHS_KEY);
+    if (raw) {
+      const parsed: unknown = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        const valid: ColWidths = {};
+        Object.entries(parsed as Record<string, unknown>).forEach(([id, w]) => {
+          if (typeof w === 'number' && Number.isFinite(w) && w >= 44) valid[id] = w;
+        });
+        return valid;
+      }
+    }
+  } catch {
+    // storage ausente/corrompido — usa larguras padrão
+  }
+  return {};
+}
+
+function readDensity(): Density {
+  try {
+    const raw = localStorage.getItem(DENSITY_KEY);
+    if (raw === 'compact' || raw === 'comfortable') return raw;
+  } catch {
+    // storage ausente — usa padrão
+  }
+  return 'comfortable';
+}
 
 interface RegistroTabProps {
   records: RiskRecord[];
@@ -35,7 +69,29 @@ export function RegistroTab({
   const [categoriaFilter, setCategoriaFilter] = useState('Todos');
   const [sortKey, setSortKey] = useState<SortKey>(null);
   const [sortDir, setSortDir] = useState<SortDir>('desc');
-  const [colWidths, setColWidths] = useState<ColWidths>({});
+  const [colWidths, setColWidths] = useState<ColWidths>(readColWidths);
+  const [density, setDensity] = useState<Density>(readDensity);
+
+  // O drag de resize atualiza colWidths a cada mousemove; grava com debounce
+  // para não escrever no localStorage dezenas de vezes por segundo.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      try {
+        localStorage.setItem(COL_WIDTHS_KEY, JSON.stringify(colWidths));
+      } catch {
+        // storage indisponível — preferência vale só para a sessão
+      }
+    }, COL_WIDTHS_SAVE_DELAY);
+    return () => clearTimeout(timer);
+  }, [colWidths]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(DENSITY_KEY, density);
+    } catch {
+      // storage indisponível — preferência vale só para a sessão
+    }
+  }, [density]);
 
   const rows = useMemo(() => buildRows(records), [records]);
 
@@ -84,9 +140,22 @@ export function RegistroTab({
   }
 
   const emptyMessage = rows.length === 0
-    ? 'Nenhum registro cadastrado ainda. Clique em "+ Adicionar registro" para começar.'
+    ? 'Nenhum registro cadastrado ainda.'
     : visibleRows.length === 0
       ? 'Nenhum registro encontrado com esses filtros.'
+      : undefined;
+
+  const emptyAction = rows.length === 0
+    ? { label: '+ Adicionar registro', onClick: onAddRow }
+    : visibleRows.length === 0
+      ? {
+          label: 'Limpar filtros', onClick: () => {
+            setSearch('');
+            setStatusFilter('Todos');
+            setAreaFilter('Todos');
+            setCategoriaFilter('Todos');
+          },
+        }
       : undefined;
 
   return (
@@ -119,6 +188,8 @@ export function RegistroTab({
         categoriaOptions={categoriaOptions}
         visibleCount={visibleRows.length}
         totalCount={rows.length}
+        density={density}
+        onDensityChange={setDensity}
       />
 
       <RiskTable
@@ -131,6 +202,8 @@ export function RegistroTab({
         onOpenEdit={onOpenEdit}
         onDeleteRow={onDeleteRow}
         emptyMessage={emptyMessage}
+        emptyAction={emptyAction}
+        density={density}
       />
     </div>
   );

@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import type { RiskRecord } from '../../types';
 import type { SaveStatus } from '../../hooks/useRecords';
-import { computeScore, computePrioriz, round1, round2, scoreColor, priorizColor } from '../../lib/calculations';
+import { computeScore, computePrioriz, round1, round2, scoreTier, priorizTier, TIER_CHIP_COLORS } from '../../lib/calculations';
 
 const FOCUSABLE = 'a[href], button:not([disabled]), input, select, textarea, [tabindex]:not([tabindex="-1"])';
 
@@ -42,6 +42,8 @@ export function EditModal({
 }: EditModalProps) {
   const score = computeScore(record);
   const prioriz = computePrioriz(record);
+  const scoreChip = TIER_CHIP_COLORS[scoreTier(score)];
+  const priorizChip = TIER_CHIP_COLORS[priorizTier(prioriz)];
   const cardRef = useRef<HTMLDivElement>(null);
 
   // Foco inicial no primeiro campo e retorno do foco ao elemento anterior ao fechar.
@@ -148,7 +150,8 @@ export function EditModal({
               </div>
               <div>
                 <div className="modal-field-label">Score</div>
-                <div className="badge-modal" style={{ background: scoreColor(score) }}>
+                <div className="tier-chip-lg" style={{ background: scoreChip.bg, color: scoreChip.fg }}>
+                  <span className="tier-dot" style={{ background: scoreChip.dot }} />
                   {score != null ? round1(score) : '—'}
                 </div>
               </div>
@@ -198,7 +201,8 @@ export function EditModal({
               </div>
               <div>
                 <div className="modal-field-label">Priorização</div>
-                <div className="badge-modal" style={{ background: priorizColor(prioriz) }}>
+                <div className="tier-chip-lg" style={{ background: priorizChip.bg, color: priorizChip.fg }}>
+                  <span className="tier-dot" style={{ background: priorizChip.dot }} />
                   {prioriz != null ? round2(prioriz) : '—'}
                 </div>
               </div>

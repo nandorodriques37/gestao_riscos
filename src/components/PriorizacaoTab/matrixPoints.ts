@@ -1,6 +1,6 @@
 import type { Quadrant } from '../../types';
 import type { ActionableItem } from './actionable';
-import { priorizColor, round2 } from '../../lib/calculations';
+import { priorizColor, priorizTier, round2, type TierKind } from '../../lib/calculations';
 import { quadrantOf } from './quadrant';
 
 export interface MatrixPoint {
@@ -81,6 +81,7 @@ export interface RankedListItem {
   gravidade: number | string;
   prioriz: number;
   color: string;
+  tier: TierKind;
 }
 
 export function buildRankedList(ranked: ActionableItem[]): RankedListItem[] {
@@ -94,5 +95,6 @@ export function buildRankedList(ranked: ActionableItem[]): RankedListItem[] {
     gravidade: x.record.gravidade ?? '—',
     prioriz: round2(x.prioriz),
     color: priorizColor(x.prioriz),
+    tier: priorizTier(x.prioriz),
   }));
 }
