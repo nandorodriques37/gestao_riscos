@@ -45,7 +45,6 @@ interface RegistroTabProps {
   onOpenEdit: (idx: number) => void;
   onDeleteRow: (idx: number) => void;
   onAddRow: () => void;
-  onResetData: () => void;
   onExportCSV: () => void;
   areaOptions: string[];
   categoriaOptions: string[];
@@ -60,7 +59,7 @@ function sortValue(row: EnrichedRow, key: SortKey): number | null {
 }
 
 export function RegistroTab({
-  records, onOpenEdit, onDeleteRow, onAddRow, onResetData, onExportCSV,
+  records, onOpenEdit, onDeleteRow, onAddRow, onExportCSV,
   areaOptions, categoriaOptions,
 }: RegistroTabProps) {
   const [search, setSearch] = useState('');
@@ -169,7 +168,6 @@ export function RegistroTab({
           completude={completude}
         />
         <div className="actions-row">
-          <button className="btn btn-ghost" onClick={onResetData} title="Restaurar os dados originais">↺ Restaurar</button>
           <button className="btn btn-outline-navy" onClick={onExportCSV}>↓ Exportar CSV</button>
           <button className="btn btn-navy" onClick={onAddRow}>+ Adicionar registro</button>
         </div>
