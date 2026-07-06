@@ -744,6 +744,7 @@ table.risk-table {
 .risk-table th.sticky-col-left,
 .risk-table th.sticky-col-right {
   z-index: 3;
+  background: var(--navy);
 }
 
 .risk-table .sticky-col-left {
