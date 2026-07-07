@@ -48,15 +48,6 @@ function App() {
     setPendingUndo(null);
   }
 
-  // Fecha o modal com Escape (sincronizando o que estiver pendente).
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') { setEditingId(null); void flushPending(); }
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [flushPending]);
-
   // Mantém a matriz atualizada com o servidor (dados compartilhados pelo time),
   // sem atrapalhar quem está editando ou com gravações pendentes.
   useEffect(() => {
@@ -102,6 +93,12 @@ function App() {
 
   function handleCloseModal() {
     setEditingId(null);
+  }
+
+  // Grava o rascunho do modal imediatamente: estaciona o patch e força o flush
+  // num único PATCH, reutilizando saveStatus/conflito/retry do hook.
+  function handleCommitEdit(id: string, patch: Partial<RiskRecord>) {
+    updateRecordById(id, patch);
     void flushPending();
   }
 
@@ -155,9 +152,10 @@ function App() {
 
       {editingRecord && (
         <EditModal
+          key={editingRecord.id}
           record={editingRecord}
           saveStatus={saveStatus[editingRecord.id]}
-          onUpdate={patch => updateRecordById(editingRecord.id, patch)}
+          onCommit={patch => handleCommitEdit(editingRecord.id, patch)}
           onClose={handleCloseModal}
           onDelete={handleDeleteFromModal}
           areaOptions={AREAS}

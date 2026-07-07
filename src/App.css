@@ -1528,7 +1528,13 @@ table.risk-table {
   background: #FEE2E2;
 }
 
-.modal-btn-done {
+.modal-footer-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.modal-btn-save {
   background: #1E3A5F;
   color: #fff;
   border: none;
@@ -1537,10 +1543,33 @@ table.risk-table {
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
+  box-shadow: 0 2px 8px rgba(30, 58, 95, 0.3);
+}
+
+.modal-btn-save:hover:not(:disabled) {
+  background: #28486F;
+}
+
+.modal-btn-save:disabled {
+  background: #C7D0DB;
+  box-shadow: none;
+  cursor: default;
+}
+
+.modal-btn-done {
+  background: #fff;
+  color: #1E3A5F;
+  border: 1px solid #C7D0DB;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
 }
 
 .modal-btn-done:hover {
-  background: #28486F;
+  background: #F3F5F8;
+  border-color: #1E3A5F;
 }
 
 /* ---------- Estado vazio (filtros sem resultado / sem dados) ---------- */
