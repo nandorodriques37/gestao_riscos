@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { TaskStatus, TaskSortKey } from '../../types';
+import type { Task, TaskStatus, TaskSortKey } from '../../types';
 import { TASK_STATUSES } from '../../types';
 import { useTasks } from '../../hooks/useTasks';
 import { buildTaskRows, type EnrichedTaskRow } from '../../lib/taskRows';
@@ -49,14 +49,6 @@ export function TarefasTab() {
   }, [colWidths]);
 
   useEffect(() => { writePref(STATUS_FILTER_KEY, statusFilter); }, [statusFilter]);
-
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') { setEditingId(null); void flushPending(); }
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [flushPending]);
 
   useEffect(() => {
     const canSync = () => editingId == null && !hasPendingWrites();
@@ -143,6 +135,12 @@ export function TarefasTab() {
 
   function handleCloseModal() {
     setEditingId(null);
+  }
+
+  // Grava o rascunho do modal imediatamente: estaciona o patch e força o flush
+  // num único PATCH, reutilizando saveStatus/conflito/retry do hook.
+  function handleCommitEdit(id: string, patch: Partial<Task>) {
+    updateTaskById(id, patch);
     void flushPending();
   }
 
@@ -227,9 +225,10 @@ export function TarefasTab() {
 
       {editingTask && (
         <TarefaEditModal
+          key={editingTask.id}
           task={editingTask}
           saveStatus={saveStatus[editingTask.id]}
-          onUpdate={patch => updateTaskById(editingTask.id, patch)}
+          onCommit={patch => handleCommitEdit(editingTask.id, patch)}
           onClose={handleCloseModal}
           onDelete={handleDeleteFromModal}
           tipoOptions={tipoOptions}
