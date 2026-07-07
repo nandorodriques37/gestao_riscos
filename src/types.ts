@@ -28,6 +28,9 @@ export type Tab = 'registro' | 'graficos' | 'priorizacao';
 
 export type StatusFilterValue = 'Todos' | 'Não iniciado' | 'Em andamento' | 'Concluído';
 
+/** Status "reais" (sem "Todos"), usados na seleção múltipla do filtro da aba Registro. */
+export type RegistroStatus = 'Não iniciado' | 'Em andamento' | 'Concluído';
+
 export type Quadrant = 'qw' | 'ga' | 'bp' | 'rv';
 
 export type SortKey = 'probab' | 'impact' | 'score' | 'prioriz' | null;
