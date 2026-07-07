@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { Task } from '../../types';
 import type { TaskSaveStatus } from '../../hooks/useTasks';
 import { TIER_CHIP_COLORS } from '../../lib/calculations';
@@ -16,7 +16,7 @@ const SAVE_STATUS_TEXT: Record<TaskSaveStatus, string> = {
 interface TarefaEditModalProps {
   task: Task;
   saveStatus?: TaskSaveStatus;
-  onUpdate: (patch: Partial<Task>) => void;
+  onCommit: (patch: Partial<Task>) => void;
   onClose: () => void;
   onDelete: () => void;
   tipoOptions: string[];
@@ -34,12 +34,37 @@ function numOrNull(value: string): number | null {
 }
 
 export function TarefaEditModal({
-  task, saveStatus, onUpdate, onClose, onDelete, tipoOptions, responsavelOptions,
+  task, saveStatus, onCommit, onClose, onDelete, tipoOptions, responsavelOptions,
 }: TarefaEditModalProps) {
-  const gut = computeGUT(task);
+  // Rascunho local: digitar altera só este estado (instantâneo, sem re-render
+  // global, sem rede). A gravação acontece por ação explícita — ver commit().
+  const [draft, setDraft] = useState<Task>(task);
+  const [dirty, setDirty] = useState(false);
+  const gut = computeGUT(draft);
   const prioridade = prioridadeLabel(gut);
   const gutChip = TIER_CHIP_COLORS[gutTier(gut)];
   const cardRef = useRef<HTMLDivElement>(null);
+
+  function setField(patch: Partial<Task>) {
+    setDraft(d => ({ ...d, ...patch }));
+    setDirty(true);
+  }
+
+  // Grava apenas os campos que mudaram em relação à tarefa salva.
+  function commit() {
+    const patch: Partial<Task> = {};
+    (Object.keys(draft) as (keyof Task)[]).forEach(key => {
+      if (draft[key] !== task[key]) (patch as Record<string, unknown>)[key] = draft[key];
+    });
+    if (Object.keys(patch).length === 0) return;
+    onCommit(patch);
+    setDirty(false);
+  }
+
+  function requestClose() {
+    if (dirty) commit();
+    onClose();
+  }
 
   useEffect(() => {
     const previouslyFocused = document.activeElement as HTMLElement | null;
@@ -48,7 +73,10 @@ export function TarefaEditModal({
     return () => previouslyFocused?.focus?.();
   }, []);
 
+  // Retém o foco dentro do modal (Tab/Shift+Tab cíclicos) e fecha no Esc,
+  // gravando o rascunho antes de sair.
   function handleTrapKeyDown(e: React.KeyboardEvent) {
+    if (e.key === 'Escape') { e.preventDefault(); requestClose(); return; }
     if (e.key !== 'Tab' || !cardRef.current) return;
     const items = Array.from(cardRef.current.querySelectorAll<HTMLElement>(FOCUSABLE))
       .filter(el => el.offsetParent !== null);
@@ -66,7 +94,7 @@ export function TarefaEditModal({
   }
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay" onClick={requestClose}>
       <div
         ref={cardRef}
         className="modal-card"
@@ -80,10 +108,12 @@ export function TarefaEditModal({
           <div>
             <div className="modal-title">Editar tarefa</div>
             <div className={`modal-subtitle${saveStatus ? ` modal-subtitle-${saveStatus}` : ''}`} role="status" aria-live="polite">
-              {saveStatus ? SAVE_STATUS_TEXT[saveStatus] : 'Alterações são salvas automaticamente'}
+              {saveStatus
+                ? SAVE_STATUS_TEXT[saveStatus]
+                : dirty ? 'Alterações não salvas' : 'Sem alterações pendentes'}
             </div>
           </div>
-          <button className="modal-close" onClick={onClose}>×</button>
+          <button className="modal-close" onClick={requestClose}>×</button>
         </div>
 
         <div className="modal-body">
@@ -95,16 +125,16 @@ export function TarefaEditModal({
             <div className="modal-grid-3">
               <div>
                 <div className="modal-field-label">Tipo</div>
-                <input className="modal-input" list="dl-tipo" value={task.tipo} onChange={e => onUpdate({ tipo: e.target.value })} />
+                <input className="modal-input" list="dl-tipo" value={draft.tipo} onChange={e => setField({ tipo: e.target.value })} />
               </div>
             </div>
             <div style={{ marginTop: 12 }}>
               <div className="modal-field-label">Tarefa</div>
-              <textarea className="modal-textarea" rows={2} value={task.tarefa} onChange={e => onUpdate({ tarefa: e.target.value })} />
+              <textarea className="modal-textarea" rows={2} value={draft.tarefa} onChange={e => setField({ tarefa: e.target.value })} />
             </div>
             <div style={{ marginTop: 12 }}>
               <div className="modal-field-label">Detalhes</div>
-              <textarea className="modal-textarea" rows={2} value={task.detalhes} onChange={e => onUpdate({ detalhes: e.target.value })} />
+              <textarea className="modal-textarea" rows={2} value={draft.detalhes} onChange={e => setField({ detalhes: e.target.value })} />
             </div>
           </div>
 
@@ -115,24 +145,24 @@ export function TarefaEditModal({
                 <div className="modal-field-label">Gravidade (1-5)</div>
                 <input
                   className="modal-input" type="number" min={1} max={5} step={1}
-                  value={task.g ?? ''}
-                  onChange={e => onUpdate({ g: numOrNull(e.target.value) })}
+                  value={draft.g ?? ''}
+                  onChange={e => setField({ g: numOrNull(e.target.value) })}
                 />
               </div>
               <div>
                 <div className="modal-field-label">Urgência (1-5)</div>
                 <input
                   className="modal-input" type="number" min={1} max={5} step={1}
-                  value={task.u ?? ''}
-                  onChange={e => onUpdate({ u: numOrNull(e.target.value) })}
+                  value={draft.u ?? ''}
+                  onChange={e => setField({ u: numOrNull(e.target.value) })}
                 />
               </div>
               <div>
                 <div className="modal-field-label">Tendência (1-5)</div>
                 <input
                   className="modal-input" type="number" min={1} max={5} step={1}
-                  value={task.t ?? ''}
-                  onChange={e => onUpdate({ t: numOrNull(e.target.value) })}
+                  value={draft.t ?? ''}
+                  onChange={e => setField({ t: numOrNull(e.target.value) })}
                 />
               </div>
               <div>
@@ -150,25 +180,28 @@ export function TarefaEditModal({
             <div className="modal-grid-3">
               <div>
                 <div className="modal-field-label">Responsável</div>
-                <input className="modal-input" list="dl-responsavel-tarefa" value={task.responsavel} onChange={e => onUpdate({ responsavel: e.target.value })} />
+                <input className="modal-input" list="dl-responsavel-tarefa" value={draft.responsavel} onChange={e => setField({ responsavel: e.target.value })} />
               </div>
               <div>
                 <div className="modal-field-label">Status</div>
-                <select className="modal-input" value={task.status} onChange={e => onUpdate({ status: e.target.value })}>
+                <select className="modal-input" value={draft.status} onChange={e => setField({ status: e.target.value })}>
                   {STATUS_SELECT_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                 </select>
               </div>
             </div>
             <div style={{ marginTop: 12 }}>
               <div className="modal-field-label">Observações</div>
-              <textarea className="modal-textarea" rows={2} value={task.obs} onChange={e => onUpdate({ obs: e.target.value })} />
+              <textarea className="modal-textarea" rows={2} value={draft.obs} onChange={e => setField({ obs: e.target.value })} />
             </div>
           </div>
         </div>
 
         <div className="modal-footer">
           <button className="modal-btn-delete" onClick={onDelete}>Excluir tarefa</button>
-          <button className="modal-btn-done" onClick={onClose}>Concluído</button>
+          <div className="modal-footer-actions">
+            <button className="modal-btn-save" onClick={commit} disabled={!dirty}>Salvar</button>
+            <button className="modal-btn-done" onClick={requestClose}>Concluído</button>
+          </div>
         </div>
       </div>
     </div>
