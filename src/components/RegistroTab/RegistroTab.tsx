@@ -1,10 +1,14 @@
 import { useMemo, useState } from 'react';
-import type { RiskRecord, ColWidths, SortDir, SortKey, StatusFilterValue } from '../../types';
+import type { RiskRecord, ColWidths, SortDir, SortKey, RegistroStatus } from '../../types';
 import { buildRows, type EnrichedRow } from '../../lib/rows';
 import { computeCompletude } from '../../lib/calculations';
+import { usePersistentState } from '../../hooks/usePersistentState';
 import { KpiCards } from './KpiCards';
 import { FilterBar } from './FilterBar';
 import { RiskTable } from './RiskTable';
+
+const COL_WIDTHS_KEY = 'riskMatrix.colWidths.v1';
+const STATUS_FILTER_KEY = 'riskMatrix.statusFilter.v1';
 
 interface RegistroTabProps {
   records: RiskRecord[];
@@ -30,12 +34,13 @@ export function RegistroTab({
   areaOptions, categoriaOptions,
 }: RegistroTabProps) {
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<StatusFilterValue>('Todos');
+  // Seleção múltipla de status persistida entre sessões; array vazio = todos.
+  const [statusFilter, setStatusFilter] = usePersistentState<RegistroStatus[]>(STATUS_FILTER_KEY, []);
   const [areaFilter, setAreaFilter] = useState('Todos');
   const [categoriaFilter, setCategoriaFilter] = useState('Todos');
   const [sortKey, setSortKey] = useState<SortKey>(null);
   const [sortDir, setSortDir] = useState<SortDir>('desc');
-  const [colWidths, setColWidths] = useState<ColWidths>({});
+  const [colWidths, setColWidths] = usePersistentState<ColWidths>(COL_WIDTHS_KEY, {});
 
   const rows = useMemo(() => buildRows(records), [records]);
 
@@ -48,7 +53,7 @@ export function RegistroTab({
   const visibleRows = useMemo(() => {
     const q = search.toLowerCase().trim();
     let result = rows.filter(row => {
-      if (statusFilter !== 'Todos' && row.normSt !== statusFilter) return false;
+      if (statusFilter.length > 0 && !statusFilter.includes(row.normSt as RegistroStatus)) return false;
       if (areaFilter !== 'Todos' && row.record.area !== areaFilter) return false;
       if (categoriaFilter !== 'Todos' && row.record.categoria !== categoriaFilter) return false;
       if (!q) return true;
@@ -83,6 +88,14 @@ export function RegistroTab({
     setColWidths(prev => ({ ...prev, [id]: width }));
   }
 
+  function handleToggleStatus(status: RegistroStatus) {
+    setStatusFilter(prev => (prev.includes(status) ? prev.filter(s => s !== status) : [...prev, status]));
+  }
+
+  function handleClearStatus() {
+    setStatusFilter([]);
+  }
+
   const emptyMessage = rows.length === 0
     ? 'Nenhum registro cadastrado ainda. Clique em "+ Adicionar registro" para começar.'
     : visibleRows.length === 0
@@ -110,7 +123,8 @@ export function RegistroTab({
         search={search}
         onSearchChange={setSearch}
         statusFilter={statusFilter}
-        onStatusFilterChange={setStatusFilter}
+        onToggleStatus={handleToggleStatus}
+        onClearStatus={handleClearStatus}
         areaFilter={areaFilter}
         onAreaFilterChange={setAreaFilter}
         areaOptions={areaOptions}
