@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { ColWidths, TaskStatusFilterValue, TaskSortKey } from '../../types';
+import type { TaskStatus, TaskSortKey } from '../../types';
+import { TASK_STATUSES } from '../../types';
 import { useTasks } from '../../hooks/useTasks';
 import { buildTaskRows, type EnrichedTaskRow } from '../../lib/taskRows';
 import { computeAvaliacao } from '../../lib/taskCalculations';
 import { downloadTasksCSV } from '../../lib/taskCsv';
+import { readColWidths, readStatusFilter, writePref } from '../../lib/uiPrefs';
 import { TarefasKpiCards } from './TarefasKpiCards';
 import { TarefasFilterBar } from './TarefasFilterBar';
 import { TarefasTable } from './TarefasTable';
@@ -11,6 +13,9 @@ import { TarefaEditModal } from './TarefaEditModal';
 import { GutGuide } from './GutGuide';
 
 const POLL_INTERVAL = 15000;
+const COL_WIDTHS_KEY = 'riskMatrix.tasks.colWidths.v1';
+const STATUS_FILTER_KEY = 'riskMatrix.tasks.statusFilter.v1';
+const COL_WIDTHS_SAVE_DELAY = 300;
 
 function sortValue(row: EnrichedTaskRow, key: TaskSortKey): number | null {
   if (key === 'gut') return row.gut;
@@ -29,11 +34,21 @@ export function TarefasTab() {
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<TaskStatusFilterValue>('Todos');
+  // Seleção múltipla de status persistida entre sessões; array vazio = todos.
+  const [statusFilter, setStatusFilter] = useState<TaskStatus[]>(() => readStatusFilter(STATUS_FILTER_KEY, TASK_STATUSES));
   const [tipoFilter, setTipoFilter] = useState('Todos');
   const [sortKey, setSortKey] = useState<TaskSortKey>('gut');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
-  const [colWidths, setColWidths] = useState<ColWidths>({});
+  const [colWidths, setColWidths] = useState(() => readColWidths(COL_WIDTHS_KEY));
+
+  // O drag de resize atualiza colWidths a cada mousemove; grava com debounce
+  // para não escrever no localStorage dezenas de vezes por segundo.
+  useEffect(() => {
+    const timer = setTimeout(() => writePref(COL_WIDTHS_KEY, colWidths), COL_WIDTHS_SAVE_DELAY);
+    return () => clearTimeout(timer);
+  }, [colWidths]);
+
+  useEffect(() => { writePref(STATUS_FILTER_KEY, statusFilter); }, [statusFilter]);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -66,7 +81,7 @@ export function TarefasTab() {
   const visibleRows = useMemo(() => {
     const q = search.toLowerCase().trim();
     let result = rows.filter(row => {
-      if (statusFilter !== 'Todos' && row.normSt !== statusFilter) return false;
+      if (statusFilter.length > 0 && !statusFilter.includes(row.normSt as TaskStatus)) return false;
       if (tipoFilter !== 'Todos' && row.task.tipo !== tipoFilter) return false;
       if (!q) return true;
       const hay = [row.task.tipo, row.task.tarefa, row.task.detalhes, row.task.responsavel, row.task.obs]
@@ -98,6 +113,10 @@ export function TarefasTab() {
 
   function handleColWidthChange(id: string, width: number) {
     setColWidths(prev => ({ ...prev, [id]: width }));
+  }
+
+  function handleToggleStatus(status: TaskStatus) {
+    setStatusFilter(prev => (prev.includes(status) ? prev.filter(s => s !== status) : [...prev, status]));
   }
 
   function handleOpenEdit(idx: number) {
@@ -183,7 +202,8 @@ export function TarefasTab() {
             search={search}
             onSearchChange={setSearch}
             statusFilter={statusFilter}
-            onStatusFilterChange={setStatusFilter}
+            onToggleStatus={handleToggleStatus}
+            onClearStatus={() => setStatusFilter([])}
             tipoFilter={tipoFilter}
             onTipoFilterChange={setTipoFilter}
             tipoOptions={tipoOptions}

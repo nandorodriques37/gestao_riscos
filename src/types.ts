@@ -28,6 +28,10 @@ export type Tab = 'registro' | 'graficos' | 'priorizacao' | 'tarefas';
 
 export type StatusFilterValue = 'Todos' | 'Não iniciado' | 'Em andamento' | 'Concluído';
 
+/** Status "reais" da aba Registro (sem "Todos"), usados na seleção múltipla do filtro. */
+export type RegistroStatus = 'Não iniciado' | 'Em andamento' | 'Concluído';
+export const REGISTRO_STATUSES: readonly RegistroStatus[] = ['Não iniciado', 'Em andamento', 'Concluído'];
+
 export type Quadrant = 'qw' | 'ga' | 'bp' | 'rv';
 
 export type SortKey = 'probab' | 'impact' | 'score' | 'prioriz' | null;
@@ -65,5 +69,9 @@ export interface StoredTask extends Task {
 }
 
 export type TaskStatusFilterValue = 'Todos' | 'A fazer' | 'Em andamento' | 'Concluída';
+
+/** Status "reais" da aba Tarefas (sem "Todos"), usados na seleção múltipla do filtro. */
+export type TaskStatus = 'A fazer' | 'Em andamento' | 'Concluída';
+export const TASK_STATUSES: readonly TaskStatus[] = ['A fazer', 'Em andamento', 'Concluída'];
 
 export type TaskSortKey = 'g' | 'u' | 't' | 'gut' | null;

@@ -1,34 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { RiskRecord, ColWidths, Density, SortDir, SortKey, StatusFilterValue } from '../../types';
+import type { Density, RegistroStatus, RiskRecord, SortDir, SortKey } from '../../types';
+import { REGISTRO_STATUSES } from '../../types';
 import { buildRows, type EnrichedRow } from '../../lib/rows';
 import { computeCompletude } from '../../lib/calculations';
+import { readColWidths, readStatusFilter, writePref } from '../../lib/uiPrefs';
 import { KpiCards } from './KpiCards';
 import { FilterBar } from './FilterBar';
 import { RiskTable } from './RiskTable';
 
 const COL_WIDTHS_KEY = 'riskMatrix.colWidths.v1';
 const DENSITY_KEY = 'riskMatrix.density.v1';
+const STATUS_FILTER_KEY = 'riskMatrix.statusFilter.v1';
 const COL_WIDTHS_SAVE_DELAY = 300;
-
-/** Larguras salvas na sessão anterior; descarta entradas inválidas (mín. 44px, igual ao resize). */
-function readColWidths(): ColWidths {
-  try {
-    const raw = localStorage.getItem(COL_WIDTHS_KEY);
-    if (raw) {
-      const parsed: unknown = JSON.parse(raw);
-      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-        const valid: ColWidths = {};
-        Object.entries(parsed as Record<string, unknown>).forEach(([id, w]) => {
-          if (typeof w === 'number' && Number.isFinite(w) && w >= 44) valid[id] = w;
-        });
-        return valid;
-      }
-    }
-  } catch {
-    // storage ausente/corrompido — usa larguras padrão
-  }
-  return {};
-}
 
 function readDensity(): Density {
   try {
@@ -63,12 +46,13 @@ export function RegistroTab({
   areaOptions, categoriaOptions,
 }: RegistroTabProps) {
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<StatusFilterValue>('Todos');
+  // Seleção múltipla de status persistida entre sessões; array vazio = todos.
+  const [statusFilter, setStatusFilter] = useState<RegistroStatus[]>(() => readStatusFilter(STATUS_FILTER_KEY, REGISTRO_STATUSES));
   const [areaFilter, setAreaFilter] = useState('Todos');
   const [categoriaFilter, setCategoriaFilter] = useState('Todos');
   const [sortKey, setSortKey] = useState<SortKey>(null);
   const [sortDir, setSortDir] = useState<SortDir>('desc');
-  const [colWidths, setColWidths] = useState<ColWidths>(readColWidths);
+  const [colWidths, setColWidths] = useState(() => readColWidths(COL_WIDTHS_KEY));
   const [density, setDensity] = useState<Density>(readDensity);
 
   // O drag de resize atualiza colWidths a cada mousemove; grava com debounce
@@ -92,6 +76,8 @@ export function RegistroTab({
     }
   }, [density]);
 
+  useEffect(() => { writePref(STATUS_FILTER_KEY, statusFilter); }, [statusFilter]);
+
   const rows = useMemo(() => buildRows(records), [records]);
 
   const totalRiscos = useMemo(() => records.filter(r => r.risco).length, [records]);
@@ -103,7 +89,7 @@ export function RegistroTab({
   const visibleRows = useMemo(() => {
     const q = search.toLowerCase().trim();
     let result = rows.filter(row => {
-      if (statusFilter !== 'Todos' && row.normSt !== statusFilter) return false;
+      if (statusFilter.length > 0 && !statusFilter.includes(row.normSt as RegistroStatus)) return false;
       if (areaFilter !== 'Todos' && row.record.area !== areaFilter) return false;
       if (categoriaFilter !== 'Todos' && row.record.categoria !== categoriaFilter) return false;
       if (!q) return true;
@@ -138,6 +124,10 @@ export function RegistroTab({
     setColWidths(prev => ({ ...prev, [id]: width }));
   }
 
+  function handleToggleStatus(status: RegistroStatus) {
+    setStatusFilter(prev => (prev.includes(status) ? prev.filter(s => s !== status) : [...prev, status]));
+  }
+
   const emptyMessage = rows.length === 0
     ? 'Nenhum registro cadastrado ainda.'
     : visibleRows.length === 0
@@ -150,7 +140,7 @@ export function RegistroTab({
       ? {
           label: 'Limpar filtros', onClick: () => {
             setSearch('');
-            setStatusFilter('Todos');
+            setStatusFilter([]);
             setAreaFilter('Todos');
             setCategoriaFilter('Todos');
           },
@@ -177,7 +167,8 @@ export function RegistroTab({
         search={search}
         onSearchChange={setSearch}
         statusFilter={statusFilter}
-        onStatusFilterChange={setStatusFilter}
+        onToggleStatus={handleToggleStatus}
+        onClearStatus={() => setStatusFilter([])}
         areaFilter={areaFilter}
         onAreaFilterChange={setAreaFilter}
         areaOptions={areaOptions}
