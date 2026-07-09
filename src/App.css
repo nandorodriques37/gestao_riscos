@@ -2045,6 +2045,13 @@ table.risk-table {
 }
 
 /* ---------- Tarefas (GUT) ---------- */
+/* Barra de acento navy à esquerda do cabeçalho — dá mais presença sem mudar a
+   cópia, no mesmo tom da identidade do app. */
+.tarefas-heading {
+  padding-left: 12px;
+  border-left: 3px solid var(--navy);
+}
+
 .tarefas-heading-title {
   font-size: 18px;
   font-weight: 800;
@@ -2145,4 +2152,85 @@ table.risk-table {
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 8px;
+}
+
+/* ---------- Tarefas: polimento das linhas ---------- */
+/* Mais respiro vertical só na tabela de Tarefas (a de Registro é densa por
+   projeto). Escopado a .tarefas-table-wrap para não afetar a aba Registro. */
+.tarefas-table-wrap .risk-table td {
+  padding: 8px 12px;
+  vertical-align: top;
+}
+
+/* Colunas de texto (Tarefa/Detalhes/Observações): em vez de cortar numa linha
+   só com reticências, quebram dentro da largura da coluna. Mantemos o `td` como
+   table-cell (só liberamos o wrap) — o clamp de 2 linhas fica no .clamp-2 interno,
+   pois `display:-webkit-box` no próprio `td` quebraria o layout da tabela. */
+.tarefas-table-wrap .risk-table td.cell-wrap,
+.tarefas-table-wrap .risk-table td.tarefa-cell {
+  white-space: normal;
+}
+
+.tarefas-table-wrap .risk-table td.cell-wrap {
+  color: var(--text-muted);
+}
+
+/* Limita o texto a 2 linhas com reticências, sem alterar o display do td. */
+.clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Notas G/U/T em tom discreto — o olho vai primeiro ao chip colorido de GUT. */
+.tarefas-table-wrap .risk-table td.gut-note {
+  color: var(--text-faint);
+  font-weight: 600;
+}
+
+/* "Tipo" como tag neutra suave, mesma linguagem de .badge. */
+.type-tag {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: var(--radius-pill);
+  background: var(--accent-tint);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Responsável com avatar de iniciais + nome truncado. */
+.owner-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.owner-avatar {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(30, 58, 95, 0.1);
+  color: var(--navy);
+  font-size: 10.5px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.owner-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
