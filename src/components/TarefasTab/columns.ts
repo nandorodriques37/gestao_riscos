@@ -20,5 +20,6 @@ export const TASK_COLUMNS: TaskColumnDef[] = [
   { id: 'status', label: 'Status', width: 140 },
   { id: 'responsavel', label: 'Responsável', width: 140 },
   { id: 'obs', label: 'Observações', width: 200 },
+  { id: '_done', label: '', width: 40 },
   { id: '_del', label: '', width: 36 },
 ];

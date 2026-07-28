@@ -3,7 +3,7 @@ import type { Task, TaskStatus, TaskSortKey } from '../../types';
 import { TASK_STATUSES } from '../../types';
 import { useTasks } from '../../hooks/useTasks';
 import { buildTaskRows, type EnrichedTaskRow } from '../../lib/taskRows';
-import { computeAvaliacao } from '../../lib/taskCalculations';
+import { computeAvaliacao, normTaskStatus } from '../../lib/taskCalculations';
 import { downloadTasksCSV } from '../../lib/taskCsv';
 import { readColWidths, readStatusFilter, writePref } from '../../lib/uiPrefs';
 import { TarefasKpiCards } from './TarefasKpiCards';
@@ -116,6 +116,16 @@ export function TarefasTab() {
     if (t) setEditingId(t.id);
   }
 
+  // Conclusão em um clique na própria linha: alterna Concluída ⇄ A fazer e
+  // grava na hora (mesmo caminho do modal), sem abrir os detalhes.
+  function handleToggleConcluida(idx: number) {
+    const t = tasks[idx];
+    if (!t) return;
+    const status: TaskStatus = normTaskStatus(t.status) === 'Concluída' ? 'A fazer' : 'Concluída';
+    updateTaskById(t.id, { status });
+    void flushPending();
+  }
+
   async function handleDeleteRow(idx: number) {
     const t = tasks[idx];
     if (!t) return;
@@ -217,6 +227,7 @@ export function TarefasTab() {
             sortDir={sortDir}
             onSort={handleSort}
             onOpenEdit={handleOpenEdit}
+            onToggleConcluida={handleToggleConcluida}
             onDeleteRow={handleDeleteRow}
             emptyMessage={emptyMessage}
           />

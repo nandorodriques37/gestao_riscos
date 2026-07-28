@@ -5,6 +5,7 @@ import { onActivateKey } from '../../lib/a11y';
 interface TarefasTableRowProps {
   row: EnrichedTaskRow;
   onOpen: (idx: number) => void;
+  onToggleConcluida: (idx: number) => void;
   onDelete: (idx: number) => void;
 }
 
@@ -17,9 +18,14 @@ function initials(nome: string): string {
   return (first + last).toUpperCase();
 }
 
-export function TarefasTableRow({ row, onOpen, onDelete }: TarefasTableRowProps) {
+export function TarefasTableRow({ row, onOpen, onToggleConcluida, onDelete }: TarefasTableRowProps) {
   const { task: t, gut, prioridade, rank, normSt, idx } = row;
+  const concluida = normSt === 'Concluída';
+  const titulo = t.tarefa || 'sem título';
 
+  // Enter/Espaço num botão da linha dispara o clique do próprio botão; sem
+  // barrar o keydown, o handler do <tr> abriria o modal logo em seguida.
+  const stopKey = (e: React.KeyboardEvent) => e.stopPropagation();
 
   return (
     <tr
@@ -67,10 +73,24 @@ export function TarefasTableRow({ row, onOpen, onDelete }: TarefasTableRowProps)
       </td>
       <td className="cell-wrap" title={t.obs}><span className="clamp-2">{t.obs}</span></td>
       <td className="center">
+        {/* Conclui direto da linha, sem abrir os detalhes. Clicar de novo reabre. */}
+        <button
+          className="done-btn"
+          onClick={e => { e.stopPropagation(); onToggleConcluida(idx); }}
+          onKeyDown={stopKey}
+          aria-pressed={concluida}
+          aria-label={concluida ? `Reabrir tarefa: ${titulo}` : `Concluir tarefa: ${titulo}`}
+          title={concluida ? 'Reabrir tarefa' : 'Concluir tarefa'}
+        >
+          <span className="done-check" aria-hidden="true" />
+        </button>
+      </td>
+      <td className="center">
         <button
           className="delete-btn"
           onClick={e => { e.stopPropagation(); onDelete(idx); }}
-          aria-label={`Excluir tarefa: ${t.tarefa || 'sem título'}`}
+          onKeyDown={stopKey}
+          aria-label={`Excluir tarefa: ${titulo}`}
         >
           ×
         </button>
