@@ -19,7 +19,8 @@ export const TASK_COLUMNS: TaskColumnDef[] = [
   { id: 'rank', label: 'Rank', width: 56 },
   { id: 'status', label: 'Status', width: 140 },
   { id: 'responsavel', label: 'Responsável', width: 140 },
-  { id: 'obs', label: 'Observações', width: 200 },
+  // "Observações" fica só no modal de edição: é texto longo, raramente legível
+  // na largura de uma coluna, e alongava o scroll horizontal da tabela.
   { id: '_done', label: '', width: 40 },
   { id: '_del', label: '', width: 36 },
 ];
