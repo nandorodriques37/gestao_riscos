@@ -250,6 +250,50 @@
   color: var(--danger);
 }
 
+/* ---------- Concluir tarefa na própria linha ----------
+   Alterna Concluída ⇄ A fazer sem abrir o modal. O estado não viaja só na cor:
+   o círculo passa de contorno vazio a preenchido, e o rótulo do title/aria
+   muda de "Concluir" para "Reabrir". */
+
+.done-btn {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-full);
+  background: transparent;
+  color: var(--ink-4);
+  transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+
+/* Check desenhado em CSS: o Inter não tem ✓ e o fallback sai torto. */
+.done-check {
+  width: 9px;
+  height: 5px;
+  border-left: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: translateY(-1px) rotate(-45deg);
+}
+
+.done-btn:hover {
+  border-color: var(--success);
+  background: color-mix(in oklab, var(--success) 14%, transparent);
+  color: var(--success);
+}
+
+.done-btn[aria-pressed='true'] {
+  border-color: var(--success);
+  background: var(--success);
+  color: var(--brand-ink);
+}
+
+.done-btn[aria-pressed='true']:hover {
+  background: color-mix(in oklab, var(--success) 84%, var(--ink-1));
+  border-color: color-mix(in oklab, var(--success) 84%, var(--ink-1));
+}
+
 /* ---------- Cartões (telas estreitas) ---------- */
 
 .risk-card-list {

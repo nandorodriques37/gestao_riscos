@@ -13,6 +13,7 @@ interface TarefasTableProps {
   sortDir: 'asc' | 'desc';
   onSort: (key: NonNullable<TaskSortKey>) => void;
   onOpenEdit: (idx: number) => void;
+  onToggleConcluida: (idx: number) => void;
   onDeleteRow: (idx: number) => void;
   emptyMessage?: string;
 }
@@ -35,7 +36,7 @@ function startColResize(e: React.MouseEvent, id: string, startWidth: number, onW
   window.addEventListener('mouseup', onUp);
 }
 
-export function TarefasTable({ rows, colWidths, onColWidthChange, sortKey, sortDir, onSort, onOpenEdit, onDeleteRow, emptyMessage }: TarefasTableProps) {
+export function TarefasTable({ rows, colWidths, onColWidthChange, sortKey, sortDir, onSort, onOpenEdit, onToggleConcluida, onDeleteRow, emptyMessage }: TarefasTableProps) {
   const isEmpty = rows.length === 0 && !!emptyMessage;
 
   return (
@@ -73,7 +74,13 @@ export function TarefasTable({ rows, colWidths, onColWidthChange, sortKey, sortD
         </thead>
         <tbody>
           {rows.map(row => (
-            <TarefasTableRow key={row.idx} row={row} onOpen={onOpenEdit} onDelete={onDeleteRow} />
+            <TarefasTableRow
+              key={row.idx}
+              row={row}
+              onOpen={onOpenEdit}
+              onToggleConcluida={onToggleConcluida}
+              onDelete={onDeleteRow}
+            />
           ))}
         </tbody>
       </table>
