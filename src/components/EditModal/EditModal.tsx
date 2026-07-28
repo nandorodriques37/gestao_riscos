@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { RiskRecord } from '../../types';
 import type { SaveStatus } from '../../hooks/useRecords';
-import { computeScore, computePrioriz, round1, round2, scoreTier, priorizTier, TIER_CHIP_COLORS } from '../../lib/calculations';
+import { computeScore, computePrioriz, round1, round2, scoreTier, priorizTier } from '../../lib/calculations';
 
 const FOCUSABLE = 'a[href], button:not([disabled]), input, select, textarea, [tabindex]:not([tabindex="-1"])';
 
@@ -46,8 +46,6 @@ export function EditModal({
   const [dirty, setDirty] = useState(false);
   const score = computeScore(draft);
   const prioriz = computePrioriz(draft);
-  const scoreChip = TIER_CHIP_COLORS[scoreTier(score)];
-  const priorizChip = TIER_CHIP_COLORS[priorizTier(prioriz)];
   const cardRef = useRef<HTMLDivElement>(null);
 
   function setField(patch: Partial<RiskRecord>) {
@@ -179,8 +177,8 @@ export function EditModal({
               </div>
               <div>
                 <div className="modal-field-label">Score</div>
-                <div className="tier-chip-lg" style={{ background: scoreChip.bg, color: scoreChip.fg }}>
-                  <span className="tier-dot" style={{ background: scoreChip.dot }} />
+                <div className="tier-chip-lg" data-tier={scoreTier(score)}>
+                  <span className="tier-dot" />
                   {score != null ? round1(score) : '—'}
                 </div>
               </div>
@@ -230,8 +228,8 @@ export function EditModal({
               </div>
               <div>
                 <div className="modal-field-label">Priorização</div>
-                <div className="tier-chip-lg" style={{ background: priorizChip.bg, color: priorizChip.fg }}>
-                  <span className="tier-dot" style={{ background: priorizChip.dot }} />
+                <div className="tier-chip-lg" data-tier={priorizTier(prioriz)}>
+                  <span className="tier-dot" />
                   {prioriz != null ? round2(prioriz) : '—'}
                 </div>
               </div>

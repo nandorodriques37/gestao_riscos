@@ -1,0 +1,790 @@
+/* ============================================================================
+   Data viz — heatmap, donuts, barras, matriz de quadrantes, ranking.
+
+   Regras aplicadas (skill `dataviz`):
+   - Vão de 2px de superfície entre preenchimentos adjacentes (--viz-gap).
+   - Marcas finas; grade e eixos recessivos.
+   - Legenda sempre presente; identidade nunca só por cor.
+   - Anel de superfície de 2px em marcas que se sobrepõem.
+   - Texto usa tinta de texto, nunca a cor da série.
+   ========================================================================= */
+
+/* ---------- Eixos ---------- */
+
+.heatmap-yaxis-label {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.heatmap-yaxis-label span {
+  font-size: var(--fs-2xs);
+  color: var(--viz-axis);
+  font-weight: var(--fw-medium);
+  letter-spacing: 0.04em;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+}
+
+.heatmap-axis-caption,
+.heatmap-xlabel,
+.heatmap-ylabel {
+  font-size: var(--fs-2xs);
+  color: var(--viz-axis);
+  font-weight: var(--fw-medium);
+  font-variant-numeric: tabular-nums;
+}
+
+.heatmap-axis-caption {
+  text-align: center;
+  letter-spacing: 0.04em;
+  margin-top: var(--sp-1);
+}
+
+/* ---------- Heatmap ---------- */
+
+.heatmap-row {
+  display: flex;
+  gap: var(--sp-2);
+}
+
+.heatmap-ylabels {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--viz-gap);
+}
+
+.heatmap-ylabel {
+  width: 14px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+}
+
+.heatmap-grid-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  min-width: 0;
+}
+
+.heatmap-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: var(--viz-gap);
+}
+
+.heatmap-cell {
+  --c: var(--tier-null);
+  height: 44px;
+  border-radius: var(--r-xs);
+  display: grid;
+  place-items: center;
+  font-weight: var(--fw-semibold);
+  font-size: var(--fs-md);
+  font-variant-numeric: tabular-nums;
+  background: var(--c);
+  color: var(--ink-on-solid);
+  transition: transform var(--dur-fast) var(--ease), outline-color var(--dur-fast) var(--ease);
+}
+
+.heatmap-cell[data-tier='baixo'] { --c: var(--tier-baixo); }
+.heatmap-cell[data-tier='medio'] { --c: var(--tier-medio); }
+.heatmap-cell[data-tier='alto'] { --c: var(--tier-alto); }
+.heatmap-cell[data-tier='critico'] { --c: var(--tier-critico); }
+
+/* Célula vazia mostra o zero. Antes o texto era `transparent` e o zero sumia,
+   obrigando o leitor a inferir a diferença entre "nenhum risco" e "não medido". */
+.heatmap-cell[data-empty='true'] {
+  background: var(--bg-sunken);
+  color: var(--ink-4);
+  font-weight: var(--fw-regular);
+  box-shadow: inset 0 0 0 1px var(--line-hairline);
+}
+
+.heatmap-cell[role='button'] {
+  cursor: pointer;
+}
+
+.heatmap-cell[role='button']:hover {
+  transform: scale(1.04);
+}
+
+.heatmap-xlabels {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: var(--viz-gap);
+}
+
+.heatmap-xlabel {
+  text-align: center;
+}
+
+/* ---------- Donut ----------
+   Anel de 14px. O anel de 29px anterior tinha mais tinta que dados. */
+
+.donut-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-5);
+  flex-wrap: wrap;
+}
+
+.donut {
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.donut-center {
+  border-radius: 50%;
+  background: var(--bg-surface);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+}
+
+.donut-center-value {
+  font-size: var(--fs-num);
+  font-weight: var(--fw-bold);
+  letter-spacing: -0.025em;
+  line-height: 1;
+  color: var(--ink-1);
+}
+
+.donut-center-label {
+  font-size: 10px;
+  color: var(--ink-4);
+  font-weight: var(--fw-medium);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* ---------- Legendas ---------- */
+
+.legend-col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  flex: 1;
+  min-width: 160px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  border-radius: var(--r-xs);
+  padding: var(--sp-1) var(--sp-2);
+  border: 1px solid transparent;
+  background: transparent;
+  width: 100%;
+  text-align: left;
+  transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+}
+
+.legend-item:hover {
+  background: var(--bg-hover);
+}
+
+/* Item ativo do cross-filter é marcado por anel, não só por fundo. */
+.legend-item.active {
+  background: var(--bg-selected);
+  border-color: color-mix(in oklab, var(--brand) 35%, transparent);
+}
+
+.legend-swatch,
+.color-legend-swatch {
+  --c: var(--tier-null);
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  display: inline-block;
+  flex-shrink: 0;
+  background: var(--c);
+}
+
+.legend-swatch[data-tier='baixo'], .color-legend-swatch[data-tier='baixo'] { --c: var(--tier-baixo); }
+.legend-swatch[data-tier='medio'], .color-legend-swatch[data-tier='medio'] { --c: var(--tier-medio); }
+.legend-swatch[data-tier='alto'], .color-legend-swatch[data-tier='alto'] { --c: var(--tier-alto); }
+.legend-swatch[data-tier='critico'], .color-legend-swatch[data-tier='critico'] { --c: var(--tier-critico); }
+.legend-swatch[data-tier='null'], .color-legend-swatch[data-tier='null'] { --c: var(--tier-null); }
+
+.legend-label {
+  font-size: var(--fs-sm);
+  color: var(--ink-2);
+  flex: 1;
+  min-width: 0;
+}
+
+.legend-count {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--ink-1);
+  font-variant-numeric: tabular-nums;
+}
+
+.legend-pct {
+  font-size: var(--fs-xs);
+  color: var(--ink-4);
+  width: 38px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.legend-status-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-6);
+  flex-wrap: wrap;
+}
+
+.legend-status-col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.legend-status-label {
+  font-size: var(--fs-sm);
+  color: var(--ink-2);
+  min-width: 120px;
+}
+
+.legend-status-count {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--ink-1);
+  font-variant-numeric: tabular-nums;
+}
+
+.legend-status-pct {
+  font-size: var(--fs-xs);
+  color: var(--ink-4);
+  font-variant-numeric: tabular-nums;
+}
+
+.color-legend-row {
+  display: flex;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+
+.color-legend-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  font-size: var(--fs-xs);
+  color: var(--ink-3);
+}
+
+/* ---------- Barras ----------
+   Rótulo acima, barra fina de largura total, valor à direita. A barra de 26px
+   com o nome numa coluna fixa lia como planilha, não como gráfico. */
+
+.bar-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.bar-list.tight {
+  gap: var(--sp-2);
+}
+
+.bar-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  width: 100%;
+  border: none;
+  background: transparent;
+  padding: var(--sp-1);
+  margin: calc(var(--sp-1) * -1);
+  border-radius: var(--r-xs);
+  text-align: left;
+  transition: background var(--dur-fast) var(--ease);
+}
+
+.bar-row:hover {
+  background: var(--bg-hover);
+}
+
+.bar-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+
+.bar-name {
+  font-size: var(--fs-xs);
+  color: var(--ink-2);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bar-score {
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  color: var(--ink-1);
+  font-variant-numeric: tabular-nums;
+  flex: none;
+}
+
+.bar-meta {
+  font-size: var(--fs-2xs);
+  color: var(--ink-4);
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.bar-track {
+  position: relative;
+  height: 8px;
+  background: var(--bg-sunken);
+  border-radius: var(--r-full);
+  overflow: hidden;
+}
+
+.bar-fill {
+  --c: var(--tier-null);
+  height: 100%;
+  min-width: 3px;
+  border-radius: var(--r-full);
+  background: var(--c);
+  transition: width var(--dur) var(--ease);
+}
+
+.bar-fill[data-tier='baixo'] { --c: var(--tier-baixo); }
+.bar-fill[data-tier='medio'] { --c: var(--tier-medio); }
+.bar-fill[data-tier='alto'] { --c: var(--tier-alto); }
+.bar-fill[data-tier='critico'] { --c: var(--tier-critico); }
+
+/* Barra empilhada: vão de 2px de superfície entre segmentos. */
+.stack-fill-wrap {
+  height: 100%;
+  display: flex;
+  gap: var(--viz-gap);
+  border-radius: var(--r-full);
+  overflow: hidden;
+}
+
+.seg-ni,
+.seg-ea,
+.seg-cc {
+  height: 100%;
+}
+
+.seg-ni { background: var(--tier-null); }
+.seg-ea { background: var(--tier-alto); }
+.seg-cc { background: var(--tier-baixo); }
+
+/* ---------- Banner de filtro cruzado ---------- */
+
+.filter-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+  background: var(--bg-selected);
+  border: 1px solid color-mix(in oklab, var(--brand) 25%, transparent);
+  border-radius: var(--r-md);
+  padding: var(--sp-2) var(--sp-3);
+  font-size: var(--fs-sm);
+}
+
+.filter-banner-label {
+  font-weight: var(--fw-semibold);
+  color: var(--brand);
+}
+
+.filter-banner-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 var(--sp-2);
+  border-radius: var(--r-full);
+  background: var(--bg-surface);
+  border: 1px solid var(--line-border);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  color: var(--ink-1);
+}
+
+.filter-banner-desc {
+  color: var(--ink-3);
+  font-size: var(--fs-xs);
+}
+
+.filter-banner-clear {
+  margin-left: auto;
+  border: none;
+  background: none;
+  color: var(--brand);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  padding: var(--sp-1) var(--sp-2);
+  border-radius: var(--r-xs);
+}
+
+.filter-banner-clear:hover {
+  background: color-mix(in oklab, var(--brand) 12%, transparent);
+}
+
+/* ---------- Priorização: filtro de status ---------- */
+
+.prio-filter-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+
+.prio-filter-label {
+  font-size: var(--fs-xs);
+  color: var(--ink-3);
+}
+
+.prio-filter-count {
+  font-size: var(--fs-xs);
+  color: var(--ink-4);
+}
+
+/* ---------- Matriz esforço × impacto ---------- */
+
+.matrix-layout {
+  display: grid;
+  grid-template-columns: minmax(380px, 7fr) minmax(300px, 5fr);
+  gap: var(--sp-5);
+  align-items: stretch;
+}
+
+.matrix-plot-row {
+  display: flex;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+
+.matrix-plot-col {
+  flex: 1;
+  min-width: 0;
+}
+
+.matrix-plot {
+  position: relative;
+  aspect-ratio: 1 / 0.85;
+  border: 1px solid var(--line-border);
+  border-radius: var(--r-md);
+  overflow: hidden;
+  background: var(--bg-surface);
+}
+
+/* Tintas de quadrante muito mais fracas — as anteriores competiam com as
+   próprias bolhas que deveriam emoldurar. */
+.matrix-quadrant-tint {
+  --c: var(--tier-null);
+  position: absolute;
+  width: 50%;
+  height: 50%;
+  background: color-mix(in oklab, var(--c) 6%, transparent);
+}
+
+.quad-tint-qw { --c: var(--quad-qw); left: 0; top: 0; }
+.quad-tint-ga { --c: var(--quad-ga); right: 0; top: 0; }
+.quad-tint-bp { --c: var(--quad-bp); left: 0; bottom: 0; }
+.quad-tint-rv { --c: var(--quad-rv); right: 0; bottom: 0; }
+
+.matrix-divider-v,
+.matrix-divider-h {
+  position: absolute;
+  background: var(--line-border);
+}
+
+.matrix-divider-v {
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+}
+
+.matrix-divider-h {
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+}
+
+/* Rótulo de quadrante como texto discreto no canto. Antes era uma pílula
+   branca com sombra, que flutuava por cima dos dados. */
+.quadrant-pill {
+  --c: var(--tier-null);
+  position: absolute;
+  transform: translateX(-50%);
+  padding: var(--sp-1) var(--sp-2);
+  border-radius: var(--r-xs);
+  border: 1px solid transparent;
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.03em;
+  color: var(--c);
+  cursor: pointer;
+  text-align: center;
+  white-space: nowrap;
+  transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+}
+
+.quadrant-pill:hover {
+  background: color-mix(in oklab, var(--c) 10%, transparent);
+}
+
+.quadrant-pill.active {
+  background: color-mix(in oklab, var(--c) 14%, transparent);
+  border-color: color-mix(in oklab, var(--c) 40%, transparent);
+}
+
+.quadrant-pill-sub {
+  font-size: 10px;
+  font-weight: var(--fw-regular);
+  letter-spacing: 0;
+  color: var(--ink-4);
+  margin-top: 1px;
+}
+
+.qp-qw { --c: var(--quad-qw); }
+.qp-ga { --c: var(--quad-ga); }
+.qp-bp { --c: var(--quad-bp); }
+.qp-rv { --c: var(--quad-rv); }
+
+.qp-pos-qw { left: 25%; top: var(--sp-2); }
+.qp-pos-ga { left: 75%; top: var(--sp-2); }
+.qp-pos-bp { left: 25%; bottom: var(--sp-2); }
+.qp-pos-rv { left: 75%; bottom: var(--sp-2); }
+
+/* Bolha com anel de superfície de 2px — regra para marcas sobrepostas. */
+.matrix-bubble {
+  --c: var(--tier-null);
+  position: absolute;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: var(--ink-on-solid);
+  font-weight: var(--fw-semibold);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  background: var(--c);
+  box-shadow: 0 0 0 2px var(--bg-surface);
+  opacity: var(--bubble-opacity, 0.92);
+  transition: opacity var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
+}
+
+.matrix-bubble[data-tier='baixo'] { --c: var(--tier-baixo); }
+.matrix-bubble[data-tier='medio'] { --c: var(--tier-medio); }
+.matrix-bubble[data-tier='alto'] { --c: var(--tier-alto); }
+.matrix-bubble[data-tier='critico'] { --c: var(--tier-critico); }
+
+.matrix-bubble.dimmed {
+  --bubble-opacity: 0.22;
+}
+
+.matrix-bubble.selected {
+  --bubble-opacity: 1;
+  box-shadow: 0 0 0 2px var(--bg-surface), 0 0 0 4px var(--ink-1);
+  z-index: 10;
+}
+
+.matrix-axis-hint {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  margin-top: var(--sp-2);
+}
+
+.matrix-axis-hint-main {
+  font-size: var(--fs-2xs);
+  color: var(--viz-axis);
+  font-weight: var(--fw-medium);
+  letter-spacing: 0.04em;
+}
+
+.matrix-axis-hint-edge {
+  font-size: 10px;
+  color: var(--ink-4);
+}
+
+/* ---------- Ranking ---------- */
+
+/* Acompanha a altura da matriz ao lado; o corpo é que rola. Com altura fixa
+   sobrava um vão morto embaixo do painel em telas largas. */
+.ranked-list-panel {
+  border: 1px solid var(--line-border);
+  border-radius: var(--r-md);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.ranked-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--bg-sunken);
+  border-bottom: 1px solid var(--line-border);
+}
+
+.ranked-list-title {
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.ranked-list-clear {
+  border: none;
+  background: none;
+  color: var(--brand);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  padding: var(--sp-1) var(--sp-2);
+  border-radius: var(--r-xs);
+}
+
+.ranked-list-clear:hover {
+  background: color-mix(in oklab, var(--brand) 12%, transparent);
+}
+
+.ranked-list-body {
+  overflow-y: auto;
+  flex: 1;
+}
+
+.ranked-item {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  width: 100%;
+  border: none;
+  background: transparent;
+  text-align: left;
+  padding: var(--sp-2) var(--sp-3);
+  border-bottom: 1px solid var(--line-hairline);
+  transition: background var(--dur-fast) var(--ease);
+}
+
+.ranked-item:hover {
+  background: var(--bg-hover);
+}
+
+.ranked-item.selected {
+  background: var(--bg-selected);
+}
+
+.ranked-item.selected::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--brand);
+}
+
+.ranked-item-num {
+  --c: var(--tier-null);
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-semibold);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-on-solid);
+  background: var(--c);
+}
+
+.ranked-item-num[data-tier='baixo'] { --c: var(--tier-baixo); }
+.ranked-item-num[data-tier='medio'] { --c: var(--tier-medio); }
+.ranked-item-num[data-tier='alto'] { --c: var(--tier-alto); }
+.ranked-item-num[data-tier='critico'] { --c: var(--tier-critico); }
+
+.ranked-item-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.ranked-item-action {
+  font-size: var(--fs-sm);
+  color: var(--ink-1);
+  line-height: 1.4;
+}
+
+.ranked-item-eig {
+  font-size: var(--fs-2xs);
+  color: var(--ink-4);
+  margin-top: 2px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Resumo por recurso ---------- */
+
+.priority-groups {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.priority-group {
+  border: 1px solid var(--line-border);
+  border-radius: var(--r-md);
+  overflow: hidden;
+}
+
+.priority-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--bg-sunken);
+  border-bottom: 1px solid var(--line-border);
+}
+
+.priority-group-name {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--ink-1);
+}
+
+.priority-group-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+
+.priority-group-avg {
+  font-size: var(--fs-xs);
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.priority-group-table-wrap {
+  overflow-x: auto;
+}

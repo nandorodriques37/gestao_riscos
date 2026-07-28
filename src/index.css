@@ -1,33 +1,3 @@
-* {
-  box-sizing: border-box;
-}
-
-html, body, #root {
-  min-height: 100%;
-}
-
-body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
-  font-variant-numeric: tabular-nums;
-  color: #0F172A;
-  background: #F3F5F8;
-}
-
-button, input, select, textarea {
-  font-family: inherit;
-}
-
-::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #CBD5E1;
-  border-radius: 6px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
+/* A fonte é auto-hospedada (sem requisição a CDN em runtime). O reset e a base
+   tipográfica moram em src/styles/base.css, importado por App.css. */
+@import '@fontsource-variable/inter';

@@ -1,5 +1,5 @@
 import type { EnrichedRow } from '../../lib/rows';
-import { round1, round2, scoreTier, priorizTier, respostaKind, statusKind, BADGE_COLORS, TIER_CHIP_COLORS } from '../../lib/calculations';
+import { round1, round2, scoreTier, priorizTier, respostaKind, statusKind } from '../../lib/calculations';
 import { onActivateKey } from '../../lib/a11y';
 
 interface RiskCardListProps {
@@ -12,17 +12,13 @@ interface RiskCardListProps {
  * Alternativa à tabela de 19 colunas para telas estreitas: um cartão por
  * registro com os campos mais relevantes para escanear a lista; toque abre o
  * mesmo modal de edição usado na tabela. Visibilidade controlada por
- * @media em App.css — a tabela e os cartões nunca aparecem juntos.
+ * @media em styles/responsive.css — a tabela e os cartões nunca aparecem juntos.
  */
 export function RiskCardList({ rows, onOpen, onDelete }: RiskCardListProps) {
   return (
     <div className="risk-card-list">
       {rows.map(row => {
         const { record: r, score, prioriz, normSt, idx } = row;
-        const respostaColors = BADGE_COLORS[respostaKind(r.resposta)];
-        const statusColors = BADGE_COLORS[statusKind(normSt)];
-        const scoreChip = TIER_CHIP_COLORS[scoreTier(score)];
-        const priorizChip = TIER_CHIP_COLORS[priorizTier(prioriz)];
         return (
           <div
             key={idx}
@@ -45,18 +41,18 @@ export function RiskCardList({ rows, onOpen, onDelete }: RiskCardListProps) {
             </div>
             <div className="risk-card-risco">{r.risco || '(sem descrição)'}</div>
             <div className="risk-card-badges">
-              <span className="badge" style={{ background: respostaColors.bg, color: respostaColors.fg }}>
+              <span className="badge" data-badge={respostaKind(r.resposta)}>
                 {r.resposta || '—'}
               </span>
-              <span className="tier-chip" style={{ background: scoreChip.bg, color: scoreChip.fg }}>
-                <span className="tier-dot" style={{ background: scoreChip.dot }} />
+              <span className="tier-chip" data-tier={scoreTier(score)}>
+                <span className="tier-dot" />
                 {score != null ? round1(score) : '—'}
               </span>
-              <span className="tier-chip" style={{ background: priorizChip.bg, color: priorizChip.fg }}>
-                <span className="tier-dot" style={{ background: priorizChip.dot }} />
+              <span className="tier-chip" data-tier={priorizTier(prioriz)}>
+                <span className="tier-dot" />
                 {prioriz != null ? round2(prioriz) : '—'}
               </span>
-              <span className="badge" style={{ background: statusColors.bg, color: statusColors.fg }}>
+              <span className="badge" data-badge={statusKind(normSt)}>
                 {normSt}
               </span>
             </div>

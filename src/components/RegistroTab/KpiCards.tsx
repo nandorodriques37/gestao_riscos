@@ -6,42 +6,43 @@ interface KpiCardsProps {
   completude: number;
 }
 
+/**
+ * Tiles de indicador. O acento de cor é uma barra de 3px na borda esquerda
+ * (ver styles/layout.css) — o quadrado colorido de 38px com glifo somava ruído
+ * sem acrescentar informação, e o hover-lift sugeria um clique que não existe.
+ */
 export function KpiCards({ totalRiscos, totalEmAndamento, totalConcluido, totalCritico, completude }: KpiCardsProps) {
   return (
     <div className="kpi-strip">
-      <div className="kpi-card">
-        <div className="kpi-icon" style={{ background: 'rgba(30,58,95,0.1)', color: '#1E3A5F' }}>◆</div>
+      <div className="kpi-card" data-accent="brand">
         <div className="kpi-body">
           <div className="kpi-label">Riscos mapeados</div>
-          <div className="kpi-value" style={{ color: '#1E3A5F' }}>{totalRiscos}</div>
+          <div className="kpi-value">{totalRiscos}</div>
         </div>
       </div>
-      <div className="kpi-card">
-        <div className="kpi-icon" style={{ background: 'rgba(217,119,6,0.14)', color: '#B45309' }}>◐</div>
+      <div className="kpi-card" data-accent="alto">
         <div className="kpi-body">
           <div className="kpi-label">Em andamento</div>
-          <div className="kpi-value" style={{ color: '#B45309' }}>{totalEmAndamento}</div>
+          <div className="kpi-value">{totalEmAndamento}</div>
         </div>
       </div>
-      <div className="kpi-card">
-        <div className="kpi-icon" style={{ background: 'rgba(21,128,61,0.14)', color: '#15803D' }}>✓</div>
+      <div className="kpi-card" data-accent="baixo">
         <div className="kpi-body">
           <div className="kpi-label">Concluídas</div>
-          <div className="kpi-value" style={{ color: '#15803D' }}>{totalConcluido}</div>
+          <div className="kpi-value">{totalConcluido}</div>
         </div>
       </div>
-      <div className="kpi-card">
-        <div className="kpi-icon" style={{ background: 'rgba(220,38,38,0.12)', color: '#DC2626' }}>▲</div>
+      <div className="kpi-card" data-accent="critico">
         <div className="kpi-body">
           <div className="kpi-label">Priorização crítica</div>
-          <div className="kpi-value" style={{ color: '#DC2626' }}>{totalCritico}</div>
+          <div className="kpi-value">{totalCritico}</div>
         </div>
       </div>
-      <div className="kpi-card wide">
-        <div className="kpi-body" style={{ width: '100%' }}>
+      <div className="kpi-card wide" data-accent="brand">
+        <div className="kpi-body">
           <div className="kpi-label">Completude</div>
           <div className="kpi-value-row">
-            <div className="kpi-value" style={{ color: '#3E6FD9' }}>{completude}%</div>
+            <div className="kpi-value">{completude}%</div>
             <span className="kpi-value-sub">campos preenchidos</span>
           </div>
           <div className="kpi-progress-track">

@@ -74,19 +74,6 @@ export function priorizTier(p: number | null): TierKind {
   return 'baixo';
 }
 
-/**
- * Cores do chip suave (fundo pastel + texto + bolinha) usado para Score e
- * Priorização. A bolinha (`dot`) usa sempre o hex exato de scoreColor/
- * priorizColor — a faixa de cor em si não muda, só a apresentação visual.
- */
-export const TIER_CHIP_COLORS: Record<TierKind, { dot: string; bg: string; fg: string }> = {
-  baixo: { dot: '#15803D', bg: '#DCFCE7', fg: '#15803D' },
-  medio: { dot: '#B8901F', bg: '#FBF3DA', fg: '#8A6D17' },
-  alto: { dot: '#D97706', bg: '#FEF3C7', fg: '#B45309' },
-  critico: { dot: '#DC2626', bg: '#FEE2E2', fg: '#B91C1C' },
-  null: { dot: '#94A3B8', bg: '#F1F5F9', fg: '#475569' },
-};
-
 /** Cor por "tier" relativo ao maior valor do grupo (barras de Categoria/Área/Rotina). */
 export function tierColor(ratio: number): string {
   if (ratio >= 0.75) return '#DC2626';
@@ -95,17 +82,15 @@ export function tierColor(ratio: number): string {
   return '#15803D';
 }
 
-export type BadgeKind = 'slate' | 'blue' | 'green' | 'amber' | 'red' | 'purple' | 'orange';
+/** Faixa relativa ao maior do grupo — mesmos limiares de tierColor. */
+export function barTier(ratio: number): TierKind {
+  if (ratio >= 0.75) return 'critico';
+  if (ratio >= 0.5) return 'alto';
+  if (ratio >= 0.25) return 'medio';
+  return 'baixo';
+}
 
-export const BADGE_COLORS: Record<BadgeKind, { bg: string; fg: string }> = {
-  slate: { bg: '#F1F5F9', fg: '#475569' },
-  blue: { bg: '#DBEAFE', fg: '#1D4ED8' },
-  green: { bg: '#DCFCE7', fg: '#15803D' },
-  amber: { bg: '#FEF3C7', fg: '#B45309' },
-  red: { bg: '#FEE2E2', fg: '#B91C1C' },
-  purple: { bg: '#EDE9FE', fg: '#6D28D9' },
-  orange: { bg: '#FFEDD5', fg: '#C2410C' },
-};
+export type BadgeKind = 'slate' | 'blue' | 'green' | 'amber' | 'red' | 'purple' | 'orange';
 
 export function respostaKind(v: string): BadgeKind {
   if (v === 'Mitigar') return 'blue';

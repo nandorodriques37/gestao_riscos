@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
 import type { RiskRecord, GraphFilter } from '../../types';
 import { buildRows } from '../../lib/rows';
-import { computeScore, round1 } from '../../lib/calculations';
+import { computeScore, round1, type TierKind } from '../../lib/calculations';
+import { buildDonutGradient } from '../../lib/donut';
 import { matchGraphFilter, graphFilterLabel } from './graphFilter';
 import { buildScoreBars, buildResourceStatusBars } from './scoreBars';
 import { FilterBanner } from './FilterBanner';
@@ -18,18 +19,20 @@ interface GraficosTabProps {
   records: RiskRecord[];
 }
 
-const STATUS_COLORS: Record<string, string> = {
-  'Não iniciado': '#94A3B8',
-  'Em andamento': '#D97706',
-  'Concluído': '#15803D',
-};
-const STATUS_ORDER = ['Não iniciado', 'Em andamento', 'Concluído'];
+// Os status reaproveitam as faixas de cor já existentes: cinza para não
+// iniciado, laranja para em andamento, verde para concluído — exatamente os
+// mesmos hex de antes, agora vindos dos tokens.
+const STATUS_DEFS: { label: string; tier: TierKind }[] = [
+  { label: 'Não iniciado', tier: 'null' },
+  { label: 'Em andamento', tier: 'alto' },
+  { label: 'Concluído', tier: 'baixo' },
+];
 
-const CRIT_DEFS: { label: string; color: string; test: (sc: number) => boolean }[] = [
-  { label: 'Crítico', color: '#DC2626', test: sc => sc > 14 },
-  { label: 'Alto', color: '#D97706', test: sc => sc > 9 && sc <= 14 },
-  { label: 'Médio', color: '#B8901F', test: sc => sc > 4 && sc <= 9 },
-  { label: 'Baixo', color: '#15803D', test: sc => sc <= 4 },
+const CRIT_DEFS: { label: string; tier: TierKind; test: (sc: number) => boolean }[] = [
+  { label: 'Crítico', tier: 'critico', test: sc => sc > 14 },
+  { label: 'Alto', tier: 'alto', test: sc => sc > 9 && sc <= 14 },
+  { label: 'Médio', tier: 'medio', test: sc => sc > 4 && sc <= 9 },
+  { label: 'Baixo', tier: 'baixo', test: sc => sc <= 4 },
 ];
 
 export function GraficosTab({ records }: GraficosTabProps) {
@@ -65,20 +68,16 @@ export function GraficosTab({ records }: GraficosTabProps) {
   const totalAcoesComStatus = actionRows.length;
 
   const { statusLegend, donutBg } = useMemo(() => {
-    let cursor = 0;
-    const gradParts: string[] = [];
-    const legend: StatusLegendItem[] = STATUS_ORDER.map(label => {
-      const count = actionRows.filter(r => r.normSt === label).length;
-      const pct = totalAcoesComStatus ? Math.round((count / totalAcoesComStatus) * 100) : 0;
-      const start = cursor;
-      cursor += pct;
-      gradParts.push(`${STATUS_COLORS[label]} ${start}% ${cursor}%`);
-      return { label, color: STATUS_COLORS[label], count, pct };
+    const legend: StatusLegendItem[] = STATUS_DEFS.map(d => {
+      const count = actionRows.filter(r => r.normSt === d.label).length;
+      return {
+        label: d.label,
+        tier: d.tier,
+        count,
+        pct: totalAcoesComStatus ? Math.round((count / totalAcoesComStatus) * 100) : 0,
+      };
     });
-    return {
-      statusLegend: legend,
-      donutBg: totalAcoesComStatus ? `conic-gradient(${gradParts.join(',')})` : '#F1F5F9',
-    };
+    return { statusLegend: legend, donutBg: buildDonutGradient(legend, totalAcoesComStatus) };
   }, [actionRows, totalAcoesComStatus]);
 
   const categoryBars = useMemo(() => buildScoreBars(gfRecords, 'categoria'), [gfRecords]);
@@ -96,20 +95,16 @@ export function GraficosTab({ records }: GraficosTabProps) {
     : '—';
 
   const { critLegend, critDonutBg } = useMemo(() => {
-    let critAcc = 0;
-    const critGrad: string[] = [];
     const legend: CritLegendItem[] = CRIT_DEFS.map(d => {
       const count = scoredVals.filter(d.test).length;
-      const start = totalAvaliados ? (critAcc / totalAvaliados) * 100 : 0;
-      critAcc += count;
-      const end = totalAvaliados ? (critAcc / totalAvaliados) * 100 : 0;
-      if (count > 0) critGrad.push(`${d.color} ${start}% ${end}%`);
-      return { label: d.label, color: d.color, count, pct: totalAvaliados ? Math.round((count / totalAvaliados) * 100) : 0 };
+      return {
+        label: d.label,
+        tier: d.tier,
+        count,
+        pct: totalAvaliados ? Math.round((count / totalAvaliados) * 100) : 0,
+      };
     });
-    return {
-      critLegend: legend,
-      critDonutBg: totalAvaliados ? `conic-gradient(${critGrad.join(',')})` : '#EEF2F6',
-    };
+    return { critLegend: legend, critDonutBg: buildDonutGradient(legend, totalAvaliados) };
   }, [scoredVals, totalAvaliados]);
 
   const recStatusBars = useMemo(() => buildResourceStatusBars(actionRows), [actionRows]);
@@ -138,6 +133,7 @@ export function GraficosTab({ records }: GraficosTabProps) {
           totalAvaliados={totalAvaliados}
           critLegend={critLegend}
           donutBg={critDonutBg}
+          activeLabel={graphFilter?.type === 'criticidade' ? graphFilter.value : null}
           onLegendClick={label => toggleGraphFilter({ type: 'criticidade', value: label })}
         />
       </div>
@@ -157,21 +153,22 @@ export function GraficosTab({ records }: GraficosTabProps) {
         </div>
       </div>
 
-      <div style={{ marginTop: -4 }}>
-        <TierColorLegend />
-      </div>
-
       <div className="card">
-        <div className="section-title">Risco por Rotina</div>
-        <div className="section-subtitle">Score inerente total (probabilidade × impacto) por rotina — barras coloridas pela criticidade</div>
-        <ScoreBarList bars={rotinaBars} nameWidthClass="wide" rotina onClick={name => toggleGraphFilter({ type: 'rotina', value: name })} />
-        <TierColorLegend bordered />
+        <div className="section-header-row">
+          <div>
+            <div className="section-title">Risco por Rotina</div>
+            <div className="section-subtitle">Score inerente total (probabilidade × impacto) por rotina — barras coloridas pela criticidade</div>
+          </div>
+          <TierColorLegend />
+        </div>
+        <ScoreBarList bars={rotinaBars} tight onClick={name => toggleGraphFilter({ type: 'rotina', value: name })} />
       </div>
 
       <StatusDonut
         totalAcoesComStatus={totalAcoesComStatus}
         statusLegend={statusLegend}
         donutBg={donutBg}
+        activeLabel={graphFilter?.type === 'status' ? graphFilter.value : null}
         onLegendClick={label => toggleGraphFilter({ type: 'status', value: label })}
       />
 

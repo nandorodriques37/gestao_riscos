@@ -106,9 +106,23 @@ function App() {
   const editingRecord = editingId != null ? records.find(r => r.id === editingId) ?? null : null;
   const showLoading = loading && records.length === 0;
 
+  // Resumo do estado de gravação para o header. O detalhe por registro continua
+  // no modal; aqui interessa só se o time está vendo dados sincronizados.
+  const sync = (() => {
+    if (tab === 'tarefas') return undefined;
+    const statuses = Object.values(saveStatus);
+    if (error || statuses.includes('error') || statuses.includes('conflict')) {
+      return { state: 'error' as const, label: 'Falha ao sincronizar' };
+    }
+    if (loading || statuses.includes('saving')) {
+      return { state: 'saving' as const, label: 'Salvando…' };
+    }
+    return { state: 'idle' as const, label: 'Sincronizado' };
+  })();
+
   return (
     <div className="app-shell">
-      <TopBar tab={tab} onChangeTab={setTab} />
+      <TopBar tab={tab} onChangeTab={setTab} sync={sync} />
 
       {tab !== 'tarefas' && error && (
         <div className="error-banner">

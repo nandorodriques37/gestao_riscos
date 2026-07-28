@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { TIER_CHIP_COLORS } from '../../lib/calculations';
 import type { TierKind } from '../../lib/calculations';
 
 const NOTAS = [
@@ -54,17 +53,14 @@ export function GutGuide() {
               ))}
             </tbody>
           </table>
-          <div className="gut-guide-title" style={{ marginTop: 14 }}>Faixas de prioridade</div>
+          <div className="gut-guide-title" style={{ marginTop: 'var(--sp-4)' }}>Faixas de prioridade</div>
           <div className="gut-guide-faixas">
-            {FAIXAS.map(f => {
-              const chip = TIER_CHIP_COLORS[f.tier];
-              return (
-                <span key={f.label} className="tier-chip" style={{ background: chip.bg, color: chip.fg }}>
-                  <span className="tier-dot" style={{ background: chip.dot }} />
-                  {f.label} · {f.faixa}
-                </span>
-              );
-            })}
+            {FAIXAS.map(f => (
+              <span key={f.label} className="tier-chip" data-tier={f.tier}>
+                <span className="tier-dot" />
+                {f.label} · {f.faixa}
+              </span>
+            ))}
           </div>
         </div>
       )}

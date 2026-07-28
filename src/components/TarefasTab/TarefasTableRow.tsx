@@ -1,6 +1,5 @@
 import type { EnrichedTaskRow } from '../../lib/taskRows';
-import { BADGE_COLORS, TIER_CHIP_COLORS } from '../../lib/calculations';
-import { gutColor, gutTier, taskStatusKind } from '../../lib/taskCalculations';
+import { gutTier, taskStatusKind } from '../../lib/taskCalculations';
 import { onActivateKey } from '../../lib/a11y';
 
 interface TarefasTableRowProps {
@@ -20,8 +19,7 @@ function initials(nome: string): string {
 
 export function TarefasTableRow({ row, onOpen, onDelete }: TarefasTableRowProps) {
   const { task: t, gut, prioridade, rank, normSt, idx } = row;
-  const statusColors = BADGE_COLORS[taskStatusKind(normSt)];
-  const gutChip = TIER_CHIP_COLORS[gutTier(gut)];
+
 
   return (
     <tr
@@ -30,10 +28,12 @@ export function TarefasTableRow({ row, onOpen, onDelete }: TarefasTableRowProps)
       tabIndex={0}
       role="button"
       aria-label={`Editar tarefa: ${t.tarefa || 'sem título'}`}
-      style={{ background: idx % 2 === 0 ? '#ffffff' : '#F7FAFD' }}
+      data-tier={gutTier(gut)}
     >
-      {/* Acento à esquerda colorido pela faixa de GUT — prioridade escaneável. */}
-      <td title={t.tipo} style={{ boxShadow: `inset 3px 0 0 ${gutColor(gut)}` }}>
+      {/* Acento à esquerda colorido pela faixa de GUT — prioridade escaneável.
+          A zebra saiu junto com a da aba Registro: hairline entre linhas lê
+          mais limpo e não briga com o fundo dos chips. */}
+      <td className="gut-accent" title={t.tipo}>
         {t.tipo ? <span className="type-tag">{t.tipo}</span> : '—'}
       </td>
       <td className="tarefa-cell" title={t.tarefa}><span className="clamp-2">{t.tarefa}</span></td>
@@ -42,20 +42,20 @@ export function TarefasTableRow({ row, onOpen, onDelete }: TarefasTableRowProps)
       <td className="center gut-note">{t.u ?? '—'}</td>
       <td className="center gut-note">{t.t ?? '—'}</td>
       <td className="center">
-        <span className="tier-chip" style={{ background: gutChip.bg, color: gutChip.fg }}>
-          <span className="tier-dot" style={{ background: gutChip.dot }} />
+        <span className="tier-chip" data-tier={gutTier(gut)}>
+          <span className="tier-dot" />
           {gut ?? '—'}
         </span>
       </td>
       <td className="center">
-        <span className="tier-chip" style={{ background: gutChip.bg, color: gutChip.fg }}>
-          <span className="tier-dot" style={{ background: gutChip.dot }} />
+        <span className="tier-chip" data-tier={gutTier(gut)}>
+          <span className="tier-dot" />
           {prioridade ?? '—'}
         </span>
       </td>
-      <td className="center">{rank ?? '—'}</td>
+      <td className="num">{rank ?? '—'}</td>
       <td className="center">
-        <span className="badge" style={{ background: statusColors.bg, color: statusColors.fg }}>{normSt}</span>
+        <span className="badge" data-badge={taskStatusKind(normSt)}>{normSt}</span>
       </td>
       <td title={t.responsavel}>
         {t.responsavel ? (
@@ -67,7 +67,13 @@ export function TarefasTableRow({ row, onOpen, onDelete }: TarefasTableRowProps)
       </td>
       <td className="cell-wrap" title={t.obs}><span className="clamp-2">{t.obs}</span></td>
       <td className="center">
-        <button className="delete-btn" onClick={e => { e.stopPropagation(); onDelete(idx); }}>×</button>
+        <button
+          className="delete-btn"
+          onClick={e => { e.stopPropagation(); onDelete(idx); }}
+          aria-label={`Excluir tarefa: ${t.tarefa || 'sem título'}`}
+        >
+          ×
+        </button>
       </td>
     </tr>
   );

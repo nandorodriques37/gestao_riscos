@@ -1,0 +1,373 @@
+/* ============================================================================
+   Primitivos — botões, campos, filtros, chips, cartões, estado vazio.
+
+   Chips e badges recebem a cor por atributo (`data-tier`, `data-badge`), não
+   por estilo inline. É o que permite o tema escuro trocar a paleta sem tocar
+   em nenhum componente, e o que tira ~110 objetos de estilo do TSX.
+   ========================================================================= */
+
+/* ---------- Cartão ---------- */
+
+.card {
+  background: var(--bg-surface);
+  border: 1px solid var(--line-border);
+  border-radius: var(--r-lg);
+  padding: var(--sp-5);
+}
+
+.card-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.section-header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  flex-wrap: wrap;
+}
+
+.section-title {
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-semibold);
+  letter-spacing: -0.01em;
+  color: var(--ink-1);
+}
+
+.section-subtitle {
+  font-size: var(--fs-xs);
+  color: var(--ink-3);
+  margin-top: var(--sp-1);
+  margin-bottom: var(--sp-5);
+}
+
+.muted {
+  color: var(--ink-4);
+}
+
+/* ---------- Botões ---------- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  height: 32px;
+  padding: 0 var(--sp-3);
+  border-radius: var(--r-sm);
+  border: 1px solid transparent;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  white-space: nowrap;
+  transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+
+.btn-ghost {
+  background: var(--bg-surface);
+  color: var(--ink-2);
+  border-color: var(--line-border);
+}
+
+.btn-ghost:hover {
+  background: var(--bg-hover);
+  border-color: var(--line-strong);
+}
+
+.btn-outline-navy {
+  background: var(--bg-surface);
+  color: var(--brand);
+  border-color: var(--line-border);
+}
+
+.btn-outline-navy:hover {
+  background: var(--brand-soft);
+  border-color: var(--brand);
+}
+
+/* Ação primária. Sólida, sem sombra — a sombra aqui só somava ruído, já que o
+   contraste do preenchimento basta para marcar a hierarquia. */
+.btn-navy {
+  background: var(--brand);
+  color: var(--brand-ink);
+  padding: 0 var(--sp-4);
+  font-weight: var(--fw-semibold);
+}
+
+.btn-navy:hover {
+  background: var(--brand-hover);
+}
+
+.actions-row {
+  display: flex;
+  gap: var(--sp-2);
+  align-items: center;
+}
+
+.toolbar-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+}
+
+/* ---------- Campos e filtros ----------
+   Tudo na mesma altura de 32px. Antes busca (10px), pills (7px) e selects
+   (8px) tinham paddings diferentes e não alinhavam na linha. */
+
+.filter-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+
+.search-input {
+  flex: 1;
+  min-width: 220px;
+  max-width: 360px;
+  height: 32px;
+  padding: 0 var(--sp-3) 0 30px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line-border);
+  font-size: var(--fs-sm);
+  background: var(--bg-surface);
+  color: var(--ink-1);
+  transition: border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
+
+  /* Glifo de lupa desenhado no próprio campo — mantém a regra de não usar
+     biblioteca de ícones, sem exigir um elemento extra no TSX. */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%2393A1B2' stroke-width='1.6'%3E%3Ccircle cx='7' cy='7' r='4.25'/%3E%3Cpath d='M10.2 10.2 13.5 13.5' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: 9px 50%;
+  background-size: 15px;
+}
+
+.search-input::placeholder {
+  color: var(--ink-4);
+}
+
+.search-input:focus {
+  border-color: var(--focus);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.filter-pills {
+  display: flex;
+  gap: var(--sp-1);
+}
+
+.filter-pill {
+  height: 32px;
+  padding: 0 var(--sp-3);
+  border-radius: var(--r-full);
+  border: 1px solid var(--line-border);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  background: var(--bg-surface);
+  color: var(--ink-2);
+  transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+
+.filter-pill:hover {
+  background: var(--bg-hover);
+  border-color: var(--line-strong);
+}
+
+.filter-pill.active {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: var(--brand-ink);
+}
+
+.select-filter {
+  height: 32px;
+  padding: 0 28px 0 var(--sp-3);
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line-border);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  color: var(--ink-2);
+  background: var(--bg-surface);
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='%236B7A8D' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.5 4.5 6 8l3.5-3.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 9px center;
+  background-size: 12px;
+  transition: border-color var(--dur-fast) var(--ease);
+}
+
+.select-filter:hover {
+  border-color: var(--line-strong);
+}
+
+.density-toggle {
+  display: flex;
+  gap: 2px;
+  background: var(--bg-sunken);
+  border: 1px solid var(--line-border);
+  border-radius: var(--r-sm);
+  padding: 2px;
+  height: 32px;
+}
+
+.density-toggle button {
+  border: none;
+  background: transparent;
+  color: var(--ink-3);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  padding: 0 var(--sp-2);
+  border-radius: var(--r-xs);
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+
+.density-toggle button:hover:not(.active) {
+  color: var(--ink-1);
+}
+
+.density-toggle button.active {
+  background: var(--bg-surface);
+  color: var(--ink-1);
+  box-shadow: var(--elev-1);
+}
+
+.filter-count {
+  font-size: var(--fs-xs);
+  color: var(--ink-4);
+  margin-left: auto;
+}
+
+/* ---------- Badge categórico ----------
+   Fundo derivado da própria tinta, então claro e escuro saem de uma regra só. */
+
+.badge {
+  --c: var(--badge-slate);
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 var(--sp-2);
+  border-radius: var(--r-full);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-semibold);
+  white-space: nowrap;
+  color: var(--c);
+  background: color-mix(in oklab, var(--c) 13%, var(--bg-surface));
+  border: 1px solid color-mix(in oklab, var(--c) 22%, transparent);
+}
+
+.badge[data-badge='slate'] { --c: var(--badge-slate); }
+.badge[data-badge='blue'] { --c: var(--badge-blue); }
+.badge[data-badge='green'] { --c: var(--badge-green); }
+.badge[data-badge='amber'] { --c: var(--badge-amber); }
+.badge[data-badge='red'] { --c: var(--badge-red); }
+.badge[data-badge='purple'] { --c: var(--badge-purple); }
+.badge[data-badge='orange'] { --c: var(--badge-orange); }
+
+/* ---------- Chip de criticidade / priorização ----------
+   Identidade nunca por cor sozinha: o ponto acompanha sempre o valor. */
+
+.tier-chip {
+  --c: var(--tier-null);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  height: 20px;
+  padding: 0 var(--sp-2);
+  border-radius: var(--r-full);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-semibold);
+  white-space: nowrap;
+  color: var(--c);
+  background: color-mix(in oklab, var(--c) 13%, var(--bg-surface));
+  border: 1px solid color-mix(in oklab, var(--c) 22%, transparent);
+}
+
+.tier-chip[data-tier='baixo'] { --c: var(--tier-baixo); }
+.tier-chip[data-tier='medio'] { --c: var(--tier-medio); }
+.tier-chip[data-tier='alto'] { --c: var(--tier-alto); }
+.tier-chip[data-tier='critico'] { --c: var(--tier-critico); }
+.tier-chip[data-tier='null'] { --c: var(--tier-null); }
+
+.tier-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--c);
+  flex: none;
+}
+
+/* Variante grande: leitura de Score e Priorização dentro do modal. */
+.tier-chip-lg {
+  --c: var(--tier-null);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  height: 36px;
+  padding: 0 var(--sp-3);
+  border-radius: var(--r-sm);
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+  color: var(--c);
+  background: color-mix(in oklab, var(--c) 11%, var(--bg-surface));
+  border: 1px solid color-mix(in oklab, var(--c) 20%, transparent);
+}
+
+.tier-chip-lg[data-tier='baixo'] { --c: var(--tier-baixo); }
+.tier-chip-lg[data-tier='medio'] { --c: var(--tier-medio); }
+.tier-chip-lg[data-tier='alto'] { --c: var(--tier-alto); }
+.tier-chip-lg[data-tier='critico'] { --c: var(--tier-critico); }
+.tier-chip-lg[data-tier='null'] { --c: var(--tier-null); }
+
+.tier-chip-lg .tier-dot {
+  width: 7px;
+  height: 7px;
+}
+
+/* ---------- Estado vazio ---------- */
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  padding: var(--sp-7) var(--sp-5);
+  text-align: center;
+}
+
+.empty-state-overlay {
+  position: absolute;
+  inset: 0;
+  background: var(--bg-surface);
+  z-index: 3;
+}
+
+.empty-state-icon {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--bg-sunken);
+  color: var(--ink-4);
+  font-size: var(--fs-lg);
+  margin-bottom: var(--sp-1);
+}
+
+.empty-state-message {
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+  color: var(--ink-1);
+}
+
+.empty-state-hint {
+  font-size: var(--fs-sm);
+  color: var(--ink-3);
+  max-width: 42ch;
+}
+
+.empty-state-action {
+  margin-top: var(--sp-2);
+}
