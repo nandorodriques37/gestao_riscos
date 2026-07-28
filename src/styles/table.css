@@ -399,7 +399,7 @@
 
 /* ---------- Tarefas ---------- */
 
-/* Colunas de texto (Tarefa/Detalhes/Observações) quebram dentro da largura da
+/* Colunas de texto (Tarefa/Detalhes) quebram dentro da largura da
    coluna em vez de cortar numa linha só. O `td` continua sendo table-cell — o
    clamp de 2 linhas mora no .clamp-2 interno, porque mudar o display do
    próprio `td` (para -webkit-box ou flex) quebra o layout da tabela. */

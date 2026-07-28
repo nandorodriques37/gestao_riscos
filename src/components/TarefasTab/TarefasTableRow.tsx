@@ -71,7 +71,6 @@ export function TarefasTableRow({ row, onOpen, onToggleConcluida, onDelete }: Ta
           </div>
         ) : '—'}
       </td>
-      <td className="cell-wrap" title={t.obs}><span className="clamp-2">{t.obs}</span></td>
       <td className="center">
         {/* Conclui direto da linha, sem abrir os detalhes. Clicar de novo reabre. */}
         <button
