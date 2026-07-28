@@ -53,7 +53,8 @@ export function QuadrantMatrix({ points, selectedQuadrant, onBubbleClick, onQuad
           {points.map(pt => (
             <div
               key={pt.rankIndex}
-              className={`matrix-bubble${pt.dimmed ? ' dimmed' : ''}`}
+              className={`matrix-bubble${pt.dimmed ? ' dimmed' : ''}${pt.isSelected ? ' selected' : ''}`}
+              data-tier={pt.tier}
               title={pt.tooltip}
               role="button"
               tabIndex={0}
@@ -66,13 +67,11 @@ export function QuadrantMatrix({ points, selectedQuadrant, onBubbleClick, onQuad
                 top: `${pt.yPct}%`,
                 width: pt.size,
                 height: pt.size,
-                transform: `translate(-50%,-50%)${pt.isSelected ? ' scale(1.25)' : ''}`,
-                background: pt.color,
-                fontSize: pt.size >= 30 ? 12 : 10.5,
-                boxShadow: pt.isSelected
-                  ? `0 0 0 3px #fff, 0 0 0 5px ${pt.color}, 0 4px 12px rgba(15,23,42,0.3)`
-                  : '0 1px 4px rgba(15,23,42,0.2)',
-                zIndex: pt.isSelected ? 10 : 1,
+                // A escala de seleção é menor que a anterior (1.25): com o anel
+                // de superfície o destaque já lê, e um salto grande empurrava
+                // visualmente as bolhas vizinhas.
+                transform: `translate(-50%,-50%)${pt.isSelected ? ' scale(1.15)' : ''}`,
+                fontSize: pt.size >= 30 ? 12 : 11,
               }}
             >
               {pt.num}

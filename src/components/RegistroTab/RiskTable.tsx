@@ -84,6 +84,7 @@ export function RiskTable({ rows, colWidths, onColWidthChange, sortKey, sortDir,
                     key={col.id}
                     scope="col"
                     className={`${col.red ? 'th-red' : ''} ${sortable ? 'sortable' : ''} ${stickyClass}`}
+                    data-priority={col.priority}
                     style={{ width }}
                     title={sortable ? 'Clique para ordenar · arraste a borda para redimensionar' : 'Arraste a borda direita para redimensionar'}
                     aria-sort={ariaSort}

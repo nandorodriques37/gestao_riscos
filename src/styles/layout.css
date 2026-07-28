@@ -1,0 +1,536 @@
+/* ============================================================================
+   Layout — shell, header, páginas de aba, grids, KPIs, banners.
+   ========================================================================= */
+
+.app-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-canvas);
+}
+
+/* ---------- Header ----------
+   Claro, hairline, sem gradiente e sem sombra. O peso visual pertence aos
+   dados, não ao chrome. */
+
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: color-mix(in oklab, var(--bg-surface) 88%, transparent);
+  backdrop-filter: saturate(1.6) blur(10px);
+  border-bottom: 1px solid var(--line-border);
+}
+
+.app-header-inner {
+  max-width: var(--container);
+  margin-inline: auto;
+  height: var(--header-h);
+  padding-inline: var(--sp-5);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-5);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex: none;
+}
+
+.brand-mark {
+  width: 26px;
+  height: 26px;
+  border-radius: var(--r-sm);
+  background: var(--brand);
+  color: var(--brand-ink);
+  display: grid;
+  place-items: center;
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.02em;
+  flex: none;
+}
+
+.brand-name {
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+  letter-spacing: -0.01em;
+  color: var(--ink-1);
+  white-space: nowrap;
+}
+
+/* Abas sublinhadas. O indicador é um pseudo-elemento na base do botão, para
+   que a largura acompanhe o rótulo sem cálculo em JS. */
+.nav-tabs {
+  display: flex;
+  align-items: stretch;
+  gap: var(--sp-4);
+  height: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.nav-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.nav-tab {
+  position: relative;
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  color: var(--ink-3);
+  white-space: nowrap;
+  transition: color var(--dur-fast) var(--ease);
+}
+
+.nav-tab::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  border-radius: 2px 2px 0 0;
+  background: var(--brand);
+  transform: scaleX(0);
+  transition: transform var(--dur) var(--ease);
+}
+
+.nav-tab:hover {
+  color: var(--ink-1);
+}
+
+.nav-tab.active {
+  color: var(--ink-1);
+  font-weight: var(--fw-semibold);
+}
+
+.nav-tab.active::after {
+  transform: scaleX(1);
+}
+
+.header-aside {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex: none;
+}
+
+/* Indicador de sincronização. O estado já existia em useRecords, mas só
+   aparecia dentro do modal — num app de dados compartilhados ele pertence ao
+   chrome. */
+.sync-status {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: var(--fs-xs);
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+
+.sync-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--success);
+  flex: none;
+}
+
+.sync-status[data-state='saving'] .sync-dot {
+  background: var(--tier-alto);
+}
+
+.sync-status[data-state='error'] .sync-dot {
+  background: var(--danger);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .sync-status[data-state='saving'] .sync-dot {
+    animation: sync-pulse 1.1s var(--ease) infinite;
+  }
+}
+
+@keyframes sync-pulse {
+  50% { opacity: 0.35; }
+}
+
+/* Ícone desenhado em CSS, não por glifo: nenhum dos símbolos de sol/lua/meia-lua
+   existe no Inter, e o fallback rendia um caractere estreito e torto. Círculo
+   vazio = claro, metade = seguindo o sistema, cheio = escuro. */
+.theme-toggle {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line-border);
+  background: var(--bg-surface);
+  color: var(--ink-3);
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+}
+
+.theme-toggle::before {
+  content: '';
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1.5px solid currentColor;
+}
+
+.theme-toggle[data-pref='system']::before {
+  background: linear-gradient(90deg, currentColor 50%, transparent 50%);
+}
+
+.theme-toggle[data-pref='dark']::before {
+  background: currentColor;
+}
+
+.theme-toggle:hover {
+  background: var(--bg-hover);
+  color: var(--ink-1);
+  border-color: var(--line-strong);
+}
+
+/* ---------- Páginas de aba ---------- */
+
+.tab-page,
+.tab-page-lg {
+  max-width: var(--container);
+  width: 100%;
+  margin-inline: auto;
+  padding: var(--sp-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+.tab-page-lg {
+  gap: var(--sp-5);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .tab-page,
+  .tab-page-lg {
+    animation: tab-enter var(--dur) var(--ease) both;
+  }
+
+  @keyframes tab-enter {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+  }
+}
+
+.page-bar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  flex-wrap: wrap;
+}
+
+.page-title {
+  font-size: var(--fs-xl);
+  font-weight: var(--fw-semibold);
+  letter-spacing: -0.015em;
+  color: var(--ink-1);
+}
+
+.page-subtitle {
+  font-size: var(--fs-sm);
+  color: var(--ink-3);
+  margin-top: 2px;
+}
+
+/* ---------- Grids ---------- */
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-4);
+  align-items: stretch;
+}
+
+.grid-heat {
+  display: grid;
+  grid-template-columns: 1.35fr 1fr;
+  gap: var(--sp-4);
+  align-items: stretch;
+}
+
+/* ---------- KPIs ----------
+   Sem sombra e sem hover-lift: o lift em cartão que não clica é affordance
+   falsa. O acento de cor virou uma barra de 3px na borda esquerda. */
+
+.kpi-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--sp-3);
+}
+
+.kpi-grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--sp-3);
+}
+
+.kpi-card,
+.kpi-tile {
+  --c: var(--brand);
+  position: relative;
+  background: var(--bg-surface);
+  border: 1px solid var(--line-border);
+  border-radius: var(--r-lg);
+  padding: var(--sp-3) var(--sp-4);
+  overflow: hidden;
+}
+
+.kpi-card::before,
+.kpi-tile::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: var(--sp-3);
+  bottom: var(--sp-3);
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--c);
+}
+
+.kpi-card[data-accent='brand'], .kpi-tile[data-accent='brand'] { --c: var(--brand); }
+.kpi-card[data-accent='baixo'], .kpi-tile[data-accent='baixo'] { --c: var(--tier-baixo); }
+.kpi-card[data-accent='medio'], .kpi-tile[data-accent='medio'] { --c: var(--tier-medio); }
+.kpi-card[data-accent='alto'], .kpi-tile[data-accent='alto'] { --c: var(--tier-alto); }
+.kpi-card[data-accent='critico'], .kpi-tile[data-accent='critico'] { --c: var(--tier-critico); }
+.kpi-card[data-accent='null'], .kpi-tile[data-accent='null'] { --c: var(--tier-null); }
+
+.kpi-body {
+  min-width: 0;
+}
+
+.kpi-label {
+  font-size: var(--fs-2xs);
+  color: var(--ink-3);
+  font-weight: var(--fw-medium);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+/* Número grande em figuras proporcionais — tabular só onde precisa alinhar
+   em coluna. */
+.kpi-value,
+.kpi-tile-value {
+  font-size: var(--fs-num);
+  font-weight: var(--fw-bold);
+  letter-spacing: -0.025em;
+  line-height: 1.1;
+  margin-top: var(--sp-1);
+  color: var(--ink-1);
+}
+
+.kpi-value-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+
+.kpi-value-row .kpi-value {
+  margin-top: var(--sp-1);
+}
+
+.kpi-value-sub,
+.kpi-tile-value-sub {
+  font-size: var(--fs-xs);
+  color: var(--ink-3);
+  font-weight: var(--fw-regular);
+}
+
+.kpi-progress-track {
+  height: 4px;
+  background: var(--bg-sunken);
+  border-radius: var(--r-full);
+  margin-top: var(--sp-2);
+  overflow: hidden;
+}
+
+.kpi-progress-bar {
+  height: 100%;
+  border-radius: var(--r-full);
+  background: var(--c);
+  transition: width var(--dur) var(--ease);
+}
+
+/* ---------- Skeleton ---------- */
+
+.app-loading {
+  max-width: var(--container);
+  width: 100%;
+  margin-inline: auto;
+  padding: var(--sp-5);
+}
+
+.skeleton-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-4);
+}
+
+.skeleton-kpi {
+  height: 78px;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--line-border);
+  background: var(--bg-surface);
+  position: relative;
+  overflow: hidden;
+}
+
+.skeleton-table {
+  background: var(--bg-surface);
+  border: 1px solid var(--line-border);
+  border-radius: var(--r-lg);
+  padding: var(--sp-2) 0;
+}
+
+.skeleton-row {
+  height: 28px;
+  margin: var(--sp-2) var(--sp-4);
+  border-radius: var(--r-xs);
+  background: var(--bg-sunken);
+  position: relative;
+  overflow: hidden;
+}
+
+/* O shimmer respeita reduced-motion — antes ele rodava sempre. */
+@media (prefers-reduced-motion: no-preference) {
+  .skeleton-kpi::after,
+  .skeleton-row::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in oklab, var(--ink-4) 12%, transparent),
+      transparent
+    );
+    animation: skeleton-shimmer 1.4s var(--ease) infinite;
+  }
+
+  @keyframes skeleton-shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+}
+
+/* ---------- Banner de erro ---------- */
+
+.error-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  max-width: var(--container);
+  width: 100%;
+  margin: var(--sp-4) auto 0;
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--danger-soft);
+  border: 1px solid color-mix(in oklab, var(--danger) 28%, transparent);
+  border-radius: var(--r-md);
+  color: var(--danger);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+}
+
+.error-banner > span {
+  flex: 1;
+}
+
+.error-banner button {
+  background: var(--bg-surface);
+  border: 1px solid color-mix(in oklab, var(--danger) 32%, transparent);
+  color: var(--danger);
+  border-radius: var(--r-sm);
+  height: 28px;
+  padding: 0 var(--sp-3);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+}
+
+.error-banner button:hover {
+  background: color-mix(in oklab, var(--danger) 10%, var(--bg-surface));
+}
+
+.error-banner-dismiss {
+  padding: 0 var(--sp-2) !important;
+  line-height: 1;
+}
+
+/* ---------- Snackbar de desfazer ---------- */
+
+.undo-snackbar {
+  position: fixed;
+  left: 50%;
+  bottom: var(--sp-5);
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  background: var(--ink-1);
+  color: var(--bg-surface);
+  padding: var(--sp-2) var(--sp-2) var(--sp-2) var(--sp-4);
+  border-radius: var(--r-md);
+  box-shadow: var(--elev-3);
+  font-size: var(--fs-sm);
+  z-index: 50;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .undo-snackbar {
+    animation: snackbar-in var(--dur) var(--ease) both;
+  }
+
+  @keyframes snackbar-in {
+    from {
+      opacity: 0;
+      transform: translate(-50%, 10px);
+    }
+  }
+}
+
+.undo-snackbar-action {
+  background: none;
+  border: none;
+  color: var(--bg-surface);
+  font-weight: var(--fw-semibold);
+  font-size: var(--fs-sm);
+  padding: var(--sp-1) var(--sp-2);
+  border-radius: var(--r-xs);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.undo-snackbar-action:hover {
+  background: color-mix(in oklab, var(--bg-surface) 16%, transparent);
+}
+
+.undo-snackbar-dismiss {
+  background: none;
+  border: none;
+  color: color-mix(in oklab, var(--bg-surface) 60%, transparent);
+  font-size: var(--fs-lg);
+  line-height: 1;
+  padding: 0 var(--sp-1);
+}
+
+.undo-snackbar-dismiss:hover {
+  color: var(--bg-surface);
+}

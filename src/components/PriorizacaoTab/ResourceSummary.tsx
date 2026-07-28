@@ -1,5 +1,4 @@
 import type { PriorityGroup } from './priorityGroups';
-import { TIER_CHIP_COLORS } from '../../lib/calculations';
 import { EmptyState } from '../common/EmptyState';
 
 interface ResourceSummaryProps {
@@ -33,24 +32,21 @@ export function ResourceSummary({ groups }: ResourceSummaryProps) {
                   </tr>
                 </thead>
                 <tbody>
-                  {grp.actions.map((act, i) => {
-                    const chip = TIER_CHIP_COLORS[act.tier];
-                    return (
-                      <tr key={i}>
-                        <td>{act.acoes}</td>
-                        <td className="muted">{act.combo}</td>
-                        <td className="center">{act.esforco}</td>
-                        <td className="center">{act.impacto2}</td>
-                        <td className="center">{act.gravidade}</td>
-                        <td className="center">
-                          <span className="tier-chip" style={{ background: chip.bg, color: chip.fg }}>
-                            <span className="tier-dot" style={{ background: chip.dot }} />
-                            {act.prioriz}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  {grp.actions.map((act, i) => (
+                    <tr key={i}>
+                      <td>{act.acoes}</td>
+                      <td className="muted">{act.combo}</td>
+                      <td className="num">{act.esforco}</td>
+                      <td className="num">{act.impacto2}</td>
+                      <td className="num">{act.gravidade}</td>
+                      <td className="center">
+                        <span className="tier-chip" data-tier={act.tier}>
+                          <span className="tier-dot" />
+                          {act.prioriz}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>

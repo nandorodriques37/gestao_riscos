@@ -1,5 +1,5 @@
 import type { RiskRecord } from '../../types';
-import { scoreColor } from '../../lib/calculations';
+import { scoreTier } from '../../lib/calculations';
 import { onActivateKey } from '../../lib/a11y';
 
 interface HeatmapProps {
@@ -25,27 +25,25 @@ export function Heatmap({ records, onCellClick }: HeatmapProps) {
           <div className="heatmap-grid" role="group" aria-label="Mapa de calor de probabilidade por impacto, grade 5 por 5">
             {IMPACT_ROWS.flatMap(imp => PROB_COLS.map(prob => {
               const count = records.filter(r => r.probab === prob && r.impact === imp).length;
-              const color = scoreColor(prob * imp);
               const clickable = count > 0;
-              const label = `Probabilidade ${prob} · Impacto ${imp} — ${count} ${count === 1 ? 'risco' : 'riscos'}` + (clickable ? ' · clique para filtrar' : '');
+              const label = `Probabilidade ${prob} · Impacto ${imp} · score ${prob * imp} — ${count} ${count === 1 ? 'risco' : 'riscos'}` + (clickable ? ' · clique para filtrar' : '');
               return (
                 <div
                   key={`${prob}-${imp}`}
                   className="heatmap-cell"
+                  data-tier={scoreTier(prob * imp)}
+                  data-empty={count === 0 ? 'true' : undefined}
                   title={label}
                   role={clickable ? 'button' : 'img'}
                   tabIndex={clickable ? 0 : undefined}
                   aria-label={label}
                   onClick={clickable ? () => onCellClick(prob, imp) : undefined}
                   onKeyDown={clickable ? onActivateKey(() => onCellClick(prob, imp)) : undefined}
-                  style={{
-                    background: count > 0 ? color : color + '24',
-                    color: count > 0 ? '#fff' : 'transparent',
-                    cursor: count > 0 ? 'pointer' : 'default',
-                    boxShadow: count > 0 ? '0 2px 6px rgba(15,23,42,0.12)' : 'none',
-                  }}
                 >
-                  {count > 0 ? count : ''}
+                  {/* O zero fica visível. Antes o texto da célula vazia era
+                      `transparent`, o que apagava a diferença entre "nenhum
+                      risco aqui" e "faixa não avaliada". */}
+                  {count}
                 </div>
               );
             }))}

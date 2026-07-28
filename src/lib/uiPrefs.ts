@@ -42,6 +42,37 @@ export function readStatusFilter<T extends string>(key: string, allowed: readonl
   return [];
 }
 
+export type ThemePref = 'light' | 'dark' | 'system';
+
+const THEME_KEY = 'riskMatrix.theme.v1';
+
+/** Tema escolhido pelo usuário; 'system' segue a preferência do sistema operacional. */
+export function readThemePref(): ThemePref {
+  try {
+    const raw = localStorage.getItem(THEME_KEY);
+    if (raw === 'light' || raw === 'dark' || raw === 'system') return raw;
+  } catch {
+    // storage ausente/corrompido — segue o sistema
+  }
+  return 'system';
+}
+
+/**
+ * Marca o <html> com o tema escolhido. 'system' remove o atributo, deixando o
+ * `color-scheme: light dark` do :root responder à media query — é o que faz o
+ * light-dark() dos tokens escolher o lado certo.
+ */
+export function applyThemePref(pref: ThemePref): void {
+  const root = document.documentElement;
+  if (pref === 'system') root.removeAttribute('data-theme');
+  else root.setAttribute('data-theme', pref);
+  try {
+    localStorage.setItem(THEME_KEY, pref);
+  } catch {
+    // storage indisponível — tema vale só para a sessão
+  }
+}
+
 export function writePref(key: string, value: unknown): void {
   try {
     localStorage.setItem(key, JSON.stringify(value));

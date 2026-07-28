@@ -149,19 +149,27 @@ export function RegistroTab({
 
   return (
     <div className="tab-page">
-      <div className="toolbar-row">
-        <KpiCards
-          totalRiscos={totalRiscos}
-          totalEmAndamento={totalEmAndamento}
-          totalConcluido={totalConcluido}
-          totalCritico={totalCritico}
-          completude={completude}
-        />
+      {/* Título e ações numa barra própria; os KPIs abaixo, em faixa inteira.
+          Antes os cinco cartões e os dois botões dividiam a mesma linha e
+          embolavam a partir de qualquer largura de notebook. */}
+      <div className="page-bar">
+        <div>
+          <div className="page-title">Registro de riscos e ações</div>
+          <div className="page-subtitle">{rows.length} {rows.length === 1 ? 'registro' : 'registros'} · clique em uma linha para editar</div>
+        </div>
         <div className="actions-row">
-          <button className="btn btn-outline-navy" onClick={onExportCSV}>↓ Exportar CSV</button>
+          <button className="btn btn-ghost" onClick={onExportCSV}>↓ Exportar CSV</button>
           <button className="btn btn-navy" onClick={onAddRow}>+ Adicionar registro</button>
         </div>
       </div>
+
+      <KpiCards
+        totalRiscos={totalRiscos}
+        totalEmAndamento={totalEmAndamento}
+        totalConcluido={totalConcluido}
+        totalCritico={totalCritico}
+        completude={completude}
+      />
 
       <FilterBar
         search={search}

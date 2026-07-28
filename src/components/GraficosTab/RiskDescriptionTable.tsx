@@ -1,4 +1,4 @@
-import { BADGE_COLORS, round1, scoreTier, statusKind, TIER_CHIP_COLORS } from '../../lib/calculations';
+import { round1, scoreTier, statusKind } from '../../lib/calculations';
 import { EmptyState } from '../common/EmptyState';
 
 export interface RiskListItem {
@@ -34,27 +34,23 @@ export function RiskDescriptionTable({ riskList, count }: RiskDescriptionTablePr
                 <td colSpan={4}><EmptyState message="Nenhum risco encontrado com esse recorte." /></td>
               </tr>
             ) : (
-              riskList.map((rk, i) => {
-                const statusColors = BADGE_COLORS[statusKind(rk.normSt)];
-                const scoreChip = TIER_CHIP_COLORS[scoreTier(rk.score)];
-                return (
-                  <tr key={i}>
-                    <td>{rk.risco}</td>
-                    <td className="muted">{rk.combo}</td>
-                    <td className="center">
-                      <span className="tier-chip" style={{ background: scoreChip.bg, color: scoreChip.fg }}>
-                        <span className="tier-dot" style={{ background: scoreChip.dot }} />
-                        {rk.score != null ? round1(rk.score) : '—'}
-                      </span>
-                    </td>
-                    <td className="center">
-                      <span className="badge" style={{ background: statusColors.bg, color: statusColors.fg }}>
-                        {rk.normSt}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })
+              riskList.map((rk, i) => (
+                <tr key={i}>
+                  <td>{rk.risco}</td>
+                  <td className="muted">{rk.combo}</td>
+                  <td className="center">
+                    <span className="tier-chip" data-tier={scoreTier(rk.score)}>
+                      <span className="tier-dot" />
+                      {rk.score != null ? round1(rk.score) : '—'}
+                    </span>
+                  </td>
+                  <td className="center">
+                    <span className="badge" data-badge={statusKind(rk.normSt)}>
+                      {rk.normSt}
+                    </span>
+                  </td>
+                </tr>
+              ))
             )}
           </tbody>
         </table>

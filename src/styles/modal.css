@@ -1,0 +1,253 @@
+/* ============================================================================
+   Modal — compartilhado por EditModal e TarefaEditModal.
+   ========================================================================= */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: var(--bg-overlay);
+  backdrop-filter: blur(3px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-5);
+}
+
+.modal-card {
+  width: 100%;
+  max-width: 780px;
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-surface);
+  border: 1px solid var(--line-border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--elev-3);
+  overflow: hidden;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .modal-overlay {
+    animation: overlay-in var(--dur-fast) var(--ease) both;
+  }
+
+  .modal-card {
+    animation: modal-in var(--dur) var(--ease) both;
+  }
+
+  @keyframes overlay-in {
+    from { opacity: 0; }
+  }
+
+  @keyframes modal-in {
+    from {
+      opacity: 0;
+      transform: translateY(8px) scale(0.98);
+    }
+  }
+}
+
+/* ---------- Cabeçalho ---------- */
+
+.modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: var(--sp-4) var(--sp-5);
+  border-bottom: 1px solid var(--line-border);
+  flex: none;
+}
+
+.modal-title {
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-semibold);
+  letter-spacing: -0.01em;
+  color: var(--ink-1);
+}
+
+.modal-subtitle {
+  font-size: var(--fs-xs);
+  color: var(--ink-3);
+  margin-top: 2px;
+}
+
+.modal-subtitle-saving { color: var(--tier-alto); }
+.modal-subtitle-saved { color: var(--success); }
+.modal-subtitle-error { color: var(--danger); }
+.modal-subtitle-conflict { color: var(--tier-alto); }
+
+.modal-close {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  flex: none;
+  border: none;
+  background: transparent;
+  color: var(--ink-3);
+  border-radius: var(--r-sm);
+  font-size: var(--fs-lg);
+  line-height: 1;
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+
+.modal-close:hover {
+  background: var(--bg-hover);
+  color: var(--ink-1);
+}
+
+/* ---------- Corpo ---------- */
+
+.modal-body {
+  overflow-y: auto;
+  padding: var(--sp-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
+}
+
+.modal-section-title {
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-semibold);
+  color: var(--ink-3);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: var(--sp-3);
+  padding-bottom: var(--sp-2);
+  border-bottom: 1px solid var(--line-hairline);
+}
+
+.modal-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--sp-3);
+}
+
+.modal-grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--sp-3);
+}
+
+.modal-field-label {
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  color: var(--ink-3);
+  margin-bottom: var(--sp-1);
+}
+
+.modal-input,
+.modal-textarea {
+  width: 100%;
+  border: 1px solid var(--line-border);
+  border-radius: var(--r-sm);
+  padding: 0 var(--sp-3);
+  height: 32px;
+  font-size: var(--fs-sm);
+  color: var(--ink-1);
+  background: var(--bg-surface);
+  transition: border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
+}
+
+select.modal-input {
+  appearance: none;
+  padding-right: 28px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='%236B7A8D' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.5 4.5 6 8l3.5-3.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 9px center;
+  background-size: 12px;
+}
+
+.modal-textarea {
+  height: auto;
+  min-height: 56px;
+  padding: var(--sp-2) var(--sp-3);
+  resize: vertical;
+  line-height: 1.45;
+}
+
+/* Foco com anel visível — antes o foco mudava só a cor da borda, o que quase
+   não se percebia. */
+.modal-input:focus,
+.modal-textarea:focus {
+  border-color: var(--focus);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+/* ---------- Rodapé ---------- */
+
+.modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-5);
+  border-top: 1px solid var(--line-border);
+  background: var(--bg-sunken);
+  flex: none;
+}
+
+.modal-footer-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+/* Ação destrutiva em tinta, não em botão vermelho cheio: ela não é a ação
+   principal do rodapé e não deve competir com "Salvar". */
+.modal-btn-delete {
+  border: none;
+  background: none;
+  color: var(--danger);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  height: 32px;
+  padding: 0 var(--sp-2);
+  border-radius: var(--r-sm);
+  transition: background var(--dur-fast) var(--ease);
+}
+
+.modal-btn-delete:hover {
+  background: color-mix(in oklab, var(--danger) 12%, transparent);
+}
+
+.modal-btn-save,
+.modal-btn-done {
+  height: 32px;
+  padding: 0 var(--sp-4);
+  border-radius: var(--r-sm);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+}
+
+.modal-btn-save {
+  background: var(--brand);
+  color: var(--brand-ink);
+  border: 1px solid var(--brand);
+}
+
+.modal-btn-save:hover:not(:disabled) {
+  background: var(--brand-hover);
+  border-color: var(--brand-hover);
+}
+
+.modal-btn-save:disabled {
+  background: var(--bg-sunken);
+  border-color: var(--line-border);
+  color: var(--ink-4);
+  cursor: not-allowed;
+}
+
+.modal-btn-done {
+  background: var(--bg-surface);
+  color: var(--ink-2);
+  border: 1px solid var(--line-border);
+}
+
+.modal-btn-done:hover {
+  background: var(--bg-hover);
+  border-color: var(--line-strong);
+}

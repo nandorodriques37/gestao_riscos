@@ -1,0 +1,167 @@
+/* ============================================================================
+   Responsivo — três faixas no lugar de uma.
+
+   Antes só existia @media (max-width: 760px). A faixa 761–1100px ficava
+   descoberta e era exatamente onde a tabela de 19 colunas, a matriz de
+   quadrantes e o strip de KPIs quebravam pior.
+   ========================================================================= */
+
+/* ---------- Tablet / notebook estreito ---------- */
+
+@media (max-width: 1100px) {
+  .kpi-grid-4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .grid-2,
+  .grid-heat {
+    grid-template-columns: 1fr;
+  }
+
+  /* Empilhado, o painel volta a ter altura própria em vez de acompanhar a
+     matriz. */
+  .matrix-layout {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+
+  .ranked-list-panel {
+    max-height: 420px;
+  }
+
+  /* Colunas de prioridade baixa saem primeiro — a tabela continua rolando na
+     horizontal, mas com menos distância a percorrer. */
+  .risk-table [data-priority='low'] {
+    display: none;
+  }
+
+  /* A faixa de grupo usa colSpan fixo; com colunas ocultas ela passaria a
+     abranger mais células do que existem e desalinharia o cabeçalho. Some
+     junto, e a linha de títulos assume o topo. */
+  .risk-table .group-row {
+    display: none;
+  }
+
+  .risk-table thead tr:not(.group-row) th {
+    top: 0;
+  }
+
+  .modal-grid-4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* ---------- Celular / tablet retrato ---------- */
+
+@media (max-width: 760px) {
+  .app-header-inner {
+    padding-inline: var(--sp-3);
+    gap: var(--sp-3);
+  }
+
+  .brand-name {
+    display: none;
+  }
+
+  .sync-status span {
+    display: none;
+  }
+
+  .tab-page,
+  .tab-page-lg,
+  .app-loading {
+    padding: var(--sp-3);
+  }
+
+  .kpi-strip,
+  .kpi-grid-4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .kpi-card.wide {
+    grid-column: 1 / -1;
+  }
+
+  .kpi-value,
+  .kpi-tile-value {
+    font-size: var(--fs-xl);
+  }
+
+  /* Tabela dá lugar aos cartões. */
+  .table-wrap {
+    display: none;
+  }
+
+  .risk-card-list {
+    display: flex;
+  }
+
+  .search-input {
+    max-width: none;
+  }
+
+  .filter-count {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .card {
+    padding: var(--sp-4);
+  }
+
+  .donut-row {
+    justify-content: center;
+  }
+
+  .modal-overlay {
+    padding: 0;
+    align-items: flex-end;
+  }
+
+  .modal-card {
+    max-width: none;
+    max-height: 94vh;
+    border-radius: var(--r-lg) var(--r-lg) 0 0;
+    border-bottom: none;
+  }
+
+  .modal-header,
+  .modal-body {
+    padding: var(--sp-4);
+  }
+
+  .modal-footer {
+    padding: var(--sp-3) var(--sp-4);
+  }
+
+  .modal-grid-3,
+  .modal-grid-4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .priority-group-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--sp-1);
+  }
+
+  .legend-status-row {
+    gap: var(--sp-4);
+  }
+
+  .gut-guide-panel {
+    position: fixed;
+    left: var(--sp-3);
+    right: var(--sp-3);
+    top: auto;
+    width: auto;
+    max-width: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .modal-grid-3,
+  .modal-grid-4 {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,5 +1,5 @@
 import type { RiskRecord } from '../../types';
-import { computeScore, round1, tierColor } from '../../lib/calculations';
+import { computeScore, round1, barTier, type TierKind } from '../../lib/calculations';
 import type { EnrichedRow } from '../../lib/rows';
 
 export interface ScoreBar {
@@ -7,7 +7,7 @@ export interface ScoreBar {
   score: number;
   count: number;
   pct: number;
-  color: string;
+  tier: TierKind;
   meta: string;
 }
 
@@ -31,7 +31,7 @@ export function buildScoreBars(records: RiskRecord[], field: 'categoria' | 'area
     score: round1(b.sum),
     count: b.count,
     pct: Math.max(2, (b.sum / maxSum) * 100),
-    color: tierColor(b.sum / maxSum),
+    tier: barTier(b.sum / maxSum),
     meta: `${b.count} ${b.count > 1 ? 'riscos' : 'risco'}`,
   }));
 }

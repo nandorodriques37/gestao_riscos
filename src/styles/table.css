@@ -1,0 +1,557 @@
+/* ============================================================================
+   Tabela — compartilhada por Registro e Tarefas.
+
+   Antes as duas abas tinham vocabulários próprios: a de Tarefas fazia zebra
+   por estilo inline e acento por inset box-shadow, a de Registro tinha
+   cabeçalho navy sólido. Agora as duas saem daqui.
+   ========================================================================= */
+
+.table-wrap,
+.tarefas-table-wrap {
+  position: relative;
+  background: var(--bg-surface);
+  border: 1px solid var(--line-border);
+  border-radius: var(--r-lg);
+  overflow: auto;
+  max-height: 64vh;
+}
+
+.risk-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: max-content;
+  min-width: 100%;
+  font-size: var(--fs-sm);
+  color: var(--ink-2);
+}
+
+/* ---------- Cabeçalho ----------
+   Superfície rebaixada com tinta secundária, no lugar do bloco navy sólido.
+   O navy pesado brigava com os chips coloridos das próprias linhas. */
+
+.risk-table thead th {
+  position: sticky;
+  background: var(--bg-sunken);
+  color: var(--ink-3);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  text-align: left;
+  white-space: nowrap;
+  padding: 0 var(--sp-3);
+  height: 34px;
+  border-bottom: 1px solid var(--line-border);
+  top: 0;
+  z-index: 4;
+}
+
+/* Faixa de grupo: era uma barra navy de 24px, virou uma linha discreta. */
+.risk-table .group-row th {
+  height: 26px;
+  font-size: 10px;
+  font-weight: var(--fw-medium);
+  color: var(--ink-4);
+  background: var(--bg-sunken);
+  border-bottom: 1px solid var(--line-hairline);
+  box-shadow: inset 1px 0 0 var(--line-hairline);
+}
+
+.risk-table .group-row th:empty {
+  box-shadow: none;
+}
+
+/* Só a linha que vem logo depois da faixa de grupo desce 26px. A tabela de
+   Tarefas não tem faixa de grupo — sem esta condição o cabeçalho dela ficaria
+   pinado 26px abaixo do topo, deixando as linhas aparecerem por cima. */
+.risk-table .group-row + tr th {
+  top: 26px;
+}
+
+.risk-table thead th.sortable {
+  cursor: pointer;
+  transition: color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
+}
+
+.risk-table thead th.sortable:hover {
+  color: var(--ink-1);
+  background: var(--bg-hover);
+}
+
+/* A coluna "Riscos" é marcada por acento no rótulo e por uma faixa vertical,
+   não por um fundo rosa em toda célula — que competia com os chips. */
+.risk-table thead th.th-red {
+  color: var(--risco-accent);
+}
+
+.risk-table thead th.th-red::before,
+.risk-table td.risco-cell::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: color-mix(in oklab, var(--risco-accent) 55%, transparent);
+}
+
+/* Só a célula do corpo precisa de `relative` para ancorar a faixa. No <th> o
+   `position: sticky` já cria o bloco de contenção — declarar `relative` ali
+   derrubaria o sticky e jogaria o cabeçalho para dentro do corpo. */
+.risk-table td.risco-cell {
+  position: relative;
+  color: var(--ink-1);
+  font-weight: var(--fw-medium);
+  padding-left: var(--sp-4);
+}
+
+.risk-table thead th.th-red {
+  padding-left: var(--sp-4);
+}
+
+/* Alça de redimensionamento — 8px de alvo, traço de 1px. */
+.col-grip {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 8px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 1;
+}
+
+.col-grip::after {
+  content: '';
+  position: absolute;
+  right: 3px;
+  top: 25%;
+  bottom: 25%;
+  width: 1px;
+  background: var(--line-border);
+  transition: background var(--dur-fast) var(--ease);
+}
+
+.col-grip:hover::after {
+  background: var(--focus);
+}
+
+/* ---------- Linhas ----------
+   Zebra removida: hairline entre linhas lê mais limpo e não briga com o
+   destaque de hover nem com o fundo dos chips. */
+
+.risk-table tbody tr {
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease);
+}
+
+.risk-table tbody tr:hover {
+  background: var(--bg-hover);
+}
+
+.risk-table tbody td {
+  height: 36px;
+  padding: 0 var(--sp-3);
+  border-bottom: 1px solid var(--line-hairline);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 0;
+}
+
+.density-compact .risk-table tbody td {
+  height: 30px;
+}
+
+.density-compact .risk-table thead th {
+  height: 30px;
+}
+
+.risk-table td.center {
+  text-align: center;
+}
+
+/* Colunas numéricas alinham à direita e usam figuras tabulares — é o que faz
+   uma coluna de números parecer uma coluna de números. */
+.risk-table td.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Colunas fixas ---------- */
+
+.sticky-col-left,
+.sticky-col-right {
+  position: sticky;
+  z-index: 2;
+}
+
+/* O fundo precisa ser opaco e vencer `.risk-table tbody td`, senão o conteúdo
+   das colunas roláveis passa por baixo durante o scroll horizontal. */
+.risk-table .sticky-col-left {
+  left: 0;
+  background: var(--bg-surface);
+}
+
+.risk-table .sticky-col-right {
+  right: 0;
+  background: var(--bg-surface);
+}
+
+.risk-table tbody tr:hover .sticky-col-left,
+.risk-table tbody tr:hover .sticky-col-right {
+  background: var(--bg-hover);
+}
+
+.risk-table thead th.sticky-col-left,
+.risk-table thead th.sticky-col-right {
+  z-index: 5;
+  background: var(--bg-sunken);
+}
+
+/* Sombra direcional só quando há conteúdo escondido atrás da coluna fixa. */
+.is-scrolled-x .sticky-col-left::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: -12px;
+  width: 12px;
+  pointer-events: none;
+  background: linear-gradient(90deg, color-mix(in oklab, var(--ink-1) 10%, transparent), transparent);
+}
+
+.is-scrolled-x .sticky-col-right::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -12px;
+  width: 12px;
+  pointer-events: none;
+  background: linear-gradient(270deg, color-mix(in oklab, var(--ink-1) 10%, transparent), transparent);
+}
+
+.delete-btn {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border: none;
+  background: transparent;
+  color: var(--ink-4);
+  border-radius: var(--r-xs);
+  font-size: var(--fs-md);
+  line-height: 1;
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+
+.delete-btn:hover {
+  background: color-mix(in oklab, var(--danger) 14%, transparent);
+  color: var(--danger);
+}
+
+/* ---------- Cartões (telas estreitas) ---------- */
+
+.risk-card-list {
+  display: none;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.risk-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--line-border);
+  border-radius: var(--r-md);
+  padding: var(--sp-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+}
+
+.risk-card:hover {
+  background: var(--bg-hover);
+  border-color: var(--line-strong);
+}
+
+.risk-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+
+.risk-card-combo {
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--ink-4);
+}
+
+.risk-card-risco {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  color: var(--ink-1);
+  line-height: 1.4;
+}
+
+.risk-card-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1);
+}
+
+.risk-card-meta {
+  font-size: var(--fs-xs);
+  color: var(--ink-3);
+}
+
+/* ---------- Tabela de descrição (aba Gráficos) ---------- */
+
+.desc-table-wrap {
+  border: 1px solid var(--line-border);
+  border-radius: var(--r-md);
+  overflow: auto;
+  max-height: 380px;
+}
+
+.desc-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: var(--fs-sm);
+  color: var(--ink-2);
+}
+
+.desc-table th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--bg-sunken);
+  color: var(--ink-3);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  text-align: left;
+  height: 32px;
+  padding: 0 var(--sp-3);
+  border-bottom: 1px solid var(--line-border);
+  white-space: nowrap;
+}
+
+.desc-table td {
+  padding: var(--sp-2) var(--sp-3);
+  border-bottom: 1px solid var(--line-hairline);
+  vertical-align: top;
+  line-height: 1.4;
+}
+
+.desc-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* ---------- Tarefas ---------- */
+
+/* Colunas de texto (Tarefa/Detalhes/Observações) quebram dentro da largura da
+   coluna em vez de cortar numa linha só. O `td` continua sendo table-cell — o
+   clamp de 2 linhas mora no .clamp-2 interno, porque mudar o display do
+   próprio `td` (para -webkit-box ou flex) quebra o layout da tabela. */
+.tarefas-table-wrap .risk-table tbody td {
+  height: auto;
+  min-height: 36px;
+  padding: var(--sp-2) var(--sp-3);
+  vertical-align: top;
+}
+
+.tarefas-table-wrap .risk-table td.cell-wrap,
+.tarefas-table-wrap .risk-table td.tarefa-cell {
+  white-space: normal;
+}
+
+.tarefas-table-wrap .risk-table td.cell-wrap {
+  color: var(--ink-3);
+}
+
+/* Notas G/U/T em tom discreto — o olho vai primeiro ao chip colorido de GUT. */
+.tarefas-table-wrap .risk-table td.gut-note {
+  color: var(--ink-4);
+}
+
+.tarefas-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tarefas-heading-title {
+  font-size: var(--fs-xl);
+  font-weight: var(--fw-semibold);
+  letter-spacing: -0.015em;
+  color: var(--ink-1);
+}
+
+.tarefas-heading-subtitle {
+  font-size: var(--fs-sm);
+  color: var(--ink-3);
+}
+
+.tarefa-cell {
+  color: var(--ink-1);
+  font-weight: var(--fw-medium);
+}
+
+/* Acento de GUT na primeira célula da linha. A cor vem do data-tier da <tr>,
+   então claro e escuro trocam sozinhos. */
+.gut-accent {
+  position: relative;
+}
+
+.gut-accent::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--c, var(--tier-null));
+}
+
+tr[data-tier='baixo'] { --c: var(--tier-baixo); }
+tr[data-tier='medio'] { --c: var(--tier-medio); }
+tr[data-tier='alto'] { --c: var(--tier-alto); }
+tr[data-tier='critico'] { --c: var(--tier-critico); }
+tr[data-tier='null'] { --c: var(--tier-null); }
+
+.type-tag {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 var(--sp-2);
+  border-radius: var(--r-full);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-medium);
+  color: var(--ink-3);
+  background: var(--bg-sunken);
+  border: 1px solid var(--line-hairline);
+  white-space: nowrap;
+}
+
+.owner-cell {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+
+.owner-avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  flex: none;
+  font-size: 10px;
+  font-weight: var(--fw-semibold);
+  color: var(--ink-2);
+  background: var(--bg-sunken);
+  border: 1px solid var(--line-hairline);
+}
+
+.owner-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gut-note {
+  font-size: var(--fs-xs);
+  color: var(--ink-3);
+}
+
+/* ---------- Guia GUT (popover) ---------- */
+
+.gut-guide {
+  position: relative;
+}
+
+.gut-guide-panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + var(--sp-2));
+  z-index: 20;
+  width: 420px;
+  max-width: calc(100vw - var(--sp-6));
+  background: var(--bg-surface);
+  border: 1px solid var(--line-border);
+  border-radius: var(--r-md);
+  box-shadow: var(--elev-2);
+  padding: var(--sp-4);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .gut-guide-panel {
+    animation: popover-in var(--dur-fast) var(--ease) both;
+  }
+
+  @keyframes popover-in {
+    from {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+  }
+}
+
+.gut-guide-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-2);
+}
+
+.gut-guide-title {
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+  color: var(--ink-1);
+}
+
+.gut-guide-intro {
+  font-size: var(--fs-sm);
+  color: var(--ink-2);
+  line-height: 1.5;
+  margin-bottom: var(--sp-3);
+}
+
+.gut-guide-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: var(--fs-xs);
+  color: var(--ink-2);
+}
+
+.gut-guide-table th {
+  text-align: left;
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  padding: 0 var(--sp-2) var(--sp-1);
+  border-bottom: 1px solid var(--line-border);
+}
+
+.gut-guide-table td {
+  padding: var(--sp-1) var(--sp-2);
+  border-bottom: 1px solid var(--line-hairline);
+}
+
+.gut-guide-faixas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin-top: var(--sp-3);
+}

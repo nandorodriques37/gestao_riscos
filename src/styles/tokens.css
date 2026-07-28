@@ -1,0 +1,153 @@
+/* ============================================================================
+   Tokens — fonte única de verdade do visual.
+
+   Regras que valem para todo o CSS deste projeto:
+   - Nenhum hex literal fora deste arquivo.
+   - Nenhum espaçamento fora da escala --sp-*.
+   - Nenhum tamanho de fonte fora da escala --fs-*.
+   - Elevação significa "flutua acima". Cartão em repouso é hairline puro.
+
+   Tema: cada token declara claro e escuro numa linha só, via light-dark(). O
+   `color-scheme` no :root decide qual lado vale — por padrão segue o sistema,
+   e [data-theme] no <html> força um dos dois. Não há bloco duplicado.
+
+   As faixas e as cores de criticidade (--tier-*) são regra de negócio
+   documentada no CLAUDE.md — os hex do tema claro são exatamente os
+   especificados. O tema escuro usa degraus próprios das mesmas famílias de
+   matiz, porque #15803D sobre superfície escura é ilegível.
+   ========================================================================= */
+
+:root {
+  color-scheme: light dark;
+
+  /* ---------- Superfícies (planos, não "tudo branco") ---------- */
+  --bg-canvas: light-dark(#F7F8FA, #0D1117);
+  --bg-surface: light-dark(#FFFFFF, #151B24);
+  --bg-sunken: light-dark(#F1F4F8, #1B222D);
+  --bg-hover: light-dark(#F4F6F9, #1E2733);
+  --bg-selected: light-dark(#EEF3FB, #1C2942);
+  --bg-overlay: light-dark(rgba(11, 18, 32, 0.45), rgba(2, 5, 10, 0.66));
+
+  /* ---------- Traços ---------- */
+  --line-hairline: light-dark(rgba(15, 23, 42, 0.07), rgba(255, 255, 255, 0.08));
+  --line-border: light-dark(rgba(15, 23, 42, 0.11), rgba(255, 255, 255, 0.12));
+  --line-strong: light-dark(rgba(15, 23, 42, 0.18), rgba(255, 255, 255, 0.22));
+
+  /* ---------- Tinta ---------- */
+  --ink-1: light-dark(#0B1220, #F2F5F9);
+  --ink-2: light-dark(#3D4A5C, #C2CCD9);
+  --ink-3: light-dark(#6B7A8D, #91A0B2);
+  --ink-4: light-dark(#93A1B2, #6E7E92);
+  /* Tinta sobre preenchimento de série (célula do heatmap, bolha da matriz,
+     número do ranking). No tema escuro os degraus de tier são claros, então
+     texto branco cairia para ~2:1 — a tinta escura é que contrasta ali. */
+  --ink-on-solid: light-dark(#FFFFFF, #0B1220);
+
+  /* ---------- Marca ---------- */
+  --brand: light-dark(#1E3A5F, #5B8DEF);
+  --brand-hover: light-dark(#28486F, #7BA4F3);
+  --brand-soft: light-dark(#EAF1FA, #1C2942);
+  --brand-ink: light-dark(#FFFFFF, #0B1220);
+
+  /* ---------- Foco ---------- */
+  --focus: light-dark(#3E6FD9, #7BA4F3);
+  --focus-ring: light-dark(rgba(62, 111, 217, 0.28), rgba(123, 164, 243, 0.34));
+
+  /* ---------- Criticidade / priorização ----------
+     Os hex do tema claro são os documentados no CLAUDE.md e não mudam.
+     Os degraus escuros foram escolhidos com o validador do skill `dataviz`
+     contra a superfície #151B24: todos passam 3:1 de contraste, e o pior par
+     de visão normal subiu de ΔE 8.1 para 10.3. A escada semáforo
+     verde→amarelo→laranja→vermelho não passa nos limites de daltonismo por
+     matiz sozinha, em nenhum tema — por isso toda cor de tier neste app
+     aparece sempre junto do número ou do rótulo, nunca sozinha. */
+  --tier-baixo: light-dark(#15803D, #3AAE63);
+  --tier-medio: light-dark(#B8901F, #CBA61F);
+  --tier-alto: light-dark(#D97706, #F2842B);
+  --tier-critico: light-dark(#DC2626, #E9585F);
+  --tier-null: light-dark(#94A3B8, #8494A8);
+
+  /* ---------- Badges categóricos ---------- */
+  --badge-slate: light-dark(#475569, #A6B3C4);
+  --badge-blue: light-dark(#1D4ED8, #7BA4F3);
+  --badge-green: light-dark(#15803D, #3AAE63);
+  --badge-amber: light-dark(#B45309, #E9A94A);
+  --badge-red: light-dark(#B91C1C, #E9585F);
+  --badge-purple: light-dark(#6D28D9, #A995F0);
+  --badge-orange: light-dark(#C2410C, #F0894F);
+
+  /* ---------- Quadrantes da matriz esforço × impacto ---------- */
+  --quad-qw: light-dark(#15803D, #3AAE63);
+  --quad-ga: light-dark(#5B7FB5, #7BA4F3);
+  --quad-bp: light-dark(#94A3B8, #8494A8);
+  --quad-rv: light-dark(#C2811C, #CBA61F);
+
+  /* ---------- Estado ---------- */
+  --danger: light-dark(#DC2626, #E9585F);
+  --danger-soft: light-dark(#FEF2F2, #2A1618);
+  --success: light-dark(#15803D, #3AAE63);
+
+  /* ---------- Coluna "Riscos" (acento, não fundo cheio) ---------- */
+  --risco-accent: light-dark(#9C3F3A, #E08A84);
+
+  /* ---------- Espaçamento ---------- */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+  --sp-7: 48px;
+
+  /* ---------- Raio ---------- */
+  --r-xs: 6px;
+  --r-sm: 8px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --r-full: 999px;
+
+  /* ---------- Tipografia ---------- */
+  --font-sans: 'Inter Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+
+  --fs-2xs: 11px;
+  --fs-xs: 12px;
+  --fs-sm: 13px;
+  --fs-md: 14px;
+  --fs-lg: 16px;
+  --fs-xl: 20px;
+  --fs-num: 28px;
+
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 680;
+
+  /* ---------- Elevação ---------- */
+  --elev-1:
+    0 1px 2px -1px light-dark(rgba(11, 18, 32, 0.10), rgba(0, 0, 0, 0.5)),
+    0 2px 6px -2px light-dark(rgba(11, 18, 32, 0.08), rgba(0, 0, 0, 0.4));
+  --elev-2:
+    0 8px 20px -6px light-dark(rgba(11, 18, 32, 0.14), rgba(0, 0, 0, 0.6)),
+    0 2px 6px -2px light-dark(rgba(11, 18, 32, 0.08), rgba(0, 0, 0, 0.4));
+  --elev-3: 0 24px 56px -12px light-dark(rgba(11, 18, 32, 0.28), rgba(0, 0, 0, 0.7));
+
+  /* ---------- Movimento ---------- */
+  --ease: cubic-bezier(0.2, 0.7, 0.3, 1);
+  --dur-fast: 120ms;
+  --dur: 180ms;
+
+  /* ---------- Layout ---------- */
+  --container: 1600px;
+  --header-h: 56px;
+
+  /* ---------- Data viz ---------- */
+  /* Vão de superfície entre preenchimentos adjacentes (células do heatmap,
+     segmentos empilhados, arcos do donut). Sempre 2px. */
+  --viz-gap: 2px;
+  --viz-axis: var(--ink-4);
+}
+
+/* O botão de tema no header marca o <html>; isso precisa vencer o sistema nos
+   dois sentidos, e vence porque light-dark() obedece ao color-scheme vigente. */
+:root[data-theme='light'] { color-scheme: light; }
+:root[data-theme='dark'] { color-scheme: dark; }

@@ -14,7 +14,7 @@ App web de página única para **registro, análise e priorização de riscos co
 Os `.dc.html` são **referência de design, não código de produção**. Recrie no framework do codebase.
 
 ## Stack
-- **React + TypeScript** (a lógica do protótipo mapeia quase 1:1). Componentes: `TopBar`, `RegistroTab`, `GraficosTab`, `PriorizacaoTab`, `EditModal`.
+- **React + TypeScript** (a lógica do protótipo mapeia quase 1:1). Componentes: `TopBar`, `RegistroTab`, `GraficosTab`, `PriorizacaoTab`, `TarefasTab`, `EditModal`.
 - **Backend:** dados centralizados em Postgres (Neon) via funções serverless em `api/`. Toda a lógica SQL fica em `api/_db.ts` (executor `Sql` injetável). O front consome a API (`src/lib/api.ts` + hook `src/hooks/useRecords.ts`) com atualização otimista, *debounce* de escrita e polling. `localStorage` (`riskMatrix.cache.v1`) é só cache/fallback.
 - **Dev:** `npm run dev` sobe a mesma API com Postgres embarcado (pglite) via `vite-plugin-dev-api.ts` — sem precisar de banco. Produção usa Neon (`DATABASE_URL`).
 - Sem lib de charts obrigatória — heatmap/donuts/barras são CSS (grid, conic-gradient, larguras %).
@@ -28,13 +28,47 @@ prioriz = impacto2 / esforco + gravidade // null se esforco ausente/0 ou faltar 
 - normStatus: vazio→"Não iniciado"; "ANDAMENTO"→"Em andamento"; "CONCLU"→"Concluído".
 - Cor por criticidade (score): ≤4 `#15803D` · 5–9 `#B8901F` · 10–14 `#D97706` · >14 `#DC2626` · null `#94A3B8`.
 - Cor por priorização: ≥6 `#DC2626` · ≥4.5 `#D97706` · ≥3 `#B8901F` · <3 `#15803D` · null `#94A3B8`.
+- Esses hex valem para o **tema claro** e vivem em `--tier-*` (`src/styles/tokens.css`). O tema escuro usa degraus próprios das mesmas matizes, porque `#15803D` sobre superfície escura é ilegível; as **faixas** são idênticas nos dois temas.
 - Limite alto/baixo na matriz de quadrantes = 2.5 (esforço e impacto).
 
 ## Convenções visuais
-- Navy primária `#1E3A5F` (hover `#28486F`); fundo app `#F3F5F8`; cartões brancos borda `#E4E9EF`.
-- Coluna "Riscos" tem tratamento vermelho (header `#9C3F3A`, célula `#FBEEED`).
-- Tipografia: system stack, `tabular-nums`. Raios 8–16px; pills 20px. Preservar as sombras suaves.
-- Sem ícones externos: glifos Unicode (↺ ↓ + × ▲ ▼). Sem emojis.
+O visual é governado por **tokens**, não por hex soltos. Fonte da verdade:
+`src/styles/tokens.css`. Os demais arquivos de `src/styles/` (`base`, `primitives`,
+`layout`, `table`, `charts`, `modal`, `responsive`) são importados por `App.css`
+nessa ordem.
+
+- **Nenhum hex literal fora de `tokens.css`.** Nenhum espaçamento fora da escala
+  `--sp-*`; nenhum tamanho de fonte fora de `--fs-*`.
+- **Cor semântica viaja por atributo, não por `style={{}}`**: `data-tier`
+  (criticidade/priorização/GUT), `data-badge` (resposta/status), `data-accent`
+  (KPI). As funções `scoreTier`/`priorizTier`/`gutTier`/`barTier` devolvem a
+  faixa; o CSS resolve a cor. É o que permite o tema escuro sem tocar em
+  componente.
+- **Tema**: cada token declara claro e escuro numa linha via `light-dark()`. O
+  `color-scheme` do `:root` decide; `[data-theme]` no `<html>` força um lado
+  (botão no header, persistido em `riskMatrix.theme.v1`).
+- **Elevação significa "flutua acima"**: cartão em repouso é hairline puro, sem
+  sombra. `--elev-1` sticky/hover · `--elev-2` popover · `--elev-3` modal.
+- Marca navy `--brand`; header claro com abas sublinhadas; conteúdo limitado a
+  `--container` (1600px).
+- Coluna "Riscos": acento no rótulo do header e faixa vertical de 2px — não mais
+  fundo rosa em toda célula.
+- Tipografia: **Inter Variable** auto-hospedada (`@fontsource-variable/inter`,
+  sem CDN). `tabular-nums` só em coluna de tabela e eixo; número grande (KPI,
+  centro do donut) usa figuras proporcionais.
+- Sem ícones externos: glifos Unicode (↓ + × ▲ ▼) ou desenho em CSS. Sem emojis.
+  Cuidado: o Inter **não** tem ☀ ☾ ◐ — glifos assim caem em fallback torto.
+
+### Data viz (regras do skill `dataviz`)
+- Vão de 2px de superfície (`--viz-gap`) entre preenchimentos adjacentes: células
+  do heatmap, segmentos empilhados, arcos do donut (`src/lib/donut.ts`).
+- Marcas finas (barra de 8px, anel de donut de 14px); eixos e grade recessivos.
+- Anel de superfície de 2px em marca que se sobrepõe (bolhas da matriz).
+- Legenda sempre presente; **identidade nunca por cor sozinha** — toda cor de
+  tier aparece junto do número ou do rótulo. Isso não é decoração: a escada
+  semáforo verde→amarelo→laranja→vermelho não passa nos limites de daltonismo
+  por matiz (médio `#B8901F` × alto `#D97706` medem ΔE 1.1 em deuteranopia).
+- Célula vazia do heatmap mostra o `0`, não texto transparente.
 
 ## Idioma
 Toda a UI e cópia em **português (Brasil)**.

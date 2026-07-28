@@ -175,26 +175,26 @@ export function TarefasTab() {
         <div className="app-loading">Carregando tarefas…</div>
       ) : (
         <>
-          <div className="tarefas-heading">
-            <div className="tarefas-heading-title">Gestão de Tarefas</div>
-            <div className="tarefas-heading-subtitle">Priorização do dia a dia pela Matriz GUT (Gravidade × Urgência × Tendência)</div>
-          </div>
-
-          <div className="toolbar-row">
-            <TarefasKpiCards
-              total={total}
-              aFazer={aFazer}
-              emAndamento={emAndamento}
-              concluidas={concluidas}
-              criticas={criticas}
-              avaliacao={avaliacao}
-            />
+          <div className="page-bar">
+            <div className="tarefas-heading">
+              <div className="tarefas-heading-title">Gestão de Tarefas</div>
+              <div className="tarefas-heading-subtitle">Priorização do dia a dia pela Matriz GUT (Gravidade × Urgência × Tendência)</div>
+            </div>
             <div className="actions-row">
               <GutGuide />
-              <button className="btn btn-outline-navy" onClick={() => downloadTasksCSV(tasks)}>↓ Exportar CSV</button>
+              <button className="btn btn-ghost" onClick={() => downloadTasksCSV(tasks)}>↓ Exportar CSV</button>
               <button className="btn btn-navy" onClick={handleAddRow}>+ Adicionar tarefa</button>
             </div>
           </div>
+
+          <TarefasKpiCards
+            total={total}
+            aFazer={aFazer}
+            emAndamento={emAndamento}
+            concluidas={concluidas}
+            criticas={criticas}
+            avaliacao={avaliacao}
+          />
 
           <TarefasFilterBar
             search={search}

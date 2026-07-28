@@ -13,10 +13,10 @@ export function ResourceStackedBars({ bars, onClick }: ResourceStackedBarsProps)
           <div className="section-title">Ações por Recurso · Andamento</div>
           <div className="section-subtitle">Carga de ações por recurso, segmentada pelo status de execução</div>
         </div>
-        <div className="color-legend-row" style={{ paddingTop: 2 }}>
-          <div className="color-legend-item"><span className="color-legend-swatch" style={{ background: '#94A3B8' }} />Não iniciado</div>
-          <div className="color-legend-item"><span className="color-legend-swatch" style={{ background: '#D97706' }} />Em andamento</div>
-          <div className="color-legend-item"><span className="color-legend-swatch" style={{ background: '#15803D' }} />Concluído</div>
+        <div className="color-legend-row">
+          <div className="color-legend-item"><span className="color-legend-swatch" data-tier="null" />Não iniciado</div>
+          <div className="color-legend-item"><span className="color-legend-swatch" data-tier="alto" />Em andamento</div>
+          <div className="color-legend-item"><span className="color-legend-swatch" data-tier="baixo" />Concluído</div>
         </div>
       </div>
       <div className="bar-list">
@@ -28,14 +28,17 @@ export function ResourceStackedBars({ bars, onClick }: ResourceStackedBarsProps)
             aria-label={`${b.name}: ${b.ni} não iniciado, ${b.ea} em andamento, ${b.cc} concluído — ${b.total} no total. Clique para filtrar.`}
             onClick={() => onClick(b.name)}
           >
-            <div className="bar-name resource" title={b.name}>{b.name}</div>
+            <div className="bar-head">
+              <span className="bar-name" title={b.name}>{b.name}</span>
+              <span className="bar-score">{b.total}</span>
+            </div>
             <div className="bar-track">
-              <div className="stack-fill-wrap" style={{ width: `${b.wrapPct}%`, minWidth: 14 }}>
+              {/* Vão de 2px de superfície entre os segmentos (ver charts.css). */}
+              <div className="stack-fill-wrap" style={{ width: `${b.wrapPct}%` }}>
                 <div className="seg-ni" style={{ width: `${b.niW}%` }} />
                 <div className="seg-ea" style={{ width: `${b.eaW}%` }} />
                 <div className="seg-cc" style={{ width: `${b.ccW}%` }} />
               </div>
-              <span className="bar-score" style={{ flexShrink: 0 }}>{b.total}</span>
             </div>
           </button>
         ))}
