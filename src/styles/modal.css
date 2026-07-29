@@ -177,31 +177,47 @@ select.modal-input {
 }
 
 /* ---------- Plano de ação ----------
-   Lista de ações: uma linha por ação, com o mesmo gabarito de colunas do
-   cabeçalho. A descrição é a coluna elástica; as demais têm largura fixa para
-   que as linhas fiquem alinhadas entre si. */
+   Um cartão por ação. A descrição ocupa uma linha inteira porque é texto
+   corrido: dividindo colunas com responsável, prazo e status sobrava largura de
+   menos para ler a frase. Os três campos curtos descem para uma linha de apoio,
+   no mesmo gabarito de três colunas do resto do modal. */
 
 .acoes-list {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-2);
+  gap: var(--sp-3);
 }
 
-.acoes-head,
-.acao-row {
-  display: grid;
-  /* A coluna do prazo é a mais larga porque divide espaço com o aviso de atraso. */
-  grid-template-columns: 1fr 140px 200px 130px 22px;
-  gap: var(--sp-2);
+/* Em repouso o cartão é hairline puro — nada de sombra, que aqui significaria
+   "flutua acima". */
+.acao-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-3);
+  border: 1px solid var(--line-hairline);
+  border-radius: var(--r-sm);
+}
+
+.acao-card-head {
+  display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
 }
 
-.acoes-head {
+.acao-card-title {
   font-size: var(--fs-2xs);
-  font-weight: var(--fw-medium);
+  font-weight: var(--fw-semibold);
   color: var(--ink-3);
   text-transform: uppercase;
   letter-spacing: 0.04em;
+}
+
+/* Mais baixa que o textarea padrão: ação curta não precisa de 56px, e a alça de
+   redimensionar continua disponível para as longas. */
+.acao-descricao {
+  min-height: 44px;
 }
 
 /* A data e o aviso de atraso dividem a mesma célula: o aviso só aparece quando

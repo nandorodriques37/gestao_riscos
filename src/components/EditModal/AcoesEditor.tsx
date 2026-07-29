@@ -11,9 +11,11 @@ interface AcoesEditorProps {
 }
 
 /**
- * Lista editável do plano de ação: cada linha tem o que fazer, quem faz, até
- * quando e em que pé está. Controlado — o rascunho vive no EditModal, que grava
- * tudo de uma vez no Salvar.
+ * Lista editável do plano de ação: cada ação é um cartão com o que fazer, quem
+ * faz, até quando e em que pé está. A descrição fica sozinha numa linha de
+ * largura total — em colunas ela disputava espaço com os outros três campos e
+ * sobrava tela de menos para ler a frase. Controlado: o rascunho vive no
+ * EditModal, que grava tudo de uma vez no Salvar.
  */
 export function AcoesEditor({ itens, onChange, responsavelListId }: AcoesEditorProps) {
   // Guarda o id da linha recém-criada para focar sua descrição assim que o
@@ -34,7 +36,7 @@ export function AcoesEditor({ itens, onChange, responsavelListId }: AcoesEditorP
     onChange([...itens, item]);
   }
 
-  function focarSeNovo(el: HTMLInputElement | null, id: string) {
+  function focarSeNovo(el: HTMLTextAreaElement | null, id: string) {
     if (el && novoIdRef.current === id) {
       novoIdRef.current = null;
       el.focus();
@@ -43,63 +45,70 @@ export function AcoesEditor({ itens, onChange, responsavelListId }: AcoesEditorP
 
   return (
     <div className="acoes-list">
-      {itens.length > 0 && (
-        <div className="acoes-head" aria-hidden="true">
-          <span>Ação</span>
-          <span>Responsável</span>
-          <span>Prazo</span>
-          <span>Status</span>
-          <span />
-        </div>
-      )}
-
       {itens.map((item, i) => {
         const atrasada = acaoAtrasada(item);
         return (
-          <div className="acao-row" key={item.id}>
-            <input
-              className="modal-input"
+          <div className="acao-card" key={item.id}>
+            <div className="acao-card-head">
+              <span className="acao-card-title">Ação {i + 1}</span>
+              <button
+                type="button"
+                className="delete-btn"
+                aria-label={`Remover ação ${i + 1}`}
+                title="Remover ação"
+                onClick={() => removeItem(item.id)}
+              >
+                ×
+              </button>
+            </div>
+
+            <textarea
+              className="modal-textarea acao-descricao"
+              rows={2}
               ref={el => focarSeNovo(el, item.id)}
               aria-label={`Ação ${i + 1}`}
               placeholder="O que será feito"
               value={item.descricao}
               onChange={e => patchItem(item.id, { descricao: e.target.value })}
             />
-            <input
-              className="modal-input"
-              list={responsavelListId}
-              aria-label={`Responsável pela ação ${i + 1}`}
-              placeholder="Quem"
-              value={item.responsavel}
-              onChange={e => patchItem(item.id, { responsavel: e.target.value })}
-            />
-            <div className="acao-prazo">
-              <input
-                className="modal-input"
-                type="date"
-                aria-label={`Prazo da ação ${i + 1}`}
-                value={item.prazo}
-                onChange={e => patchItem(item.id, { prazo: e.target.value })}
-              />
-              {atrasada && <span className="badge" data-badge="red">Atrasado</span>}
+
+            <div className="modal-grid-3">
+              <div>
+                <div className="modal-field-label">Responsável</div>
+                <input
+                  className="modal-input"
+                  list={responsavelListId}
+                  aria-label={`Responsável pela ação ${i + 1}`}
+                  placeholder="Quem"
+                  value={item.responsavel}
+                  onChange={e => patchItem(item.id, { responsavel: e.target.value })}
+                />
+              </div>
+              <div>
+                <div className="modal-field-label">Prazo</div>
+                <div className="acao-prazo">
+                  <input
+                    className="modal-input"
+                    type="date"
+                    aria-label={`Prazo da ação ${i + 1}`}
+                    value={item.prazo}
+                    onChange={e => patchItem(item.id, { prazo: e.target.value })}
+                  />
+                  {atrasada && <span className="badge" data-badge="red">Atrasado</span>}
+                </div>
+              </div>
+              <div>
+                <div className="modal-field-label">Status</div>
+                <select
+                  className="modal-input"
+                  aria-label={`Status da ação ${i + 1}`}
+                  value={item.status}
+                  onChange={e => patchItem(item.id, { status: e.target.value as AcaoItem['status'] })}
+                >
+                  {ACAO_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
             </div>
-            <select
-              className="modal-input"
-              aria-label={`Status da ação ${i + 1}`}
-              value={item.status}
-              onChange={e => patchItem(item.id, { status: e.target.value as AcaoItem['status'] })}
-            >
-              {ACAO_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-            <button
-              type="button"
-              className="delete-btn"
-              aria-label={`Remover ação ${i + 1}`}
-              title="Remover ação"
-              onClick={() => removeItem(item.id)}
-            >
-              ×
-            </button>
           </div>
         );
       })}

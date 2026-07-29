@@ -148,36 +148,6 @@
     grid-template-columns: repeat(2, 1fr);
   }
 
-  /* Sem largura para cinco colunas: cada ação vira um cartão empilhado, e o
-     cabeçalho de colunas sai (os campos têm rótulo acessível próprio). */
-  .acoes-head {
-    display: none;
-  }
-
-  .acao-row {
-    grid-template-columns: 1fr auto;
-    align-items: start;
-    gap: var(--sp-2);
-    padding: var(--sp-3);
-    border: 1px solid var(--line-hairline);
-    border-radius: var(--r-sm);
-  }
-
-  .acao-row > .modal-input:first-child {
-    grid-column: 1;
-  }
-
-  .acao-row > .delete-btn {
-    grid-column: 2;
-    grid-row: 1;
-  }
-
-  .acao-row > .acao-prazo,
-  .acao-row > select.modal-input,
-  .acao-row > .modal-input:nth-child(2) {
-    grid-column: 1 / -1;
-  }
-
   .priority-group-header {
     flex-direction: column;
     align-items: flex-start;
