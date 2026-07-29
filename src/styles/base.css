@@ -115,12 +115,21 @@ tr:focus-visible,
   white-space: nowrap;
 }
 
-.clamp-2 {
+.clamp-2,
+.clamp-3 {
   display: -webkit-box;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+.clamp-2 {
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.clamp-3 {
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
 }
 
 .sr-only {

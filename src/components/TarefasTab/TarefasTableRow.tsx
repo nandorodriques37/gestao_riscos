@@ -1,4 +1,5 @@
 import type { EnrichedTaskRow } from '../../lib/taskRows';
+import { initials } from '../../lib/taskRows';
 import { gutTier, taskStatusKind } from '../../lib/taskCalculations';
 import { onActivateKey } from '../../lib/a11y';
 
@@ -7,15 +8,6 @@ interface TarefasTableRowProps {
   onOpen: (idx: number) => void;
   onToggleConcluida: (idx: number) => void;
   onDelete: (idx: number) => void;
-}
-
-/** Iniciais do responsável (até 2 palavras) para o avatar. */
-function initials(nome: string): string {
-  const parts = nome.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return '';
-  const first = parts[0][0] ?? '';
-  const last = parts.length > 1 ? parts[parts.length - 1][0] ?? '' : '';
-  return (first + last).toUpperCase();
 }
 
 export function TarefasTableRow({ row, onOpen, onToggleConcluida, onDelete }: TarefasTableRowProps) {

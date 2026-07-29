@@ -1,21 +1,38 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Task, TaskStatus, TaskSortKey } from '../../types';
 import { TASK_STATUSES } from '../../types';
 import { useTasks } from '../../hooks/useTasks';
 import { buildTaskRows, type EnrichedTaskRow } from '../../lib/taskRows';
 import { computeAvaliacao, normTaskStatus } from '../../lib/taskCalculations';
+import {
+  SEM_NOTA, adjustGutToBand, bandOf, describeChanges, type PriorityBand,
+} from '../../lib/taskPriority';
 import { downloadTasksCSV } from '../../lib/taskCsv';
-import { readColWidths, readStatusFilter, writePref } from '../../lib/uiPrefs';
+import {
+  KANBAN_GROUP_BYS, TASK_VIEWS, readColWidths, readEnumPref, readStatusFilter, writePref,
+  type KanbanGroupBy, type TaskView,
+} from '../../lib/uiPrefs';
 import { TarefasKpiCards } from './TarefasKpiCards';
 import { TarefasFilterBar } from './TarefasFilterBar';
 import { TarefasTable } from './TarefasTable';
+import { TarefasKanban } from './TarefasKanban';
 import { TarefaEditModal } from './TarefaEditModal';
 import { GutGuide } from './GutGuide';
 
 const POLL_INTERVAL = 15000;
 const COL_WIDTHS_KEY = 'riskMatrix.tasks.colWidths.v1';
 const STATUS_FILTER_KEY = 'riskMatrix.tasks.statusFilter.v1';
+const VIEW_KEY = 'riskMatrix.tasks.view.v1';
+const GROUP_BY_KEY = 'riskMatrix.tasks.groupBy.v1';
 const COL_WIDTHS_SAVE_DELAY = 300;
+const UNDO_TIMEOUT = 10000;
+
+/** Notas anteriores de uma tarefa re-priorizada por arraste, para o "Desfazer". */
+interface PendingPriorityUndo {
+  id: string;
+  before: Pick<Task, 'g' | 'u' | 't'>;
+  message: string;
+}
 
 function sortValue(row: EnrichedTaskRow, key: TaskSortKey): number | null {
   if (key === 'gut') return row.gut;
@@ -40,6 +57,14 @@ export function TarefasTab() {
   const [sortKey, setSortKey] = useState<TaskSortKey>('gut');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [colWidths, setColWidths] = useState(() => readColWidths(COL_WIDTHS_KEY));
+  const [view, setView] = useState<TaskView>(() => readEnumPref(VIEW_KEY, TASK_VIEWS, 'lista'));
+  const [groupBy, setGroupBy] = useState<KanbanGroupBy>(
+    () => readEnumPref(GROUP_BY_KEY, KANBAN_GROUP_BYS, 'prioridade'),
+  );
+  const [pendingUndo, setPendingUndo] = useState<PendingPriorityUndo | null>(null);
+  // Ref, não estado: só o efeito de polling lê isso, e re-renderizar o quadro no
+  // meio de um arraste embaralharia os cards por baixo do cursor.
+  const draggingRef = useRef(false);
 
   // O drag de resize atualiza colWidths a cada mousemove; grava com debounce
   // para não escrever no localStorage dezenas de vezes por segundo.
@@ -49,9 +74,19 @@ export function TarefasTab() {
   }, [colWidths]);
 
   useEffect(() => { writePref(STATUS_FILTER_KEY, statusFilter); }, [statusFilter]);
+  useEffect(() => { writePref(VIEW_KEY, view); }, [view]);
+  useEffect(() => { writePref(GROUP_BY_KEY, groupBy); }, [groupBy]);
 
   useEffect(() => {
-    const canSync = () => editingId == null && !hasPendingWrites();
+    if (!pendingUndo) return;
+    const timer = setTimeout(() => setPendingUndo(null), UNDO_TIMEOUT);
+    return () => clearTimeout(timer);
+  }, [pendingUndo]);
+
+  useEffect(() => {
+    // Um refresh no meio do arraste reordenaria `tasks` e invalidaria os índices
+    // que os cards carregam — por isso o polling espera o drop.
+    const canSync = () => editingId == null && !hasPendingWrites() && !draggingRef.current;
     const interval = setInterval(() => { if (canSync()) void refresh(); }, POLL_INTERVAL);
     const onFocus = () => { if (canSync()) void refresh(); };
     window.addEventListener('focus', onFocus);
@@ -124,6 +159,50 @@ export function TarefasTab() {
     const status: TaskStatus = normTaskStatus(t.status) === 'Concluída' ? 'A fazer' : 'Concluída';
     updateTaskById(t.id, { status });
     void flushPending();
+  }
+
+  /**
+   * Drop de um card no quadro. Agrupado por status, grava o campo direto. Agrupado
+   * por prioridade não há campo a gravar — a faixa vem de G × U × T —, então o
+   * ajuste mínimo calculado em `adjustGutToBand` é aplicado e fica desfazível: a
+   * tarefa muda de coluna na hora, mas o usuário vê o que mudou e pode voltar.
+   */
+  function handleMove(idx: number, columnId: string) {
+    const t = tasks[idx];
+    if (!t) return;
+
+    if (groupBy === 'status') {
+      updateTaskById(t.id, { status: columnId });
+      void flushPending();
+      return;
+    }
+
+    const before = { g: t.g, u: t.u, t: t.t };
+
+    if (columnId === SEM_NOTA) {
+      if (bandOf(t) == null) return;
+      updateTaskById(t.id, { g: null, u: null, t: null });
+      void flushPending();
+      setPendingUndo({ id: t.id, before, message: 'Prioridade removida: notas G, U e T apagadas.' });
+      return;
+    }
+
+    const ajuste = adjustGutToBand(t, columnId as PriorityBand);
+    if (!ajuste) return;
+    updateTaskById(t.id, ajuste.patch);
+    void flushPending();
+    setPendingUndo({
+      id: t.id,
+      before,
+      message: `Prioridade: ${t.tarefa || 'tarefa'} → ${columnId} (${describeChanges(ajuste.changes)}).`,
+    });
+  }
+
+  function handleUndoPriority() {
+    if (!pendingUndo) return;
+    updateTaskById(pendingUndo.id, pendingUndo.before);
+    void flushPending();
+    setPendingUndo(null);
   }
 
   async function handleDeleteRow(idx: number) {
@@ -215,22 +294,38 @@ export function TarefasTab() {
             tipoFilter={tipoFilter}
             onTipoFilterChange={setTipoFilter}
             tipoOptions={tipoOptions}
+            view={view}
+            onViewChange={setView}
+            groupBy={groupBy}
+            onGroupByChange={setGroupBy}
             visibleCount={visibleRows.length}
             totalCount={rows.length}
           />
 
-          <TarefasTable
-            rows={visibleRows}
-            colWidths={colWidths}
-            onColWidthChange={handleColWidthChange}
-            sortKey={sortKey}
-            sortDir={sortDir}
-            onSort={handleSort}
-            onOpenEdit={handleOpenEdit}
-            onToggleConcluida={handleToggleConcluida}
-            onDeleteRow={handleDeleteRow}
-            emptyMessage={emptyMessage}
-          />
+          {view === 'kanban' ? (
+            <TarefasKanban
+              rows={visibleRows}
+              groupBy={groupBy}
+              onMove={handleMove}
+              onOpen={handleOpenEdit}
+              onToggleConcluida={handleToggleConcluida}
+              onAdd={handleAddRow}
+              onDraggingChange={d => { draggingRef.current = d; }}
+            />
+          ) : (
+            <TarefasTable
+              rows={visibleRows}
+              colWidths={colWidths}
+              onColWidthChange={handleColWidthChange}
+              sortKey={sortKey}
+              sortDir={sortDir}
+              onSort={handleSort}
+              onOpenEdit={handleOpenEdit}
+              onToggleConcluida={handleToggleConcluida}
+              onDeleteRow={handleDeleteRow}
+              emptyMessage={emptyMessage}
+            />
+          )}
         </>
       )}
 
@@ -245,6 +340,14 @@ export function TarefasTab() {
           tipoOptions={tipoOptions}
           responsavelOptions={responsavelOptions}
         />
+      )}
+
+      {pendingUndo && (
+        <div className="undo-snackbar" role="status" aria-live="polite">
+          <span>{pendingUndo.message}</span>
+          <button className="undo-snackbar-action" onClick={handleUndoPriority}>Desfazer</button>
+          <button className="undo-snackbar-dismiss" onClick={() => setPendingUndo(null)} aria-label="Fechar aviso">×</button>
+        </div>
       )}
     </div>
   );

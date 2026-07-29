@@ -42,6 +42,28 @@ export function readStatusFilter<T extends string>(key: string, allowed: readonl
   return [];
 }
 
+/** Modo de visualização da aba Tarefas. */
+export type TaskView = 'lista' | 'kanban';
+export const TASK_VIEWS: readonly TaskView[] = ['lista', 'kanban'];
+
+/** Critério que vira coluna no quadro Kanban. */
+export type KanbanGroupBy = 'prioridade' | 'status';
+export const KANBAN_GROUP_BYS: readonly KanbanGroupBy[] = ['prioridade', 'status'];
+
+/** Preferência de valor único (modo de visualização, agrupamento…) validada contra a lista permitida. */
+export function readEnumPref<T extends string>(key: string, allowed: readonly T[], fallback: T): T {
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw) {
+      const parsed: unknown = JSON.parse(raw);
+      if (typeof parsed === 'string' && (allowed as readonly string[]).includes(parsed)) return parsed as T;
+    }
+  } catch {
+    // storage ausente/corrompido — usa o padrão
+  }
+  return fallback;
+}
+
 export type ThemePref = 'light' | 'dark' | 'system';
 
 const THEME_KEY = 'riskMatrix.theme.v1';

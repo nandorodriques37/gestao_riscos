@@ -10,6 +10,15 @@ export interface EnrichedTaskRow {
   normSt: string;
 }
 
+/** Iniciais do responsável (até 2 palavras) para o avatar — usado na tabela e no card. */
+export function initials(nome: string): string {
+  const parts = nome.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '';
+  const first = parts[0][0] ?? '';
+  const last = parts.length > 1 ? parts[parts.length - 1][0] ?? '' : '';
+  return (first + last).toUpperCase();
+}
+
 export function buildTaskRows(tasks: Task[]): EnrichedTaskRow[] {
   const guts = tasks.map(t => computeGUT(t));
   const ranks = computeTaskRanks(guts.map(gut => ({ gut })));
