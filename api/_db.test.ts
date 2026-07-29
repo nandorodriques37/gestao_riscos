@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { PGlite } from '@electric-sql/pglite';
-import { ensureSchema, createRecord, updateRecordById, type Sql } from './_db';
+import { ensureSchema, createRecord, updateRecordById, listRecords, type Sql } from './_db';
 
 // Testa a camada de acesso a dados contra um Postgres real (pglite, em
 // memória) — a mesma engine usada em produção (Neon), garantindo que a
@@ -69,5 +69,45 @@ describe('updateRecordById — concorrência otimista', () => {
   it('retorna not_found para um id inexistente', async () => {
     const result = await updateRecordById(sql, '00000000-0000-0000-0000-000000000000', { area: 'X' });
     expect(result.status).toBe('not_found');
+  });
+});
+
+describe('acoes_itens — plano de ação em jsonb', () => {
+  const itens = [
+    { id: 'a1', descricao: 'Revisar rotina', responsavel: 'JOEL', prazo: '2026-08-15', status: 'A fazer' as const },
+    { id: 'a2', descricao: 'Treinar equipe', responsavel: '', prazo: '', status: 'Concluída' as const },
+  ];
+
+  it('registro criado sem plano vem com lista vazia', async () => {
+    const created = await createRecord(sql, { area: 'Sem plano' });
+    expect(created.acoes_itens).toEqual([]);
+  });
+
+  it('grava e lê a lista de volta como array desserializado', async () => {
+    const created = await createRecord(sql, { area: 'Com plano', acoes_itens: itens });
+    expect(created.acoes_itens).toEqual(itens);
+    const listadas = (await listRecords(sql)).find(r => r.id === created.id);
+    expect(listadas?.acoes_itens).toEqual(itens);
+  });
+
+  it('substitui a lista inteira no update e incrementa a versão', async () => {
+    const created = await createRecord(sql, { acoes_itens: itens });
+    const result = await updateRecordById(sql, created.id, {
+      acoes_itens: [itens[0]],
+      acoes: 'Revisar rotina',
+    }, created.version);
+    expect(result.status).toBe('ok');
+    if (result.status === 'ok') {
+      expect(result.record.acoes_itens).toEqual([itens[0]]);
+      expect(result.record.acoes).toBe('Revisar rotina');
+      expect(result.record.version).toBe(2);
+    }
+  });
+
+  it('aceita esvaziar a lista', async () => {
+    const created = await createRecord(sql, { acoes_itens: itens });
+    const result = await updateRecordById(sql, created.id, { acoes_itens: [] });
+    expect(result.status).toBe('ok');
+    if (result.status === 'ok') expect(result.record.acoes_itens).toEqual([]);
   });
 });

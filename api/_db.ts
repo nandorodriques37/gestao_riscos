@@ -3,7 +3,7 @@
 // fica aqui, parametrizada por um executor `Sql` para ser testável e portável.
 import { neon } from '@neondatabase/serverless';
 import { INITIAL_RECORDS } from './_seed.js';
-import type { RiskRecord } from '../src/types';
+import type { AcaoItem, RiskRecord } from '../src/types';
 
 /** Executor SQL mínimo: recebe texto parametrizado ($1, $2, …) e retorna as linhas. */
 export type Sql = (text: string, params?: unknown[]) => Promise<Record<string, unknown>[]>;
@@ -22,7 +22,7 @@ export type UpdateOutcome =
 /** Campos editáveis do registro (na ordem das colunas da tabela). */
 export const RECORD_FIELDS = [
   'area', 'rotina', 'categoria', 'risco', 'resposta',
-  'probab', 'impact', 'acoes', 'resultado',
+  'probab', 'impact', 'acoes', 'acoes_itens', 'resultado',
   'esforco', 'impacto2', 'gravidade',
   'recurso', 'responsavel', 'status', 'obs',
 ] as const;
@@ -30,6 +30,8 @@ export const RECORD_FIELDS = [
 type RecordField = (typeof RECORD_FIELDS)[number];
 
 const NUMERIC_FIELDS = new Set<RecordField>(['probab', 'impact', 'esforco', 'impacto2', 'gravidade']);
+/** Campos gravados como jsonb — precisam de serialização própria, não de coerção para texto. */
+const JSON_FIELDS = new Set<RecordField>(['acoes_itens']);
 const FIELD_SET = new Set<string>(RECORD_FIELDS);
 
 /** Cria o executor de produção conectado ao Neon (Postgres). */
@@ -45,6 +47,18 @@ function toNumberOrNull(v: unknown): number | null {
   return typeof v === 'number' ? v : Number(v);
 }
 
+/** jsonb chega desserializado no Neon e no pglite; texto é aceito por segurança. */
+function toAcoesItens(v: unknown): AcaoItem[] {
+  if (Array.isArray(v)) return v as AcaoItem[];
+  if (typeof v === 'string' && v.trim() !== '') {
+    try {
+      const parsed = JSON.parse(v);
+      if (Array.isArray(parsed)) return parsed as AcaoItem[];
+    } catch { /* valor inválido no banco — trata como lista vazia */ }
+  }
+  return [];
+}
+
 function rowToRecord(row: Record<string, unknown>): StoredRiskRecord {
   return {
     id: String(row.id),
@@ -56,6 +70,7 @@ function rowToRecord(row: Record<string, unknown>): StoredRiskRecord {
     probab: toNumberOrNull(row.probab),
     impact: toNumberOrNull(row.impact),
     acoes: (row.acoes as string) ?? '',
+    acoes_itens: toAcoesItens(row.acoes_itens),
     resultado: (row.resultado as string) ?? '',
     esforco: toNumberOrNull(row.esforco),
     impacto2: toNumberOrNull(row.impacto2),
@@ -71,7 +86,13 @@ function rowToRecord(row: Record<string, unknown>): StoredRiskRecord {
 function fieldValue(rec: Partial<RiskRecord>, field: RecordField): unknown {
   const v = rec[field];
   if (NUMERIC_FIELDS.has(field)) return v == null || v === '' ? null : v;
+  if (JSON_FIELDS.has(field)) return JSON.stringify(Array.isArray(v) ? v : []);
   return v ?? '';
+}
+
+/** Placeholder do campo na SQL — campos jsonb viajam como texto e precisam do cast. */
+function placeholder(field: RecordField, n: number): string {
+  return JSON_FIELDS.has(field) ? `$${n}::jsonb` : `$${n}`;
 }
 
 export async function ensureSchema(sql: Sql): Promise<void> {
@@ -87,6 +108,7 @@ export async function ensureSchema(sql: Sql): Promise<void> {
       probab      numeric,
       impact      numeric,
       acoes       text not null default '',
+      acoes_itens jsonb not null default '[]'::jsonb,
       resultado   text not null default '',
       esforco     numeric,
       impacto2    numeric,
@@ -100,8 +122,9 @@ export async function ensureSchema(sql: Sql): Promise<void> {
       version     integer not null default 1
     )
   `);
-  // Migração para bancos já existentes (criados antes da coluna `version`).
+  // Migrações para bancos já existentes (criados antes destas colunas).
   await sql('alter table risk_records add column if not exists version integer not null default 1');
+  await sql("alter table risk_records add column if not exists acoes_itens jsonb not null default '[]'::jsonb");
   const rows = await sql('select count(*)::int as count from risk_records');
   const count = Number(rows[0]?.count ?? 0);
   if (count === 0) {
@@ -126,8 +149,9 @@ async function seed(sql: Sql): Promise<void> {
   const cols = ['position', ...RECORD_FIELDS];
   const params: unknown[] = [];
   const valueRows = INITIAL_RECORDS.map((rec, i) => {
-    const rowParams = [i, ...RECORD_FIELDS.map(f => fieldValue(rec, f))];
-    const placeholders = rowParams.map(p => `$${params.push(p)}`);
+    const placeholders = [`$${params.push(i)}`, ...RECORD_FIELDS.map(
+      f => placeholder(f, params.push(fieldValue(rec, f))),
+    )];
     return `(${placeholders.join(', ')})`;
   });
   const text = `insert into risk_records (${cols.join(', ')}) values ${valueRows.join(', ')}`;
@@ -142,7 +166,7 @@ export async function listRecords(sql: Sql): Promise<StoredRiskRecord[]> {
 export async function createRecord(sql: Sql, data: Partial<RiskRecord>): Promise<StoredRiskRecord> {
   const cols = [...RECORD_FIELDS];
   const params = RECORD_FIELDS.map(f => fieldValue(data, f));
-  const ph = params.map((_, i) => `$${i + 1}`);
+  const ph = RECORD_FIELDS.map((f, i) => placeholder(f, i + 1));
   const text = `
     insert into risk_records (position, ${cols.join(', ')})
     values ((select coalesce(max(position), -1) + 1 from risk_records), ${ph.join(', ')})
@@ -167,8 +191,9 @@ export async function updateRecordById(
   }
   const params: unknown[] = [];
   const sets = entries.map(([k, v]) => {
-    params.push(fieldValue({ [k]: v } as Partial<RiskRecord>, k as RecordField));
-    return `${k} = $${params.length}`;
+    const field = k as RecordField;
+    params.push(fieldValue({ [k]: v } as Partial<RiskRecord>, field));
+    return `${k} = ${placeholder(field, params.length)}`;
   });
   sets.push('updated_at = now()', 'version = version + 1');
   params.push(id);
