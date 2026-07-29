@@ -96,6 +96,15 @@
     display: flex;
   }
 
+  /* Uma coluna por vez no polegar: o quadro "pagina" ao rolar na horizontal.
+     Sem teto de altura: a faixa de KPIs empilhada já empurra o quadro para perto
+     do fim da tela, e prender a coluna sobraria uma janela de dois cards. Aqui a
+     página rola, como em qualquer lista no celular. */
+  .kanban-column {
+    flex-basis: 82vw;
+    max-height: none;
+  }
+
   .search-input {
     max-width: none;
   }

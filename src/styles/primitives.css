@@ -202,7 +202,8 @@
   border-color: var(--line-strong);
 }
 
-.density-toggle {
+.density-toggle,
+.view-toggle {
   display: flex;
   gap: 2px;
   background: var(--bg-sunken);
@@ -212,7 +213,8 @@
   height: 32px;
 }
 
-.density-toggle button {
+.density-toggle button,
+.view-toggle button {
   border: none;
   background: transparent;
   color: var(--ink-3);
@@ -223,11 +225,13 @@
   transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
 }
 
-.density-toggle button:hover:not(.active) {
+.density-toggle button:hover:not(.active),
+.view-toggle button:hover:not(.active) {
   color: var(--ink-1);
 }
 
-.density-toggle button.active {
+.density-toggle button.active,
+.view-toggle button.active {
   background: var(--bg-surface);
   color: var(--ink-1);
   box-shadow: var(--elev-1);
@@ -297,6 +301,13 @@
   background: var(--c);
   flex: none;
 }
+
+/* Fora de um chip (cabeçalho de coluna do Kanban) o ponto precisa da própria tinta. */
+.tier-dot[data-tier='baixo'] { --c: var(--tier-baixo); }
+.tier-dot[data-tier='medio'] { --c: var(--tier-medio); }
+.tier-dot[data-tier='alto'] { --c: var(--tier-alto); }
+.tier-dot[data-tier='critico'] { --c: var(--tier-critico); }
+.tier-dot[data-tier='null'] { --c: var(--tier-null); }
 
 /* Variante grande: leitura de Score e Priorização dentro do modal. */
 .tier-chip-lg {

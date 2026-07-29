@@ -1,5 +1,11 @@
 import type { TaskStatus } from '../../types';
 import { TASK_STATUSES } from '../../types';
+import type { KanbanGroupBy, TaskView } from '../../lib/uiPrefs';
+
+const VIEW_OPTIONS: { value: TaskView; label: string; title: string }[] = [
+  { value: 'lista', label: 'Lista', title: 'Tabela com todas as colunas' },
+  { value: 'kanban', label: 'Kanban', title: 'Quadro com colunas arrastáveis' },
+];
 
 interface TarefasFilterBarProps {
   search: string;
@@ -10,6 +16,10 @@ interface TarefasFilterBarProps {
   tipoFilter: string;
   onTipoFilterChange: (v: string) => void;
   tipoOptions: string[];
+  view: TaskView;
+  onViewChange: (v: TaskView) => void;
+  groupBy: KanbanGroupBy;
+  onGroupByChange: (v: KanbanGroupBy) => void;
   visibleCount: number;
   totalCount: number;
 }
@@ -18,6 +28,7 @@ export function TarefasFilterBar({
   search, onSearchChange,
   statusFilter, onToggleStatus, onClearStatus,
   tipoFilter, onTipoFilterChange, tipoOptions,
+  view, onViewChange, groupBy, onGroupByChange,
   visibleCount, totalCount,
 }: TarefasFilterBarProps) {
   return (
@@ -55,7 +66,37 @@ export function TarefasFilterBar({
         <option value="Todos">Todos os tipos</option>
         {tipoOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
       </select>
-      <div className="filter-count">{visibleCount} de {totalCount} tarefas · clique em uma linha para editar</div>
+
+      {/* Agrupamento só faz sentido quando há colunas para agrupar. */}
+      {view === 'kanban' && (
+        <select
+          className="select-filter"
+          value={groupBy}
+          onChange={e => onGroupByChange(e.target.value as KanbanGroupBy)}
+          aria-label="Agrupar o quadro por"
+        >
+          <option value="prioridade">Agrupar por prioridade</option>
+          <option value="status">Agrupar por status</option>
+        </select>
+      )}
+
+      <div className="view-toggle" role="group" aria-label="Modo de visualização">
+        {VIEW_OPTIONS.map(opt => (
+          <button
+            key={opt.value}
+            className={view === opt.value ? 'active' : ''}
+            title={opt.title}
+            aria-pressed={view === opt.value}
+            onClick={() => onViewChange(opt.value)}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="filter-count">
+        {visibleCount} de {totalCount} tarefas · clique {view === 'kanban' ? 'em um card' : 'em uma linha'} para editar
+      </div>
     </div>
   );
 }
