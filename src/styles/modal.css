@@ -176,6 +176,76 @@ select.modal-input {
   box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
+/* ---------- Plano de ação ----------
+   Lista de ações: uma linha por ação, com o mesmo gabarito de colunas do
+   cabeçalho. A descrição é a coluna elástica; as demais têm largura fixa para
+   que as linhas fiquem alinhadas entre si. */
+
+.acoes-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.acoes-head,
+.acao-row {
+  display: grid;
+  /* A coluna do prazo é a mais larga porque divide espaço com o aviso de atraso. */
+  grid-template-columns: 1fr 140px 200px 130px 22px;
+  gap: var(--sp-2);
+  align-items: center;
+}
+
+.acoes-head {
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-medium);
+  color: var(--ink-3);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* A data e o aviso de atraso dividem a mesma célula: o aviso só aparece quando
+   existe, e não é só a cor que o comunica — o rótulo "Atrasado" está escrito. */
+.acao-prazo {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+
+.acao-prazo .modal-input {
+  flex: 1;
+  min-width: 118px; /* cabe dd/mm/aaaa com o ícone nativo do seletor */
+}
+
+.acao-prazo .badge {
+  flex: none;
+}
+
+.acoes-empty {
+  font-size: var(--fs-sm);
+  color: var(--ink-3);
+  padding: var(--sp-2) 0;
+}
+
+.acoes-add {
+  width: 100%;
+  height: 32px;
+  border-radius: var(--r-sm);
+  border: 1px dashed var(--line-border);
+  background: transparent;
+  color: var(--ink-3);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+}
+
+.acoes-add:hover {
+  background: var(--bg-hover);
+  border-color: var(--line-strong);
+  color: var(--ink-1);
+}
+
 /* ---------- Rodapé ---------- */
 
 .modal-footer {

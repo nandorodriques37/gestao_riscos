@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import type { RiskRecord } from '../../types';
+import type { AcaoItem, RiskRecord } from '../../types';
 import type { SaveStatus } from '../../hooks/useRecords';
 import { computeScore, computePrioriz, round1, round2, scoreTier, priorizTier } from '../../lib/calculations';
+import { parseAcoes, resumirAcoes } from '../../lib/acoes';
+import { AcoesEditor } from './AcoesEditor';
 
 const FOCUSABLE = 'a[href], button:not([disabled]), input, select, textarea, [tabindex]:not([tabindex="-1"])';
 
@@ -40,9 +42,14 @@ export function EditModal({
   record, saveStatus, onCommit, onClose, onDelete,
   areaOptions, rotinaOptions, categoriaOptions, recursoOptions, responsavelOptions,
 }: EditModalProps) {
+  // Plano de ação como estava ao abrir o modal. Registro antigo (só texto livre
+  // em `acoes`) já entra convertido em uma linha — por isso a referência do diff
+  // é esta, e não `record.acoes_itens`: senão abrir e fechar sem editar nada
+  // gravaria a conversão sozinha.
+  const [baseAcoes, setBaseAcoes] = useState<AcaoItem[]>(() => parseAcoes(record));
   // Rascunho local: digitar altera só este estado (instantâneo, sem re-render
   // global, sem rede). A gravação acontece por ação explícita — ver commit().
-  const [draft, setDraft] = useState<RiskRecord>(record);
+  const [draft, setDraft] = useState<RiskRecord>(() => ({ ...record, acoes_itens: baseAcoes }));
   const [dirty, setDirty] = useState(false);
   const score = computeScore(draft);
   const prioriz = computePrioriz(draft);
@@ -53,14 +60,26 @@ export function EditModal({
     setDirty(true);
   }
 
+  // A lista é a fonte da verdade; `acoes` vira o resumo dela, mantendo tabela,
+  // gráficos, CSV e completude — que leem o campo como texto — em dia.
+  function setAcoes(itens: AcaoItem[]) {
+    setDraft(d => ({ ...d, acoes_itens: itens, acoes: resumirAcoes(itens) }));
+    setDirty(true);
+  }
+
   // Grava apenas os campos que mudaram em relação ao registro salvo.
   function commit() {
     const patch: Partial<RiskRecord> = {};
     (Object.keys(draft) as (keyof RiskRecord)[]).forEach(key => {
+      if (key === 'acoes_itens') return; // array: comparado por conteúdo abaixo
       if (draft[key] !== record[key]) (patch as Record<string, unknown>)[key] = draft[key];
     });
+    const itens = draft.acoes_itens ?? [];
+    const itensMudaram = JSON.stringify(itens) !== JSON.stringify(baseAcoes);
+    if (itensMudaram) patch.acoes_itens = itens;
     if (Object.keys(patch).length === 0) return;
     onCommit(patch);
+    if (itensMudaram) setBaseAcoes(itens);
     setDirty(false);
   }
 
@@ -189,8 +208,12 @@ export function EditModal({
             <div className="modal-section-title">Plano de Ação</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div>
-                <div className="modal-field-label">Ações</div>
-                <textarea className="modal-textarea" rows={2} value={draft.acoes} onChange={e => setField({ acoes: e.target.value })} />
+                {/* Sem rótulo "Ações": o título da seção e o cabeçalho de colunas já nomeiam a lista. */}
+                <AcoesEditor
+                  itens={draft.acoes_itens ?? []}
+                  onChange={setAcoes}
+                  responsavelListId="dl-responsavel"
+                />
               </div>
               <div>
                 <div className="modal-field-label">Resultado Esperado</div>

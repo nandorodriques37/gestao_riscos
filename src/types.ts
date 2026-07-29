@@ -1,3 +1,17 @@
+/** Status de uma ação do plano de ação de um risco. */
+export type AcaoStatus = 'A fazer' | 'Em andamento' | 'Concluída';
+export const ACAO_STATUSES: readonly AcaoStatus[] = ['A fazer', 'Em andamento', 'Concluída'];
+
+/** Uma linha do plano de ação: o que fazer, quem faz e até quando. */
+export interface AcaoItem {
+  id: string;
+  descricao: string;
+  responsavel: string;
+  /** 'YYYY-MM-DD' (formato nativo do <input type="date">) ou '' quando sem prazo. */
+  prazo: string;
+  status: AcaoStatus;
+}
+
 export interface RiskRecord {
   area: string;
   rotina: string;
@@ -6,7 +20,14 @@ export interface RiskRecord {
   resposta: string;
   probab: number | null;
   impact: number | null;
+  /** Resumo textual do plano de ação — derivado de `acoes_itens`, lido por tabela, gráficos e CSV. */
   acoes: string;
+  /**
+   * Plano de ação estruturado. Opcional porque registros antigos (e as sementes)
+   * só têm o texto livre em `acoes`; `parseAcoes` cobre esse caso na leitura.
+   * Nome em snake_case para bater com o da coluna no Postgres.
+   */
+  acoes_itens?: AcaoItem[];
   resultado: string;
   esforco: number | null;
   impacto2: number | null;
