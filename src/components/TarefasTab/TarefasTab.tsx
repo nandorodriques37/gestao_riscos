@@ -46,6 +46,7 @@ export function TarefasTab() {
   const {
     tasks, loading, error,
     hasPendingWrites, saveStatus, updateTaskById, addTask, deleteTaskById,
+    addAttachment, removeAttachment,
     refresh, flushPending, clearError,
   } = useTasks();
 
@@ -333,10 +334,14 @@ export function TarefasTab() {
         <TarefaEditModal
           key={editingTask.id}
           task={editingTask}
+          taskId={editingTask.id}
+          anexos={editingTask.anexos}
           saveStatus={saveStatus[editingTask.id]}
           onCommit={patch => handleCommitEdit(editingTask.id, patch)}
           onClose={handleCloseModal}
           onDelete={handleDeleteFromModal}
+          onAddAnexo={file => addAttachment(editingTask.id, file)}
+          onRemoveAnexo={anexoId => removeAttachment(editingTask.id, anexoId)}
           tipoOptions={tipoOptions}
           responsavelOptions={responsavelOptions}
         />

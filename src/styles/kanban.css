@@ -304,3 +304,9 @@
   color: var(--ink-4);
   cursor: default;
 }
+
+/* No card a marca divide a linha com o chip de GUT e o rank — sem a margem
+   superior que ela usa dentro da célula da tabela. */
+.kanban-card-badges .anexos-badge {
+  margin-top: 0;
+}

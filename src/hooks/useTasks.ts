@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { Task, StoredTask } from '../types';
+import type { Task, StoredTask, TaskAttachment } from '../types';
 import {
   fetchTasks, createTaskApi, patchTaskApi, deleteTaskApi, TaskConflictError,
+  uploadTaskAttachmentApi, deleteTaskAttachmentApi,
 } from '../lib/tasksApi';
+import { prepareAttachment } from '../lib/imageAttachments';
 import { nextRetryDelay } from '../lib/retryBackoff';
 
-const CACHE_KEY = 'tasks.cache.v1';
+// v2: as tarefas passaram a carregar `anexos`; o cache antigo não tem o campo.
+const CACHE_KEY = 'tasks.cache.v2';
 const FLUSH_DELAY = 600;
 
 export type TaskSaveStatus = 'saving' | 'saved' | 'error' | 'conflict';
@@ -15,7 +18,8 @@ function readCache(): StoredTask[] {
     const raw = localStorage.getItem(CACHE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) return parsed;
+      // Defensivo contra um cache gravado por outra versão do app.
+      if (Array.isArray(parsed)) return parsed.map(t => ({ ...t, anexos: t?.anexos ?? [] }));
     }
   } catch {
     // cache ausente/corrompido — ignora
@@ -40,6 +44,9 @@ export interface UseTasks {
   updateTaskById: (id: string, patch: Partial<Task>) => void;
   addTask: (data?: Partial<Task>) => Promise<StoredTask>;
   deleteTaskById: (id: string) => Promise<boolean>;
+  /** Prepara a imagem (reduz/valida), sobe e junta o anexo à tarefa. Lança em caso de recusa. */
+  addAttachment: (taskId: string, file: File) => Promise<void>;
+  removeAttachment: (taskId: string, anexoId: string) => Promise<void>;
   refresh: () => Promise<void>;
   flushPending: () => Promise<void>;
   clearError: () => void;
@@ -176,6 +183,31 @@ export function useTasks(): UseTasks {
     }
   }, [refresh]);
 
+  /**
+   * Anexos não passam pelo caminho com debounce das edições de campo: são
+   * operações imediatas em endpoint próprio. O estado local é corrigido na
+   * resposta, e o erro sobe para quem chamou mostrar ao lado do campo.
+   */
+  const patchAnexos = useCallback((taskId: string, fn: (anexos: TaskAttachment[]) => TaskAttachment[]) => {
+    if (!mounted.current) return;
+    setTasks(prev => {
+      const next = prev.map(t => (t.id === taskId ? { ...t, anexos: fn(t.anexos ?? []) } : t));
+      writeCache(next);
+      return next;
+    });
+  }, []);
+
+  const addAttachment = useCallback(async (taskId: string, file: File) => {
+    const preparada = await prepareAttachment(file);
+    const anexo = await uploadTaskAttachmentApi(taskId, preparada);
+    patchAnexos(taskId, anexos => [...anexos, anexo]);
+  }, [patchAnexos]);
+
+  const removeAttachment = useCallback(async (taskId: string, anexoId: string) => {
+    await deleteTaskAttachmentApi(taskId, anexoId);
+    patchAnexos(taskId, anexos => anexos.filter(a => a.id !== anexoId));
+  }, [patchAnexos]);
+
   const hasPendingWrites = useCallback(() => pending.current.size > 0, []);
   const clearError = useCallback(() => setError(null), []);
 
@@ -202,6 +234,7 @@ export function useTasks(): UseTasks {
   return {
     tasks, loading, error,
     hasPendingWrites, saveStatus, updateTaskById, addTask, deleteTaskById,
+    addAttachment, removeAttachment,
     refresh, flushPending, clearError,
   };
 }

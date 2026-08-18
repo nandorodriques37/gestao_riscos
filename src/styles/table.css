@@ -599,3 +599,27 @@ tr[data-tier='null'] { --c: var(--tier-null); }
   gap: var(--sp-2);
   margin-top: var(--sp-3);
 }
+
+/* Marca de imagem anexada na célula da tarefa. Fica na linha de baixo do título
+   para não empurrar o texto, e leva o número junto — o desenho sozinho não diz
+   quantas imagens são. */
+.anexos-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  margin-top: var(--sp-1);
+  padding: 1px var(--sp-2) 1px var(--sp-1);
+  border: 1px solid var(--line-hairline);
+  border-radius: var(--r-full);
+  background: var(--bg-sunken);
+  color: var(--ink-3);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-medium);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.4;
+}
+
+.anexos-badge svg {
+  display: block;
+  flex: none;
+}

@@ -2,6 +2,7 @@ import type { EnrichedTaskRow } from '../../lib/taskRows';
 import { initials } from '../../lib/taskRows';
 import { gutTier, taskStatusKind } from '../../lib/taskCalculations';
 import { onActivateKey } from '../../lib/a11y';
+import { AnexosBadge } from './AnexosBadge';
 
 interface TarefasTableRowProps {
   row: EnrichedTaskRow;
@@ -34,7 +35,10 @@ export function TarefasTableRow({ row, onOpen, onToggleConcluida, onDelete }: Ta
       <td className="gut-accent" title={t.tipo}>
         {t.tipo ? <span className="type-tag">{t.tipo}</span> : '—'}
       </td>
-      <td className="tarefa-cell" title={t.tarefa}><span className="clamp-2">{t.tarefa}</span></td>
+      <td className="tarefa-cell" title={t.tarefa}>
+        <span className="clamp-2">{t.tarefa}</span>
+        <AnexosBadge quantidade={t.anexos?.length ?? 0} />
+      </td>
       <td className="cell-wrap" title={t.detalhes}><span className="clamp-2">{t.detalhes}</span></td>
       <td className="center gut-note">{t.g ?? '—'}</td>
       <td className="center gut-note">{t.u ?? '—'}</td>
