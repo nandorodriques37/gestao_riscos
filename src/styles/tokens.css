@@ -27,6 +27,11 @@
   --bg-hover: light-dark(#F4F6F9, #1E2733);
   --bg-selected: light-dark(#EEF3FB, #1C2942);
   --bg-overlay: light-dark(rgba(11, 18, 32, 0.45), rgba(2, 5, 10, 0.66));
+  /* Fundo do visualizador de imagem em tela cheia. Escuro nos dois temas — de
+     propósito: o assunto ali é a imagem, e um scrim claro lava as cores dela.
+     Por isso a tinta sobre ele também não segue --ink-1. */
+  --scrim: light-dark(rgba(6, 10, 18, 0.84), rgba(2, 5, 10, 0.88));
+  --scrim-ink: #F2F5F9;
 
   /* ---------- Traços ---------- */
   --line-hairline: light-dark(rgba(15, 23, 42, 0.07), rgba(255, 255, 255, 0.08));

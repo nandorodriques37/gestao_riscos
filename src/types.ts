@@ -82,11 +82,33 @@ export interface Task {
   obs: string;
 }
 
-/** Tarefa como vem do backend — igual a Task, mas com id e versão do banco. */
+/**
+ * Metadado de uma imagem anexada a uma tarefa. Os bytes NÃO viajam aqui: a aba
+ * Tarefas faz polling a cada 15s e arrastaria todas as imagens a cada ciclo.
+ * Eles saem por rota própria (`/api/tasks/:id/anexos/:anexoId`), com cache
+ * imutável — o id do anexo nunca aponta para outro conteúdo.
+ */
+export interface TaskAttachment {
+  id: string;
+  /** Nome do arquivo original, mostrado como legenda e no download. */
+  nome: string;
+  /** MIME de imagem validado no backend (png, jpeg, webp, gif ou avif). */
+  mime: string;
+  /** Tamanho do binário em bytes (não do base64 do transporte). */
+  tamanho: number;
+}
+
+/** Tarefa como vem do backend — igual a Task, mas com id, versão e anexos. */
 export interface StoredTask extends Task {
   id: string;
   /** Incrementada a cada gravação; usada para detectar edição concorrente. */
   version: number;
+  /**
+   * Imagens anexadas (só o metadado). Fora de `Task` de propósito: anexo não é
+   * campo editável do formulário — entra e sai por endpoint próprio, não pelo
+   * PATCH com debounce.
+   */
+  anexos: TaskAttachment[];
 }
 
 export type TaskStatusFilterValue = 'Todos' | 'A fazer' | 'Em andamento' | 'Concluída';

@@ -1,9 +1,10 @@
-import type { Task } from '../types';
+import type { StoredTask } from '../types';
 import { computeGUT, normTaskStatus, prioridadeLabel, computeTaskRanks } from './taskCalculations';
 
 export interface EnrichedTaskRow {
   idx: number;
-  task: Task;
+  /** Tarefa como veio do banco — a tabela e o quadro também mostram os anexos. */
+  task: StoredTask;
   gut: number | null;
   prioridade: 'Crítica' | 'Alta' | 'Média' | 'Baixa' | null;
   rank: number | null;
@@ -19,7 +20,7 @@ export function initials(nome: string): string {
   return (first + last).toUpperCase();
 }
 
-export function buildTaskRows(tasks: Task[]): EnrichedTaskRow[] {
+export function buildTaskRows(tasks: StoredTask[]): EnrichedTaskRow[] {
   const guts = tasks.map(t => computeGUT(t));
   const ranks = computeTaskRanks(guts.map(gut => ({ gut })));
   return tasks.map((task, idx) => ({

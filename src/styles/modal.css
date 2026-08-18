@@ -337,3 +337,247 @@ select.modal-input {
   background: var(--bg-hover);
   border-color: var(--line-strong);
 }
+
+/* ---------- Anexos de imagem (aba Tarefas) ----------
+   A seção inteira é uma zona de soltar: arrastar sobre ela acende a borda. As
+   miniaturas são quadradas para a grade não dançar com imagens de proporções
+   diferentes; o nome e o tamanho ficam embaixo, porque a imagem sozinha não
+   diz qual arquivo é. */
+
+.anexos {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  transition: border-color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
+}
+
+.anexos[data-arrastando] {
+  border-color: var(--focus);
+  border-style: dashed;
+  background: var(--brand-soft);
+  padding: var(--sp-2);
+}
+
+.anexos-grade {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+  gap: var(--sp-3);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.anexo-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  min-width: 0;
+}
+
+/* A miniatura é o próprio botão de abrir: alvo grande, sem sobreposição de
+   controles em cima da imagem além do remover. */
+.anexo-thumb {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  padding: 0;
+  border: 1px solid var(--line-border);
+  border-radius: var(--r-sm);
+  background: var(--bg-sunken);
+  overflow: hidden;
+  cursor: zoom-in;
+  transition: border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
+}
+
+.anexo-thumb:hover {
+  border-color: var(--line-strong);
+  box-shadow: var(--elev-1);
+}
+
+.anexo-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Só aparece com o ponteiro ou o foco na miniatura — remover é destrutivo e não
+   precisa competir com a imagem o tempo todo. Em toque, onde não há hover, o
+   `:focus-within` cobre o caso e o botão continua alcançável pelo teclado. */
+.anexo-remover {
+  position: absolute;
+  top: var(--sp-1);
+  right: var(--sp-1);
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line-border);
+  border-radius: var(--r-full);
+  background: var(--bg-surface);
+  color: var(--danger);
+  font-size: var(--fs-sm);
+  line-height: 1;
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
+}
+
+.anexo-item:hover .anexo-remover,
+.anexo-item:focus-within .anexo-remover {
+  opacity: 1;
+}
+
+.anexo-remover:hover {
+  background: var(--danger-soft);
+}
+
+@media (hover: none) {
+  .anexo-remover { opacity: 1; }
+}
+
+.anexo-legenda {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  font-size: var(--fs-2xs);
+  color: var(--ink-3);
+}
+
+.anexo-nome {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink-2);
+}
+
+.anexo-tamanho {
+  color: var(--ink-4);
+}
+
+.anexos-vazio {
+  font-size: var(--fs-sm);
+  color: var(--ink-3);
+}
+
+.anexos-enviando {
+  font-size: var(--fs-xs);
+  color: var(--ink-3);
+}
+
+.anexos-erro {
+  font-size: var(--fs-xs);
+  color: var(--danger);
+}
+
+/* O input nativo fica escondido: o botão tracejado ao lado de "+ Adicionar
+   ação" é quem aparece, para as duas listas do modal terem a mesma afordância. */
+.anexos-input {
+  display: none;
+}
+
+/* ---------- Visualizador de imagem ----------
+   Sobe acima do modal (z-index 60) porque abre a partir dele. */
+
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  background: var(--scrim);
+  backdrop-filter: blur(3px);
+  display: flex;
+  flex-direction: column;
+  padding: var(--sp-4);
+  gap: var(--sp-3);
+}
+
+.lightbox:focus {
+  outline: none;
+}
+
+.lightbox-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  flex: none;
+}
+
+.lightbox-nome {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  min-width: 0;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  color: var(--scrim-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lightbox-meta {
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-regular);
+  opacity: 0.75;
+  flex: none;
+}
+
+.lightbox-btn,
+.lightbox-nav {
+  flex: none;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-full);
+  background: var(--bg-surface);
+  color: var(--ink-1);
+  line-height: 1;
+  transition: background var(--dur-fast) var(--ease);
+}
+
+.lightbox-btn {
+  width: 32px;
+  height: 32px;
+  font-size: var(--fs-lg);
+}
+
+.lightbox-nav {
+  width: 36px;
+  height: 36px;
+  font-size: var(--fs-xl);
+}
+
+.lightbox-btn:hover,
+.lightbox-nav:hover {
+  background: var(--bg-hover);
+}
+
+.lightbox-palco {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-3);
+}
+
+.lightbox-figura {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Sem ampliar além do tamanho real: uma captura pequena esticada vira borrão. */
+.lightbox-img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: var(--r-sm);
+  background: var(--bg-surface);
+}

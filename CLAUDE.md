@@ -16,6 +16,7 @@ Os `.dc.html` são **referência de design, não código de produção**. Recrie
 ## Stack
 - **React + TypeScript** (a lógica do protótipo mapeia quase 1:1). Componentes: `TopBar`, `RegistroTab`, `GraficosTab`, `PriorizacaoTab`, `TarefasTab`, `EditModal`.
 - **Backend:** dados centralizados em Postgres (Neon) via funções serverless em `api/`. Toda a lógica SQL fica em `api/_db.ts` (executor `Sql` injetável). O front consome a API (`src/lib/api.ts` + hook `src/hooks/useRecords.ts`) com atualização otimista, *debounce* de escrita e polling. `localStorage` (`riskMatrix.cache.v1`) é só cache/fallback.
+- **Anexos de imagem (tarefas):** tabela própria `task_attachments` (`api/_attachmentsDb.ts`), nunca coluna em `tasks` — a aba faz polling e os bytes não podem viajar no `GET /api/tasks`, que carrega só o metadado (`anexos`). Os bytes saem por `GET /api/tasks/:id/anexos/:anexoId`, com cache imutável, e vão direto no `src` de um `<img>`. O cliente reduz a imagem antes de subir (`src/lib/imageAttachments.ts`: teto de 1600px e 3 MB, re-encode em WebP); o servidor revalida formato e tamanho. Anexo **não** é campo de `Task`: entra e sai por endpoint próprio, fora do PATCH com debounce.
 - **Dev:** `npm run dev` sobe a mesma API com Postgres embarcado (pglite) via `vite-plugin-dev-api.ts` — sem precisar de banco. Produção usa Neon (`DATABASE_URL`).
 - Sem lib de charts obrigatória — heatmap/donuts/barras são CSS (grid, conic-gradient, larguras %).
 
@@ -56,8 +57,11 @@ nessa ordem.
 - Tipografia: **Inter Variable** auto-hospedada (`@fontsource-variable/inter`,
   sem CDN). `tabular-nums` só em coluna de tabela e eixo; número grande (KPI,
   centro do donut) usa figuras proporcionais.
-- Sem ícones externos: glifos Unicode (↓ + × ▲ ▼) ou desenho em CSS. Sem emojis.
-  Cuidado: o Inter **não** tem ☀ ☾ ◐ — glifos assim caem em fallback torto.
+- Sem ícones externos: glifos Unicode (↓ + × ▲ ▼ ‹ ›) ou desenho em CSS/SVG inline
+  (ver `AnexosBadge`). Sem emojis. Cuidado: o Inter **não** tem ☀ ☾ ◐ — glifos
+  assim caem em fallback torto.
+- O visualizador de imagem em tela cheia é escuro nos dois temas (`--scrim`,
+  `--scrim-ink`): scrim claro lava as cores da imagem.
 
 ### Data viz (regras do skill `dataviz`)
 - Vão de 2px de superfície (`--viz-gap`) entre preenchimentos adjacentes: células

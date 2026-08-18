@@ -2,8 +2,9 @@
 // de `_db.ts` (riscos). Mesmo padrão: toda a lógica SQL fica aqui,
 // parametrizada por um executor `Sql` para ser testável e portável.
 import { INITIAL_TASKS } from './_tasksSeed.js';
-import type { Task } from '../src/types';
+import type { Task, TaskAttachment } from '../src/types';
 import { neonSql, type Sql } from './_db.js';
+import { ensureAttachmentsSchema, listAttachments, attachmentsByTask } from './_attachmentsDb.js';
 
 export { neonSql };
 export type { Sql };
@@ -11,6 +12,7 @@ export type { Sql };
 export interface StoredTask extends Task {
   id: string;
   version: number;
+  anexos: TaskAttachment[];
 }
 
 /** Resultado de uma tentativa de atualização com checagem de concorrência otimista. */
@@ -32,7 +34,7 @@ function toNumberOrNull(v: unknown): number | null {
   return typeof v === 'number' ? v : Number(v);
 }
 
-function rowToTask(row: Record<string, unknown>): StoredTask {
+function rowToTask(row: Record<string, unknown>, anexos: TaskAttachment[] = []): StoredTask {
   return {
     id: String(row.id),
     tipo: (row.tipo as string) ?? '',
@@ -45,7 +47,18 @@ function rowToTask(row: Record<string, unknown>): StoredTask {
     responsavel: (row.responsavel as string) ?? '',
     obs: (row.obs as string) ?? '',
     version: Number(row.version ?? 1),
+    anexos,
   };
+}
+
+/**
+ * Completa uma linha de `tasks` com os metadados dos seus anexos. Toda resposta
+ * de tarefa passa por aqui: o front substitui a tarefa inteira pelo que volta
+ * do servidor, então uma resposta sem `anexos` apagaria as imagens da tela até
+ * o próximo polling.
+ */
+async function rowWithAnexos(sql: Sql, row: Record<string, unknown>): Promise<StoredTask> {
+  return rowToTask(row, await listAttachments(sql, String(row.id)));
 }
 
 function fieldValue(rec: Partial<Task>, field: TaskField): unknown {
@@ -73,6 +86,7 @@ export async function ensureTasksSchema(sql: Sql): Promise<void> {
       version     integer not null default 1
     )
   `);
+  await ensureAttachmentsSchema(sql);
   const rows = await sql('select count(*)::int as count from tasks');
   const count = Number(rows[0]?.count ?? 0);
   if (count === 0) {
@@ -97,7 +111,9 @@ async function seed(sql: Sql): Promise<void> {
 
 export async function listTasks(sql: Sql): Promise<StoredTask[]> {
   const rows = await sql('select * from tasks order by position asc, created_at asc');
-  return rows.map(rowToTask);
+  // Duas consultas para a lista toda — não uma por tarefa.
+  const byTask = await attachmentsByTask(sql);
+  return rows.map(row => rowToTask(row, byTask.get(String(row.id)) ?? []));
 }
 
 export async function createTask(sql: Sql, data: Partial<Task>): Promise<StoredTask> {
@@ -109,7 +125,7 @@ export async function createTask(sql: Sql, data: Partial<Task>): Promise<StoredT
     values ((select coalesce(max(position), -1) + 1 from tasks), ${ph.join(', ')})
     returning *`;
   const rows = await sql(text, params);
-  return rowToTask(rows[0]);
+  return rowToTask(rows[0]);  // tarefa recém-criada nunca tem anexo
 }
 
 /**
@@ -124,7 +140,7 @@ export async function updateTaskById(
   const entries = Object.entries(patch).filter(([k]) => FIELD_SET.has(k));
   if (entries.length === 0) {
     const rows = await sql('select * from tasks where id = $1', [id]);
-    return rows[0] ? { status: 'ok', task: rowToTask(rows[0]) } : { status: 'not_found' };
+    return rows[0] ? { status: 'ok', task: await rowWithAnexos(sql, rows[0]) } : { status: 'not_found' };
   }
   const params: unknown[] = [];
   const sets = entries.map(([k, v]) => {
@@ -140,12 +156,12 @@ export async function updateTaskById(
   }
   text += ' returning *';
   const rows = await sql(text, params);
-  if (rows[0]) return { status: 'ok', task: rowToTask(rows[0]) };
+  if (rows[0]) return { status: 'ok', task: await rowWithAnexos(sql, rows[0]) };
 
   // Nenhuma linha batida: distingue "não existe" de "existe, mas a versão mudou".
   const current = await sql('select * from tasks where id = $1', [id]);
   if (!current[0]) return { status: 'not_found' };
-  return { status: 'conflict', task: rowToTask(current[0]) };
+  return { status: 'conflict', task: await rowWithAnexos(sql, current[0]) };
 }
 
 export async function deleteTaskById(sql: Sql, id: string): Promise<boolean> {

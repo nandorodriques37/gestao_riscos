@@ -8,6 +8,10 @@ import {
 import {
   ensureTasksSchema, listTasks, createTask, updateTaskById, deleteTaskById,
 } from './api/_tasksDb';
+import {
+  listAttachments, createAttachment, getAttachment, deleteAttachment,
+  contentDisposition, CACHE_CONTROL_IMUTAVEL,
+} from './api/_attachmentsDb';
 
 // Backend de DESENVOLVIMENTO apenas: reimplementa as rotas /api usando um
 // Postgres embarcado (pglite) para que `npm run dev` funcione sem o Neon.
@@ -48,6 +52,17 @@ function send(res: ServerResponse, status: number, body: unknown) {
   res.statusCode = status;
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   res.end(JSON.stringify(body));
+}
+
+/** Espelha o que a função serverless devolve ao servir os bytes de um anexo. */
+function sendImage(res: ServerResponse, mime: string, nome: string, dados: string) {
+  const bytes = Buffer.from(dados, 'base64');
+  res.statusCode = 200;
+  res.setHeader('Content-Type', mime);
+  res.setHeader('Content-Length', String(bytes.length));
+  res.setHeader('Cache-Control', CACHE_CONTROL_IMUTAVEL);
+  res.setHeader('Content-Disposition', contentDisposition(nome));
+  res.end(bytes);
 }
 
 export function devApiPlugin(): Plugin {
@@ -97,6 +112,38 @@ export function devApiPlugin(): Plugin {
           if (path === '/api/tasks') {
             if (method === 'GET') return send(res, 200, await listTasks(sql));
             if (method === 'POST') return send(res, 201, await createTask(sql, (await readJsonBody(req)) as Record<string, unknown>));
+            return send(res, 405, { error: 'Método não permitido' });
+          }
+
+          // Anexos vêm antes da rota da tarefa: os padrões são exclusivos, mas
+          // ler do mais específico para o mais genérico evita surpresa.
+          const anexoIdMatch = path.match(/^\/api\/tasks\/([^/]+)\/anexos\/([^/]+)$/);
+          if (anexoIdMatch) {
+            const taskId = decodeURIComponent(anexoIdMatch[1]);
+            const anexoId = decodeURIComponent(anexoIdMatch[2]);
+            if (method === 'GET') {
+              const anexo = await getAttachment(sql, taskId, anexoId);
+              if (!anexo) return send(res, 404, { error: 'Anexo não encontrado' });
+              return sendImage(res, anexo.mime, anexo.nome, anexo.dados);
+            }
+            if (method === 'DELETE') {
+              const ok = await deleteAttachment(sql, taskId, anexoId);
+              return ok ? send(res, 200, { ok: true }) : send(res, 404, { error: 'Anexo não encontrado' });
+            }
+            return send(res, 405, { error: 'Método não permitido' });
+          }
+
+          const anexosMatch = path.match(/^\/api\/tasks\/([^/]+)\/anexos$/);
+          if (anexosMatch) {
+            const taskId = decodeURIComponent(anexosMatch[1]);
+            if (method === 'GET') return send(res, 200, await listAttachments(sql, taskId));
+            if (method === 'POST') {
+              const body = (await readJsonBody(req)) as Record<string, unknown>;
+              const result = await createAttachment(sql, taskId, body);
+              if (result.status === 'not_found') return send(res, 404, { error: 'Tarefa não encontrada' });
+              if (result.status === 'invalid') return send(res, 400, { error: result.message });
+              return send(res, 201, result.anexo);
+            }
             return send(res, 405, { error: 'Método não permitido' });
           }
 

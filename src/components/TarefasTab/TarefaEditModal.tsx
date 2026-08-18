@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import type { Task } from '../../types';
+import type { Task, TaskAttachment } from '../../types';
 import type { TaskSaveStatus } from '../../hooks/useTasks';
 import { computeGUT, gutTier, prioridadeLabel } from '../../lib/taskCalculations';
+import { AnexosEditor } from './AnexosEditor';
 
 const FOCUSABLE = 'a[href], button:not([disabled]), input, select, textarea, [tabindex]:not([tabindex="-1"])';
 
@@ -14,10 +15,15 @@ const SAVE_STATUS_TEXT: Record<TaskSaveStatus, string> = {
 
 interface TarefaEditModalProps {
   task: Task;
+  /** Id da tarefa no banco — os anexos são gravados por endpoint próprio. */
+  taskId: string;
+  anexos: TaskAttachment[];
   saveStatus?: TaskSaveStatus;
   onCommit: (patch: Partial<Task>) => void;
   onClose: () => void;
   onDelete: () => void;
+  onAddAnexo: (file: File) => Promise<void>;
+  onRemoveAnexo: (anexoId: string) => Promise<void>;
   tipoOptions: string[];
   responsavelOptions: string[];
 }
@@ -33,7 +39,8 @@ function numOrNull(value: string): number | null {
 }
 
 export function TarefaEditModal({
-  task, saveStatus, onCommit, onClose, onDelete, tipoOptions, responsavelOptions,
+  task, taskId, anexos, saveStatus, onCommit, onClose, onDelete,
+  onAddAnexo, onRemoveAnexo, tipoOptions, responsavelOptions,
 }: TarefaEditModalProps) {
   // Rascunho local: digitar altera só este estado (instantâneo, sem re-render
   // global, sem rede). A gravação acontece por ação explícita — ver commit().
@@ -171,6 +178,17 @@ export function TarefaEditModal({
                 </div>
               </div>
             </div>
+          </div>
+
+          <div>
+            {/* Fora do rascunho local: imagem sobe na hora, não no "Salvar". */}
+            <div className="modal-section-title">Imagens anexadas</div>
+            <AnexosEditor
+              taskId={taskId}
+              anexos={anexos}
+              onAdd={onAddAnexo}
+              onRemove={onRemoveAnexo}
+            />
           </div>
 
           <div>

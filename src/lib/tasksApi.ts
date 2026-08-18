@@ -1,4 +1,5 @@
-import type { Task, StoredTask } from '../types';
+import type { Task, StoredTask, TaskAttachment } from '../types';
+import type { PreparedAttachment } from './imageAttachments';
 
 const BASE = '/api';
 
@@ -50,4 +51,30 @@ export async function patchTaskApi(id: string, patch: Partial<Task>, expectedVer
 
 export async function deleteTaskApi(id: string): Promise<void> {
   await parse(await fetch(`${BASE}/tasks/${encodeURIComponent(id)}`, { method: 'DELETE' }));
+}
+
+// ---------- Anexos de imagem ----------
+
+function anexosBase(taskId: string): string {
+  return `${BASE}/tasks/${encodeURIComponent(taskId)}/anexos`;
+}
+
+/**
+ * URL dos bytes da imagem — vai direto no `src` de um `<img>`. Servida com
+ * cache imutável, então a mesma miniatura só é baixada uma vez.
+ */
+export function taskAttachmentUrl(taskId: string, anexoId: string): string {
+  return `${anexosBase(taskId)}/${encodeURIComponent(anexoId)}`;
+}
+
+export async function uploadTaskAttachmentApi(taskId: string, anexo: PreparedAttachment): Promise<TaskAttachment> {
+  return parse(await fetch(anexosBase(taskId), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(anexo),
+  }));
+}
+
+export async function deleteTaskAttachmentApi(taskId: string, anexoId: string): Promise<void> {
+  await parse(await fetch(taskAttachmentUrl(taskId, anexoId), { method: 'DELETE' }));
 }

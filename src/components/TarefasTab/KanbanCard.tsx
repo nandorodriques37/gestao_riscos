@@ -4,6 +4,7 @@ import { initials } from '../../lib/taskRows';
 import { gutTier, taskStatusKind } from '../../lib/taskCalculations';
 import { onActivateKey } from '../../lib/a11y';
 import { MoveMenu, type MoveOption } from './MoveMenu';
+import { AnexosBadge } from './AnexosBadge';
 
 interface KanbanCardProps {
   row: EnrichedTaskRow;
@@ -43,6 +44,7 @@ export function KanbanCardFace({
           GUT {gut ?? '—'}
         </span>
         {rank != null && <span className="kanban-card-rank">#{rank}</span>}
+        <AnexosBadge quantidade={t.anexos?.length ?? 0} />
       </div>
 
       <div className="kanban-card-foot">
