@@ -2,7 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { PortfolioBundle } from '../types';
 import {
   fetchPortfolio, patchEntidadeApi, createEntidadeApi, deleteEntidadeApi,
-  migrarAcoesApi, PortfolioConflictError, type EntidadeUrl, type ResultadoMigracao,
+  migrarAcoesApi, promoverTriagemApi, PortfolioConflictError,
+  type EntidadeUrl, type ResultadoMigracao, type ResultadoPromocao,
 } from '../lib/portfolioApi';
 
 const CACHE_KEY = 'riskMatrix.portfolio.v1';
@@ -57,6 +58,8 @@ export interface UsePortfolio {
   createEntidade: (entidade: EntidadeUrl, data: Record<string, unknown>) => Promise<boolean>;
   deleteEntidade: (entidade: EntidadeUrl, id: string) => Promise<boolean>;
   migrarAcoes: () => Promise<ResultadoMigracao | null>;
+  /** Aplica a triagem: as marcadas como iniciativa viram iniciativas. */
+  promoverTriagem: () => Promise<ResultadoPromocao | null>;
 }
 
 /**
@@ -160,6 +163,17 @@ export function usePortfolio(): UsePortfolio {
     }
   }, [refresh]);
 
+  const promoverTriagem = useCallback(async () => {
+    try {
+      const resultado = await promoverTriagemApi();
+      await refresh();
+      return resultado;
+    } catch (err) {
+      if (montado.current) setError(err instanceof Error ? err.message : 'Falha ao promover as iniciativas');
+      return null;
+    }
+  }, [refresh]);
+
   const clearError = useCallback(() => setError(null), []);
 
   useEffect(() => {
@@ -179,6 +193,6 @@ export function usePortfolio(): UsePortfolio {
 
   return {
     portfolio, loading, error, refresh, clearError,
-    patchEntidade, createEntidade, deleteEntidade, migrarAcoes,
+    patchEntidade, createEntidade, deleteEntidade, migrarAcoes, promoverTriagem,
   };
 }

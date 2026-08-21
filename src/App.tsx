@@ -32,6 +32,10 @@ function App() {
   // instâncias do mesmo estado dariam duas verdades sobre a mesma fila.
   const pf = usePortfolio();
   const triagemPendente = pf.portfolio.acoes_risco.filter(a => !a.triagem).length;
+  // Promoção pendente também segura a aba: sem isso ela sumiria assim que a
+  // fila esvaziasse, e o botão de promover ficaria inalcançável.
+  const promocaoPendente = pf.portfolio.acoes_risco
+    .filter(a => a.triagem === 'iniciativa' && !a.iniciativa_id).length;
   const migracaoIniciada = pf.portfolio.acoes_risco.length > 0;
 
   // Fecha o snackbar de "desfazer" quando o componente desmonta.
@@ -135,6 +139,7 @@ function App() {
         onChangeTab={setTab}
         sync={sync}
         triagemPendente={triagemPendente}
+        promocaoPendente={promocaoPendente}
         migracaoIniciada={migracaoIniciada}
       />
 

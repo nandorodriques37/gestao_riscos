@@ -140,6 +140,18 @@
   flex-wrap: wrap;
 }
 
+/* Painel de aplicação: é a única ação irreversível-ish da tela (desfaz-se
+   excluindo a iniciativa), então ganha o acento da marca em vez de sumir
+   entre os cartões. */
+.triagem-promover {
+  border-color: color-mix(in oklab, var(--brand) 34%, transparent);
+  background: color-mix(in oklab, var(--brand) 4%, var(--bg-surface));
+}
+
+.triagem-promover .section-header-row {
+  align-items: center;
+}
+
 /* Linha já classificada continua visível, mas recuada — a atenção pertence à
    fila, não ao que já foi resolvido. */
 .triagem-item[data-decidida='true'] {

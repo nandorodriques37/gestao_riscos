@@ -28,12 +28,14 @@ export interface Sugestao {
 /** Limite alto/baixo de esforço — o mesmo da matriz de quadrantes. */
 export const CORTE_ESFORCO = 2.5;
 
-/** Sinais de trabalho contínuo: controle permanente, não projeto nem tarefa avulsa. */
+/**
+ * Sinais de trabalho contínuo: controle permanente, não projeto nem tarefa
+ * avulsa. São radicais, casados no INÍCIO da palavra — ver `acharMarcador`.
+ */
 const MARCADORES_ROTINA = [
-  'revisao', 'revisoes', 'quinzenal', 'quinzenais', 'mensal', 'mensais',
-  'semanal', 'semanais', 'diaria', 'diario', 'diariamente', 'periodic',
-  'acompanhar', 'acompanhamento', 'monitorar', 'monitoramento',
-  'recorrente', 'rotina', 'sempre que', 'toda semana', 'todo mes',
+  'revis', 'quinzena', 'mensal', 'mensais', 'semanal', 'semanais',
+  'diari', 'periodic', 'acompanh', 'monitor', 'recorrente', 'rotina',
+  'sempre que', 'toda semana', 'todo mes',
 ];
 
 /**
@@ -42,10 +44,9 @@ const MARCADORES_ROTINA = [
  * gestor digitou vence texto adivinhado.
  */
 const MARCADORES_CONSTRUCAO = [
-  'criar', 'criacao', 'desenvolver', 'desenvolvimento', 'construir',
-  'reformulacao', 'reformular', 'restruturacao', 'reestruturacao',
-  'reestruturar', 'implantar', 'implementar', 'projeto', 'motor',
-  'ferramenta', 'power bi', 'automatizar', 'migrar', 'migracao',
+  'criar', 'criacao', 'desenvolv', 'construir', 'reformul', 'restrutur',
+  'reestrutur', 'implant', 'implement', 'projeto', 'motor', 'ferramenta',
+  'power bi', 'automatiz', 'migrar', 'migracao',
 ];
 
 /** Sinal de que o trabalho depende de fornecedor, não do próprio time. */
@@ -72,6 +73,24 @@ function comVirgula(n: number): string {
 }
 
 /**
+ * Procura um radical no INÍCIO de uma palavra e devolve a palavra inteira que
+ * casou, para a tela poder dizer "o texto diz «revisões»".
+ *
+ * Casar por substring solta seria errado no vocabulário deste app:
+ * "previsão" termina em "revisão", e um `includes('revisao')` classificava
+ * "Criar motor de previsão de vendas" como rotina. "Intermediário" contém
+ * "diário" pelo mesmo motivo. A borda de palavra resolve os dois.
+ */
+function acharMarcador(texto: string, marcadores: readonly string[]): string | null {
+  for (const m of marcadores) {
+    const escapado = m.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const achado = new RegExp(`\\b(${escapado}\\S*)`).exec(texto);
+    if (achado) return achado[1];
+  }
+  return null;
+}
+
+/**
  * Ordem das regras importa, e ela é deliberada:
  *
  * - recorrência vence tudo, porque uma revisão quinzenal cara continua sendo
@@ -82,7 +101,7 @@ function comVirgula(n: number): string {
 export function sugerirDestino(e: EntradaTriagem): Sugestao {
   const texto = normalizar(e.descricao);
 
-  const rotina = MARCADORES_ROTINA.find(m => texto.includes(m));
+  const rotina = acharMarcador(texto, MARCADORES_ROTINA);
   if (rotina) {
     return {
       destino: 'rotina',
@@ -113,7 +132,7 @@ export function sugerirDestino(e: EntradaTriagem): Sugestao {
       };
   }
 
-  const construcao = MARCADORES_CONSTRUCAO.find(m => texto.includes(m));
+  const construcao = acharMarcador(texto, MARCADORES_CONSTRUCAO);
   if (construcao) {
     return {
       destino: 'iniciativa',

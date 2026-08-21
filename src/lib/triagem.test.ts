@@ -31,6 +31,37 @@ describe('sugerirDestino', () => {
         expect(sugerirDestino({ ...base, descricao: d }).destino).toBe('rotina');
       }
     });
+
+    it('devolve a palavra inteira que casou, não o radical', () => {
+      const s = sugerirDestino({ ...base, descricao: 'MED - Revisões quinzenais dos termolábeis' });
+      expect(s.motivo).toContain('revisoes');
+      expect(s.motivo).not.toContain('"revis"');
+    });
+  });
+
+  // O marcador é casado no início da palavra, não como substring solta. No
+  // vocabulário deste app isso não é detalhe: "previsão" termina em "revisão".
+  describe('não confunde palavra que contém o marcador', () => {
+    it('previsão não é revisão — o caso que quebrava de verdade', () => {
+      const s = sugerirDestino({
+        ...base,
+        descricao: 'Criar motor de previsão de vendas paleativa (Temporária)',
+      });
+      expect(s.destino).toBe('iniciativa');
+    });
+
+    it('previsão de vendas sem verbo de construção também não é rotina', () => {
+      const s = sugerirDestino({
+        ...base,
+        descricao: 'Ausência de Previsão de Vendas para desdobramento orçamentário',
+      });
+      expect(s.destino).toBe('acao');
+    });
+
+    it('intermediário não é diário', () => {
+      expect(sugerirDestino({ ...base, descricao: 'Análise intermediária do processo' }).destino)
+        .toBe('acao');
+    });
   });
 
   describe('terceiro é dependência externa; o próprio time não', () => {

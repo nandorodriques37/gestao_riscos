@@ -72,3 +72,18 @@ export interface ResultadoMigracao {
 export async function migrarAcoesApi(): Promise<ResultadoMigracao> {
   return parse(await fetch(`${BASE}/migrar-acoes`, { method: 'POST' }));
 }
+
+export interface ResultadoPromocao {
+  objetivoId: string;
+  objetivoCriado: boolean;
+  iniciativasCriadas: number;
+  jaPromovidas: number;
+  semRiscoDeOrigem: number;
+  comStatusHerdadoEmObs: number;
+  nomes: string[];
+}
+
+/** Promove a iniciativa as ações marcadas na triagem. Idempotente. */
+export async function promoverTriagemApi(): Promise<ResultadoPromocao> {
+  return parse(await fetch(`${BASE}/promover-triagem`, { method: 'POST' }));
+}

@@ -17,6 +17,7 @@ import {
   contarAcoesRisco, validarIniciativa, validarMarco,
 } from './api/_portfolioDb';
 import { migrarAcoes } from './api/_migracaoAcoes';
+import { promoverTriagem } from './api/_promocaoTriagem';
 import type { Iniciativa, Marco } from './src/types';
 
 // Backend de DESENVOLVIMENTO apenas: reimplementa as rotas /api usando um
@@ -143,6 +144,11 @@ export function devApiPlugin(): Plugin {
           if (path === '/api/portfolio/migrar-acoes') {
             if (method !== 'POST') return send(res, 405, { error: 'Método não permitido' });
             return send(res, 200, await migrarAcoes(sql));
+          }
+
+          if (path === '/api/portfolio/promover-triagem') {
+            if (method !== 'POST') return send(res, 405, { error: 'Método não permitido' });
+            return send(res, 200, await promoverTriagem(sql));
           }
 
           const portfolioMatch = path.match(/^\/api\/portfolio\/([^/]+)(?:\/([^/]+))?$/);

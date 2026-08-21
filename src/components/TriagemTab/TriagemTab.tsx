@@ -41,9 +41,11 @@ function formatarData(iso: string | null): string {
  * — quando a fila esvazia, some do menu.
  */
 export function TriagemTab({ records, pf }: TriagemTabProps) {
-  const { portfolio, loading, error, clearError, patchEntidade, migrarAcoes } = pf;
+  const { portfolio, loading, error, clearError, patchEntidade, migrarAcoes, promoverTriagem } = pf;
   const [migrando, setMigrando] = useState(false);
+  const [promovendo, setPromovendo] = useState(false);
   const [resumoMigracao, setResumoMigracao] = useState<string | null>(null);
+  const [resumoPromocao, setResumoPromocao] = useState<string | null>(null);
   const [mostrarDecididas, setMostrarDecididas] = useState(false);
 
   const riscoPorId = useMemo(() => new Map(records.map(r => [r.id, r])), [records]);
@@ -69,6 +71,15 @@ export function TriagemTab({ records, pf }: TriagemTabProps) {
   const pendentes = useMemo(() => linhas.filter(l => !l.acao.triagem), [linhas]);
   const decididas = useMemo(() => linhas.filter(l => l.acao.triagem), [linhas]);
 
+  const paraPromover = useMemo(
+    () => portfolio.acoes_risco.filter(a => a.triagem === 'iniciativa' && !a.iniciativa_id).length,
+    [portfolio.acoes_risco],
+  );
+  const jaPromovidas = useMemo(
+    () => portfolio.acoes_risco.filter(a => a.triagem === 'iniciativa' && a.iniciativa_id).length,
+    [portfolio.acoes_risco],
+  );
+
   const contagem = useMemo(() => {
     const c: Record<DestinoSugerido, number> = { acao: 0, iniciativa: 0, rotina: 0 };
     decididas.forEach(l => {
@@ -93,6 +104,33 @@ export function TriagemTab({ records, pf }: TriagemTabProps) {
 
   function decidir(acao: AcaoRisco, destino: DestinoTriagem) {
     void patchEntidade('acoes-risco', acao.id, { triagem: destino });
+  }
+
+  async function handlePromover() {
+    setPromovendo(true);
+    const r = await promoverTriagem();
+    setPromovendo(false);
+    if (!r) return;
+    if (r.iniciativasCriadas === 0) {
+      setResumoPromocao(r.jaPromovidas > 0
+        ? `Nada novo para promover — as ${r.jaPromovidas} já viraram iniciativa.`
+        : 'Nenhuma ação marcada como iniciativa ainda.');
+      return;
+    }
+    const partes = [
+      `${r.iniciativasCriadas} ${r.iniciativasCriadas === 1 ? 'iniciativa criada' : 'iniciativas criadas'} sob "A CLASSIFICAR"`,
+    ];
+    if (r.comStatusHerdadoEmObs > 0) {
+      partes.push(r.comStatusHerdadoEmObs === 1
+        ? 'Uma delas veio de uma ação já em andamento e nasceu em "backlog" — cadastre os marcos antes de mover o status'
+        : `${r.comStatusHerdadoEmObs} vieram de ações já em andamento e nasceram em "backlog" — cadastre os marcos antes de mover o status`);
+    }
+    if (r.semRiscoDeOrigem > 0) {
+      partes.push(r.semRiscoDeOrigem === 1
+        ? 'Uma foi pulada por não ter risco de origem'
+        : `${r.semRiscoDeOrigem} foram puladas por não terem risco de origem`);
+    }
+    setResumoPromocao(`${partes.join('. ')}.`);
   }
 
   if (loading && portfolio.acoes_risco.length === 0) {
@@ -162,6 +200,42 @@ export function TriagemTab({ records, pf }: TriagemTabProps) {
           {resumoMigracao && (
             <div className="card" style={{ marginBottom: 'var(--sp-4)' }}>
               <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--ink-2)' }}>{resumoMigracao}</div>
+            </div>
+          )}
+
+          {(paraPromover > 0 || jaPromovidas > 0 || resumoPromocao) && (
+            <div className="card triagem-promover" style={{ marginBottom: 'var(--sp-4)' }}>
+              <div className="section-header-row">
+                <div>
+                  <div className="section-title">
+                    {paraPromover > 0
+                      ? `${paraPromover} ${paraPromover === 1 ? 'ação pronta' : 'ações prontas'} para virar iniciativa`
+                      : 'Nada esperando promoção'}
+                  </div>
+                  <div className="section-subtitle" style={{ marginBottom: 0 }}>
+                    Cada uma vira uma iniciativa sob <strong>A CLASSIFICAR</strong>, herdando esforço,
+                    impacto, gravidade, recurso e dono do risco de origem. Nasce em <strong>backlog</strong> —
+                    sem marco não se declara execução.
+                    {jaPromovidas > 0 && ` ${jaPromovidas} já foram promovidas.`}
+                  </div>
+                </div>
+                <button
+                  className="btn btn-navy"
+                  onClick={() => { void handlePromover(); }}
+                  disabled={promovendo || paraPromover === 0}
+                >
+                  {promovendo ? 'Promovendo…' : 'Promover a iniciativas'}
+                </button>
+              </div>
+              {resumoPromocao && (
+                <div style={{
+                  marginTop: 'var(--sp-3)', paddingTop: 'var(--sp-3)',
+                  borderTop: '1px solid var(--line-hairline)',
+                  fontSize: 'var(--fs-sm)', color: 'var(--ink-2)', lineHeight: 1.55,
+                }}>
+                  {resumoPromocao}
+                </div>
+              )}
             </div>
           )}
 
@@ -240,10 +314,19 @@ export function TriagemTab({ records, pf }: TriagemTabProps) {
                             <span className="badge" data-badge={BADGE_DESTINO[acao.triagem as DestinoSugerido]}>
                               {ROTULO_DESTINO[acao.triagem as DestinoSugerido]}
                             </span>
+                            {acao.triagem === 'iniciativa' && (
+                              <span className="badge" data-badge={acao.iniciativa_id ? 'green' : 'amber'}>
+                                {acao.iniciativa_id ? 'Promovida' : 'Aguardando promoção'}
+                              </span>
+                            )}
                           </div>
                           <button
                             className="btn btn-ghost"
                             onClick={() => decidir(acao, '')}
+                            disabled={Boolean(acao.iniciativa_id)}
+                            title={acao.iniciativa_id
+                              ? 'Já virou iniciativa. Para desfazer, exclua a iniciativa — a ação volta a ser autônoma.'
+                              : undefined}
                           >
                             Devolver para a fila
                           </button>

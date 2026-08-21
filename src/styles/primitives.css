@@ -63,13 +63,21 @@
   transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
 }
 
+/* Faltava uma regra genérica de desabilitado: só o menu Mover e o salvar do
+   modal tratavam o estado, então qualquer botão novo nascia parecendo clicável
+   mesmo inerte. */
+.btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
 .btn-ghost {
   background: var(--bg-surface);
   color: var(--ink-2);
   border-color: var(--line-border);
 }
 
-.btn-ghost:hover {
+.btn-ghost:hover:not(:disabled) {
   background: var(--bg-hover);
   border-color: var(--line-strong);
 }
@@ -80,7 +88,7 @@
   border-color: var(--line-border);
 }
 
-.btn-outline-navy:hover {
+.btn-outline-navy:hover:not(:disabled) {
   background: var(--brand-soft);
   border-color: var(--brand);
 }
@@ -94,7 +102,7 @@
   font-weight: var(--fw-semibold);
 }
 
-.btn-navy:hover {
+.btn-navy:hover:not(:disabled) {
   background: var(--brand-hover);
 }
 

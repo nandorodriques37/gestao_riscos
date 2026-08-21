@@ -13,6 +13,8 @@ interface TopBarProps {
    * com o contador; depois some sozinha.
    */
   triagemPendente?: number;
+  /** Ações já marcadas como iniciativa que ainda não foram promovidas. */
+  promocaoPendente?: number;
   /** Falso enquanto nenhum plano de ação foi extraído ainda. */
   migracaoIniciada?: boolean;
 }
@@ -34,14 +36,21 @@ const THEME_LABEL: Record<ThemePref, string> = {
   dark: 'Tema: escuro',
 };
 
-export function TopBar({ tab, onChangeTab, sync, triagemPendente = 0, migracaoIniciada = false }: TopBarProps) {
+export function TopBar({
+  tab, onChangeTab, sync,
+  triagemPendente = 0, promocaoPendente = 0, migracaoIniciada = false,
+}: TopBarProps) {
   const [theme, setTheme] = useState<ThemePref>(() => readThemePref());
 
   useEffect(() => { applyThemePref(theme); }, [theme]);
 
-  // A Triagem é uma aba de mudança, não de rotina: fica enquanto houver fila
-  // (ou antes de a extração rodar) e desaparece quando o trabalho acaba.
-  const mostrarTriagem = tab === 'triagem' || !migracaoIniciada || triagemPendente > 0;
+  // A Triagem é uma aba de mudança, não de rotina: fica enquanto houver
+  // trabalho — fila por classificar, iniciativa por promover, ou a extração
+  // ainda nem rodou — e desaparece sozinha quando a migração termina.
+  const mostrarTriagem = tab === 'triagem'
+    || !migracaoIniciada
+    || triagemPendente > 0
+    || promocaoPendente > 0;
 
   function cycleTheme() {
     setTheme(t => THEME_CYCLE[(THEME_CYCLE.indexOf(t) + 1) % THEME_CYCLE.length]);
