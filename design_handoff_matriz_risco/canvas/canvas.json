@@ -1,0 +1,49 @@
+{
+  "pages": [
+    { "id": "page-1", "name": "Telas" },
+    { "id": "page-2", "name": "Sistema" }
+  ],
+  "artboards": [
+    { "file": "Main.dc.html",        "page": "page-1", "x": 0,    "y": 0,    "w": 1440, "h": 860, "title": "Painel" },
+    { "file": "Iniciativa.dc.html",  "page": "page-1", "x": 1560, "y": 0,    "w": 1440, "h": 880, "title": "Iniciativa · marcos" },
+    { "file": "Objetivos.dc.html",   "page": "page-1", "x": 0,    "y": 1000, "w": 1440, "h": 848, "title": "Objetivos" },
+    { "file": "Riscos.dc.html",      "page": "page-1", "x": 1560, "y": 1000, "w": 1440, "h": 900, "title": "Riscos · ações vinculadas" },
+    { "file": "NavRail.dc.html",     "page": "page-2", "x": 0,    "y": 0,    "w": 788,  "h": 748, "title": "Nav rail" },
+    { "file": "Superficies.dc.html", "page": "page-2", "x": 908,  "y": 0,    "w": 1020, "h": 812, "title": "Escada de superfícies" }
+  ],
+  "annotations": [
+    {
+      "id": "nota-painel",
+      "page": "page-1",
+      "x": 0,
+      "y": -150,
+      "w": 640,
+      "text": "Painel — as quatro perguntas do prompt, uma por tile grande.\nCada elemento leva a uma decisão: nenhum gráfico decorativo.\nValores em R$ e datas de marco são amostra — esses campos ainda não existem no banco."
+    },
+    {
+      "id": "nota-marcos",
+      "page": "page-1",
+      "x": 1560,
+      "y": -150,
+      "w": 640,
+      "text": "Trilha de marcos — o círculo vazado é o plano ORIGINAL, o cheio é onde o marco está hoje.\nA distância entre os dois é o slip, e ela não some ao replanejar.\nSem percentual de conclusão: marco é binário."
+    },
+    {
+      "id": "nota-riscos",
+      "page": "page-1",
+      "x": 1560,
+      "y": 1930,
+      "w": 640,
+      "text": "Riscos — o plano de ação sai de dentro do registro e vira lista de ações.\nBarra azul à esquerda = ação executada dentro de uma iniciativa.\nSem barra = mitigação pequena, vive só aqui."
+    },
+    {
+      "id": "nota-sistema",
+      "page": "page-2",
+      "x": 0,
+      "y": -150,
+      "w": 900,
+      "text": "O design system em tokens já é sólido. O que muda é o shell (rail no lugar de 4 abas) e a profundidade (4 planos no lugar de 2).\nNenhum --tier-* muda: são regra de negócio."
+    }
+  ],
+  "launch": { "view": "canvas", "page": "page-1" }
+}

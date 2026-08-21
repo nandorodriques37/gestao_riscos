@@ -1,0 +1,390 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: #1E3A5F; } a:hover { color: #28486F; }
+    .rt { font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+    .rt * { box-sizing: border-box; }
+
+    /* Tokens espelhados de src/styles/tokens.css, com a escada de 4 superficies nova. */
+    .rt[data-tema="claro"] {
+      --surface-0:#F7F8FA; --surface-1:#FFFFFF; --surface-2:#F1F4F8; --surface-3:#FFFFFF;
+      --line-hairline:rgba(15,23,42,.07); --line-border:rgba(15,23,42,.11); --line-strong:rgba(15,23,42,.18);
+      --ink-1:#0B1220; --ink-2:#3D4A5C; --ink-3:#6B7A8D; --ink-4:#93A1B2; --ink-on-solid:#FFFFFF;
+      --brand:#1E3A5F; --brand-soft:#EAF1FA; --brand-ink:#FFFFFF;
+      --tier-baixo:#15803D; --tier-medio:#B8901F; --tier-alto:#D97706; --tier-critico:#DC2626; --tier-null:#94A3B8;
+      --badge-slate:#475569; --badge-blue:#1D4ED8; --badge-green:#15803D; --badge-amber:#B45309;
+      --badge-red:#B91C1C; --badge-purple:#6D28D9; --badge-orange:#C2410C;
+      --risco-accent:#9C3F3A;
+      --elev-2: 0 8px 20px -6px rgba(11,18,32,.14), 0 2px 6px -2px rgba(11,18,32,.08);
+    }
+    .rt[data-tema="escuro"] {
+      --surface-0:#0D1117; --surface-1:#151B24; --surface-2:#1B222D; --surface-3:#232C39;
+      --line-hairline:rgba(255,255,255,.08); --line-border:rgba(255,255,255,.12); --line-strong:rgba(255,255,255,.22);
+      --ink-1:#F2F5F9; --ink-2:#C2CCD9; --ink-3:#91A0B2; --ink-4:#6E7E92; --ink-on-solid:#0B1220;
+      --brand:#5B8DEF; --brand-soft:#1C2942; --brand-ink:#0B1220;
+      --tier-baixo:#3AAE63; --tier-medio:#CBA61F; --tier-alto:#F2842B; --tier-critico:#E9585F; --tier-null:#8494A8;
+      --badge-slate:#A6B3C4; --badge-blue:#7BA4F3; --badge-green:#3AAE63; --badge-amber:#E9A94A;
+      --badge-red:#E9585F; --badge-purple:#A995F0; --badge-orange:#F0894F;
+      --risco-accent:#E08A84;
+      --elev-2: 0 8px 20px -6px rgba(0,0,0,.6), 0 2px 6px -2px rgba(0,0,0,.4);
+    }
+
+    /* --- Rail --- */
+    .rail { width:232px; flex:none; background:var(--surface-1); border-right:1px solid var(--line-border);
+            display:flex; flex-direction:column; padding:0; }
+    .rail-brand { height:56px; display:flex; align-items:center; gap:8px; padding:0 16px; flex:none;
+                  border-bottom:1px solid var(--line-hairline); }
+    .brand-mark { width:26px; height:26px; border-radius:8px; background:var(--brand); color:var(--brand-ink);
+                  display:grid; place-items:center; font-size:11px; font-weight:700; letter-spacing:.02em; flex:none; }
+    .brand-name { font-size:14px; font-weight:600; letter-spacing:-.01em; color:var(--ink-1); white-space:nowrap; }
+    .rail-nav { flex:1; padding:16px 12px; display:flex; flex-direction:column; gap:20px; }
+    .rail-group { display:flex; flex-direction:column; gap:2px; }
+    .rail-group-label { font-size:11px; font-weight:500; letter-spacing:.06em; text-transform:uppercase;
+                        color:var(--ink-4); padding:0 10px 6px; }
+    .rail-item { display:flex; align-items:center; gap:10px; height:34px; padding:0 10px; border-radius:8px;
+                 font-size:13px; font-weight:500; color:var(--ink-3); white-space:nowrap; }
+    .rail-item svg { width:18px; height:18px; flex:none; }
+    .rail-item[data-on="1"] { background:var(--brand-soft); color:var(--ink-1); font-weight:600; }
+    .rail-foot { flex:none; padding:12px; border-top:1px solid var(--line-hairline);
+                 display:flex; align-items:center; gap:8px; }
+    .sync { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--ink-4); }
+    .sync-dot { width:6px; height:6px; border-radius:50%; background:var(--tier-baixo); flex:none; }
+    .theme-btn { margin-left:auto; width:24px; height:24px; border-radius:999px;
+                 border:1px solid var(--line-strong); background:linear-gradient(90deg, transparent 50%, var(--ink-4) 50%); }
+
+    /* --- Chrome do conteudo --- */
+    .head { height:56px; flex:none; display:flex; align-items:center; gap:12px; padding:0 24px;
+            border-bottom:1px solid var(--line-border); background:var(--surface-1); }
+    .head-title { font-size:16px; font-weight:600; letter-spacing:-.01em; color:var(--ink-1); }
+    .head-sub { font-size:12px; color:var(--ink-4); }
+
+    /* --- Primitivas --- */
+    .card { background:var(--surface-1); border:1px solid var(--line-border); border-radius:14px; padding:16px; }
+    .sec-title { font-size:13px; font-weight:600; letter-spacing:-.01em; color:var(--ink-1); }
+    .sec-sub { font-size:11px; color:var(--ink-4); margin-top:2px; }
+    .kpi { position:relative; background:var(--surface-1); border:1px solid var(--line-border);
+           border-radius:14px; padding:12px 16px; overflow:hidden; }
+    .kpi::before { content:''; position:absolute; left:0; top:12px; bottom:12px; width:3px;
+                   border-radius:0 3px 3px 0; background:var(--c, var(--brand)); }
+    .kpi-label { font-size:11px; color:var(--ink-3); font-weight:500; letter-spacing:.02em; text-transform:uppercase; }
+    .kpi-value { font-size:28px; font-weight:700; letter-spacing:-.025em; line-height:1.1; margin-top:4px; color:var(--ink-1); }
+    .kpi-sub { font-size:12px; color:var(--ink-3); margin-top:3px; }
+    .badge { display:inline-flex; align-items:center; height:20px; padding:0 8px; border-radius:999px;
+             font-size:11px; font-weight:600; white-space:nowrap; color:var(--c, var(--badge-slate));
+             background:color-mix(in oklab, var(--c, var(--badge-slate)) 13%, var(--surface-1));
+             border:1px solid color-mix(in oklab, var(--c, var(--badge-slate)) 22%, transparent); }
+    .chip { display:inline-flex; align-items:center; gap:4px; height:20px; padding:0 8px; border-radius:999px;
+            font-size:11px; font-weight:600; white-space:nowrap; color:var(--c, var(--tier-null));
+            background:color-mix(in oklab, var(--c, var(--tier-null)) 13%, var(--surface-1));
+            border:1px solid color-mix(in oklab, var(--c, var(--tier-null)) 22%, transparent); }
+    .dot { width:5px; height:5px; border-radius:50%; background:var(--c, var(--tier-null)); flex:none; }
+    .avatar { width:22px; height:22px; border-radius:999px; background:var(--surface-2);
+              border:1px solid var(--line-border); display:grid; place-items:center;
+              font-size:10px; font-weight:600; color:var(--ink-2); flex:none; }
+    .num { font-variant-numeric: tabular-nums; }
+    .alert { display:flex; align-items:center; gap:6px; font-size:12px; font-weight:500; color:var(--tier-alto); }
+    .alert svg { width:14px; height:14px; flex:none; }
+
+    /* --- Barras --- */
+    .track { height:8px; border-radius:999px; background:var(--surface-2); overflow:hidden; }
+    .stack { display:flex; gap:2px; height:14px; border-radius:4px; overflow:hidden; }
+    .row { display:flex; align-items:center; gap:10px; }
+    .lst { display:flex; flex-direction:column; }
+    .lst > * + * { border-top:1px solid var(--line-hairline); }
+    .lrow { display:flex; align-items:center; gap:10px; padding:9px 0; }
+  </style>
+</helmet>
+
+<div class="rt" data-tema="{{tema}}" style="width:1440px; height:860px; display:flex; background:var(--surface-0); color:var(--ink-1);">
+
+  <!-- ================= RAIL ================= -->
+  <aside class="rail">
+    <div class="rail-brand">
+      <div class="brand-mark">RM</div>
+      <div class="brand-name">Matriz de Risco</div>
+    </div>
+    <nav class="rail-nav">
+      <div class="rail-group">
+        <div class="rail-group-label">Direção</div>
+        <div class="rail-item" data-on="1">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect></svg>
+          <span>Painel</span>
+        </div>
+        <div class="rail-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"></circle><circle cx="12" cy="12" r="3.4"></circle></svg>
+          <span>Objetivos</span>
+        </div>
+        <div class="rail-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 16.5 9 10.5 13 14.5 21 6.5"></polyline><polyline points="21 11.5 21 6.5 16 6.5"></polyline></svg>
+          <span>Iniciativas</span>
+        </div>
+      </div>
+      <div class="rail-group">
+        <div class="rail-group-label">Risco</div>
+        <div class="rail-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4.2 20.8 19.4H3.2Z"></path><path d="M12 10v3.6"></path><path d="M12 16.6v.3"></path></svg>
+          <span>Riscos</span>
+        </div>
+        <div class="rail-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M5 20V11"></path><path d="M12 20V4.5"></path><path d="M19 20v-6.5"></path></svg>
+          <span>Gráficos</span>
+        </div>
+        <div class="rail-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2.5"></rect><path d="M3 12h18M12 3v18"></path></svg>
+          <span>Priorização</span>
+        </div>
+      </div>
+      <div class="rail-group">
+        <div class="rail-group-label">Execução</div>
+        <div class="rail-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"></rect><polyline points="8 12.4 11 15.4 16.4 9"></polyline></svg>
+          <span>Tarefas</span>
+        </div>
+      </div>
+    </nav>
+    <div class="rail-foot">
+      <div class="sync"><span class="sync-dot"></span><span>Sincronizado</span></div>
+      <div class="theme-btn"></div>
+    </div>
+  </aside>
+
+  <!-- ================= CONTEUDO ================= -->
+  <main style="flex:1; min-width:0; display:flex; flex-direction:column;">
+    <div class="head">
+      <div class="head-title">Painel</div>
+      <div class="head-sub">Portfólio 2026 · Supply Chain &amp; S&amp;OP</div>
+      <div style="margin-left:auto; display:flex; align-items:center; gap:8px;">
+        <span class="badge" style="--c:var(--badge-slate);">7 iniciativas ativas</span>
+        <span class="badge" style="--c:var(--badge-blue);">4 objetivos</span>
+      </div>
+    </div>
+
+    <div style="padding:24px; display:flex; flex-direction:column; gap:16px;">
+
+      <!-- Linha 1: quatro numeros grandes -->
+      <div style="display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:12px;">
+        <div class="kpi" style="--c:var(--brand);">
+          <div class="kpi-label">Impacto comprometido</div>
+          <div class="kpi-value num">R$ 4,2 mi</div>
+          <div class="kpi-sub">7 iniciativas ativas · ano corrente</div>
+        </div>
+        <div class="kpi" style="--c:var(--tier-alto);">
+          <div class="kpi-label">Marcos no prazo</div>
+          <div class="kpi-value num">62%</div>
+          <div class="kpi-sub">13 de 21 · slip médio 18 dias</div>
+        </div>
+        <div class="kpi" style="--c:var(--tier-critico);">
+          <div class="kpi-label">Maior WIP por dono</div>
+          <div class="kpi-value num">4</div>
+          <div class="kpi-sub">DERYLSON · alerta acima de 2</div>
+        </div>
+        <div class="kpi" style="--c:var(--tier-critico);">
+          <div class="kpi-label">Zumbis</div>
+          <div class="kpi-value num">3</div>
+          <div class="kpi-sub">sem marco movimentado há 30+ dias</div>
+        </div>
+      </div>
+
+      <!-- Linha 2 -->
+      <div style="display:grid; grid-template-columns:476px 379px minmax(0,1fr); gap:12px;">
+
+        <!-- Mix por vetor -->
+        <div class="card">
+          <div class="sec-title">Mix por vetor</div>
+          <div class="sec-sub">% do impacto em R$ · o portfólio cria valor ou só defende?</div>
+          <div class="stack" style="margin-top:14px;">
+            <div style="width:71%; background:var(--badge-slate);"></div>
+            <div style="width:22%; background:var(--badge-green);"></div>
+            <div style="width:7%; background:var(--badge-purple);"></div>
+          </div>
+          <div class="lst" style="margin-top:6px;">
+            <div class="lrow">
+              <span class="dot" style="--c:var(--badge-slate); width:8px; height:8px;"></span>
+              <span style="font-size:12px; color:var(--ink-2); flex:1;">Evitar perda</span>
+              <span class="num" style="font-size:13px; font-weight:600;">71%</span>
+              <span class="num" style="font-size:11px; color:var(--ink-4); width:64px; text-align:right;">R$ 3,0 mi</span>
+            </div>
+            <div class="lrow">
+              <span class="dot" style="--c:var(--badge-green); width:8px; height:8px;"></span>
+              <span style="font-size:12px; color:var(--ink-2); flex:1;">Criar ganho</span>
+              <span class="num" style="font-size:13px; font-weight:600;">22%</span>
+              <span class="num" style="font-size:11px; color:var(--ink-4); width:64px; text-align:right;">R$ 0,9 mi</span>
+            </div>
+            <div class="lrow">
+              <span class="dot" style="--c:var(--badge-purple); width:8px; height:8px;"></span>
+              <span style="font-size:12px; color:var(--ink-2); flex:1;">Criar decisão</span>
+              <span class="num" style="font-size:13px; font-weight:600;">7%</span>
+              <span class="num" style="font-size:11px; color:var(--ink-4); width:64px; text-align:right;">R$ 0,3 mi</span>
+            </div>
+          </div>
+          <div class="alert" style="margin-top:10px; padding-top:10px; border-top:1px solid var(--line-hairline);">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4.2 20.8 19.4H3.2Z"></path><path d="M12 10v3.6"></path><path d="M12 16.6v.3"></path></svg>
+            <span>Acima de 70% defensivo — nenhuma iniciativa nova de ganho neste trimestre</span>
+          </div>
+        </div>
+
+        <!-- Objetivos sem iniciativa -->
+        <div class="card">
+          <div class="sec-title">Objetivos sem iniciativa ativa</div>
+          <div class="sec-sub">2 de 4 objetivos ativos estão órfãos</div>
+          <div class="lst" style="margin-top:8px;">
+            <div class="lrow" style="align-items:flex-start;">
+              <span class="badge" style="--c:var(--badge-blue); margin-top:1px;">3-12m</span>
+              <span style="font-size:12px; color:var(--ink-1); line-height:1.4; flex:1;">Reduzir ruptura crônica de MED nos CDs 10 e 11</span>
+            </div>
+            <div class="lrow" style="align-items:flex-start;">
+              <span class="badge" style="--c:var(--badge-purple); margin-top:1px;">1-2a</span>
+              <span style="font-size:12px; color:var(--ink-1); line-height:1.4; flex:1;">Migrar compras de média histórica para previsão de vendas</span>
+            </div>
+          </div>
+          <div style="margin-top:12px; padding-top:10px; border-top:1px solid var(--line-hairline);
+                      font-size:11px; color:var(--ink-4);">
+            Objetivo sem iniciativa é intenção, não plano.
+          </div>
+        </div>
+
+        <!-- Exposicao residual -->
+        <div class="card">
+          <div class="sec-title">Exposição residual</div>
+          <div class="sec-sub">Σ dos riscos ainda abertos</div>
+          <div class="kpi-value num" style="margin-top:10px;">R$ 1,8 mi</div>
+          <div class="kpi-sub">9 riscos abertos de 62</div>
+          <div class="stack" style="margin-top:14px; height:8px;">
+            <div style="width:22%; background:var(--tier-critico);"></div>
+            <div style="width:34%; background:var(--tier-alto);"></div>
+            <div style="width:29%; background:var(--tier-medio);"></div>
+            <div style="width:15%; background:var(--tier-baixo);"></div>
+          </div>
+          <div class="row" style="margin-top:8px; gap:12px; flex-wrap:wrap;">
+            <span class="chip" style="--c:var(--tier-critico);"><span class="dot"></span>Crítico 2</span>
+            <span class="chip" style="--c:var(--tier-alto);"><span class="dot"></span>Alto 3</span>
+            <span class="chip" style="--c:var(--tier-medio);"><span class="dot"></span>Médio 3</span>
+            <span class="chip" style="--c:var(--tier-baixo);"><span class="dot"></span>Baixo 1</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Linha 3 -->
+      <div style="display:grid; grid-template-columns:672px minmax(0,1fr); gap:12px;">
+
+        <!-- WIP + carga -->
+        <div class="card">
+          <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:16px;">
+            <div>
+              <div class="sec-title">Carga por dono</div>
+              <div class="sec-sub">WIP = iniciativas em execução · carga = dias-pessoa/mês contra a capacidade declarada</div>
+            </div>
+            <div class="row" style="gap:10px;">
+              <span class="chip" style="--c:var(--tier-critico);"><span class="dot"></span>Acima do teto</span>
+              <span class="chip" style="--c:var(--tier-null);"><span class="dot"></span>Dentro</span>
+            </div>
+          </div>
+
+          <div class="lst" style="margin-top:10px;">
+            <div class="lrow">
+              <span class="avatar">DE</span>
+              <span style="font-size:12px; color:var(--ink-1); font-weight:500; width:132px;">DERYLSON</span>
+              <span class="chip num" style="--c:var(--tier-critico); width:60px; justify-content:center;">WIP 4</span>
+              <span style="flex:1; position:relative;">
+                <span class="track" style="display:block;">
+                  <span style="display:block; width:88%; height:100%; background:var(--tier-critico);"></span>
+                </span>
+                <span style="position:absolute; left:64%; top:-3px; bottom:-3px; width:2px; background:var(--ink-4);"></span>
+              </span>
+              <span class="num" style="font-size:12px; color:var(--ink-2); width:92px; text-align:right;">19,8 / 14 dias</span>
+            </div>
+            <div class="lrow">
+              <span class="avatar">JF</span>
+              <span style="font-size:12px; color:var(--ink-1); font-weight:500; width:132px;">JOÃO FERNANDO</span>
+              <span class="chip num" style="--c:var(--tier-null); width:60px; justify-content:center;">WIP 2</span>
+              <span style="flex:1; position:relative;">
+                <span class="track" style="display:block;">
+                  <span style="display:block; width:52%; height:100%; background:var(--tier-null);"></span>
+                </span>
+                <span style="position:absolute; left:64%; top:-3px; bottom:-3px; width:2px; background:var(--ink-4);"></span>
+              </span>
+              <span class="num" style="font-size:12px; color:var(--ink-2); width:92px; text-align:right;">11,4 / 14 dias</span>
+            </div>
+            <div class="lrow">
+              <span class="avatar">KA</span>
+              <span style="font-size:12px; color:var(--ink-1); font-weight:500; width:132px;">KAUAN</span>
+              <span class="chip num" style="--c:var(--tier-null); width:60px; justify-content:center;">WIP 2</span>
+              <span style="flex:1; position:relative;">
+                <span class="track" style="display:block;">
+                  <span style="display:block; width:41%; height:100%; background:var(--tier-null);"></span>
+                </span>
+                <span style="position:absolute; left:64%; top:-3px; bottom:-3px; width:2px; background:var(--ink-4);"></span>
+              </span>
+              <span class="num" style="font-size:12px; color:var(--ink-2); width:92px; text-align:right;">9,0 / 14 dias</span>
+            </div>
+            <div class="lrow">
+              <span class="avatar">JO</span>
+              <span style="font-size:12px; color:var(--ink-1); font-weight:500; width:132px;">JOEL</span>
+              <span class="chip num" style="--c:var(--tier-null); width:60px; justify-content:center;">WIP 1</span>
+              <span style="flex:1; position:relative;">
+                <span class="track" style="display:block;">
+                  <span style="display:block; width:27%; height:100%; background:var(--tier-null);"></span>
+                </span>
+                <span style="position:absolute; left:64%; top:-3px; bottom:-3px; width:2px; background:var(--ink-4);"></span>
+              </span>
+              <span class="num" style="font-size:12px; color:var(--ink-2); width:92px; text-align:right;">5,9 / 14 dias</span>
+            </div>
+          </div>
+          <div style="margin-top:8px; font-size:11px; color:var(--ink-4);">
+            Traço vertical = capacidade do período (dias-pessoa de projeto).
+          </div>
+        </div>
+
+        <!-- Zumbis -->
+        <div class="card">
+          <div class="sec-title">Iniciativas paradas</div>
+          <div class="sec-sub">Em execução, sem marco movimentado há 30+ dias</div>
+          <div class="lst" style="margin-top:8px;">
+            <div class="lrow" style="align-items:flex-start;">
+              <span class="chip num" style="--c:var(--tier-critico); margin-top:1px;"><span class="dot"></span>72 d</span>
+              <span style="flex:1; min-width:0;">
+                <span style="display:block; font-size:12px; color:var(--ink-1); line-height:1.4;">Projeto Pysha — reestruturação do Estoque Objetivo</span>
+                <span style="display:block; font-size:11px; color:var(--ink-4); margin-top:2px;">TERCEIRIZADO · sem dono</span>
+              </span>
+            </div>
+            <div class="lrow" style="align-items:flex-start;">
+              <span class="chip num" style="--c:var(--tier-alto); margin-top:1px;"><span class="dot"></span>48 d</span>
+              <span style="flex:1; min-width:0;">
+                <span style="display:block; font-size:12px; color:var(--ink-1); line-height:1.4;">Reestruturação do motor de pedidos automáticos</span>
+                <span style="display:block; font-size:11px; color:var(--ink-4); margin-top:2px;">TERCEIRIZADO · sem dono</span>
+              </span>
+            </div>
+            <div class="lrow" style="align-items:flex-start;">
+              <span class="chip num" style="--c:var(--tier-alto); margin-top:1px;"><span class="dot"></span>34 d</span>
+              <span style="flex:1; min-width:0;">
+                <span style="display:block; font-size:12px; color:var(--ink-1); line-height:1.4;">Projeção de ocupação de CDs (D+90)</span>
+                <span style="display:block; font-size:11px; color:var(--ink-4); margin-top:2px;">PAGUE MENOS - SUPPLY · KAUAN</span>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+</x-dc>
+
+<script data-dc-script data-props='{"tema":{"editor":"enum","options":["claro","escuro"],"default":"claro","section":"Tema"},"$preview":{"width":1440,"height":860}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { tema: this.props.tema ?? 'claro' };
+  }
+}
+</script>
+</body>
+</html>
