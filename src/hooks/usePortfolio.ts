@@ -55,6 +55,11 @@ export interface UsePortfolio {
    * integridade, que são recusas esperadas, não falhas.
    */
   patchEntidade: (entidade: EntidadeUrl, id: string, patch: Record<string, unknown>) => Promise<boolean>;
+  /** Grava vários de uma vez e devolve quantos pegaram. Não é otimista. */
+  patchVarios: (
+    entidade: EntidadeUrl,
+    itens: { id: string; patch: Record<string, unknown> }[],
+  ) => Promise<number>;
   createEntidade: (entidade: EntidadeUrl, data: Record<string, unknown>) => Promise<boolean>;
   deleteEntidade: (entidade: EntidadeUrl, id: string) => Promise<boolean>;
   migrarAcoes: () => Promise<ResultadoMigracao | null>;
@@ -130,6 +135,28 @@ export function usePortfolio(): UsePortfolio {
     }
   }, [commit, refresh]);
 
+  /**
+   * Grava vários itens de uma vez. Não é otimista: uma decisão em massa muda
+   * meia tela, e pintar tudo antes da confirmação faria uma falha parcial
+   * mentir feio. Dispara em paralelo, refresca uma vez e devolve quantos
+   * pegaram.
+   */
+  const patchVarios = useCallback(async (
+    entidade: EntidadeUrl,
+    itens: { id: string; patch: Record<string, unknown> }[],
+  ) => {
+    if (itens.length === 0) return 0;
+    const resultados = await Promise.allSettled(
+      itens.map(({ id, patch }) => patchEntidadeApi(entidade, id, patch)),
+    );
+    const ok = resultados.filter(r => r.status === 'fulfilled').length;
+    await refresh();
+    if (montado.current && ok < itens.length) {
+      setError(`${itens.length - ok} de ${itens.length} não puderam ser gravados. Os demais foram salvos.`);
+    }
+    return ok;
+  }, [refresh]);
+
   const createEntidade = useCallback(async (entidade: EntidadeUrl, data: Record<string, unknown>) => {
     try {
       await createEntidadeApi(entidade, data);
@@ -193,6 +220,6 @@ export function usePortfolio(): UsePortfolio {
 
   return {
     portfolio, loading, error, refresh, clearError,
-    patchEntidade, createEntidade, deleteEntidade, migrarAcoes, promoverTriagem,
+    patchEntidade, patchVarios, createEntidade, deleteEntidade, migrarAcoes, promoverTriagem,
   };
 }

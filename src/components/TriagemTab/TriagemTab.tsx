@@ -41,12 +41,17 @@ function formatarData(iso: string | null): string {
  * — quando a fila esvazia, some do menu.
  */
 export function TriagemTab({ records, pf }: TriagemTabProps) {
-  const { portfolio, loading, error, clearError, patchEntidade, migrarAcoes, promoverTriagem } = pf;
+  const {
+    portfolio, loading, error, clearError,
+    patchEntidade, patchVarios, migrarAcoes, promoverTriagem,
+  } = pf;
   const [migrando, setMigrando] = useState(false);
   const [promovendo, setPromovendo] = useState(false);
   const [resumoMigracao, setResumoMigracao] = useState<string | null>(null);
   const [resumoPromocao, setResumoPromocao] = useState<string | null>(null);
   const [mostrarDecididas, setMostrarDecididas] = useState(false);
+  const [aceitando, setAceitando] = useState(false);
+  const [resumoAceite, setResumoAceite] = useState<string | null>(null);
 
   const riscoPorId = useMemo(() => new Map(records.map(r => [r.id, r])), [records]);
   const pessoaPorId = useMemo(
@@ -104,6 +109,31 @@ export function TriagemTab({ records, pf }: TriagemTabProps) {
 
   function decidir(acao: AcaoRisco, destino: DestinoTriagem) {
     void patchEntidade('acoes-risco', acao.id, { triagem: destino });
+  }
+
+  /**
+   * Aceita a sugestão de todas as linhas da fila de uma vez. As fracas entram
+   * junto — foi o pedido —, mas o resumo diz quantas eram, porque são
+   * justamente as que merecem uma segunda olhada.
+   */
+  async function handleAceitarTodas() {
+    if (pendentes.length === 0) return;
+    setAceitando(true);
+    const fracas = pendentes.filter(l => !l.sugestao.confiante).length;
+    const total = pendentes.length;
+    const gravadas = await patchVarios('acoes-risco', pendentes.map(l => ({
+      id: l.acao.id,
+      patch: { triagem: l.sugestao.destino },
+    })));
+    setAceitando(false);
+    const partes = [`${gravadas} de ${total} classificadas pela sugestão`];
+    if (fracas > 0) {
+      partes.push(fracas === 1
+        ? 'uma delas era sugestão fraca — vale conferir'
+        : `${fracas} eram sugestões fracas — vale conferir`);
+    }
+    setResumoAceite(`${partes.join(' · ')}.`);
+    setMostrarDecididas(true);
   }
 
   async function handlePromover() {
@@ -197,9 +227,19 @@ export function TriagemTab({ records, pf }: TriagemTabProps) {
             ))}
           </div>
 
-          {resumoMigracao && (
+          {(resumoMigracao || resumoAceite) && (
             <div className="card" style={{ marginBottom: 'var(--sp-4)' }}>
-              <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--ink-2)' }}>{resumoMigracao}</div>
+              {resumoMigracao && (
+                <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--ink-2)' }}>{resumoMigracao}</div>
+              )}
+              {resumoAceite && (
+                <div style={{
+                  fontSize: 'var(--fs-sm)', color: 'var(--ink-2)',
+                  marginTop: resumoMigracao ? 'var(--sp-2)' : 0,
+                }}>
+                  {resumoAceite}
+                </div>
+              )}
             </div>
           )}
 
@@ -252,15 +292,26 @@ export function TriagemTab({ records, pf }: TriagemTabProps) {
             >
               Já classificadas · {decididas.length}
             </button>
-            <button
-              className="btn btn-ghost"
-              style={{ marginLeft: 'auto' }}
-              onClick={() => { void handleMigrar(); }}
-              disabled={migrando}
-              title="Procura planos de ação que ainda não foram extraídos. Não duplica o que já veio."
-            >
-              {migrando ? 'Procurando…' : 'Procurar novos planos'}
-            </button>
+            <div style={{ marginLeft: 'auto', display: 'flex', gap: 'var(--sp-2)' }}>
+              {pendentes.length > 0 && (
+                <button
+                  className="btn btn-outline-navy"
+                  onClick={() => { void handleAceitarTodas(); }}
+                  disabled={aceitando}
+                  title="Aplica o destino sugerido a todas as linhas da fila. Cada uma continua reversível."
+                >
+                  {aceitando ? 'Aceitando…' : `Aceitar todas as sugestões · ${pendentes.length}`}
+                </button>
+              )}
+              <button
+                className="btn btn-ghost"
+                onClick={() => { void handleMigrar(); }}
+                disabled={migrando}
+                title="Procura planos de ação que ainda não foram extraídos. Não duplica o que já veio."
+              >
+                {migrando ? 'Procurando…' : 'Procurar novos planos'}
+              </button>
+            </div>
           </div>
 
           {listaVisivel.length === 0 ? (
