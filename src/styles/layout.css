@@ -115,6 +115,23 @@
   transform: scaleX(1);
 }
 
+/* Contador da aba temporária de Triagem: número junto do rótulo, não um ponto
+   solto — identidade nunca só por cor. */
+.nav-tab-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  margin-left: var(--sp-2);
+  padding: 0 5px;
+  border-radius: var(--r-full);
+  background: var(--tier-alto);
+  color: var(--ink-on-solid);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-semibold);
+}
+
 .header-aside {
   margin-left: auto;
   display: flex;

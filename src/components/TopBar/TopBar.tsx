@@ -7,6 +7,14 @@ interface TopBarProps {
   onChangeTab: (tab: Tab) => void;
   /** Estado de sincronização com o servidor, exibido à direita do header. */
   sync?: { state: 'idle' | 'saving' | 'error'; label: string };
+  /**
+   * Ações do plano de ação ainda esperando classificação. Enquanto houver
+   * alguma — ou enquanto a extração não tiver rodado — a aba Triagem aparece
+   * com o contador; depois some sozinha.
+   */
+  triagemPendente?: number;
+  /** Falso enquanto nenhum plano de ação foi extraído ainda. */
+  migracaoIniciada?: boolean;
 }
 
 // Rótulos curtos. Os anteriores ("Registro de Riscos e Ações", "Resumo de
@@ -26,10 +34,14 @@ const THEME_LABEL: Record<ThemePref, string> = {
   dark: 'Tema: escuro',
 };
 
-export function TopBar({ tab, onChangeTab, sync }: TopBarProps) {
+export function TopBar({ tab, onChangeTab, sync, triagemPendente = 0, migracaoIniciada = false }: TopBarProps) {
   const [theme, setTheme] = useState<ThemePref>(() => readThemePref());
 
   useEffect(() => { applyThemePref(theme); }, [theme]);
+
+  // A Triagem é uma aba de mudança, não de rotina: fica enquanto houver fila
+  // (ou antes de a extração rodar) e desaparece quando o trabalho acaba.
+  const mostrarTriagem = tab === 'triagem' || !migracaoIniciada || triagemPendente > 0;
 
   function cycleTheme() {
     setTheme(t => THEME_CYCLE[(THEME_CYCLE.indexOf(t) + 1) % THEME_CYCLE.length]);
@@ -54,6 +66,20 @@ export function TopBar({ tab, onChangeTab, sync }: TopBarProps) {
               {t.label}
             </button>
           ))}
+          {mostrarTriagem && (
+            <button
+              className={`nav-tab${tab === 'triagem' ? ' active' : ''}`}
+              aria-current={tab === 'triagem' ? 'page' : undefined}
+              onClick={() => onChangeTab('triagem')}
+            >
+              Triagem
+              {triagemPendente > 0 && (
+                <span className="nav-tab-count tabular" aria-label={`${triagemPendente} na fila`}>
+                  {triagemPendente}
+                </span>
+              )}
+            </button>
+          )}
         </nav>
 
         <div className="header-aside">

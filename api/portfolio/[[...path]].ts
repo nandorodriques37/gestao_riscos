@@ -4,6 +4,7 @@ import {
   ENTIDADES, ehEntidade, ensurePortfolioSchema, listPortfolio, backup,
   validarIniciativa, validarMarco,
 } from '../_portfolioDb.js';
+import { migrarAcoes } from '../_migracaoAcoes.js';
 import type { Iniciativa, Marco } from '../../src/types';
 
 // Rota única de todo o portfólio. Cinco entidades × 2 rotas dariam 10 funções
@@ -70,6 +71,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
       const incluirAnexos = String(req.query.anexos ?? '') === '1';
       res.status(200).json(await backup(sql, incluirAnexos));
+      return;
+    }
+
+    // POST /api/portfolio/migrar-acoes — idempotente, só insere.
+    if (partes.length === 1 && partes[0] === 'migrar-acoes') {
+      if (method !== 'POST') {
+        res.setHeader('Allow', 'POST');
+        res.status(405).json({ error: 'Método não permitido' });
+        return;
+      }
+      res.status(200).json(await migrarAcoes(sql));
       return;
     }
 

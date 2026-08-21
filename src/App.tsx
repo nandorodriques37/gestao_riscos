@@ -5,9 +5,11 @@ import { RegistroTab } from './components/RegistroTab/RegistroTab';
 import { GraficosTab } from './components/GraficosTab/GraficosTab';
 import { PriorizacaoTab } from './components/PriorizacaoTab/PriorizacaoTab';
 import { TarefasTab } from './components/TarefasTab/TarefasTab';
+import { TriagemTab } from './components/TriagemTab/TriagemTab';
 import { EditModal } from './components/EditModal/EditModal';
 import { AREAS, ROTINAS, CATEGORIAS, RECURSOS, RESPONSAVEIS } from './data/RiskData';
 import { useRecords } from './hooks/useRecords';
+import { usePortfolio } from './hooks/usePortfolio';
 import { downloadRecordsCSV } from './lib/csv';
 import './App.css';
 
@@ -25,6 +27,12 @@ function App() {
     hasPendingWrites, saveStatus, updateRecordById, addRecord, deleteRecordById,
     refresh, flushPending, clearError,
   } = useRecords();
+
+  // Fica no App porque decide se a aba Triagem aparece — e porque duas
+  // instâncias do mesmo estado dariam duas verdades sobre a mesma fila.
+  const pf = usePortfolio();
+  const triagemPendente = pf.portfolio.acoes_risco.filter(a => !a.triagem).length;
+  const migracaoIniciada = pf.portfolio.acoes_risco.length > 0;
 
   // Fecha o snackbar de "desfazer" quando o componente desmonta.
   useEffect(() => () => {
@@ -122,7 +130,13 @@ function App() {
 
   return (
     <div className="app-shell">
-      <TopBar tab={tab} onChangeTab={setTab} sync={sync} />
+      <TopBar
+        tab={tab}
+        onChangeTab={setTab}
+        sync={sync}
+        triagemPendente={triagemPendente}
+        migracaoIniciada={migracaoIniciada}
+      />
 
       {tab !== 'tarefas' && error && (
         <div className="error-banner">
@@ -160,6 +174,8 @@ function App() {
           {tab === 'priorizacao' && <PriorizacaoTab records={records} />}
 
           {tab === 'tarefas' && <TarefasTab />}
+
+          {tab === 'triagem' && <TriagemTab records={records} pf={pf} />}
         </>
       )}
 

@@ -98,6 +98,10 @@ export const acoesRisco: Tabela<AcaoRisco> = makeTable<AcaoRisco>({
     { nome: 'prazo', tipo: 'date' },
     { nome: 'indicador_sucesso', tipo: 'text' },
     { nome: 'status', tipo: 'text' },
+    // Bookkeeping da migração, não campo de domínio: sem esta marca uma ação
+    // que o gestor decidiu manter fica igual a uma que ele ainda não olhou, e
+    // a fila de triagem nunca esvazia.
+    { nome: 'triagem', tipo: 'text' },
   ],
 });
 

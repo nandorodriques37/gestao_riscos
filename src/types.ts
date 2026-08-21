@@ -63,7 +63,7 @@ export interface StoredRiskRecord extends RiskRecord {
   version: number;
 }
 
-export type Tab = 'registro' | 'graficos' | 'priorizacao' | 'tarefas';
+export type Tab = 'registro' | 'graficos' | 'priorizacao' | 'tarefas' | 'triagem';
 
 export type StatusFilterValue = 'Todos' | 'Não iniciado' | 'Em andamento' | 'Concluído';
 
@@ -266,6 +266,16 @@ export const STATUS_ACAO_RISCO: readonly StatusAcaoRisco[] = [
 ];
 
 /**
+ * Destino confirmado na triagem da migração. Vazio = ainda na fila.
+ *
+ * Não é campo de domínio: é a marca de que uma pessoa já classificou esta
+ * linha. Sem ela, uma ação que o gestor decidiu manter como ação fica
+ * indistinguível de uma que ele ainda não olhou, e a fila nunca esvazia.
+ */
+export type DestinoTriagem = '' | 'acao' | 'iniciativa' | 'rotina';
+export const DESTINOS_TRIAGEM: readonly DestinoTriagem[] = ['acao', 'iniciativa', 'rotina'];
+
+/**
  * A mitigação. Sai de dentro do registro de risco e vira linha própria.
  *
  * `iniciativa_id` é o coração da mudança: nulo = mitigação pequena e autônoma,
@@ -281,6 +291,8 @@ export interface AcaoRisco extends EntidadePortfolio {
   prazo: string | null;
   indicador_sucesso: string;
   status: StatusAcaoRisco;
+  /** Marca da triagem da migração. Vazio = ainda na fila. */
+  triagem: DestinoTriagem;
 }
 
 /** Pacote devolvido por `GET /api/portfolio` — as cinco entidades de uma vez. */

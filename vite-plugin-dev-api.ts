@@ -16,6 +16,7 @@ import {
   ENTIDADES, ehEntidade, ensurePortfolioSchema, listPortfolio, backup,
   contarAcoesRisco, validarIniciativa, validarMarco,
 } from './api/_portfolioDb';
+import { migrarAcoes } from './api/_migracaoAcoes';
 import type { Iniciativa, Marco } from './src/types';
 
 // Backend de DESENVOLVIMENTO apenas: reimplementa as rotas /api usando um
@@ -137,6 +138,11 @@ export function devApiPlugin(): Plugin {
             if (method !== 'GET') return send(res, 405, { error: 'Método não permitido' });
             const anexos = new URL(url, 'http://localhost').searchParams.get('anexos') === '1';
             return send(res, 200, await backup(sql, anexos));
+          }
+
+          if (path === '/api/portfolio/migrar-acoes') {
+            if (method !== 'POST') return send(res, 405, { error: 'Método não permitido' });
+            return send(res, 200, await migrarAcoes(sql));
           }
 
           const portfolioMatch = path.match(/^\/api\/portfolio\/([^/]+)(?:\/([^/]+))?$/);
