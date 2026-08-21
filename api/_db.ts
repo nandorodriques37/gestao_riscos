@@ -3,7 +3,8 @@
 // fica aqui, parametrizada por um executor `Sql` para ser testável e portável.
 import { neon } from '@neondatabase/serverless';
 import { INITIAL_RECORDS } from './_seed.js';
-import type { AcaoItem, RiskRecord } from '../src/types';
+import { toDateISO } from './_table.js';
+import type { AcaoItem, RiskRecord, SituacaoRisco } from '../src/types';
 
 /** Executor SQL mínimo: recebe texto parametrizado ($1, $2, …) e retorna as linhas. */
 export type Sql = (text: string, params?: unknown[]) => Promise<Record<string, unknown>[]>;
@@ -25,13 +26,18 @@ export const RECORD_FIELDS = [
   'probab', 'impact', 'acoes', 'acoes_itens', 'resultado',
   'esforco', 'impacto2', 'gravidade',
   'recurso', 'responsavel', 'status', 'obs',
+  'exposicao_rs', 'causa_raiz', 'situacao', 'data_situacao',
 ] as const;
 
 type RecordField = (typeof RECORD_FIELDS)[number];
 
-const NUMERIC_FIELDS = new Set<RecordField>(['probab', 'impact', 'esforco', 'impacto2', 'gravidade']);
+const NUMERIC_FIELDS = new Set<RecordField>([
+  'probab', 'impact', 'esforco', 'impacto2', 'gravidade', 'exposicao_rs',
+]);
 /** Campos gravados como jsonb — precisam de serialização própria, não de coerção para texto. */
 const JSON_FIELDS = new Set<RecordField>(['acoes_itens']);
+/** Colunas `date` — vazio vira null, e a leitura normaliza para 'YYYY-MM-DD'. */
+const DATE_FIELDS = new Set<RecordField>(['data_situacao']);
 const FIELD_SET = new Set<string>(RECORD_FIELDS);
 
 /** Cria o executor de produção conectado ao Neon (Postgres). */
@@ -79,6 +85,10 @@ function rowToRecord(row: Record<string, unknown>): StoredRiskRecord {
     responsavel: (row.responsavel as string) ?? '',
     status: (row.status as string) ?? '',
     obs: (row.obs as string) ?? '',
+    exposicao_rs: toNumberOrNull(row.exposicao_rs),
+    causa_raiz: (row.causa_raiz as string) ?? '',
+    situacao: ((row.situacao as SituacaoRisco) ?? '') as SituacaoRisco,
+    data_situacao: toDateISO(row.data_situacao),
     version: Number(row.version ?? 1),
   };
 }
@@ -86,6 +96,7 @@ function rowToRecord(row: Record<string, unknown>): StoredRiskRecord {
 function fieldValue(rec: Partial<RiskRecord>, field: RecordField): unknown {
   const v = rec[field];
   if (NUMERIC_FIELDS.has(field)) return v == null || v === '' ? null : v;
+  if (DATE_FIELDS.has(field)) return v == null || v === '' ? null : v;
   if (JSON_FIELDS.has(field)) return JSON.stringify(Array.isArray(v) ? v : []);
   return v ?? '';
 }
@@ -117,6 +128,10 @@ export async function ensureSchema(sql: Sql): Promise<void> {
       responsavel text not null default '',
       status      text not null default '',
       obs         text not null default '',
+      exposicao_rs  numeric,
+      causa_raiz    text not null default '',
+      situacao      text not null default '',
+      data_situacao date,
       created_at  timestamptz not null default now(),
       updated_at  timestamptz not null default now(),
       version     integer not null default 1
@@ -125,6 +140,10 @@ export async function ensureSchema(sql: Sql): Promise<void> {
   // Migrações para bancos já existentes (criados antes destas colunas).
   await sql('alter table risk_records add column if not exists version integer not null default 1');
   await sql("alter table risk_records add column if not exists acoes_itens jsonb not null default '[]'::jsonb");
+  await sql('alter table risk_records add column if not exists exposicao_rs numeric');
+  await sql("alter table risk_records add column if not exists causa_raiz text not null default ''");
+  await sql("alter table risk_records add column if not exists situacao text not null default ''");
+  await sql('alter table risk_records add column if not exists data_situacao date');
   const rows = await sql('select count(*)::int as count from risk_records');
   const count = Number(rows[0]?.count ?? 0);
   if (count === 0) {

@@ -12,6 +12,11 @@ import {
   listAttachments, createAttachment, getAttachment, deleteAttachment,
   contentDisposition, CACHE_CONTROL_IMUTAVEL,
 } from './api/_attachmentsDb';
+import {
+  ENTIDADES, ehEntidade, ensurePortfolioSchema, listPortfolio, backup,
+  contarAcoesRisco, validarIniciativa, validarMarco,
+} from './api/_portfolioDb';
+import type { Iniciativa, Marco } from './src/types';
 
 // Backend de DESENVOLVIMENTO apenas: reimplementa as rotas /api usando um
 // Postgres embarcado (pglite) para que `npm run dev` funcione sem o Neon.
@@ -30,6 +35,8 @@ function getSql(): Promise<Sql> {
       };
       await ensureSchema(sql);
       await ensureTasksSchema(sql);
+      // Depois de `ensureSchema`: `acoes_risco.risco_id` referencia `risk_records`.
+      await ensurePortfolioSchema(sql);
       return sql;
     })();
   }
@@ -105,7 +112,69 @@ export function devApiPlugin(): Plugin {
           }
 
           if (path === '/api/restore') {
-            if (method === 'POST') return send(res, 200, await restoreRecords(sql));
+            if (method !== 'POST') return send(res, 405, { error: 'Método não permitido' });
+            // Mesmo guarda da função serverless: restaurar apaga as ações de
+            // risco em cascata.
+            const acoes = await contarAcoesRisco(sql);
+            const force = new URL(url, 'http://localhost').searchParams.get('force') === '1';
+            if (acoes > 0 && !force) {
+              return send(res, 409, {
+                error: `Restaurar apaga os ${acoes} registros de ações de risco junto com a matriz. `
+                  + 'Baixe o backup em /api/portfolio/backup e repita com ?force=1 para confirmar.',
+                acoesRisco: acoes,
+              });
+            }
+            return send(res, 200, await restoreRecords(sql));
+          }
+
+          // ---------- Portfólio ----------
+          if (path === '/api/portfolio') {
+            if (method === 'GET') return send(res, 200, await listPortfolio(sql));
+            return send(res, 405, { error: 'Método não permitido' });
+          }
+
+          if (path === '/api/portfolio/backup') {
+            if (method !== 'GET') return send(res, 405, { error: 'Método não permitido' });
+            const anexos = new URL(url, 'http://localhost').searchParams.get('anexos') === '1';
+            return send(res, 200, await backup(sql, anexos));
+          }
+
+          const portfolioMatch = path.match(/^\/api\/portfolio\/([^/]+)(?:\/([^/]+))?$/);
+          if (portfolioMatch) {
+            const nome = decodeURIComponent(portfolioMatch[1]);
+            if (!ehEntidade(nome)) return send(res, 404, { error: `Entidade "${nome}" não existe.` });
+            const tabela = ENTIDADES[nome];
+            const id = portfolioMatch[2] ? decodeURIComponent(portfolioMatch[2]) : null;
+
+            if (!id) {
+              if (method === 'GET') return send(res, 200, await tabela.list(sql));
+              if (method === 'POST') {
+                const body = (await readJsonBody(req)) as Record<string, unknown>;
+                const erro = nome === 'iniciativas'
+                  ? await validarIniciativa(sql, body, null)
+                  : nome === 'marcos' ? validarMarco(body, null) : null;
+                if (erro) return send(res, 400, { error: erro });
+                return send(res, 201, await tabela.create(sql, body));
+              }
+              return send(res, 405, { error: 'Método não permitido' });
+            }
+
+            if (method === 'PATCH') {
+              const { expectedVersion, ...patch } = (await readJsonBody(req)) as Record<string, unknown> & { expectedVersion?: number };
+              const atual = await tabela.byId(sql, id);
+              if (!atual) return send(res, 404, { error: 'Registro não encontrado' });
+              const erro = nome === 'iniciativas'
+                ? await validarIniciativa(sql, patch, atual as Iniciativa)
+                : nome === 'marcos' ? validarMarco(patch, atual as Marco) : null;
+              if (erro) return send(res, 400, { error: erro });
+              const result = await tabela.update(sql, id, patch, expectedVersion);
+              if (result.status === 'not_found') return send(res, 404, { error: 'Registro não encontrado' });
+              return send(res, result.status === 'conflict' ? 409 : 200, result.item);
+            }
+            if (method === 'DELETE') {
+              const ok = await tabela.remove(sql, id);
+              return ok ? send(res, 200, { ok: true }) : send(res, 404, { error: 'Registro não encontrado' });
+            }
             return send(res, 405, { error: 'Método não permitido' });
           }
 
