@@ -102,7 +102,7 @@
   </style>
 </helmet>
 
-<div class="rt" data-tema="{{tema}}" style="width:1440px; height:880px; display:flex; background:var(--surface-0); color:var(--ink-1);">
+<div class="rt" data-tema="{{tema}}" style="width:1440px; height:1010px; display:flex; background:var(--surface-0); color:var(--ink-1);">
 
   <aside class="rail">
     <div class="rail-brand"><div class="brand-mark">RM</div></div>
@@ -140,7 +140,6 @@
             </div>
             <div style="display:flex; align-items:center; gap:8px; margin-top:10px; flex-wrap:wrap;">
               <span class="badge" style="--c:var(--badge-purple);">Criar decisão</span>
-              <span class="badge" style="--c:var(--badge-slate);">Fonte: risco</span>
               <span style="font-size:12px; color:var(--ink-4);">·</span>
               <div style="display:flex; align-items:center; gap:6px;">
                 <span class="avatar">DE</span>
@@ -148,6 +147,30 @@
               </div>
               <span style="font-size:12px; color:var(--ink-4);">·</span>
               <span style="font-size:12px; color:var(--ink-3);">PAGUE MENOS - DADOS</span>
+            </div>
+
+            <!-- Origem e cobertura: dois fatos distintos, nunca derivados um do outro -->
+            <div style="display:flex; gap:10px; margin-top:12px;">
+              <div style="flex:1; background:var(--surface-2); border:1px solid var(--line-hairline);
+                          border-radius:10px; padding:9px 12px;">
+                <div style="font-size:10px; font-weight:500; letter-spacing:.04em; text-transform:uppercase; color:var(--ink-4);">
+                  Origem · por que nasceu
+                </div>
+                <div style="display:flex; align-items:center; gap:7px; margin-top:5px;">
+                  <span class="badge" style="--c:var(--risco-accent);">Risco</span>
+                  <span style="font-size:11px; color:var(--ink-4);">histórico · não muda</span>
+                </div>
+              </div>
+              <div style="flex:1; background:var(--surface-2); border:1px solid var(--line-hairline);
+                          border-radius:10px; padding:9px 12px;">
+                <div style="font-size:10px; font-weight:500; letter-spacing:.04em; text-transform:uppercase; color:var(--ink-4);">
+                  Cobertura · o que trata hoje
+                </div>
+                <div style="display:flex; align-items:center; gap:7px; margin-top:5px;">
+                  <span class="badge" style="--c:var(--brand);">2 riscos</span>
+                  <span style="font-size:11px; color:var(--ink-4);">1 vinculado depois</span>
+                </div>
+              </div>
             </div>
             <div style="margin-top:12px; padding-top:12px; border-top:1px solid var(--line-hairline);">
               <div style="font-size:10px; font-weight:500; letter-spacing:.04em; text-transform:uppercase; color:var(--ink-4);">Objetivo</div>
@@ -323,37 +346,52 @@
 
       <!-- ===== Riscos tratados ===== -->
       <div class="card">
-        <div class="sec-title">Riscos que esta iniciativa trata</div>
-        <div class="sec-sub">Vindo de <span style="color:var(--ink-3);">ações de risco</span> com esta iniciativa no destino</div>
+        <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:16px;">
+          <div>
+            <div class="sec-title">Riscos que esta iniciativa trata</div>
+            <div class="sec-sub">Derivado das <span style="color:var(--ink-3);">ações de risco</span> que apontam para cá. Cresce com o tempo — e não altera a origem acima.</div>
+          </div>
+          <span class="badge" style="--c:var(--brand);">+ Vincular risco</span>
+        </div>
         <div style="display:flex; gap:12px; margin-top:12px;">
           <div style="flex:1; background:var(--surface-2); border:1px solid var(--line-hairline); border-radius:10px;
                       padding:12px 14px; border-left:2px solid var(--risco-accent);">
             <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+              <span class="badge" style="--c:var(--risco-accent);">Risco de origem</span>
               <span class="badge" style="--c:var(--badge-blue);">Mitigar</span>
               <span class="chip" style="--c:var(--tier-null);"><span class="dot"></span>Score não medido</span>
-              <span style="font-size:11px; color:var(--ink-4);">S&amp;OP · KPIs · FERRAMENTAS</span>
+              <span style="font-size:11px; color:var(--ink-4);">S&amp;OP · KPIs</span>
             </div>
             <div style="font-size:12px; color:var(--ink-1); line-height:1.5; margin-top:8px;">
               Visão de rupturas apenas de curto prazo, pouca visão de impactos crônicos e fornecedores ofensores — foco no incêndio e não na prevenção.
             </div>
             <div style="font-size:11px; color:var(--ink-3); margin-top:8px;">
-              Ação: <span style="color:var(--ink-2);">Reformular o Power BI de rupturas</span> · DERYLSON · executada nesta iniciativa
+              Ação: <span style="color:var(--ink-2);">Reformular o Power BI de rupturas</span> · DERYLSON · promovida a esta iniciativa
             </div>
           </div>
           <div style="flex:1; background:var(--surface-2); border:1px solid var(--line-hairline); border-radius:10px;
                       padding:12px 14px; border-left:2px solid var(--risco-accent);">
             <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+              <span class="badge" style="--c:var(--brand);">Vinculado depois</span>
               <span class="badge" style="--c:var(--badge-blue);">Mitigar</span>
               <span class="chip" style="--c:var(--tier-critico);"><span class="dot"></span>Score 25</span>
-              <span style="font-size:11px; color:var(--ink-4);">ABASTECIMENTO CD · GESTÃO DE FORNECEDORES</span>
+              <span style="font-size:11px; color:var(--ink-4);">ABASTECIMENTO CD · FORNECEDORES</span>
             </div>
             <div style="font-size:12px; color:var(--ink-1); line-height:1.5; margin-top:8px;">
               Não temos diagnóstico adequado para medir o atendimento dos fornecedores.
             </div>
             <div style="font-size:11px; color:var(--ink-3); margin-top:8px;">
-              Ação: <span style="color:var(--ink-2);">Painel de gestão de pedidos (NV% e OTIF)</span> · sem dono · executada nesta iniciativa
+              Ação: <span style="color:var(--ink-2);">Painel de gestão de pedidos (NV% e OTIF)</span> · sem dono · vinculado em jan/26
             </div>
           </div>
+        </div>
+
+        <div style="margin-top:12px; padding-top:11px; border-top:1px solid var(--line-hairline);
+                    font-size:11px; color:var(--ink-4); line-height:1.6;">
+          Esta nasceu de um risco, mas o inverso também vale: uma iniciativa de
+          <span style="color:var(--ink-3);">gap de KPI</span> ou <span style="color:var(--ink-3);">maturidade</span>
+          pode vir a cobrir riscos sem que a origem mude. São dois campos independentes — é por isso
+          que o app não deriva um do outro.
         </div>
       </div>
 
@@ -362,7 +400,7 @@
 </div>
 </x-dc>
 
-<script data-dc-script data-props='{"tema":{"editor":"enum","options":["claro","escuro"],"default":"claro","section":"Tema"},"$preview":{"width":1440,"height":880}}'>
+<script data-dc-script data-props='{"tema":{"editor":"enum","options":["claro","escuro"],"default":"claro","section":"Tema"},"$preview":{"width":1440,"height":1010}}'>
 class Component extends DCLogic {
   renderVals() {
     return { tema: this.props.tema ?? 'claro' };
