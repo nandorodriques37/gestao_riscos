@@ -95,6 +95,46 @@ export function applyThemePref(pref: ThemePref): void {
   }
 }
 
+const RAIL_KEY = 'riskMatrix.rail.v1';
+
+/** Rail expandido ou colapsado. Padrão: expandido, porque sete destinos com
+ *  rótulo são mais fáceis de aprender do que sete ícones. */
+export function readRailExpandido(): boolean {
+  try {
+    const raw = localStorage.getItem(RAIL_KEY);
+    if (raw === 'true' || raw === 'false') return raw === 'true';
+  } catch {
+    // storage ausente/corrompido — abre expandido
+  }
+  return true;
+}
+
+export function writeRailExpandido(expandido: boolean): void {
+  const root = document.documentElement;
+  root.setAttribute('data-rail', expandido ? 'full' : 'mini');
+  try {
+    localStorage.setItem(RAIL_KEY, String(expandido));
+  } catch {
+    // storage indisponível — vale só para a sessão
+  }
+}
+
+/**
+ * Troca de seção com View Transitions onde houver suporte; onde não houver,
+ * degrada em silêncio para a troca direta. Respeita prefers-reduced-motion:
+ * quem pediu menos movimento não ganha o cross-fade.
+ */
+export function trocarComTransicao(troca: () => void): void {
+  const reduzido = typeof matchMedia === 'function'
+    && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const doc = document as Document & { startViewTransition?: (cb: () => void) => unknown };
+  if (reduzido || typeof doc.startViewTransition !== 'function') {
+    troca();
+    return;
+  }
+  doc.startViewTransition(troca);
+}
+
 export function writePref(key: string, value: unknown): void {
   try {
     localStorage.setItem(key, JSON.stringify(value));

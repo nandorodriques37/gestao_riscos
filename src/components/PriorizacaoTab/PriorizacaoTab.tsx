@@ -8,6 +8,7 @@ import { QUADRANT_NAMES } from './quadrant';
 import { QuadrantMatrix } from './QuadrantMatrix';
 import { RankedList } from './RankedList';
 import { ResourceSummary } from './ResourceSummary';
+import { TierColorLegend } from '../GraficosTab/TierColorLegend';
 
 interface PriorizacaoTabProps {
   records: RiskRecord[];
@@ -94,11 +95,8 @@ export function PriorizacaoTab({ records }: PriorizacaoTabProps) {
               Número = ranking de priorização · Tamanho = gravidade · Cor = nível de priorização · Clique para destacar
             </div>
           </div>
-          <div className="color-legend-row" style={{ paddingTop: 4 }}>
-            <div className="color-legend-item"><span className="color-legend-swatch" style={{ borderRadius: '50%', background: '#DC2626' }} />Crítica</div>
-            <div className="color-legend-item"><span className="color-legend-swatch" style={{ borderRadius: '50%', background: '#D97706' }} />Alta</div>
-            <div className="color-legend-item"><span className="color-legend-swatch" style={{ borderRadius: '50%', background: '#B8901F' }} />Média</div>
-            <div className="color-legend-item"><span className="color-legend-swatch" style={{ borderRadius: '50%', background: '#15803D' }} />Baixa</div>
+          <div style={{ paddingTop: 4 }}>
+            <TierColorLegend labels={['Crítica', 'Alta', 'Média', 'Baixa']} redondo />
           </div>
         </div>
 

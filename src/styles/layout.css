@@ -2,11 +2,33 @@
    Layout — shell, header, páginas de aba, grids, KPIs, banners.
    ========================================================================= */
 
+/* Header em cima, ocupando a largura toda; rail e conteúdo lado a lado
+   embaixo. O grid é declarado aqui e não no rail porque as duas colunas
+   precisam concordar sobre a largura — e ela muda quando o rail colapsa. */
 .app-shell {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  background: var(--bg-canvas);
+  min-height: 100dvh;
+  display: grid;
+  grid-template-areas:
+    'header header'
+    'rail   conteudo';
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  background: var(--surface-0);
+}
+
+.app-conteudo {
+  grid-area: conteudo;
+  min-width: 0;
+}
+
+/* Sem rail (telas estreitas), o conteúdo assume a linha inteira. */
+@media (max-width: 1100px) {
+  .app-shell {
+    grid-template-areas:
+      'header'
+      'conteudo';
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 /* ---------- Header ----------
@@ -14,6 +36,7 @@
    dados, não ao chrome. */
 
 .app-header {
+  grid-area: header;
   position: sticky;
   top: 0;
   z-index: 30;
@@ -56,7 +79,7 @@
 .brand-name {
   font-size: var(--fs-md);
   font-weight: var(--fw-semibold);
-  letter-spacing: -0.01em;
+  letter-spacing: var(--tracking-tight);
   color: var(--ink-1);
   white-space: nowrap;
 }
@@ -257,7 +280,7 @@
 .page-title {
   font-size: var(--fs-xl);
   font-weight: var(--fw-semibold);
-  letter-spacing: -0.015em;
+  letter-spacing: var(--tracking-tight);
   color: var(--ink-1);
 }
 
@@ -347,7 +370,7 @@
 .kpi-tile-value {
   font-size: var(--fs-num);
   font-weight: var(--fw-bold);
-  letter-spacing: -0.025em;
+  letter-spacing: var(--tracking-tighter);
   line-height: 1.1;
   margin-top: var(--sp-1);
   color: var(--ink-1);

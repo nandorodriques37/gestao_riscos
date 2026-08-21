@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { RiskRecord, StoredRiskRecord, Tab } from './types';
 import { TopBar } from './components/TopBar/TopBar';
+import { NavRail } from './components/NavRail/NavRail';
 import { RegistroTab } from './components/RegistroTab/RegistroTab';
 import { GraficosTab } from './components/GraficosTab/GraficosTab';
 import { PriorizacaoTab } from './components/PriorizacaoTab/PriorizacaoTab';
@@ -11,6 +12,7 @@ import { AREAS, ROTINAS, CATEGORIAS, RECURSOS, RESPONSAVEIS } from './data/RiskD
 import { useRecords } from './hooks/useRecords';
 import { usePortfolio } from './hooks/usePortfolio';
 import { downloadRecordsCSV } from './lib/csv';
+import { readRailExpandido, writeRailExpandido, trocarComTransicao } from './lib/uiPrefs';
 import './App.css';
 
 const POLL_INTERVAL = 15000;
@@ -18,6 +20,7 @@ const UNDO_TIMEOUT = 8000;
 
 function App() {
   const [tab, setTab] = useState<Tab>('registro');
+  const [railExpandido, setRailExpandido] = useState(readRailExpandido);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [pendingUndo, setPendingUndo] = useState<Partial<RiskRecord> | null>(null);
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -37,6 +40,21 @@ function App() {
   const promocaoPendente = pf.portfolio.acoes_risco
     .filter(a => a.triagem === 'iniciativa' && !a.iniciativa_id).length;
   const migracaoIniciada = pf.portfolio.acoes_risco.length > 0;
+  // Uma regra só, lida pelo rail e pela barra do topo: a Triagem é aba de
+  // mudança, fica enquanto há trabalho e some sozinha quando a migração acaba.
+  const mostrarTriagem = tab === 'triagem'
+    || !migracaoIniciada
+    || triagemPendente > 0
+    || promocaoPendente > 0;
+
+  // Espelha o estado do rail no <html> já na primeira pintura: o grid do shell
+  // precisa saber a largura antes de o rail montar, senão o conteúdo salta.
+  useEffect(() => { writeRailExpandido(railExpandido); }, [railExpandido]);
+
+  /** Troca de seção com cross-fade onde o navegador suportar. */
+  const irPara = useCallback((destino: Tab) => {
+    trocarComTransicao(() => setTab(destino));
+  }, []);
 
   // Fecha o snackbar de "desfazer" quando o componente desmonta.
   useEffect(() => () => {
@@ -136,13 +154,23 @@ function App() {
     <div className="app-shell">
       <TopBar
         tab={tab}
-        onChangeTab={setTab}
+        onChangeTab={irPara}
         sync={sync}
         triagemPendente={triagemPendente}
         promocaoPendente={promocaoPendente}
         migracaoIniciada={migracaoIniciada}
       />
 
+      <NavRail
+        tab={tab}
+        onChangeTab={irPara}
+        expandido={railExpandido}
+        onToggle={() => setRailExpandido(v => !v)}
+        mostrarTriagem={mostrarTriagem}
+        triagemPendente={triagemPendente}
+      />
+
+      <div className="app-conteudo">
       {tab !== 'tarefas' && error && (
         <div className="error-banner">
           <span>{error}</span>
@@ -183,6 +211,7 @@ function App() {
           {tab === 'triagem' && <TriagemTab records={records} pf={pf} />}
         </>
       )}
+      </div>
 
       {editingRecord && (
         <EditModal
