@@ -23,7 +23,10 @@ interface TopBarProps {
 // Priorização", "Gestão de Tarefas") ocupavam metade do header e forçavam
 // quebra de linha já em telas de notebook.
 const TABS: { id: Tab; label: string }[] = [
-  { id: 'registro', label: 'Registro' },
+  { id: 'painel', label: 'Painel' },
+  { id: 'objetivos', label: 'Objetivos' },
+  { id: 'iniciativas', label: 'Iniciativas' },
+  { id: 'registro', label: 'Riscos' },
   { id: 'graficos', label: 'Gráficos' },
   { id: 'priorizacao', label: 'Priorização' },
   { id: 'tarefas', label: 'Tarefas' },

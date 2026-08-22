@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { Density, RegistroStatus, RiskRecord, SortDir, SortKey } from '../../types';
 import { REGISTRO_STATUSES } from '../../types';
 import { buildRows, type EnrichedRow } from '../../lib/rows';
@@ -31,6 +31,12 @@ interface RegistroTabProps {
   onExportCSV: () => void;
   areaOptions: string[];
   categoriaOptions: string[];
+  /**
+   * Alternador entre tabela e rastro de mitigação. Vem de fora porque o modo é
+   * estado do `App` — as duas leituras são a mesma seção, e quem escolhe qual
+   * componente montar é ele.
+   */
+  modoToggle?: ReactNode;
 }
 
 function sortValue(row: EnrichedRow, key: SortKey): number | null {
@@ -43,7 +49,7 @@ function sortValue(row: EnrichedRow, key: SortKey): number | null {
 
 export function RegistroTab({
   records, onOpenEdit, onDeleteRow, onAddRow, onExportCSV,
-  areaOptions, categoriaOptions,
+  areaOptions, categoriaOptions, modoToggle,
 }: RegistroTabProps) {
   const [search, setSearch] = useState('');
   // Seleção múltipla de status persistida entre sessões; array vazio = todos.
@@ -158,6 +164,7 @@ export function RegistroTab({
           <div className="page-subtitle">{rows.length} {rows.length === 1 ? 'registro' : 'registros'} · clique em uma linha para editar</div>
         </div>
         <div className="actions-row">
+          {modoToggle}
           <button className="btn btn-ghost" onClick={onExportCSV}>↓ Exportar CSV</button>
           <button className="btn btn-navy" onClick={onAddRow}>+ Adicionar registro</button>
         </div>

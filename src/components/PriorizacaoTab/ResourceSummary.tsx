@@ -3,15 +3,26 @@ import { EmptyState } from '../common/EmptyState';
 
 interface ResourceSummaryProps {
   groups: PriorityGroup[];
+  /** 'iniciativas' ou 'ações', conforme a fonte que a tela está lendo. */
+  substantivo: string;
+  /** O mesmo no singular, para o cabeçalho da coluna. */
+  singular: string;
+  /** O que a coluna de contexto mostra em cada fonte. */
+  colunaContexto: string;
 }
 
-export function ResourceSummary({ groups }: ResourceSummaryProps) {
+export function ResourceSummary({
+  groups, substantivo, singular, colunaContexto,
+}: ResourceSummaryProps) {
   return (
     <div className="card">
       <div className="section-title">Resumo de Priorização por Recurso</div>
-      <div className="section-subtitle">Ações ordenadas por priorização dentro de cada recurso, com médias por grupo</div>
+      <div className="section-subtitle">
+        {singular === 'Ação' ? 'Ações' : 'Iniciativas'} ordenadas por priorização dentro de
+        cada recurso, com médias por grupo
+      </div>
       <div className="priority-groups">
-        {groups.length === 0 && <EmptyState message="Nenhuma ação neste filtro." />}
+        {groups.length === 0 && <EmptyState message={`Nenhuma das ${substantivo} passa neste filtro.`} />}
         {groups.map(grp => (
           <div key={grp.name} className="priority-group">
             <div className="priority-group-header">
@@ -23,8 +34,8 @@ export function ResourceSummary({ groups }: ResourceSummaryProps) {
               <table>
                 <thead>
                   <tr>
-                    <th>Ação</th>
-                    <th style={{ width: 190 }}>Área · Rotina · Categoria</th>
+                    <th>{singular}</th>
+                    <th style={{ width: 190 }}>{colunaContexto}</th>
                     <th className="center" style={{ width: 70 }}>Esforço</th>
                     <th className="center" style={{ width: 70 }}>Impacto</th>
                     <th className="center" style={{ width: 80 }}>Gravidade</th>

@@ -63,7 +63,16 @@ export interface StoredRiskRecord extends RiskRecord {
   version: number;
 }
 
-export type Tab = 'registro' | 'graficos' | 'priorizacao' | 'tarefas' | 'triagem';
+export type Tab =
+  | 'painel' | 'objetivos' | 'iniciativas'
+  | 'registro' | 'graficos' | 'priorizacao'
+  | 'tarefas' | 'triagem';
+
+/**
+ * Os dois modos de leitura do registro de risco. Não é destino de menu: é a
+ * mesma seção vista pela tabela (o cadastro) ou pelo rastro (o tratamento).
+ */
+export type ModoRisco = 'tabela' | 'rastro';
 
 export type StatusFilterValue = 'Todos' | 'Não iniciado' | 'Em andamento' | 'Concluído';
 

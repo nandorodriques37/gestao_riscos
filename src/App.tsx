@@ -1,13 +1,21 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import type { RiskRecord, StoredRiskRecord, Tab } from './types';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { ModoRisco, RiskRecord, StoredRiskRecord, Tab } from './types';
 import { TopBar } from './components/TopBar/TopBar';
 import { NavRail } from './components/NavRail/NavRail';
+import { PainelTab } from './components/PainelTab/PainelTab';
+import { ObjetivosTab } from './components/ObjetivosTab/ObjetivosTab';
+import { IniciativasTab } from './components/IniciativasTab/IniciativasTab';
 import { RegistroTab } from './components/RegistroTab/RegistroTab';
+import { RastroTab } from './components/RastroTab/RastroTab';
 import { GraficosTab } from './components/GraficosTab/GraficosTab';
 import { PriorizacaoTab } from './components/PriorizacaoTab/PriorizacaoTab';
 import { TarefasTab } from './components/TarefasTab/TarefasTab';
 import { TriagemTab } from './components/TriagemTab/TriagemTab';
 import { EditModal } from './components/EditModal/EditModal';
+import { ModoRiscoToggle } from './components/common/ModoRiscoToggle';
+import { PromoverAcaoModal } from './components/RegistroTab/PromoverAcaoModal';
+import { prontosParaFechar } from './lib/portfolioMetrics';
+import type { AcaoRisco } from './types';
 import { AREAS, ROTINAS, CATEGORIAS, RECURSOS, RESPONSAVEIS } from './data/RiskData';
 import { useRecords } from './hooks/useRecords';
 import { usePortfolio } from './hooks/usePortfolio';
@@ -19,9 +27,16 @@ const POLL_INTERVAL = 15000;
 const UNDO_TIMEOUT = 8000;
 
 function App() {
-  const [tab, setTab] = useState<Tab>('registro');
+  const [tab, setTab] = useState<Tab>('painel');
   const [railExpandido, setRailExpandido] = useState(readRailExpandido);
   const [editingId, setEditingId] = useState<string | null>(null);
+  // Os dois modos de leitura do registro de risco. Não é destino de menu.
+  const [modoRisco, setModoRisco] = useState<ModoRisco>('tabela');
+  // Vive no App para o Painel e os Objetivos conseguirem abrir uma iniciativa.
+  const [iniciativaSel, setIniciativaSel] = useState<string | null>(null);
+  // Promoção de uma mitigação a iniciativa. Fica aqui, e não dentro do
+  // EditModal, porque dois diálogos empilhados brigariam pelo foco.
+  const [promovendo, setPromovendo] = useState<AcaoRisco | null>(null);
   const [pendingUndo, setPendingUndo] = useState<Partial<RiskRecord> | null>(null);
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -55,6 +70,25 @@ function App() {
   const irPara = useCallback((destino: Tab) => {
     trocarComTransicao(() => setTab(destino));
   }, []);
+
+  /** Abre uma iniciativa vinda de outra tela (Painel, Objetivos, Rastro). */
+  const abrirIniciativa = useCallback((id: string) => {
+    setIniciativaSel(id);
+    irPara('iniciativas');
+  }, [irPara]);
+
+  /** Abre o modal de um risco vindo de outra tela. */
+  const abrirRisco = useCallback((id: string) => {
+    irPara('registro');
+    setEditingId(id);
+  }, [irPara]);
+
+  // Riscos com tratamento entregue esperando confirmação. Fica no App porque
+  // alimenta o contador do alternador de modo, que aparece nas duas leituras.
+  const prontos = useMemo(
+    () => prontosParaFechar(records, pf.portfolio.acoes_risco, pf.portfolio.iniciativas),
+    [records, pf.portfolio.acoes_risco, pf.portfolio.iniciativas],
+  );
 
   // Fecha o snackbar de "desfazer" quando o componente desmonta.
   useEffect(() => () => {
@@ -190,7 +224,30 @@ function App() {
         </div>
       ) : (
         <>
-          {tab === 'registro' && (
+          {tab === 'painel' && (
+            <PainelTab
+              records={records}
+              pf={pf}
+              onIrPara={irPara}
+              onAbrirIniciativa={abrirIniciativa}
+            />
+          )}
+
+          {tab === 'objetivos' && (
+            <ObjetivosTab pf={pf} onIrPara={irPara} onAbrirIniciativa={abrirIniciativa} />
+          )}
+
+          {tab === 'iniciativas' && (
+            <IniciativasTab
+              riscos={records}
+              pf={pf}
+              selecionada={iniciativaSel}
+              onSelecionar={setIniciativaSel}
+              onAbrirRisco={abrirRisco}
+            />
+          )}
+
+          {tab === 'registro' && modoRisco === 'tabela' && (
             <RegistroTab
               records={records}
               onOpenEdit={handleOpenEdit}
@@ -199,12 +256,49 @@ function App() {
               onExportCSV={() => downloadRecordsCSV(records)}
               areaOptions={AREAS}
               categoriaOptions={CATEGORIAS}
+              modoToggle={
+                <ModoRiscoToggle modo={modoRisco} onChange={setModoRisco} pendentes={prontos.length} />
+              }
+            />
+          )}
+
+          {tab === 'registro' && modoRisco === 'rastro' && (
+            <RastroTab
+              records={records}
+              pf={pf}
+              onAtualizarRisco={handleCommitEdit}
+              onAbrirRisco={abrirRisco}
+              onAbrirIniciativa={abrirIniciativa}
+              onPromoverAcao={setPromovendo}
+              onIrPara={irPara}
+              cabecalho={
+                <div className="page-bar">
+                  <div>
+                    <div className="page-title">Rastro de mitigação</div>
+                    <div className="page-subtitle">
+                      Os mesmos riscos, lidos pelo tratamento: o que foi feito, onde foi feito
+                      e o que já pode ser fechado
+                    </div>
+                  </div>
+                  <div className="actions-row">
+                    <ModoRiscoToggle modo={modoRisco} onChange={setModoRisco} pendentes={prontos.length} />
+                  </div>
+                </div>
+              }
             />
           )}
 
           {tab === 'graficos' && <GraficosTab records={records} />}
 
-          {tab === 'priorizacao' && <PriorizacaoTab records={records} />}
+          {tab === 'priorizacao' && (
+            <PriorizacaoTab
+              records={records}
+              iniciativas={pf.portfolio.iniciativas}
+              objetivos={pf.portfolio.objetivos}
+              pessoas={pf.portfolio.pessoas}
+              onAbrirIniciativa={abrirIniciativa}
+            />
+          )}
 
           {tab === 'tarefas' && <TarefasTab />}
 
@@ -226,6 +320,21 @@ function App() {
           categoriaOptions={CATEGORIAS}
           recursoOptions={RECURSOS}
           responsavelOptions={RESPONSAVEIS}
+          acoesVinculadas={pf.portfolio.acoes_risco.filter(a => a.risco_id === editingRecord.id)}
+          iniciativas={pf.portfolio.iniciativas}
+          onAbrirIniciativa={id => { setEditingId(null); abrirIniciativa(id); }}
+          onPromoverAcao={acao => { setEditingId(null); setPromovendo(acao); }}
+        />
+      )}
+
+      {promovendo && (
+        <PromoverAcaoModal
+          acao={promovendo}
+          risco={records.find(r => r.id === promovendo.risco_id) ?? null}
+          objetivos={pf.portfolio.objetivos}
+          pf={pf}
+          onClose={() => setPromovendo(null)}
+          onPromovida={id => { setPromovendo(null); abrirIniciativa(id); }}
         />
       )}
 

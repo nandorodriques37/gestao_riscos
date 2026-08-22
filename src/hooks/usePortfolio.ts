@@ -61,6 +61,14 @@ export interface UsePortfolio {
     itens: { id: string; patch: Record<string, unknown> }[],
   ) => Promise<number>;
   createEntidade: (entidade: EntidadeUrl, data: Record<string, unknown>) => Promise<boolean>;
+  /**
+   * Cria e devolve o item, não só o sucesso. Existe para o caso em que a
+   * próxima chamada precisa do id recém-criado — promover uma ação a iniciativa
+   * é criar a iniciativa e, na sequência, apontar a ação para ela.
+   */
+  criarERetornar: <T extends { id: string }>(
+    entidade: EntidadeUrl, data: Record<string, unknown>,
+  ) => Promise<T | null>;
   deleteEntidade: (entidade: EntidadeUrl, id: string) => Promise<boolean>;
   migrarAcoes: () => Promise<ResultadoMigracao | null>;
   /** Aplica a triagem: as marcadas como iniciativa viram iniciativas. */
@@ -168,6 +176,19 @@ export function usePortfolio(): UsePortfolio {
     }
   }, [refresh]);
 
+  const criarERetornar = useCallback(async <T extends { id: string }>(
+    entidade: EntidadeUrl, data: Record<string, unknown>,
+  ) => {
+    try {
+      const item = await createEntidadeApi<T>(entidade, data);
+      await refresh();
+      return item;
+    } catch (err) {
+      if (montado.current) setError(err instanceof Error ? err.message : 'Falha ao criar');
+      return null;
+    }
+  }, [refresh]);
+
   const deleteEntidade = useCallback(async (entidade: EntidadeUrl, id: string) => {
     try {
       await deleteEntidadeApi(entidade, id);
@@ -220,6 +241,7 @@ export function usePortfolio(): UsePortfolio {
 
   return {
     portfolio, loading, error, refresh, clearError,
-    patchEntidade, patchVarios, createEntidade, deleteEntidade, migrarAcoes, promoverTriagem,
+    patchEntidade, patchVarios, createEntidade, criarERetornar, deleteEntidade,
+    migrarAcoes, promoverTriagem,
   };
 }

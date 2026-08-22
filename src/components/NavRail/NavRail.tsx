@@ -27,6 +27,9 @@ const svg = (d: ReactElement) => (
 );
 
 const ICONES = {
+  painel: svg(<><rect x="3" y="3" width="8" height="10" rx="1.5" /><rect x="13" y="3" width="8" height="6" rx="1.5" /><rect x="3" y="15" width="8" height="6" rx="1.5" /><rect x="13" y="11" width="8" height="10" rx="1.5" /></>),
+  objetivos: svg(<><circle cx="12" cy="12" r="8.5" /><circle cx="12" cy="12" r="4" /><circle cx="12" cy="12" r="0.6" fill="currentColor" /></>),
+  iniciativas: svg(<><path d="M3.5 18.5h17" /><path d="M6 18.5V9.5l6-4.5 6 4.5v9" /><path d="M12 18.5v-5" /></>),
   registro: svg(<><path d="M12 4.2 20.8 19.4H3.2Z" /><path d="M12 10v3.6" /><path d="M12 16.6v.3" /></>),
   graficos: svg(<><path d="M5 20V11" /><path d="M12 20V4.5" /><path d="M19 20v-6.5" /></>),
   priorizacao: svg(<><rect x="3" y="3" width="18" height="18" rx="2.5" /><path d="M3 12h18M12 3v18" /></>),
@@ -35,6 +38,14 @@ const ICONES = {
 };
 
 const GRUPOS: Grupo[] = [
+  {
+    titulo: 'Direção',
+    itens: [
+      { id: 'painel', label: 'Painel', icone: ICONES.painel },
+      { id: 'objetivos', label: 'Objetivos', icone: ICONES.objetivos },
+      { id: 'iniciativas', label: 'Iniciativas', icone: ICONES.iniciativas },
+    ],
+  },
   {
     titulo: 'Risco',
     itens: [

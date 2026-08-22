@@ -1,9 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
-import type { AcaoItem, RiskRecord } from '../../types';
+import type { AcaoItem, AcaoRisco, Iniciativa, RiskRecord, SituacaoRisco } from '../../types';
+import { SITUACOES_RISCO } from '../../types';
 import type { SaveStatus } from '../../hooks/useRecords';
 import { computeScore, computePrioriz, round1, round2, scoreTier, priorizTier } from '../../lib/calculations';
+import { estadoTratamento } from '../../lib/portfolioMetrics';
+import { ROTULO_SITUACAO, AJUDA_SITUACAO, formatarDataLonga } from '../../lib/portfolioLabels';
 import { parseAcoes, resumirAcoes } from '../../lib/acoes';
 import { AcoesEditor } from './AcoesEditor';
+import { AcoesVinculadas } from './AcoesVinculadas';
 
 const FOCUSABLE = 'a[href], button:not([disabled]), input, select, textarea, [tabindex]:not([tabindex="-1"])';
 
@@ -25,6 +29,15 @@ interface EditModalProps {
   categoriaOptions: string[];
   recursoOptions: string[];
   responsavelOptions: string[];
+  /** Mitigações deste risco já extraídas para linha própria. */
+  acoesVinculadas: AcaoRisco[];
+  iniciativas: Iniciativa[];
+  onAbrirIniciativa: (id: string) => void;
+  /**
+   * Promover uma mitigação a iniciativa. Sobe para o `App` em vez de abrir um
+   * modal daqui de dentro: dois diálogos empilhados brigariam pelo foco.
+   */
+  onPromoverAcao: (acao: AcaoRisco) => void;
 }
 
 const RESPOSTA_OPTIONS = ['Mitigar', 'Aceitar', 'Transferir', 'Evitar'];
@@ -38,9 +51,17 @@ function numOrNull(value: string): number | null {
   return value === '' ? null : parseFloat(value);
 }
 
+/** Hoje em 'YYYY-MM-DD', no fuso local — é a data que o usuário enxerga. */
+function hojeParaCampo(): string {
+  const d = new Date();
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
 export function EditModal({
   record, saveStatus, onCommit, onClose, onDelete,
   areaOptions, rotinaOptions, categoriaOptions, recursoOptions, responsavelOptions,
+  acoesVinculadas, iniciativas, onAbrirIniciativa, onPromoverAcao,
 }: EditModalProps) {
   // Plano de ação como estava ao abrir o modal. Registro antigo (só texto livre
   // em `acoes`) já entra convertido em uma linha — por isso a referência do diff
@@ -54,6 +75,9 @@ export function EditModal({
   const score = computeScore(draft);
   const prioriz = computePrioriz(draft);
   const cardRef = useRef<HTMLDivElement>(null);
+  // Derivado, sempre do que está gravado — não do rascunho. Mudar a resposta no
+  // formulário não pode mudar o estado de tratamento antes de salvar.
+  const estado = estadoTratamento(record, acoesVinculadas, iniciativas);
 
   function setField(patch: Partial<RiskRecord>) {
     setDraft(d => ({ ...d, ...patch }));
@@ -205,6 +229,64 @@ export function EditModal({
           </div>
 
           <div>
+            <div className="modal-section-title">Exposição e ciclo de vida</div>
+            <div className="modal-grid-3">
+              <div>
+                <div className="modal-field-label">Exposição (R$)</div>
+                <input
+                  className="modal-input tabular" type="number" inputMode="decimal"
+                  value={draft.exposicao_rs ?? ''}
+                  onChange={e => setField({ exposicao_rs: numOrNull(e.target.value) })}
+                />
+                <div className="campo-ajuda">
+                  Perda esperada em reais. Vazio e zero dizem coisas diferentes.
+                </div>
+              </div>
+              <div>
+                <div className="modal-field-label">Situação</div>
+                <select
+                  className="modal-input"
+                  value={draft.situacao ?? ''}
+                  onChange={e => {
+                    const situacao = e.target.value as SituacaoRisco;
+                    // A data é o que permite contar "mitigados no ano". Sem ela,
+                    // a situação é um rótulo sem quando.
+                    setField({
+                      situacao,
+                      data_situacao: situacao === '' ? null : hojeParaCampo(),
+                    });
+                  }}
+                >
+                  <option value="">—</option>
+                  {SITUACOES_RISCO.map(s => (
+                    <option key={s} value={s}>{ROTULO_SITUACAO[s]}</option>
+                  ))}
+                </select>
+                <div className="campo-ajuda">
+                  {AJUDA_SITUACAO[(draft.situacao ?? '') as SituacaoRisco]
+                    || 'Mitigado, obsoleto e descartado são finais — e contam diferente.'}
+                </div>
+              </div>
+              <div>
+                <div className="modal-field-label">Desde</div>
+                <div className="modal-input" style={{ display: 'flex', alignItems: 'center', color: 'var(--ink-3)' }}>
+                  <span className="tabular">{formatarDataLonga(draft.data_situacao)}</span>
+                </div>
+                <div className="campo-ajuda">Gravada junto com a situação.</div>
+              </div>
+            </div>
+            <div style={{ marginTop: 12 }}>
+              <div className="modal-field-label">Causa raiz</div>
+              <textarea
+                className="modal-textarea" rows={2}
+                value={draft.causa_raiz ?? ''}
+                onChange={e => setField({ causa_raiz: e.target.value })}
+                placeholder="Por que esta ameaça existe? Tratar o sintoma não derruba o risco."
+              />
+            </div>
+          </div>
+
+          <div>
             <div className="modal-section-title">Plano de Ação</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div>
@@ -221,6 +303,14 @@ export function EditModal({
               </div>
             </div>
           </div>
+
+          <AcoesVinculadas
+            acoes={acoesVinculadas}
+            iniciativas={iniciativas}
+            estado={estado}
+            onAbrirIniciativa={onAbrirIniciativa}
+            onPromover={onPromoverAcao}
+          />
 
           <div>
             <div className="modal-section-title">Priorização do Esforço</div>

@@ -19,7 +19,7 @@ export interface MatrixPoint {
 function buildOffsets(ranked: ActionableItem[]): Record<number, { dx: number; dy: number }> {
   const posGroups: Record<string, number[]> = {};
   ranked.forEach((x, ri) => {
-    const key = `${x.record.esforco}|${x.record.impacto2}`;
+    const key = `${x.item.esforco}|${x.item.impacto2}`;
     if (!posGroups[key]) posGroups[key] = [];
     posGroups[key].push(ri);
   });
@@ -50,9 +50,9 @@ export function buildMatrixPoints(
 
   return ranked.map((x, ri) => {
     const o = offsets[ri];
-    const esforco = x.record.esforco as number;
-    const impacto2 = x.record.impacto2 as number;
-    const gravidade = x.record.gravidade as number;
+    const esforco = x.item.esforco as number;
+    const impacto2 = x.item.impacto2 as number;
+    const gravidade = x.item.gravidade as number;
     const xPct = clampX(pad + (esforco / 5) * (100 - 2 * pad) + o.dx);
     const yPct = clampY(100 - (pad + (impacto2 / 5) * (100 - 2 * pad)) + o.dy);
     const size = 22 + gravidade * 3.6;
@@ -64,7 +64,7 @@ export function buildMatrixPoints(
       num: ri + 1,
       xPct, yPct, size,
       tier: priorizTier(x.prioriz),
-      tooltip: `${x.record.acoes || '(sem descrição)'} — Priorização ${round2(x.prioriz)}`,
+      tooltip: `${x.item.rotulo || '(sem descrição)'} — Priorização ${round2(x.prioriz)}`,
       isSelected,
       dimmed,
     };
@@ -87,11 +87,11 @@ export function buildRankedList(ranked: ActionableItem[]): RankedListItem[] {
   return ranked.map((x, ri) => ({
     rankIndex: ri,
     num: ri + 1,
-    quadrant: quadrantOf(x.record.esforco as number, x.record.impacto2 as number),
-    acoes: x.record.acoes || '(sem descrição)',
-    esforco: x.record.esforco ?? '—',
-    impacto2: x.record.impacto2 ?? '—',
-    gravidade: x.record.gravidade ?? '—',
+    quadrant: quadrantOf(x.item.esforco as number, x.item.impacto2 as number),
+    acoes: x.item.rotulo || '(sem descrição)',
+    esforco: x.item.esforco ?? '—',
+    impacto2: x.item.impacto2 ?? '—',
+    gravidade: x.item.gravidade ?? '—',
     prioriz: round2(x.prioriz),
     tier: priorizTier(x.prioriz),
   }));
