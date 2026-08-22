@@ -7,9 +7,13 @@
 # dependência para economizar segundos num projeto deste tamanho.
 name: CI
 
+# `push` só na principal, `pull_request` no resto. Cobrir as duas em toda branch
+# fazia o mesmo commit rodar duas vezes — e como o `github.ref` de um push
+# (`refs/heads/x`) difere do de um PR (`refs/pull/N/merge`), nem o `concurrency`
+# abaixo cancelava a cópia.
 on:
   push:
-    branches: ['**']
+    branches: [main]
   pull_request:
 
 # Um push novo cancela a execução anterior da mesma branch: ninguém precisa do
