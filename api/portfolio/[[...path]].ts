@@ -45,9 +45,25 @@ function mensagemFK(err: unknown): string | null {
   return 'Registro referenciado por outro — remova o vínculo antes de excluir.';
 }
 
+/**
+ * Segmentos depois de `/api/portfolio`, lidos da própria URL.
+ *
+ * Não dá para confiar em `req.query.path`: dependendo de qual arquivo a Vercel
+ * escolhe para servir o pedido — o catch-all ou o `index.ts` vizinho — esse
+ * parâmetro vem preenchido ou vem vazio. Quando veio vazio para
+ * `/api/portfolio/backup`, o handler leu `partes = []` e devolveu o pacote no
+ * lugar do backup, calado. Ler da URL dá a mesma resposta nos dois roteamentos.
+ */
+export function segmentosDaUrl(url: string | undefined): string[] {
+  const semQuery = (url ?? '').split('?')[0];
+  const i = semQuery.indexOf('/api/portfolio');
+  const resto = i === -1 ? '' : semQuery.slice(i + '/api/portfolio'.length);
+  return resto.split('/').filter(Boolean).map(s => decodeURIComponent(s));
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
-    const partes = ([] as string[]).concat(req.query.path ?? []).filter(Boolean);
+    const partes = segmentosDaUrl(req.url);
     const method = (req.method || 'GET').toUpperCase();
 
     const sql = neonSql();
