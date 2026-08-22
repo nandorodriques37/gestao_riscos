@@ -13,7 +13,7 @@ import type { Sql } from './_db.js';
 import { listRecords } from './_db.js';
 import { pessoas, objetivos, iniciativas, acoesRisco } from './_portfolioDb.js';
 import { normStatus } from '../src/lib/calculations.js';
-import type { StoredRiskRecord } from '../src/types';
+import type { StoredRiskRecord } from '../src/types.js';
 
 /** Balde de chegada da migração, até o gestor amarrar cada uma a um objetivo real. */
 export const OBJETIVO_A_CLASSIFICAR = 'A CLASSIFICAR';

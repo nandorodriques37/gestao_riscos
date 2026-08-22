@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { PGlite } from '@electric-sql/pglite';
-import type { Sql } from './_db';
+import type { Sql } from './_db.js';
 import {
   ensureAuditoriaSchema, registrarCriacao, registrarAlteracao, registrarExclusao,
   listarAuditoria, autorDaRequisicao, AUTOR_DESCONHECIDO,
-} from './_auditoria';
+} from './_auditoria.js';
 
 let pg: PGlite;
 let sql: Sql;

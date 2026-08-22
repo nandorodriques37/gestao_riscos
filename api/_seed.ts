@@ -1,4 +1,4 @@
-import type { RiskRecord } from "../src/types";
+import type { RiskRecord } from "../src/types.js";
 
 // Dados-semente canônicos (fonte única). Ficam em um módulo TypeScript dentro
 // de `api/` para serem empacotados de forma confiável pelas funções serverless

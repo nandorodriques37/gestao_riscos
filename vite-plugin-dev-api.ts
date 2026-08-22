@@ -4,24 +4,24 @@ import { PGlite } from '@electric-sql/pglite';
 import {
   ensureSchema, listRecords, createRecord, updateRecordById, deleteRecordById, restoreRecords,
   countRecords, seedSize, type Sql,
-} from './api/_db';
+} from './api/_db.js';
 import {
   ensureTasksSchema, listTasks, createTask, updateTaskById, deleteTaskById,
-} from './api/_tasksDb';
+} from './api/_tasksDb.js';
 import {
   listAttachments, createAttachment, getAttachment, deleteAttachment,
   contentDisposition, CACHE_CONTROL_IMUTAVEL,
-} from './api/_attachmentsDb';
+} from './api/_attachmentsDb.js';
 import {
   ENTIDADES, ehEntidade, ensurePortfolioSchema, listPortfolio, backup,
   contarAcoesRisco, validarEntidade,
-} from './api/_portfolioDb';
-import { migrarAcoes } from './api/_migracaoAcoes';
-import { promoverTriagem } from './api/_promocaoTriagem';
+} from './api/_portfolioDb.js';
+import { migrarAcoes } from './api/_migracaoAcoes.js';
+import { promoverTriagem } from './api/_promocaoTriagem.js';
 import {
   ensureAuditoriaSchema, autorDaRequisicao, listarAuditoria,
   registrarCriacao, registrarAlteracao, registrarExclusao,
-} from './api/_auditoria';
+} from './api/_auditoria.js';
 
 // Backend de DESENVOLVIMENTO apenas: reimplementa as rotas /api usando um
 // Postgres embarcado (pglite) para que `npm run dev` funcione sem o Neon.

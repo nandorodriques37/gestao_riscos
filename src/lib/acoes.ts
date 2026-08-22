@@ -7,9 +7,12 @@
 // servidor (`api/_migracaoAcoes.ts`) e pela conversão preguiçosa do editor
 // (`planoDeAcao.linhasDeLegado`). O resumo e o cálculo de atraso mudaram de
 // casa para `planoDeAcao.ts`, junto com o dono do dado.
-import type { AcaoItem, AcaoStatus, RiskRecord } from '../types';
-import { ACAO_STATUSES } from '../types';
-import { normStatus } from './calculations';
+// Extensão `.js` obrigatória: este arquivo é importado pela API, que roda como
+// ESM no Node, onde import relativo sem extensão não resolve. O Vite resolve
+// dos dois jeitos, então só a produção quebrava — e quebrou.
+import type { AcaoItem, AcaoStatus, RiskRecord } from '../types.js';
+import { ACAO_STATUSES } from '../types.js';
+import { normStatus } from './calculations.js';
 
 const STATUS_SET = new Set<string>(ACAO_STATUSES);
 

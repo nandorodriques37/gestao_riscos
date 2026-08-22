@@ -8,7 +8,7 @@ import type { Sql } from './_db.js';
 import { makeTable, type Tabela } from './_table.js';
 import type {
   Pessoa, Objetivo, Medicao, Iniciativa, Marco, AcaoRisco, PortfolioBundle,
-} from '../src/types';
+} from '../src/types.js';
 
 export const pessoas: Tabela<Pessoa> = makeTable<Pessoa>({
   nome: 'pessoas',

@@ -3,7 +3,7 @@
 // 15s e baixaria todas as imagens em cada ciclo. A listagem carrega só o
 // metadado; os bytes saem pela rota do anexo, servidos com cache imutável.
 import type { Sql } from './_db.js';
-import type { TaskAttachment } from '../src/types';
+import type { TaskAttachment } from '../src/types.js';
 
 export type { TaskAttachment };
 

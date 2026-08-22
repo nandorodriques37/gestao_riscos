@@ -2,7 +2,7 @@
 // de `_db.ts` (riscos). Mesmo padrão: toda a lógica SQL fica aqui,
 // parametrizada por um executor `Sql` para ser testável e portável.
 import { INITIAL_TASKS } from './_tasksSeed.js';
-import type { Task, TaskAttachment } from '../src/types';
+import type { Task, TaskAttachment } from '../src/types.js';
 import { neonSql, deveSemear, type Sql, type OpcoesSchema } from './_db.js';
 import { ensureAttachmentsSchema, listAttachments, attachmentsByTask } from './_attachmentsDb.js';
 

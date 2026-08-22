@@ -2,8 +2,13 @@
   "compilerOptions": {
     "target": "es2023",
     "lib": ["ES2023"],
-    "module": "esnext",
-    "moduleResolution": "bundler",
+    // `nodenext`, e não `bundler`: a API não passa por bundler nenhum — a
+    // Vercel a executa como ESM no Node. Com `bundler`, o tsc aceitava
+    // `from '../types'` sem extensão e a função só morria em produção
+    // (ERR_MODULE_NOT_FOUND). Aqui o typecheck exige a extensão, então a CI
+    // pega antes do deploy.
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
     "resolveJsonModule": true,
     "types": ["node"],
     "strict": true,

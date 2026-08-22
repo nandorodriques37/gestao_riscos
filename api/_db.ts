@@ -4,7 +4,7 @@
 import { neon } from '@neondatabase/serverless';
 import { INITIAL_RECORDS } from './_seed.js';
 import { toDateISO } from './_table.js';
-import type { AcaoItem, RiskRecord, SituacaoRisco } from '../src/types';
+import type { AcaoItem, RiskRecord, SituacaoRisco } from '../src/types.js';
 
 /** Executor SQL mínimo: recebe texto parametrizado ($1, $2, …) e retorna as linhas. */
 export type Sql = (text: string, params?: unknown[]) => Promise<Record<string, unknown>[]>;

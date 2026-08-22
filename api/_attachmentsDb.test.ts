@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { PGlite } from '@electric-sql/pglite';
-import { ensureTasksSchema, createTask, listTasks, deleteTaskById, type Sql } from './_tasksDb';
+import { ensureTasksSchema, createTask, listTasks, deleteTaskById, type Sql } from './_tasksDb.js';
 import {
   createAttachment, listAttachments, getAttachment, deleteAttachment,
   base64Bytes, contentDisposition, MAX_ATTACHMENT_BYTES,
-} from './_attachmentsDb';
+} from './_attachmentsDb.js';
 
 // Mesma abordagem de `_tasksDb.test.ts`: Postgres de verdade (pglite), para que
 // a chave estrangeira com `on delete cascade` e o vínculo tarefa↔anexo sejam

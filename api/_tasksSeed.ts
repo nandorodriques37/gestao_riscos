@@ -1,4 +1,4 @@
-import type { Task } from "../src/types";
+import type { Task } from "../src/types.js";
 
 // Dados-semente canônicos (fonte única), transcritos de
 // Gestao_Tarefas_GUT_1.xlsx (aba "Matriz GUT"). Ficam em um módulo
