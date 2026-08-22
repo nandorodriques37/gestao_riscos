@@ -1,5 +1,6 @@
 import type { RiskRecord } from '../types';
 import { computeScore, computePrioriz, normStatus, round1, round2 } from './calculations';
+import { ROTULO_SITUACAO } from './portfolioLabels';
 
 type ColDef = [keyof RiskRecord | 'score' | 'prioriz', string];
 
@@ -21,6 +22,10 @@ const COLUMNS: ColDef[] = [
   ['recurso', 'Recurso'],
   ['responsavel', 'Responsável'],
   ['status', 'Status'],
+  ['exposicao_rs', 'Exposição (R$)'],
+  ['causa_raiz', 'Causa raiz'],
+  ['situacao', 'Situação'],
+  ['data_situacao', 'Situação desde'],
   ['obs', 'Observação'],
 ];
 
@@ -34,6 +39,9 @@ export function recordsToCSV(records: RiskRecord[]): string {
   records.forEach(r => {
     const row = COLUMNS.map(([key]) => {
       if (key === 'status') return esc(normStatus(r.status));
+      // Enum interno vira o rótulo que a tela mostra — 'hipotese' num relatório
+      // é vazamento de banco de dados.
+      if (key === 'situacao') return esc(r.situacao ? ROTULO_SITUACAO[r.situacao] : '');
       if (key === 'score') {
         const sc = computeScore(r);
         return esc(sc == null ? '' : round1(sc));

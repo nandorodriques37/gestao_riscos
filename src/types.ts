@@ -66,7 +66,7 @@ export interface StoredRiskRecord extends RiskRecord {
 export type Tab =
   | 'painel' | 'objetivos' | 'iniciativas'
   | 'registro' | 'graficos' | 'priorizacao'
-  | 'tarefas' | 'triagem';
+  | 'tarefas' | 'pessoas' | 'triagem';
 
 /**
  * Os dois modos de leitura do registro de risco. Não é destino de menu: é a
@@ -247,6 +247,22 @@ export interface Iniciativa extends EntidadePortfolio {
   obs: string;
 }
 
+/**
+ * Onde o indicador de um objetivo estava numa data.
+ *
+ * Existe porque `baseline` e `meta` sozinhos não dizem se o objetivo está
+ * andando: sem medição, marcar um objetivo como "atingido" é ato de fé. Uma
+ * linha por leitura, e não um campo `valor_atual` no objetivo, porque a série
+ * é o que mostra tendência — e sobrescrever o valor apaga justamente isso.
+ */
+export interface Medicao extends EntidadePortfolio {
+  objetivo_id: string | null;
+  /** 'YYYY-MM-DD'. Duas leituras no mesmo dia: a última grava. */
+  data: string | null;
+  valor: number | null;
+  obs: string;
+}
+
 export type StatusMarco = '' | 'previsto' | 'entregue' | 'cancelado';
 export const STATUS_MARCO: readonly StatusMarco[] = ['previsto', 'entregue', 'cancelado'];
 
@@ -304,10 +320,11 @@ export interface AcaoRisco extends EntidadePortfolio {
   triagem: DestinoTriagem;
 }
 
-/** Pacote devolvido por `GET /api/portfolio` — as cinco entidades de uma vez. */
+/** Pacote devolvido por `GET /api/portfolio` — todas as entidades de uma vez. */
 export interface PortfolioBundle {
   pessoas: Pessoa[];
   objetivos: Objetivo[];
+  medicoes: Medicao[];
   iniciativas: Iniciativa[];
   marcos: Marco[];
   acoes_risco: AcaoRisco[];

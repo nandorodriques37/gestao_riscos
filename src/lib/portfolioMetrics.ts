@@ -5,7 +5,7 @@
 // Datas viajam como 'YYYY-MM-DD' e são comparadas em UTC. Comparar por objeto
 // `Date` local traria horário de verão para dentro de contagem de dias.
 import type {
-  AcaoRisco, FonteIniciativa, Iniciativa, Marco, Objetivo, Pessoa,
+  AcaoRisco, FonteIniciativa, Iniciativa, Marco, Medicao, Objetivo, Pessoa,
   RiskRecord, StatusIniciativa, VetorIniciativa,
 } from '../types';
 
@@ -614,12 +614,98 @@ export function riscosPorIniciativa(
   return riscos.filter(r => ids.has(r.id));
 }
 
-/** As iniciativas que tratam um risco — o caminho inverso. */
-export function iniciativasPorRisco(
-  riscoId: string, acoes: AcaoRisco[], iniciativas: Iniciativa[],
-): Iniciativa[] {
-  const ids = new Set(
-    acoes.filter(a => a.risco_id === riscoId && a.iniciativa_id).map(a => a.iniciativa_id as string),
-  );
-  return iniciativas.filter(i => ids.has(i.id));
+export interface UsoDaPessoa {
+  pessoa: Pessoa;
+  objetivos: number;
+  iniciativas: number;
+  acoes: number;
+  /** Soma dos três. Zero = ninguém depende dela; pode sair sem deixar buraco. */
+  total: number;
+}
+
+/**
+ * De quantas coisas cada pessoa é dona hoje.
+ *
+ * Serve a duas telas ao mesmo tempo: mostra a carga real de responsabilidade
+ * (que não é a mesma coisa que dias de projeto) e diz o que se perde ao excluir
+ * alguém — as três chaves são `set null`, então a exclusão não falha, ela
+ * silenciosamente deixa itens sem dono.
+ */
+export function usoPorPessoa(
+  pessoas: Pessoa[], objetivos: Objetivo[], iniciativas: Iniciativa[], acoes: AcaoRisco[],
+): UsoDaPessoa[] {
+  const conta = (id: string, lista: { dono_id: string | null }[]) =>
+    lista.reduce((n, x) => n + (x.dono_id === id ? 1 : 0), 0);
+
+  return pessoas.map(pessoa => {
+    const o = conta(pessoa.id, objetivos);
+    const i = conta(pessoa.id, iniciativas);
+    const a = conta(pessoa.id, acoes);
+    return { pessoa, objetivos: o, iniciativas: i, acoes: a, total: o + i + a };
+  });
+}
+
+export interface ProgressoObjetivo {
+  /** Última leitura do indicador, ou null quando ninguém mediu ainda. */
+  atual: number | null;
+  /** Data da última leitura. */
+  data: string | null;
+  /**
+   * Fração do caminho entre baseline e meta já percorrida, de 0 a 1.
+   * Null quando falta baseline, meta ou medição — ou quando os dois extremos
+   * são iguais, caso em que não há caminho para medir.
+   */
+  pct: number | null;
+  /** A leitura anterior, para dizer se o indicador melhorou ou piorou. */
+  anterior: number | null;
+  /**
+   * `melhorou` | `piorou` | `estavel` comparando as duas últimas leituras na
+   * direção da meta. Null com menos de duas medições.
+   */
+  tendencia: 'melhorou' | 'piorou' | 'estavel' | null;
+  /** A série em ordem cronológica, para o sparkline. */
+  serie: { data: string; valor: number }[];
+}
+
+/**
+ * Onde o objetivo está, segundo o que foi medido.
+ *
+ * A direção da melhora vem dos próprios números: quando a meta é MENOR que o
+ * baseline (ruptura caindo de 8% para 3%), descer é melhorar. Não existe campo
+ * "quanto menor melhor" — ele seria mais um dado para alguém preencher errado.
+ */
+export function progressoObjetivo(
+  objetivo: Pick<Objetivo, 'id' | 'baseline' | 'meta'>, medicoes: Medicao[],
+): ProgressoObjetivo {
+  const serie = medicoes
+    .filter(m => m.objetivo_id === objetivo.id && m.data != null && m.valor != null)
+    .map(m => ({ data: m.data as string, valor: m.valor as number }))
+    .sort((a, b) => a.data.localeCompare(b.data));
+
+  const ultima = serie.length > 0 ? serie[serie.length - 1] : null;
+  const penultima = serie.length > 1 ? serie[serie.length - 2] : null;
+  const atual = ultima?.valor ?? null;
+  const anterior = penultima?.valor ?? null;
+
+  const { baseline, meta } = objetivo;
+  let pct: number | null = null;
+  if (atual != null && baseline != null && meta != null && baseline !== meta) {
+    const bruto = (atual - baseline) / (meta - baseline);
+    // Passar da meta não vira 130% de progresso, e regredir não vira negativo:
+    // a barra mede o caminho andado, e caminho andado não passa de ponta a ponta.
+    pct = Math.max(0, Math.min(1, bruto));
+  }
+
+  let tendencia: ProgressoObjetivo['tendencia'] = null;
+  if (atual != null && anterior != null) {
+    if (atual === anterior) {
+      tendencia = 'estavel';
+    } else if (meta != null && baseline != null && meta < baseline) {
+      tendencia = atual < anterior ? 'melhorou' : 'piorou';
+    } else {
+      tendencia = atual > anterior ? 'melhorou' : 'piorou';
+    }
+  }
+
+  return { atual, data: ultima?.data ?? null, pct, anterior, tendencia, serie };
 }

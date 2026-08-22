@@ -10,6 +10,7 @@ import { RastroTab } from './components/RastroTab/RastroTab';
 import { GraficosTab } from './components/GraficosTab/GraficosTab';
 import { PriorizacaoTab } from './components/PriorizacaoTab/PriorizacaoTab';
 import { TarefasTab } from './components/TarefasTab/TarefasTab';
+import { PessoasTab } from './components/PessoasTab/PessoasTab';
 import { TriagemTab } from './components/TriagemTab/TriagemTab';
 import { EditModal } from './components/EditModal/EditModal';
 import { ModoRiscoToggle } from './components/common/ModoRiscoToggle';
@@ -301,6 +302,8 @@ function App() {
           )}
 
           {tab === 'tarefas' && <TarefasTab />}
+
+          {tab === 'pessoas' && <PessoasTab pf={pf} onIrPara={irPara} />}
 
           {tab === 'triagem' && <TriagemTab records={records} pf={pf} />}
         </>

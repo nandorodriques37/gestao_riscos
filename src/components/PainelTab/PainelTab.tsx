@@ -1,9 +1,10 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import type { StoredRiskRecord, Tab } from '../../types';
+import { FONTES_INICIATIVA, VETORES } from '../../types';
 import type { UsePortfolio } from '../../hooks/usePortfolio';
 import {
   impactoComprometido, marcosNoPrazo, slipMedio, wipPorDono, cargaPorPessoa,
-  zumbis, coberturaObjetivos, mixPorVetor, portfolioPorOrigem,
+  zumbis, coberturaObjetivos, mixPorVetor, portfolioPorOrigem, fonteVsVetor,
   tratamentoDosRiscos, prontosParaFechar, riscosMitigados, exposicaoResidual,
   hojeISO, periodoDe, LIMITE_WIP, DIAS_PARA_ZUMBI, LIMITE_DEFENSIVO,
   type EstadoTratamento,
@@ -13,6 +14,7 @@ import {
   formatarNumero, formatarPct, plural,
 } from '../../lib/portfolioLabels';
 import { OBJETIVO_BALDE } from '../../lib/portfolioUi';
+import { baixarPortfolioCSV, baixarBackup } from '../../lib/portfolioCsv';
 import { EmptyState } from '../common/EmptyState';
 
 interface PainelTabProps {
@@ -84,6 +86,20 @@ function Composicao({ fatias, vazio }: { fatias: Fatia[]; vazio: string }) {
 export function PainelTab({ records, pf, onIrPara, onAbrirIniciativa }: PainelTabProps) {
   const { portfolio, loading } = pf;
   const { objetivos, iniciativas, marcos, acoes_risco, pessoas } = portfolio;
+  const [baixando, setBaixando] = useState(false);
+  const [erroBackup, setErroBackup] = useState<string | null>(null);
+
+  async function handleBackup() {
+    setBaixando(true);
+    setErroBackup(null);
+    try {
+      await baixarBackup();
+    } catch (e) {
+      setErroBackup(e instanceof Error ? e.message : 'Falha ao gerar o backup.');
+    } finally {
+      setBaixando(false);
+    }
+  }
 
   const hoje = useMemo(() => new Date(), []);
   const hojeStr = hojeISO(hoje);
@@ -101,6 +117,22 @@ export function PainelTab({ records, pf, onIrPara, onAbrirIniciativa }: PainelTa
   const cobertura = useMemo(() => coberturaObjetivos(objetivos, iniciativas), [objetivos, iniciativas]);
   const mix = useMemo(() => mixPorVetor(iniciativas), [iniciativas]);
   const origem = useMemo(() => portfolioPorOrigem(iniciativas), [iniciativas]);
+  const matriz = useMemo(() => fonteVsVetor(iniciativas), [iniciativas]);
+
+  // Só as combinações que existem, na ordem em que a matriz será lida. Uma
+  // grade 4×3 fixa mostraria nove células vazias e esconderia as três cheias.
+  const fontesUsadas = useMemo(
+    () => FONTES_INICIATIVA.filter(f => matriz.some(c => c.fonte === f && c.iniciativas > 0)),
+    [matriz],
+  );
+  const vetoresUsados = useMemo(
+    () => VETORES.filter(v => matriz.some(c => c.vetor === v && c.iniciativas > 0)),
+    [matriz],
+  );
+  const celula = (f: string, v: string) =>
+    matriz.find(c => c.fonte === f && c.vetor === v)?.iniciativas ?? 0;
+  // Prova visual: mais de uma origem cruzando mais de um vetor.
+  const eixosIndependentes = fontesUsadas.length > 1 && vetoresUsados.length > 1;
 
   const tratamento = useMemo(
     () => tratamentoDosRiscos(records, acoes_risco, iniciativas),
@@ -172,7 +204,41 @@ export function PainelTab({ records, pf, onIrPara, onAbrirIniciativa }: PainelTa
             {plural(records.length, 'risco', 'riscos')}
           </div>
         </div>
+        <div className="actions-row sem-impressao">
+          <button
+            className="btn btn-ghost"
+            onClick={() => window.print()}
+            title="Imprime este painel em uma folha, sem menu e sem botões."
+          >
+            Imprimir
+          </button>
+          <button
+            className="btn btn-ghost"
+            onClick={() => baixarPortfolioCSV({
+              iniciativas, objetivos, pessoas, marcos, acoes: acoes_risco,
+            })}
+            disabled={iniciativas.length === 0}
+            title="Uma linha por iniciativa, com objetivo, marcos e riscos cobertos."
+          >
+            ↓ CSV do portfólio
+          </button>
+          <button
+            className="btn btn-ghost"
+            onClick={() => { void handleBackup(); }}
+            disabled={baixando}
+            title="Dump completo: riscos, tarefas e todas as tabelas do portfólio."
+          >
+            {baixando ? 'Gerando…' : '↓ Backup'}
+          </button>
+        </div>
       </div>
+
+      {erroBackup && (
+        <div className="error-banner sem-impressao">
+          <span>{erroBackup}</span>
+          <button className="error-banner-dismiss" onClick={() => setErroBackup(null)} aria-label="Fechar aviso">×</button>
+        </div>
+      )}
 
       <div className="bento">
         {/* ---- Linha 1: os quatro números que abrem a conversa ---- */}
@@ -383,6 +449,64 @@ export function PainelTab({ records, pf, onIrPara, onAbrirIniciativa }: PainelTa
             </div>
           )}
         </div>
+
+        {/* ---- Origem × vetor: a prova de que são dois eixos ---- */}
+
+        {matriz.length > 0 && (
+          <div className="card" data-span="12">
+            <div className="section-title">Origem × vetor</div>
+            <div className="bento-sub" style={{ maxWidth: '78ch' }}>
+              {eixosIndependentes
+                ? 'De onde a iniciativa veio não determina o que ela faz com o valor. '
+                  + 'Se determinasse, esta matriz teria uma célula por linha — e não tem.'
+                : 'Por enquanto o portfólio ocupa poucas combinações. A matriz fica interessante '
+                  + 'quando origens diferentes aparecem no mesmo vetor, e vice-versa.'}
+            </div>
+
+            <div className="matriz-wrap">
+              <table className="matriz">
+                <thead>
+                  <tr>
+                    <th />
+                    {vetoresUsados.map(v => <th key={v} className="num">{ROTULO_VETOR[v]}</th>)}
+                    <th className="num">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {fontesUsadas.map(f => {
+                    const totalLinha = vetoresUsados.reduce((s, v) => s + celula(f, v), 0);
+                    return (
+                      <tr key={f}>
+                        <th scope="row">
+                          <span className="matriz-rotulo">
+                            <span className="serie-dot" data-serie={f === 'risco' ? 'risco' : 'oportunidade'} aria-hidden="true" />
+                            {ROTULO_FONTE[f]}
+                          </span>
+                        </th>
+                        {vetoresUsados.map(v => {
+                          const n = celula(f, v);
+                          return (
+                            <td key={v} className="num" data-vazio={n === 0 || undefined}>{n}</td>
+                          );
+                        })}
+                        <td className="num total">{totalLinha}</td>
+                      </tr>
+                    );
+                  })}
+                  <tr className="matriz-total">
+                    <th scope="row">Total</th>
+                    {vetoresUsados.map(v => (
+                      <td key={v} className="num">
+                        {fontesUsadas.reduce((s, f) => s + celula(f, v), 0)}
+                      </td>
+                    ))}
+                    <td className="num total">{iniciativas.length}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
 
         {/* ---- Cobertura: as duas metades da história ---- */}
 

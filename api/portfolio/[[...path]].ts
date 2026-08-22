@@ -2,11 +2,10 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { neonSql, ensureSchema } from '../_db.js';
 import {
   ENTIDADES, ehEntidade, ensurePortfolioSchema, listPortfolio, backup,
-  validarIniciativa, validarMarco,
+  validarEntidade,
 } from '../_portfolioDb.js';
 import { migrarAcoes } from '../_migracaoAcoes.js';
 import { promoverTriagem } from '../_promocaoTriagem.js';
-import type { Iniciativa, Marco } from '../../src/types';
 
 // Rota única de todo o portfólio. Cinco entidades × 2 rotas dariam 10 funções
 // serverless a mais — o projeto já tem 8 e o limite do plano Hobby é 12. Um
@@ -112,9 +111,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
       if (method === 'POST') {
         const body = parseBody(req);
-        const erro = nome === 'iniciativas'
-          ? await validarIniciativa(sql, body, null)
-          : nome === 'marcos' ? validarMarco(body, null) : null;
+        const erro = await validarEntidade(sql, nome, body, null);
         if (erro) {
           res.status(400).json({ error: erro });
           return;
@@ -138,9 +135,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           res.status(404).json({ error: 'Registro não encontrado' });
           return;
         }
-        const erro = nome === 'iniciativas'
-          ? await validarIniciativa(sql, patch, atual as Iniciativa)
-          : nome === 'marcos' ? validarMarco(patch, atual as Marco) : null;
+        const erro = await validarEntidade(sql, nome, patch, atual);
         if (erro) {
           res.status(400).json({ error: erro });
           return;

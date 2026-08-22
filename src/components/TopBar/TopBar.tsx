@@ -30,6 +30,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'graficos', label: 'Gráficos' },
   { id: 'priorizacao', label: 'Priorização' },
   { id: 'tarefas', label: 'Tarefas' },
+  { id: 'pessoas', label: 'Pessoas' },
 ];
 
 const THEME_CYCLE: ThemePref[] = ['system', 'light', 'dark'];

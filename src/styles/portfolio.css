@@ -272,6 +272,53 @@
   color: var(--ink-4);
 }
 
+/* Série do indicador em miniatura. `preserveAspectRatio: none` deixa a curva
+   ocupar a largura da coluna sem esticar o traço — a espessura vem do
+   vector-effect. */
+.sparkline {
+  display: block;
+  width: 100%;
+  height: 44px;
+  margin-top: var(--sp-2);
+  overflow: visible;
+}
+
+.sparkline-linha {
+  fill: none;
+  stroke: var(--brand);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.sparkline-meta {
+  stroke: var(--viz-axis);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+  vector-effect: non-scaling-stroke;
+}
+
+.sparkline-ponta {
+  fill: var(--brand);
+  stroke: var(--surface-1);
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+
+/* Tendência: seta + palavra, nunca só a cor. */
+.tendencia {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-semibold);
+  color: var(--ink-4);
+}
+
+.tendencia[data-t='melhorou'] { color: var(--tier-baixo); }
+.tendencia[data-t='piorou'] { color: var(--tier-critico); }
+
 .objetivo-iniciativas {
   border-left: 1px solid var(--line-hairline);
   padding-left: var(--sp-4);
@@ -607,13 +654,30 @@
 .marco-num[data-estado='atrasado'] { background: none; border: 2px solid var(--tier-alto); color: var(--tier-alto); }
 .marco-num[data-estado='previsto'] { background: none; border: 2px solid var(--brand); color: var(--brand); }
 
-/* Tabela leve dos marcos — não é a tabela de dados do Registro. */
-.marcos-tabela {
+/* Tabela leve — a de marcos e a de pessoas. Não é a tabela de dados do
+   Registro, que tem coluna redimensionável, ordenação e cabeçalho sticky. */
+.marcos-tabela,
+.tabela-simples {
   width: 100%;
   border-collapse: collapse;
   margin-top: var(--sp-3);
 }
 
+/* Envelope próprio para a tabela rolar sozinha: sem ele, a página inteira anda
+   de lado em telas estreitas. */
+.tabela-simples-wrap {
+  overflow-x: auto;
+  background: var(--surface-1);
+  border: 1px solid var(--line-border);
+  border-radius: var(--r-lg);
+  padding: 0 var(--sp-5) var(--sp-4);
+}
+
+.tabela-simples {
+  min-width: 760px;
+}
+
+.tabela-simples th,
 .marcos-tabela th {
   font-size: var(--fs-2xs);
   font-weight: var(--fw-medium);
@@ -626,7 +690,8 @@
   white-space: nowrap;
 }
 
-.marcos-tabela td {
+.marcos-tabela td,
+.tabela-simples td {
   font-size: var(--fs-xs);
   color: var(--ink-2);
   padding: var(--sp-2) var(--sp-3) var(--sp-2) 0;
@@ -634,9 +699,36 @@
   vertical-align: top;
 }
 
-.marcos-tabela .num {
+.marcos-tabela .num,
+.tabela-simples .num {
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+}
+
+.tabela-simples th.num,
+.tabela-simples td.num {
+  text-align: right;
+}
+
+.tabela-simples tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* Inativo continua legível, só recua: ele ainda é o dono histórico de coisas. */
+.tabela-simples tr[data-inativo] {
+  opacity: 0.6;
+}
+
+.pessoa-nome {
+  color: var(--ink-1);
+  font-weight: var(--fw-medium);
+}
+
+.carga-linha {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-width: 160px;
 }
 
 .data-riscada {
@@ -876,4 +968,143 @@
   font-size: var(--fs-xs);
   color: var(--ink-2);
   line-height: 1.5;
+}
+
+/* ---------- Impressão do Painel ----------
+   O que vai para a reunião é a folha, não a tela: navegação, botões e o
+   alternador de tema não são dados. O bento vira duas colunas porque doze não
+   cabem em A4, e cada cartão ganha uma borda sólida — fundo colorido some na
+   impressora de escritório e a hierarquia iria junto. */
+
+@media print {
+  .app-header,
+  .nav-rail,
+  .sem-impressao,
+  .error-banner,
+  .undo-snackbar,
+  /* Botão em papel não faz nada — e "Ver objetivos" ao lado de um número vira
+     ruído numa folha que vai para a reunião. */
+  .btn,
+  .link-ini {
+    display: none !important;
+  }
+
+  .app-shell,
+  .app-conteudo {
+    display: block;
+    background: #FFFFFF;
+  }
+
+  .tab-page-lg,
+  .tab-page {
+    padding: 0;
+    max-width: none;
+  }
+
+  .bento {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .bento > * {
+    grid-column: span 1 !important;
+  }
+
+  .bento > [data-span='12'] {
+    grid-column: span 2 !important;
+  }
+
+  .card {
+    border: 1px solid #999999;
+    padding: 10px 12px;
+    /* Um tile partido no meio de duas páginas não se lê. */
+    break-inside: avoid;
+  }
+
+  .cobertura {
+    grid-template-columns: minmax(0, 1fr) 1px minmax(0, 1fr);
+  }
+
+  .page-title {
+    font-size: 20px;
+  }
+
+  /* Fundos de série somem em impressão P&B; forçar a cor mantém a legenda
+     ligada à barra que ela explica. */
+  .stack-seg,
+  .serie-dot,
+  .carga-fill,
+  .meta-fill {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+}
+
+/* ---------- Matriz origem × vetor ----------
+   Tabela, não heatmap: são contagens pequenas, e pintar nove células por
+   intensidade sugeriria uma escala que os números não têm. O que importa aqui
+   é a FORMA da distribuição — quantas células cheias por linha —, e isso o
+   olho lê melhor num número alinhado do que num tom de fundo. */
+
+.matriz-wrap {
+  overflow-x: auto;
+  margin-top: var(--sp-3);
+}
+
+.matriz {
+  border-collapse: collapse;
+  font-size: var(--fs-xs);
+}
+
+.matriz th,
+.matriz td {
+  padding: var(--sp-2) var(--sp-4);
+  border-bottom: 1px solid var(--line-hairline);
+  white-space: nowrap;
+}
+
+.matriz thead th {
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-medium);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-4);
+  border-bottom: 1px solid var(--line-border);
+}
+
+/* Sem `display: flex` aqui: num <th> ele tira a célula do algoritmo de tabela
+   e a linha de base deixa de alinhar com as colunas de número. O flex vai no
+   conteúdo. */
+.matriz tbody th {
+  font-weight: var(--fw-medium);
+  color: var(--ink-1);
+  text-align: left;
+}
+
+.matriz-rotulo {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.matriz .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-1);
+}
+
+/* Zero fica recessivo: a célula vazia é informação, mas não é o dado. */
+.matriz td[data-vazio] {
+  color: var(--ink-4);
+}
+
+.matriz .total {
+  font-weight: var(--fw-semibold);
+}
+
+.matriz-total th,
+.matriz-total td {
+  border-bottom: none;
+  border-top: 1px solid var(--line-border);
+  color: var(--ink-3);
 }

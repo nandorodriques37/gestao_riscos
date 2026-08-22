@@ -5,7 +5,7 @@ import type { PortfolioBundle } from '../types';
 const BASE = '/api/portfolio';
 
 /** Nome da entidade na URL. `acoes_risco` vira `acoes-risco`. */
-export type EntidadeUrl = 'pessoas' | 'objetivos' | 'iniciativas' | 'marcos' | 'acoes-risco';
+export type EntidadeUrl = 'pessoas' | 'objetivos' | 'medicoes' | 'iniciativas' | 'marcos' | 'acoes-risco';
 
 /** Outra pessoa gravou entre a leitura e a escrita (concorrência otimista). */
 export class PortfolioConflictError extends Error {

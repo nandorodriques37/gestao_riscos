@@ -3,8 +3,8 @@ import { PGlite } from '@electric-sql/pglite';
 import { ensureSchema, createRecord, type Sql } from './_db.js';
 import {
   ensurePortfolioSchema, listPortfolio, backup, contarAcoesRisco,
-  pessoas, objetivos, iniciativas, marcos, acoesRisco,
-  validarIniciativa, validarMarco, ehEntidade,
+  pessoas, objetivos, medicoes, iniciativas, marcos, acoesRisco,
+  validarIniciativa, validarMarco, validarMedicao, validarEntidade, ehEntidade,
 } from './_portfolioDb.js';
 import { ensureTasksSchema } from './_tasksDb.js';
 
@@ -50,10 +50,10 @@ describe('schema', () => {
     expect(ehEntidade('constructor')).toBe(false);
   });
 
-  it('listPortfolio devolve as cinco listas', async () => {
+  it('listPortfolio devolve todas as listas do pacote', async () => {
     const pacote = await listPortfolio(sql);
     expect(Object.keys(pacote).sort()).toEqual(
-      ['acoes_risco', 'iniciativas', 'marcos', 'objetivos', 'pessoas'],
+      ['acoes_risco', 'iniciativas', 'marcos', 'medicoes', 'objetivos', 'pessoas'],
     );
   });
 });
@@ -297,7 +297,7 @@ describe('pessoas', () => {
 });
 
 describe('backup', () => {
-  it('traz riscos, tarefas e as cinco tabelas novas', async () => {
+  it('traz riscos, tarefas e as tabelas do portfólio', async () => {
     const dump = await backup(sql);
     expect(dump.gerado_em).toMatch(/^\d{4}-\d{2}-\d{2}T/);
     expect(dump.risk_records.length).toBeGreaterThan(0);
@@ -309,5 +309,59 @@ describe('backup', () => {
   it('omite os bytes dos anexos por padrão', async () => {
     const dump = await backup(sql);
     dump.task_attachments.forEach(a => expect(a).not.toHaveProperty('dados'));
+  });
+});
+
+describe('medições do objetivo', () => {
+  it('grava uma leitura ligada ao objetivo e a devolve no pacote', async () => {
+    const obj = await objetivos.create(sql, { descricao: 'Reduzir ruptura', unidade: '%' });
+    await medicoes.create(sql, { objetivo_id: obj.id, data: '2026-03-31', valor: 7.2 });
+
+    const pacote = await listPortfolio(sql);
+    const minhas = pacote.medicoes.filter(m => m.objetivo_id === obj.id);
+    expect(minhas).toHaveLength(1);
+    // Data volta como 'YYYY-MM-DD', não como Date — é o que o input espera.
+    expect(minhas[0].data).toBe('2026-03-31');
+    expect(minhas[0].valor).toBe(7.2);
+  });
+
+  it('some junto com o objetivo — medição órfã não significa nada', async () => {
+    const obj = await objetivos.create(sql, { descricao: 'Objetivo efêmero' });
+    await medicoes.create(sql, { objetivo_id: obj.id, data: '2026-01-31', valor: 1 });
+    await objetivos.remove(sql, obj.id);
+
+    const restantes = await medicoes.list(sql);
+    expect(restantes.some(m => m.objetivo_id === obj.id)).toBe(false);
+  });
+
+  it('exige objetivo, data e valor', () => {
+    expect(validarMedicao({ data: '2026-01-31', valor: 1 }, null))
+      .toMatch(/ligada a um objetivo/);
+    expect(validarMedicao({ objetivo_id: 'x', valor: 1 }, null))
+      .toMatch(/data/);
+    expect(validarMedicao({ objetivo_id: 'x', data: '2026-01-31' }, null))
+      .toMatch(/valor/);
+    expect(validarMedicao({ objetivo_id: 'x', data: '2026-01-31', valor: 0 }, null))
+      .toBeNull();
+  });
+
+  it('valor zero é valor, não campo em branco', () => {
+    expect(validarMedicao({ objetivo_id: 'x', data: '2026-01-31', valor: 0 }, null)).toBeNull();
+  });
+});
+
+describe('despacho de validação', () => {
+  it('escolhe o validador certo por entidade', async () => {
+    // Um ponto só decide isto. A rota de produção e o plugin de dev montavam
+    // cada um a sua cadeia de ifs, e `medicoes` entrou só em metade delas.
+    expect(await validarEntidade(sql, 'medicoes', { data: '2026-01-01', valor: 1 }, null))
+      .toMatch(/objetivo/);
+    expect(await validarEntidade(sql, 'iniciativas', { nome: 'X' }, null))
+      .toMatch(/objetivo/);
+    expect(await validarEntidade(sql, 'marcos', { nome: 'X' }, null)).toBeNull();
+  });
+
+  it('entidade sem regra própria passa direto', async () => {
+    expect(await validarEntidade(sql, 'pessoas', { nome: 'Alguém' }, null)).toBeNull();
   });
 });

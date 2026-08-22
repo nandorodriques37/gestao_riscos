@@ -16,6 +16,7 @@ begin;
 drop table if exists acoes_risco;
 drop table if exists marcos;
 drop table if exists iniciativas;
+drop table if exists medicoes;
 drop table if exists objetivos;
 drop table if exists pessoas;
 

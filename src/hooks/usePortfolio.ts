@@ -13,13 +13,14 @@ const CACHE_KEY = 'riskMatrix.portfolio.v1';
 const CAMPO: Record<EntidadeUrl, keyof PortfolioBundle> = {
   pessoas: 'pessoas',
   objetivos: 'objetivos',
+  medicoes: 'medicoes',
   iniciativas: 'iniciativas',
   marcos: 'marcos',
   'acoes-risco': 'acoes_risco',
 };
 
 const VAZIO: PortfolioBundle = {
-  pessoas: [], objetivos: [], iniciativas: [], marcos: [], acoes_risco: [],
+  pessoas: [], objetivos: [], medicoes: [], iniciativas: [], marcos: [], acoes_risco: [],
 };
 
 function lerCache(): PortfolioBundle {

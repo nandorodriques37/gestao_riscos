@@ -1,5 +1,5 @@
 // Camada de dados do portfólio: objetivo → iniciativa → marco, mais as ações
-// que ligam risco a iniciativa. Cinco tabelas descritas sobre `_table.ts`, com
+// que ligam risco a iniciativa. Todas descritas sobre `_table.ts`, com
 // as regras de integridade que o banco sozinho não expressa.
 //
 // A tabela de riscos (`risk_records`) continua em `_db.ts` — `acoes_risco`
@@ -7,7 +7,7 @@
 import type { Sql } from './_db.js';
 import { makeTable, type Tabela } from './_table.js';
 import type {
-  Pessoa, Objetivo, Iniciativa, Marco, AcaoRisco, PortfolioBundle,
+  Pessoa, Objetivo, Medicao, Iniciativa, Marco, AcaoRisco, PortfolioBundle,
 } from '../src/types';
 
 export const pessoas: Tabela<Pessoa> = makeTable<Pessoa>({
@@ -34,6 +34,22 @@ export const objetivos: Tabela<Objetivo> = makeTable<Objetivo>({
     { nome: 'prazo', tipo: 'date' },
     { nome: 'dono_id', tipo: 'uuid', ref: { tabela: 'pessoas', onDelete: 'set null' } },
     { nome: 'status', tipo: 'text' },
+  ],
+});
+
+/**
+ * Leitura do indicador de um objetivo numa data. Linha por leitura, para a
+ * série existir — um campo `valor_atual` no objetivo seria sobrescrito a cada
+ * medição e apagaria a tendência, que é o que interessa.
+ */
+export const medicoes: Tabela<Medicao> = makeTable<Medicao>({
+  nome: 'medicoes',
+  ordenavel: true,
+  campos: [
+    { nome: 'objetivo_id', tipo: 'uuid', ref: { tabela: 'objetivos', onDelete: 'cascade' } },
+    { nome: 'data', tipo: 'date' },
+    { nome: 'valor', tipo: 'numeric' },
+    { nome: 'obs', tipo: 'text' },
   ],
 });
 
@@ -109,6 +125,7 @@ export const acoesRisco: Tabela<AcaoRisco> = makeTable<AcaoRisco>({
 export const ENTIDADES = {
   pessoas,
   objetivos,
+  medicoes,
   iniciativas,
   marcos,
   'acoes-risco': acoesRisco,
@@ -128,21 +145,23 @@ export function ehEntidade(nome: string): nome is NomeEntidade {
 export async function ensurePortfolioSchema(sql: Sql): Promise<void> {
   await pessoas.ensure(sql);
   await objetivos.ensure(sql);
+  await medicoes.ensure(sql);
   await iniciativas.ensure(sql);
   await marcos.ensure(sql);
   await acoesRisco.ensure(sql);
 }
 
-/** As cinco listas de uma vez — o front faz um polling só sobre este pacote. */
+/** Todas as listas de uma vez — o front faz um polling só sobre este pacote. */
 export async function listPortfolio(sql: Sql): Promise<PortfolioBundle> {
-  const [p, o, i, m, a] = await Promise.all([
+  const [p, o, med, i, m, a] = await Promise.all([
     pessoas.list(sql),
     objetivos.list(sql),
+    medicoes.list(sql),
     iniciativas.list(sql),
     marcos.list(sql),
     acoesRisco.list(sql),
   ]);
-  return { pessoas: p, objetivos: o, iniciativas: i, marcos: m, acoes_risco: a };
+  return { pessoas: p, objetivos: o, medicoes: med, iniciativas: i, marcos: m, acoes_risco: a };
 }
 
 /* ------------------------------------------------------------------------ */
@@ -222,6 +241,42 @@ export function validarMarco(patch: Record<string, unknown>, atual: Marco | null
       }
     }
   }
+  return null;
+}
+
+/**
+ * Medição só vale com objetivo, data e valor. Sem os três ela não entra em
+ * nenhuma série — viraria uma linha invisível que ninguém consegue corrigir
+ * depois, porque não aparece em gráfico nenhum.
+ */
+export function validarMedicao(
+  patch: Record<string, unknown>, atual: Medicao | null,
+): string | null {
+  const registro = atual as unknown as Record<string, unknown> | null;
+  if (vazio(efetivo(patch, registro, 'objetivo_id'))) {
+    return 'Medição precisa estar ligada a um objetivo.';
+  }
+  if (vazio(efetivo(patch, registro, 'data'))) {
+    return 'Medição precisa de uma data — sem ela não há série.';
+  }
+  if (vazio(efetivo(patch, registro, 'valor'))) {
+    return 'Medição precisa de um valor.';
+  }
+  return null;
+}
+
+/**
+ * Escolhe o validador da entidade. Ponto único de despacho de propósito: a rota
+ * de produção e o plugin de dev montavam cada um a sua cadeia de `if`, e uma
+ * regra nova entrava só em metade dos ambientes — foi exatamente o que
+ * aconteceu quando `medicoes` nasceu.
+ */
+export async function validarEntidade(
+  sql: Sql, nome: string, dados: Record<string, unknown>, atual: unknown,
+): Promise<string | null> {
+  if (nome === 'iniciativas') return validarIniciativa(sql, dados, atual as Iniciativa | null);
+  if (nome === 'marcos') return validarMarco(dados, atual as Marco | null);
+  if (nome === 'medicoes') return validarMedicao(dados, atual as Medicao | null);
   return null;
 }
 

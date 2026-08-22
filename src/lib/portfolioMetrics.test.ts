@@ -1,11 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import type { AcaoRisco, Iniciativa, Marco, Objetivo, Pessoa, RiskRecord } from '../types';
+import type { AcaoRisco, Iniciativa, Marco, Medicao, Objetivo, Pessoa, RiskRecord } from '../types';
 import {
   diasEntre, mesesNoIntervalo, periodoDe, hojeISO,
   impactoComprometido, marcosNoPrazo, slipMedio, wipPorDono, cargaPorPessoa,
   zumbis, coberturaObjetivos, mixPorVetor, portfolioPorOrigem, fonteVsVetor,
   estadoTratamento, tratamentoDosRiscos, prontosParaFechar, riscosMitigados,
-  riscosAbertos, exposicaoResidual, riscosPorIniciativa, iniciativasPorRisco,
+  riscosAbertos, exposicaoResidual, riscosPorIniciativa,
+  usoPorPessoa, progressoObjetivo,
   LIMITE_WIP, DIAS_PARA_ZUMBI,
 } from './portfolioMetrics';
 
@@ -18,6 +19,13 @@ function pessoa(p: Partial<Pessoa> = {}): Pessoa {
   return {
     id: id(), nome: 'Alguém', papel: '', area: '', dias_projeto_mes: null, ativo: true,
     version: 1, updated_at: '2026-01-01T00:00:00.000Z', ...p,
+  };
+}
+
+function medicao(m: Partial<Medicao> = {}): Medicao {
+  return {
+    id: id(), objetivo_id: null, data: null, valor: null, obs: '',
+    version: 1, updated_at: '2026-01-01T00:00:00.000Z', ...m,
   };
 }
 
@@ -642,19 +650,6 @@ describe('os dois lados do vínculo', () => {
     expect(encontrados.map(r => r.risco)).toEqual(['Coberto']);
   });
 
-  it('iniciativasPorRisco faz o caminho inverso, sem duplicar', () => {
-    const i1 = iniciativa({ nome: 'A' });
-    const i2 = iniciativa({ nome: 'B' });
-    const r = risco();
-    const achadas = iniciativasPorRisco(r.id, [
-      acao({ risco_id: r.id, iniciativa_id: i1.id }),
-      acao({ risco_id: r.id, iniciativa_id: i1.id }),
-      acao({ risco_id: r.id, iniciativa_id: i2.id }),
-      acao({ risco_id: r.id, iniciativa_id: null }),
-    ], [i1, i2]);
-    expect(achadas.map(i => i.nome)).toEqual(['A', 'B']);
-  });
-
   it('uma iniciativa de gap_kpi cobrindo risco não vira fonte risco', () => {
     // O caso que motivou separar origem de cobertura.
     const ini = iniciativa({ fonte: 'gap_kpi' });
@@ -663,5 +658,120 @@ describe('os dois lados do vínculo', () => {
     expect(riscosPorIniciativa(ini.id, acoes, [r])).toHaveLength(1);
     expect(portfolioPorOrigem([ini]).deOportunidade.iniciativas).toBe(1);
     expect(portfolioPorOrigem([ini]).deRisco.iniciativas).toBe(0);
+  });
+});
+
+describe('usoPorPessoa', () => {
+  it('conta de quantas coisas cada pessoa é dona', () => {
+    const ana = pessoa({ nome: 'Ana' });
+    const bruno = pessoa({ nome: 'Bruno' });
+    const uso = usoPorPessoa(
+      [ana, bruno],
+      [objetivo({ dono_id: ana.id })],
+      [iniciativa({ dono_id: ana.id }), iniciativa({ dono_id: bruno.id })],
+      [acao({ dono_id: ana.id }), acao({ dono_id: null })],
+    );
+    const porNome = new Map(uso.map(u => [u.pessoa.nome, u]));
+    expect(porNome.get('Ana')).toMatchObject({ objetivos: 1, iniciativas: 1, acoes: 1, total: 3 });
+    expect(porNome.get('Bruno')).toMatchObject({ objetivos: 0, iniciativas: 1, acoes: 0, total: 1 });
+  });
+
+  it('quem não é dono de nada tem total zero — pode sair sem deixar buraco', () => {
+    const p = pessoa();
+    expect(usoPorPessoa([p], [], [], [])[0].total).toBe(0);
+  });
+});
+
+describe('progressoObjetivo', () => {
+  it('sem medição, não inventa um valor atual', () => {
+    const o = objetivo({ baseline: 8, meta: 3 });
+    expect(progressoObjetivo(o, [])).toMatchObject({ atual: null, pct: null, tendencia: null });
+  });
+
+  it('usa a leitura mais recente, não a última cadastrada', () => {
+    const o = objetivo({ baseline: 8, meta: 3 });
+    const r = progressoObjetivo(o, [
+      medicao({ objetivo_id: o.id, data: '2026-06-30', valor: 5 }),
+      medicao({ objetivo_id: o.id, data: '2026-03-31', valor: 7 }),
+    ]);
+    expect(r.atual).toBe(5);
+    expect(r.data).toBe('2026-06-30');
+    expect(r.serie.map(s => s.valor)).toEqual([7, 5]);
+  });
+
+  it('mede a fração do caminho entre baseline e meta', () => {
+    const o = objetivo({ baseline: 8, meta: 3 });
+    // 8 → 3 são 5 pontos de caminho; estar em 5,5 é metade dele.
+    const r = progressoObjetivo(o, [medicao({ objetivo_id: o.id, data: '2026-06-30', valor: 5.5 })]);
+    expect(r.pct).toBeCloseTo(0.5, 5);
+  });
+
+  it('ignora medição de outro objetivo', () => {
+    const o = objetivo({ baseline: 10, meta: 0 });
+    const outro = objetivo();
+    const r = progressoObjetivo(o, [medicao({ objetivo_id: outro.id, data: '2026-06-30', valor: 1 })]);
+    expect(r.atual).toBeNull();
+  });
+
+  it('passar da meta não vira mais de cem por cento', () => {
+    const o = objetivo({ baseline: 8, meta: 3 });
+    const r = progressoObjetivo(o, [medicao({ objetivo_id: o.id, data: '2026-06-30', valor: 1 })]);
+    expect(r.pct).toBe(1);
+  });
+
+  it('regredir para trás do baseline não vira progresso negativo', () => {
+    const o = objetivo({ baseline: 8, meta: 3 });
+    const r = progressoObjetivo(o, [medicao({ objetivo_id: o.id, data: '2026-06-30', valor: 11 })]);
+    expect(r.pct).toBe(0);
+  });
+
+  it('quando a meta é menor que o baseline, cair é melhorar', () => {
+    const o = objetivo({ baseline: 8, meta: 3 });
+    const r = progressoObjetivo(o, [
+      medicao({ objetivo_id: o.id, data: '2026-03-31', valor: 7 }),
+      medicao({ objetivo_id: o.id, data: '2026-06-30', valor: 6 }),
+    ]);
+    expect(r.tendencia).toBe('melhorou');
+  });
+
+  it('quando a meta é maior que o baseline, subir é melhorar', () => {
+    const o = objetivo({ baseline: 60, meta: 90 });
+    const r = progressoObjetivo(o, [
+      medicao({ objetivo_id: o.id, data: '2026-03-31', valor: 65 }),
+      medicao({ objetivo_id: o.id, data: '2026-06-30', valor: 70 }),
+    ]);
+    expect(r.tendencia).toBe('melhorou');
+  });
+
+  it('duas leituras iguais é estável, não melhora', () => {
+    const o = objetivo({ baseline: 8, meta: 3 });
+    const r = progressoObjetivo(o, [
+      medicao({ objetivo_id: o.id, data: '2026-03-31', valor: 6 }),
+      medicao({ objetivo_id: o.id, data: '2026-06-30', valor: 6 }),
+    ]);
+    expect(r.tendencia).toBe('estavel');
+  });
+
+  it('sem baseline ou sem meta não há caminho para medir', () => {
+    const semMeta = objetivo({ baseline: 8, meta: null });
+    const r = progressoObjetivo(semMeta, [medicao({ objetivo_id: semMeta.id, data: '2026-06-30', valor: 5 })]);
+    expect(r.atual).toBe(5);
+    expect(r.pct).toBeNull();
+  });
+
+  it('baseline igual à meta não divide por zero', () => {
+    const o = objetivo({ baseline: 5, meta: 5 });
+    const r = progressoObjetivo(o, [medicao({ objetivo_id: o.id, data: '2026-06-30', valor: 5 })]);
+    expect(r.pct).toBeNull();
+  });
+
+  it('medição sem data ou sem valor fica de fora da série', () => {
+    const o = objetivo({ baseline: 8, meta: 3 });
+    const r = progressoObjetivo(o, [
+      medicao({ objetivo_id: o.id, data: null, valor: 5 }),
+      medicao({ objetivo_id: o.id, data: '2026-06-30', valor: null }),
+    ]);
+    expect(r.serie).toEqual([]);
+    expect(r.atual).toBeNull();
   });
 });

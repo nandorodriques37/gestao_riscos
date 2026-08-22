@@ -14,11 +14,10 @@ import {
 } from './api/_attachmentsDb';
 import {
   ENTIDADES, ehEntidade, ensurePortfolioSchema, listPortfolio, backup,
-  contarAcoesRisco, validarIniciativa, validarMarco,
+  contarAcoesRisco, validarEntidade,
 } from './api/_portfolioDb';
 import { migrarAcoes } from './api/_migracaoAcoes';
 import { promoverTriagem } from './api/_promocaoTriagem';
-import type { Iniciativa, Marco } from './src/types';
 
 // Backend de DESENVOLVIMENTO apenas: reimplementa as rotas /api usando um
 // Postgres embarcado (pglite) para que `npm run dev` funcione sem o Neon.
@@ -162,9 +161,7 @@ export function devApiPlugin(): Plugin {
               if (method === 'GET') return send(res, 200, await tabela.list(sql));
               if (method === 'POST') {
                 const body = (await readJsonBody(req)) as Record<string, unknown>;
-                const erro = nome === 'iniciativas'
-                  ? await validarIniciativa(sql, body, null)
-                  : nome === 'marcos' ? validarMarco(body, null) : null;
+                const erro = await validarEntidade(sql, nome, body, null);
                 if (erro) return send(res, 400, { error: erro });
                 return send(res, 201, await tabela.create(sql, body));
               }
@@ -175,9 +172,7 @@ export function devApiPlugin(): Plugin {
               const { expectedVersion, ...patch } = (await readJsonBody(req)) as Record<string, unknown> & { expectedVersion?: number };
               const atual = await tabela.byId(sql, id);
               if (!atual) return send(res, 404, { error: 'Registro não encontrado' });
-              const erro = nome === 'iniciativas'
-                ? await validarIniciativa(sql, patch, atual as Iniciativa)
-                : nome === 'marcos' ? validarMarco(patch, atual as Marco) : null;
+              const erro = await validarEntidade(sql, nome, patch, atual);
               if (erro) return send(res, 400, { error: erro });
               const result = await tabela.update(sql, id, patch, expectedVersion);
               if (result.status === 'not_found') return send(res, 404, { error: 'Registro não encontrado' });

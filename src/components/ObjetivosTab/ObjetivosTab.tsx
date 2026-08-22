@@ -1,20 +1,27 @@
 import { useMemo, useState } from 'react';
 import type { Objetivo, Tab } from '../../types';
 import type { UsePortfolio } from '../../hooks/usePortfolio';
-import { iniciativaAtiva } from '../../lib/portfolioMetrics';
+import { iniciativaAtiva, progressoObjetivo } from '../../lib/portfolioMetrics';
 import {
   ROTULO_HORIZONTE, ROTULO_STATUS_OBJETIVO, ROTULO_STATUS_INICIATIVA,
-  BADGE_STATUS_INICIATIVA, formatarData, formatarMoeda, formatarNumero, plural,
+  BADGE_STATUS_INICIATIVA, formatarData, formatarMoeda, formatarNumero,
+  formatarPct, plural,
 } from '../../lib/portfolioLabels';
 import { OBJETIVO_BALDE } from '../../lib/portfolioUi';
 import { EmptyState } from '../common/EmptyState';
 import { ObjetivoModal } from './ObjetivoModal';
+import { MedicaoModal } from './MedicaoModal';
+import { Sparkline } from './Sparkline';
 
 interface ObjetivosTabProps {
   pf: UsePortfolio;
   onIrPara: (tab: Tab) => void;
   onAbrirIniciativa: (id: string) => void;
 }
+
+const ROTULO_TENDENCIA: Record<string, string> = {
+  melhorou: 'melhorou', piorou: 'piorou', estavel: 'estável',
+};
 
 /** Badge do status do objetivo: verde só quando a meta caiu de fato. */
 const BADGE_STATUS: Record<string, string> = {
@@ -23,8 +30,9 @@ const BADGE_STATUS: Record<string, string> = {
 
 export function ObjetivosTab({ pf, onIrPara, onAbrirIniciativa }: ObjetivosTabProps) {
   const { portfolio, loading, error, clearError, createEntidade, patchEntidade, deleteEntidade } = pf;
-  const { objetivos, iniciativas, pessoas } = portfolio;
+  const { objetivos, medicoes, iniciativas, pessoas } = portfolio;
   const [editando, setEditando] = useState<Objetivo | null>(null);
+  const [medindo, setMedindo] = useState<Objetivo | null>(null);
   const [criando, setCriando] = useState(false);
   const [mostrarEncerrados, setMostrarEncerrados] = useState(false);
 
@@ -138,6 +146,10 @@ export function ObjetivosTab({ pf, onIrPara, onAbrirIniciativa }: ObjetivosTabPr
             const balde = o.descricao === OBJETIVO_BALDE;
             const orfao = !balde && o.status === 'ativo' && ativas.length === 0;
             const pctExecucao = daqui.length === 0 ? 0 : concluidas / daqui.length;
+            const progresso = progressoObjetivo(o, medicoes);
+            const sufixo = o.unidade ? ` ${o.unidade}` : '';
+            // Casas decimais seguem o próprio número: 8,4% mantém a casa, 145 dias não ganha uma.
+            const num = (v: number | null) => formatarNumero(v, v != null && !Number.isInteger(v) ? 1 : 0);
 
             return (
               <div className="card objetivo-card" key={o.id} data-orfao={orfao} data-balde={balde}>
@@ -181,16 +193,63 @@ export function ObjetivosTab({ pf, onIrPara, onAbrirIniciativa }: ObjetivosTabPr
                       <div className="lista-texto" style={{ whiteSpace: 'normal', marginTop: 'var(--sp-1)' }}>
                         {o.indicador}
                       </div>
+
+                      {/* baseline → hoje → meta. O do meio é o que a série diz,
+                          e só existe quando alguém mediu. */}
                       <div className="ini-meta">
-                        <span className="tabular">
-                          {formatarNumero(o.baseline, o.baseline != null && !Number.isInteger(o.baseline) ? 1 : 0)}
-                          {o.unidade && ` ${o.unidade}`}
+                        <span className="tabular">{num(o.baseline)}{sufixo}</span>
+                        <span aria-hidden="true">→</span>
+                        <span
+                          className="tabular"
+                          style={{
+                            color: progresso.atual == null ? 'var(--ink-4)' : 'var(--ink-1)',
+                            fontWeight: 'var(--fw-semibold)',
+                          }}
+                        >
+                          {progresso.atual == null ? 'sem medição' : `${num(progresso.atual)}${sufixo}`}
                         </span>
                         <span aria-hidden="true">→</span>
-                        <span className="tabular" style={{ color: 'var(--ink-1)', fontWeight: 'var(--fw-semibold)' }}>
-                          {formatarNumero(o.meta, o.meta != null && !Number.isInteger(o.meta) ? 1 : 0)}
-                          {o.unidade && ` ${o.unidade}`}
+                        <span className="tabular">{num(o.meta)}{sufixo}</span>
+                      </div>
+
+                      <div className="meta-track" title={
+                        progresso.pct == null
+                          ? 'Sem medição, baseline ou meta — não há caminho para medir'
+                          : `${formatarPct(progresso.pct)} do caminho entre baseline e meta`
+                      }>
+                        <span className="meta-fill" style={{ width: `${Math.round((progresso.pct ?? 0) * 100)}%` }} />
+                        <span className="meta-alvo" />
+                      </div>
+                      <div className="meta-legenda">
+                        <span>
+                          {progresso.pct == null ? 'sem progresso medido' : `${formatarPct(progresso.pct)} do caminho`}
                         </span>
+                        {progresso.tendencia && (
+                          <span className="tendencia" data-t={progresso.tendencia}>
+                            <span aria-hidden="true">
+                              {progresso.tendencia === 'melhorou' ? '▲' : progresso.tendencia === 'piorou' ? '▼' : '='}
+                            </span>
+                            {ROTULO_TENDENCIA[progresso.tendencia]}
+                          </span>
+                        )}
+                      </div>
+
+                      <Sparkline
+                        serie={progresso.serie}
+                        baseline={o.baseline}
+                        meta={o.meta}
+                        unidade={sufixo}
+                      />
+
+                      <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
+                        <button className="btn btn-ghost" onClick={() => setMedindo(o)}>
+                          {progresso.serie.length === 0
+                            ? 'Registrar 1ª medição'
+                            : `Medições · ${progresso.serie.length}`}
+                        </button>
+                        {progresso.data && (
+                          <span className="lista-nota">última: {formatarData(progresso.data)}</span>
+                        )}
                       </div>
                     </>
                   ) : (
@@ -200,15 +259,9 @@ export function ObjetivosTab({ pf, onIrPara, onAbrirIniciativa }: ObjetivosTabPr
                   )}
 
                   <div className="fato-label" style={{ marginTop: 'var(--sp-4)' }}>Execução</div>
-                  {/* Barra de EXECUÇÃO, não do indicador: sem medições cadastradas,
-                      fingir progresso do indicador seria inventar dado. */}
-                  <div className="meta-track" title={`${concluidas} de ${daqui.length} iniciativas concluídas`}>
-                    <span className="meta-fill" style={{ width: `${Math.round(pctExecucao * 100)}%` }} />
-                    <span className="meta-alvo" />
-                  </div>
-                  <div className="meta-legenda">
-                    <span>{concluidas} concluídas</span>
-                    <span>{daqui.length} no total</span>
+                  <div className="meta-legenda" style={{ marginTop: 'var(--sp-1)' }}>
+                    <span>{concluidas} de {daqui.length} iniciativas concluídas</span>
+                    <span>{formatarPct(pctExecucao)}</span>
                   </div>
                 </div>
 
@@ -285,6 +338,16 @@ export function ObjetivosTab({ pf, onIrPara, onAbrirIniciativa }: ObjetivosTabPr
           pessoas={pessoas}
           onSalvar={salvarNovo}
           onClose={() => setCriando(false)}
+        />
+      )}
+
+      {medindo && (
+        <MedicaoModal
+          key={medindo.id}
+          objetivo={medindo}
+          medicoes={medicoes}
+          pf={pf}
+          onClose={() => setMedindo(null)}
         />
       )}
 

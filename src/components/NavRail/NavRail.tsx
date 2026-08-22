@@ -34,6 +34,7 @@ const ICONES = {
   graficos: svg(<><path d="M5 20V11" /><path d="M12 20V4.5" /><path d="M19 20v-6.5" /></>),
   priorizacao: svg(<><rect x="3" y="3" width="18" height="18" rx="2.5" /><path d="M3 12h18M12 3v18" /></>),
   tarefas: svg(<><rect x="3" y="3" width="18" height="18" rx="3" /><polyline points="8 12.4 11 15.4 16.4 9" /></>),
+  pessoas: svg(<><circle cx="9" cy="8" r="3.2" /><path d="M3.5 19.5c0-3 2.5-5 5.5-5s5.5 2 5.5 5" /><path d="M16.5 5.4a3.2 3.2 0 0 1 0 5.2" /><path d="M17.5 14.9c2 .6 3.2 2.3 3.2 4.6" /></>),
   triagem: svg(<><path d="M4 5h16" /><path d="M7 12h10" /><path d="M10 19h4" /></>),
 };
 
@@ -56,7 +57,10 @@ const GRUPOS: Grupo[] = [
   },
   {
     titulo: 'Execução',
-    itens: [{ id: 'tarefas', label: 'Tarefas', icone: ICONES.tarefas }],
+    itens: [
+      { id: 'tarefas', label: 'Tarefas', icone: ICONES.tarefas },
+      { id: 'pessoas', label: 'Pessoas', icone: ICONES.pessoas },
+    ],
   },
 ];
 
