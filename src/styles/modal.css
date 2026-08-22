@@ -206,6 +206,21 @@ select.modal-input {
   gap: var(--sp-2);
 }
 
+/* Rodapé do cartão: para onde a mitigação foi. Fica separado do formulário por
+   um filete porque não é campo — é consequência, e vem do outro lado do
+   vínculo. A faixa azul à esquerda do cartão (portfolio.css) diz o mesmo de
+   relance; aqui está escrito. */
+.acao-destino {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  padding-top: var(--sp-2);
+  border-top: 1px solid var(--line-hairline);
+  font-size: var(--fs-2xs);
+  color: var(--ink-3);
+}
+
 .acao-card-title {
   font-size: var(--fs-2xs);
   font-weight: var(--fw-semibold);

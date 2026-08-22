@@ -788,3 +788,9 @@
 .priority-group-table-wrap {
   overflow-x: auto;
 }
+
+/* Legenda de marca redonda (bolhas da matriz). O formato vem por atributo,
+   como a cor — nenhum dos dois volta para style inline. */
+.color-legend-swatch[data-redondo] {
+  border-radius: 50%;
+}

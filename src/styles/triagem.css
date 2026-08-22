@@ -1,0 +1,175 @@
+/* ============================================================================
+   Triagem — tela temporária da migração (Fase 2).
+
+   Some sozinha quando a fila esvazia, então deliberadamente não ganha
+   vocabulário próprio: reusa .card, .badge, .tier-chip e .btn das primitivas.
+   O que mora aqui é só a anatomia da linha de triagem, que não existe em
+   nenhuma outra tela.
+   ========================================================================= */
+
+.triagem-resumo {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--sp-3);
+}
+
+/* Cartão da ação a classificar: o risco de origem em cima, pequeno, e a ação
+   embaixo em tinta cheia — é a ação que está sendo decidida, não o risco. */
+.triagem-item {
+  background: var(--bg-surface);
+  border: 1px solid var(--line-border);
+  border-radius: var(--r-lg);
+  padding: var(--sp-4);
+  display: flex;
+  gap: var(--sp-5);
+  align-items: flex-start;
+}
+
+.triagem-item + .triagem-item {
+  margin-top: var(--sp-3);
+}
+
+.triagem-corpo {
+  flex: 1;
+  min-width: 0;
+}
+
+.triagem-origem {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+  font-size: var(--fs-2xs);
+  color: var(--ink-4);
+}
+
+/* Faixa vertical do mesmo acento da coluna "Riscos" na tabela — liga
+   visualmente a linha ao registro de onde ela saiu. */
+.triagem-risco {
+  position: relative;
+  padding-left: var(--sp-3);
+  margin-top: var(--sp-2);
+  font-size: var(--fs-xs);
+  line-height: 1.45;
+  color: var(--ink-3);
+}
+
+.triagem-risco::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 2px;
+  bottom: 2px;
+  width: 2px;
+  border-radius: 2px;
+  background: color-mix(in oklab, var(--risco-accent) 55%, transparent);
+}
+
+.triagem-acao {
+  margin-top: var(--sp-3);
+  font-size: var(--fs-md);
+  font-weight: var(--fw-medium);
+  line-height: 1.45;
+  color: var(--ink-1);
+}
+
+.triagem-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+  margin-top: var(--sp-2);
+  font-size: var(--fs-xs);
+  color: var(--ink-4);
+}
+
+/* Lado da decisão. Largura fixa para os botões alinharem entre cartões. */
+.triagem-decisao {
+  width: 300px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.triagem-sugestao {
+  background: var(--bg-sunken);
+  border: 1px solid var(--line-hairline);
+  border-radius: var(--r-md);
+  padding: var(--sp-2) var(--sp-3);
+}
+
+.triagem-sugestao-label {
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-medium);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-4);
+}
+
+.triagem-motivo {
+  margin-top: var(--sp-1);
+  font-size: var(--fs-xs);
+  line-height: 1.45;
+  color: var(--ink-3);
+}
+
+.triagem-botoes {
+  display: flex;
+  gap: var(--sp-2);
+}
+
+.triagem-botoes .btn {
+  flex: 1;
+  justify-content: center;
+  padding-inline: var(--sp-2);
+}
+
+/* O botão da sugestão vem marcado — aceitar é um clique, discordar também. */
+.triagem-botoes .btn[data-sugerido='true'] {
+  border-color: color-mix(in oklab, var(--brand) 45%, transparent);
+  background: var(--brand-soft);
+  color: var(--ink-1);
+  font-weight: var(--fw-semibold);
+}
+
+.triagem-decidida {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+
+/* Painel de aplicação: é a única ação irreversível-ish da tela (desfaz-se
+   excluindo a iniciativa), então ganha o acento da marca em vez de sumir
+   entre os cartões. */
+.triagem-promover {
+  border-color: color-mix(in oklab, var(--brand) 34%, transparent);
+  background: color-mix(in oklab, var(--brand) 4%, var(--bg-surface));
+}
+
+.triagem-promover .section-header-row {
+  align-items: center;
+}
+
+/* Linha já classificada continua visível, mas recuada — a atenção pertence à
+   fila, não ao que já foi resolvido. */
+.triagem-item[data-decidida='true'] {
+  background: var(--bg-sunken);
+}
+
+.triagem-item[data-decidida='true'] .triagem-acao {
+  color: var(--ink-2);
+  font-weight: var(--fw-regular);
+}
+
+@media (max-width: 1100px) {
+  .triagem-item {
+    flex-direction: column;
+    gap: var(--sp-3);
+  }
+
+  .triagem-decisao {
+    width: 100%;
+  }
+}

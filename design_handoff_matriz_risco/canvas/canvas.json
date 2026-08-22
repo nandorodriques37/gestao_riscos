@@ -1,0 +1,58 @@
+{
+  "pages": [
+    { "id": "page-1", "name": "Telas" },
+    { "id": "page-2", "name": "Sistema" }
+  ],
+  "artboards": [
+    { "file": "Main.dc.html",        "page": "page-1", "x": 0,    "y": 0,    "w": 1440, "h": 1076, "title": "Painel" },
+    { "file": "Iniciativa.dc.html",  "page": "page-1", "x": 1560, "y": 0,    "w": 1440, "h": 1010, "title": "Iniciativa · origem × cobertura" },
+    { "file": "Objetivos.dc.html",   "page": "page-1", "x": 0,    "y": 1216, "w": 1440, "h": 848,  "title": "Objetivos" },
+    { "file": "Riscos.dc.html",      "page": "page-1", "x": 1560, "y": 1216, "w": 1440, "h": 900,  "title": "Riscos · ações vinculadas" },
+    { "file": "Rastro.dc.html",      "page": "page-1", "x": 1560, "y": 2256, "w": 1440, "h": 988,  "title": "Rastro de mitigação" },
+    { "file": "NavRail.dc.html",     "page": "page-2", "x": 0,    "y": 0,    "w": 788,  "h": 748,  "title": "Nav rail" },
+    { "file": "Superficies.dc.html", "page": "page-2", "x": 908,  "y": 0,    "w": 1020, "h": 812,  "title": "Escada de superfícies" }
+  ],
+  "annotations": [
+    {
+      "id": "nota-painel",
+      "page": "page-1",
+      "x": 0,
+      "y": -190,
+      "w": 640,
+      "text": "Painel — as quatro perguntas do prompt, uma por tile grande.\nO bloco Cobertura, embaixo, é a única superfície que conta a história inteira: o que o portfólio defende à esquerda, o que ele cria à direita.\nValores em R$ e datas de marco são amostra — esses campos ainda não existem no banco."
+    },
+    {
+      "id": "nota-marcos",
+      "page": "page-1",
+      "x": 1560,
+      "y": -190,
+      "w": 640,
+      "text": "Iniciativa — Origem e Cobertura são dois blocos separados de propósito.\nOrigem é por que ela nasceu: um valor, histórico, não muda.\nCobertura é o que ela trata hoje: 0..N riscos, cresce.\nNa trilha, o círculo vazado é o plano ORIGINAL — a distância até o cheio é o atraso, e ela não some ao replanejar."
+    },
+    {
+      "id": "nota-riscos",
+      "page": "page-1",
+      "x": 3120,
+      "y": 1216,
+      "w": 560,
+      "text": "Riscos — o plano de ação sai de dentro do registro e vira lista de ações.\nBarra azul à esquerda = ação executada dentro de uma iniciativa.\nSem barra = mitigação pequena, vive só aqui.\nDaqui sai o lado (a) do vínculo: promover ação a iniciativa."
+    },
+    {
+      "id": "nota-rastro",
+      "page": "page-1",
+      "x": 3120,
+      "y": 2256,
+      "w": 560,
+      "text": "Rastro de mitigação — responde \"o que eu mitiguei e como\".\nO sistema deriva o estado do tratamento olhando ATRAVÉS da ação: quando ela aponta para uma iniciativa, o risco só conta como tratado depois que a iniciativa concluir.\nMitigado, porém, é decisão sua — daí o balde de prontos para fechar no topo."
+    },
+    {
+      "id": "nota-sistema",
+      "page": "page-2",
+      "x": 0,
+      "y": -150,
+      "w": 900,
+      "text": "O design system em tokens já é sólido. O que muda é o shell (rail no lugar de 4 abas) e a profundidade (4 planos no lugar de 2).\nNenhum --tier-* muda: são regra de negócio."
+    }
+  ],
+  "launch": { "view": "canvas", "page": "page-1" }
+}

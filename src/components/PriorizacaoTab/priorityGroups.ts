@@ -23,7 +23,7 @@ export interface PriorityGroup {
 export function buildPriorityGroups(actionable: ActionableItem[]): PriorityGroup[] {
   const groupsMap: Record<string, ActionableItem[]> = {};
   actionable.forEach(x => {
-    const key = x.record.recurso && x.record.recurso.trim() !== '' ? x.record.recurso : 'Sem recurso definido';
+    const key = x.item.recurso && x.item.recurso.trim() !== '' ? x.item.recurso : 'Sem recurso definido';
     if (!groupsMap[key]) groupsMap[key] = [];
     groupsMap[key].push(x);
   });
@@ -31,7 +31,7 @@ export function buildPriorityGroups(actionable: ActionableItem[]): PriorityGroup
   const groups = Object.entries(groupsMap).map(([name, items]) => {
     const sorted = items.slice().sort((a, b) => b.prioriz - a.prioriz);
     const avg = (f: 'esforco' | 'impacto2' | 'gravidade') =>
-      round2(sorted.reduce((sum, x) => sum + (x.record[f] ?? 0), 0) / sorted.length);
+      round2(sorted.reduce((sum, x) => sum + (x.item[f] ?? 0), 0) / sorted.length);
     return {
       name,
       avgEsforco: avg('esforco'),
@@ -39,11 +39,11 @@ export function buildPriorityGroups(actionable: ActionableItem[]): PriorityGroup
       avgGravidade: avg('gravidade'),
       avgPrioriz: round2(sorted.reduce((sum, x) => sum + x.prioriz, 0) / sorted.length),
       actions: sorted.map(x => ({
-        acoes: x.record.acoes || '(sem descrição)',
-        combo: [x.record.area, x.record.rotina, x.record.categoria].filter(Boolean).join(' · '),
-        esforco: x.record.esforco ?? '—',
-        impacto2: x.record.impacto2 ?? '—',
-        gravidade: x.record.gravidade ?? '—',
+        acoes: x.item.rotulo || '(sem descrição)',
+        combo: x.item.contexto,
+        esforco: x.item.esforco ?? '—',
+        impacto2: x.item.impacto2 ?? '—',
+        gravidade: x.item.gravidade ?? '—',
         prioriz: round2(x.prioriz),
         tier: priorizTier(x.prioriz),
       })),

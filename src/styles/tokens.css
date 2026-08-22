@@ -20,10 +20,24 @@
 :root {
   color-scheme: light dark;
 
-  /* ---------- Superfícies (planos, não "tudo branco") ---------- */
-  --bg-canvas: light-dark(#F7F8FA, #0D1117);
-  --bg-surface: light-dark(#FFFFFF, #151B24);
-  --bg-sunken: light-dark(#F1F4F8, #1B222D);
+  /* ---------- Superfícies: escada de quatro planos ----------
+     Antes havia dois planos utilizáveis. A hierarquia nova aninha três níveis
+     — marco dentro de iniciativa dentro de objetivo — e o terceiro não tinha
+     para onde ir. Quatro degraus resolvem sem sombra nenhuma.
+
+     No escuro cada degrau sobe de tinta. No claro não dá para subir de branco,
+     então o quarto plano separa por sombra (--elev-2), não por cor: por isso
+     --surface-3 e --surface-1 são o mesmo valor ali. */
+  --surface-0: light-dark(#F7F8FA, #0D1117);
+  --surface-1: light-dark(#FFFFFF, #151B24);
+  --surface-2: light-dark(#F1F4F8, #1B222D);
+  --surface-3: light-dark(#FFFFFF, #232C39);
+
+  /* Nomes antigos, mantidos como alias: as ~3.700 linhas de CSS já escritas
+     continuam válidas sem uma única alteração. */
+  --bg-canvas: var(--surface-0);
+  --bg-surface: var(--surface-1);
+  --bg-sunken: var(--surface-2);
   --bg-hover: light-dark(#F4F6F9, #1E2733);
   --bg-selected: light-dark(#EEF3FB, #1C2942);
   --bg-overlay: light-dark(rgba(11, 18, 32, 0.45), rgba(2, 5, 10, 0.66));
@@ -121,6 +135,15 @@
   --fs-lg: 16px;
   --fs-xl: 20px;
   --fs-num: 28px;
+  --fs-num-lg: 32px;
+  --fs-display: 40px;
+
+  /* O tracking negativo já existia, espalhado em regra de componente
+     (.kpi-value -0.025em, .section-title -0.01em). Vira token para parar de
+     ser redecidido a cada tela. Quanto maior o corpo, mais fechado. */
+  --tracking-tight: -0.01em;
+  --tracking-tighter: -0.025em;
+  --tracking-display: -0.03em;
 
   --fw-regular: 400;
   --fw-medium: 500;
@@ -140,10 +163,15 @@
   --ease: cubic-bezier(0.2, 0.7, 0.3, 1);
   --dur-fast: 120ms;
   --dur: 180ms;
+  /* Painel que abre e troca de seção: acima disto vira espera, abaixo o olho
+     não acompanha de onde a coisa veio. */
+  --dur-slow: 260ms;
 
   /* ---------- Layout ---------- */
   --container: 1600px;
   --header-h: 56px;
+  --rail-w: 232px;
+  --rail-w-mini: 72px;
 
   /* ---------- Data viz ---------- */
   /* Vão de superfície entre preenchimentos adjacentes (células do heatmap,

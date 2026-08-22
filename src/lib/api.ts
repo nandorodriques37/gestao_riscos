@@ -1,4 +1,5 @@
 import type { RiskRecord, StoredRiskRecord } from '../types';
+import { cabecalhosDeEscrita } from './autor';
 
 const BASE = '/api';
 
@@ -33,7 +34,7 @@ export async function fetchRecords(): Promise<StoredRiskRecord[]> {
 export async function createRecordApi(rec: Partial<RiskRecord> = {}): Promise<StoredRiskRecord> {
   return parse(await fetch(`${BASE}/records`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: cabecalhosDeEscrita(),
     body: JSON.stringify(rec),
   }));
 }
@@ -41,7 +42,7 @@ export async function createRecordApi(rec: Partial<RiskRecord> = {}): Promise<St
 export async function patchRecordApi(id: string, patch: Partial<RiskRecord>, expectedVersion?: number): Promise<StoredRiskRecord> {
   const res = await fetch(`${BASE}/records/${encodeURIComponent(id)}`, {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
+    headers: cabecalhosDeEscrita(),
     body: JSON.stringify({ ...patch, expectedVersion }),
   });
   if (res.status === 409) throw new ConflictError(await res.json());

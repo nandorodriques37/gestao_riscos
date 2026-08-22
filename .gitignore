@@ -28,3 +28,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Canvas de design publicado (2 MB, regenerável a partir dos .dc.html)
+design_handoff_matriz_risco/canvas/*.html
+!design_handoff_matriz_risco/canvas/*.dc.html

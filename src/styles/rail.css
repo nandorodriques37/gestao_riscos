@@ -1,0 +1,202 @@
+/* ============================================================================
+   Nav rail — navegação lateral, no lugar das abas do topo.
+
+   Duas larguras, uma variável: `--rail-w` expandido, `--rail-w-mini`
+   colapsado. O estado mora no <html data-rail>, não numa classe do próprio
+   rail, porque o grid do shell também precisa saber a largura.
+
+   Estados seguem a doutrina que já valia nas abas: ativo por fundo + peso,
+   hover por superfície. Sem transform — lift em item que não flutua é
+   affordance falsa.
+   ========================================================================= */
+
+.nav-rail {
+  grid-area: rail;
+  position: sticky;
+  top: var(--header-h);
+  align-self: start;
+  height: calc(100dvh - var(--header-h));
+  width: var(--rail-w-mini);
+  display: flex;
+  flex-direction: column;
+  background: color-mix(in oklab, var(--surface-1) 88%, transparent);
+  backdrop-filter: saturate(1.6) blur(10px);
+  border-right: 1px solid var(--line-border);
+  overflow: hidden;
+  z-index: 20;
+}
+
+.nav-rail[data-expandido='true'] {
+  width: var(--rail-w);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .nav-rail {
+    transition: width var(--dur-slow) var(--ease);
+  }
+}
+
+.rail-nav {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  padding: var(--sp-4) var(--sp-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
+}
+
+.nav-rail[data-expandido='false'] .rail-nav {
+  padding-inline: var(--sp-2);
+  gap: var(--sp-4);
+}
+
+.rail-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.rail-group-label {
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-medium);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-4);
+  padding: 0 var(--sp-3) var(--sp-2);
+  white-space: nowrap;
+}
+
+/* Colapsado o rótulo do grupo vira um traço: separa sem ocupar largura que
+   não existe. */
+.nav-rail[data-expandido='false'] .rail-group-label {
+  height: 1px;
+  padding: 0;
+  margin: var(--sp-2) auto var(--sp-3);
+  width: var(--sp-5);
+  background: var(--line-hairline);
+  overflow: hidden;
+  text-indent: -999px;
+}
+
+.rail-item,
+.rail-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  height: 36px;
+  padding: 0 var(--sp-3);
+  border: none;
+  border-radius: var(--r-sm);
+  background: none;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  color: var(--ink-3);
+  white-space: nowrap;
+  text-align: left;
+  width: 100%;
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+
+.nav-rail[data-expandido='false'] .rail-item,
+.nav-rail[data-expandido='false'] .rail-toggle {
+  width: 40px;
+  margin-inline: auto;
+  padding: 0;
+  justify-content: center;
+}
+
+.rail-item svg,
+.rail-toggle svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
+
+.rail-item-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* O rótulo não é removido do DOM: sumir por opacidade e largura mantém o texto
+   para o leitor de tela e evita o pulo de layout na transição. */
+.nav-rail[data-expandido='false'] .rail-item-label {
+  width: 0;
+  flex: none;
+  opacity: 0;
+}
+
+.rail-item:hover,
+.rail-toggle:hover {
+  background: var(--surface-2);
+  color: var(--ink-1);
+}
+
+.rail-item[data-ativo='true'] {
+  background: var(--brand-soft);
+  color: var(--ink-1);
+  font-weight: var(--fw-semibold);
+}
+
+/* Contador da fila de triagem: número junto do ícone, nunca um ponto solto —
+   identidade não se dá só por cor. */
+.rail-item-count {
+  flex: none;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: var(--r-full);
+  background: var(--tier-alto);
+  color: var(--ink-on-solid);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-semibold);
+  display: grid;
+  place-items: center;
+}
+
+/* Colapsado o contador vira um selo sobre o ícone: some da linha, não da tela. */
+.nav-rail[data-expandido='false'] .rail-item {
+  position: relative;
+}
+
+.nav-rail[data-expandido='false'] .rail-item-count {
+  position: absolute;
+  top: 2px;
+  right: 0;
+  min-width: 16px;
+  height: 16px;
+  font-size: 10px;
+  box-shadow: 0 0 0 2px var(--surface-1);
+}
+
+.rail-foot {
+  flex: none;
+  padding: var(--sp-3);
+  border-top: 1px solid var(--line-hairline);
+}
+
+.nav-rail[data-expandido='false'] .rail-foot {
+  padding-inline: var(--sp-2);
+}
+
+.rail-toggle {
+  color: var(--ink-4);
+}
+
+/* Abaixo de 1100px o rail sai de cena e a navegação volta para o topo: a
+   largura mínima do rail sozinha já comeria o espaço da tabela. */
+@media (max-width: 1100px) {
+  .nav-rail {
+    display: none;
+  }
+}
+
+/* Com o rail em cena, as abas do topo seriam navegação duplicada. Elas
+   continuam no DOM e voltam a aparecer abaixo de 1100px, onde o rail sai. */
+@media (min-width: 1101px) {
+  .app-header .nav-tabs {
+    display: none;
+  }
+}

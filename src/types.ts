@@ -36,7 +36,25 @@ export interface RiskRecord {
   responsavel: string;
   status: string;
   obs: string;
+  /** Probabilidade × impacto financeiro, em reais. */
+  exposicao_rs?: number | null;
+  causa_raiz?: string;
+  /** Ciclo de vida do risco. `''` nos registros anteriores ao campo. */
+  situacao?: SituacaoRisco;
+  /** Data de entrada na `situacao` atual, 'YYYY-MM-DD'. Conta os mitigados do ano. */
+  data_situacao?: string | null;
 }
+
+/**
+ * Ciclo de vida do risco. `mitigado`, `obsoleto` e `descartado` são finais e
+ * deliberadamente distintos: o número que vai ao comitê precisa separar
+ * "tratei a ameaça" de "a ameaça deixou de existir sozinha" e de "não era
+ * risco". Um `fechado` genérico juntaria os três e perderia o sentido.
+ */
+export type SituacaoRisco = '' | 'hipotese' | 'validado' | 'mitigado' | 'obsoleto' | 'descartado';
+export const SITUACOES_RISCO: readonly SituacaoRisco[] = [
+  'hipotese', 'validado', 'mitigado', 'obsoleto', 'descartado',
+];
 
 /** Registro como vem do backend — igual a RiskRecord, mas com id e versão do banco. */
 export interface StoredRiskRecord extends RiskRecord {
@@ -45,7 +63,16 @@ export interface StoredRiskRecord extends RiskRecord {
   version: number;
 }
 
-export type Tab = 'registro' | 'graficos' | 'priorizacao' | 'tarefas';
+export type Tab =
+  | 'painel' | 'objetivos' | 'iniciativas'
+  | 'registro' | 'graficos' | 'priorizacao'
+  | 'tarefas' | 'pessoas' | 'triagem';
+
+/**
+ * Os dois modos de leitura do registro de risco. Não é destino de menu: é a
+ * mesma seção vista pela tabela (o cadastro) ou pelo rastro (o tratamento).
+ */
+export type ModoRisco = 'tabela' | 'rastro';
 
 export type StatusFilterValue = 'Todos' | 'Não iniciado' | 'Em andamento' | 'Concluído';
 
@@ -118,3 +145,187 @@ export type TaskStatus = 'A fazer' | 'Em andamento' | 'Concluída';
 export const TASK_STATUSES: readonly TaskStatus[] = ['A fazer', 'Em andamento', 'Concluída'];
 
 export type TaskSortKey = 'g' | 'u' | 't' | 'gut' | null;
+
+/* ==========================================================================
+   Portfólio — objetivo → iniciativa → marco, mais riscos e suas ações.
+
+   Todas as entidades carregam `id`, `version` (concorrência otimista) e
+   `updated_at`. Campos de data viajam como 'YYYY-MM-DD', o formato do
+   `<input type="date">`, igual a `AcaoItem.prazo`. Chave estrangeira ausente
+   é `null`, nunca string vazia.
+   ========================================================================== */
+
+interface EntidadePortfolio {
+  id: string;
+  /** Incrementada a cada gravação; detecta edição concorrente. */
+  version: number;
+  /** ISO do último UPDATE. A métrica de iniciativas paradas depende dele. */
+  updated_at: string;
+}
+
+/** Quem executa. Substitui o `responsavel` em texto livre nas entidades novas. */
+export interface Pessoa extends EntidadePortfolio {
+  nome: string;
+  papel: string;
+  area: string;
+  /**
+   * Teto de dias-pessoa de projeto por mês. É a correção da regra 7 do prompt,
+   * que comparava `esforco_dias` (dias) com `horas_projeto` (horas) — aqui as
+   * duas pontas ficam na mesma unidade, sem tabela mensal de capacidade.
+   */
+  dias_projeto_mes: number | null;
+  ativo: boolean;
+}
+
+export type HorizonteObjetivo = '' | '0-3m' | '3-12m' | '1-2a' | '2-4a' | '4a+';
+export const HORIZONTES: readonly HorizonteObjetivo[] = ['0-3m', '3-12m', '1-2a', '2-4a', '4a+'];
+
+export type StatusObjetivo = '' | 'ativo' | 'atingido' | 'abandonado';
+export const STATUS_OBJETIVO: readonly StatusObjetivo[] = ['ativo', 'atingido', 'abandonado'];
+
+/** O porquê: resultado de negócio buscado num horizonte. Poucos, 3 a 6 ativos. */
+export interface Objetivo extends EntidadePortfolio {
+  horizonte: HorizonteObjetivo;
+  descricao: string;
+  /** Indicador principal, como texto — a tabela `indicadores` foi adiada. */
+  indicador: string;
+  /** '%', 'R$', 'dias'. */
+  unidade: string;
+  baseline: number | null;
+  meta: number | null;
+  prazo: string | null;
+  dono_id: string | null;
+  status: StatusObjetivo;
+}
+
+/** Por que a iniciativa nasceu. Um valor, histórico — não muda. */
+export type FonteIniciativa = '' | 'risco' | 'gap_kpi' | 'maturidade' | 'externo';
+export const FONTES_INICIATIVA: readonly FonteIniciativa[] = ['risco', 'gap_kpi', 'maturidade', 'externo'];
+
+/** O que a iniciativa faz com o valor. Eixo independente de `fonte`. */
+export type VetorIniciativa = '' | 'evitar_perda' | 'criar_ganho' | 'criar_decisao';
+export const VETORES: readonly VetorIniciativa[] = ['evitar_perda', 'criar_ganho', 'criar_decisao'];
+
+export type ConfiancaImpacto = '' | 'alta' | 'media' | 'baixa';
+export const CONFIANCAS: readonly ConfiancaImpacto[] = ['alta', 'media', 'baixa'];
+
+export type StatusIniciativa =
+  | '' | 'backlog' | 'aprovada' | 'em_execucao' | 'pausada' | 'concluida' | 'cancelada';
+export const STATUS_INICIATIVA: readonly StatusIniciativa[] = [
+  'backlog', 'aprovada', 'em_execucao', 'pausada', 'concluida', 'cancelada',
+];
+
+/**
+ * O quê: esforço estruturado, com início e fim, que move um objetivo.
+ *
+ * `esforco`, `impacto2` e `gravidade` vieram do registro de risco — sempre
+ * descreveram a ação, não a ameaça. A fórmula de priorização e as faixas de cor
+ * seguem idênticas, só mudou o dono da coluna.
+ */
+export interface Iniciativa extends EntidadePortfolio {
+  /** Obrigatório: iniciativa sem objetivo não é salva. */
+  objetivo_id: string | null;
+  nome: string;
+  descricao: string;
+  vetor: VetorIniciativa;
+  fonte: FonteIniciativa;
+  dono_id: string | null;
+  recurso: string;
+  esforco: number | null;
+  impacto2: number | null;
+  gravidade: number | null;
+  esforco_dias: number | null;
+  impacto_rs: number | null;
+  confianca_impacto: ConfiancaImpacto;
+  inicio: string | null;
+  /** Congela na aprovação. O slip se mede contra esta data. */
+  fim_plano_original: string | null;
+  fim_plano_atual: string | null;
+  fim_real: string | null;
+  status: StatusIniciativa;
+  resultado: string;
+  obs: string;
+}
+
+/**
+ * Onde o indicador de um objetivo estava numa data.
+ *
+ * Existe porque `baseline` e `meta` sozinhos não dizem se o objetivo está
+ * andando: sem medição, marcar um objetivo como "atingido" é ato de fé. Uma
+ * linha por leitura, e não um campo `valor_atual` no objetivo, porque a série
+ * é o que mostra tendência — e sobrescrever o valor apaga justamente isso.
+ */
+export interface Medicao extends EntidadePortfolio {
+  objetivo_id: string | null;
+  /** 'YYYY-MM-DD'. Duas leituras no mesmo dia: a última grava. */
+  data: string | null;
+  valor: number | null;
+  obs: string;
+}
+
+export type StatusMarco = '' | 'previsto' | 'entregue' | 'cancelado';
+export const STATUS_MARCO: readonly StatusMarco[] = ['previsto', 'entregue', 'cancelado'];
+
+/**
+ * Quando: compromisso verificável dentro de uma iniciativa. Binário — entregue
+ * ou não. Sem campo de "% concluído": percentual autodeclarado marca 80% e não
+ * mede nada.
+ */
+export interface Marco extends EntidadePortfolio {
+  iniciativa_id: string | null;
+  /** Entregável, não atividade. */
+  nome: string;
+  criterio_aceite: string;
+  /** Nunca muda depois de gravada — é a régua do atraso. */
+  data_plano_original: string | null;
+  data_plano_atual: string | null;
+  data_real: string | null;
+  status: StatusMarco;
+  /** Obrigatório ao mover `data_plano_atual` de uma data já existente. */
+  motivo_replanejamento: string;
+}
+
+export type StatusAcaoRisco = '' | 'aberta' | 'em_andamento' | 'concluida' | 'cancelada';
+export const STATUS_ACAO_RISCO: readonly StatusAcaoRisco[] = [
+  'aberta', 'em_andamento', 'concluida', 'cancelada',
+];
+
+/**
+ * Destino confirmado na triagem da migração. Vazio = ainda na fila.
+ *
+ * Não é campo de domínio: é a marca de que uma pessoa já classificou esta
+ * linha. Sem ela, uma ação que o gestor decidiu manter como ação fica
+ * indistinguível de uma que ele ainda não olhou, e a fila nunca esvazia.
+ */
+export type DestinoTriagem = '' | 'acao' | 'iniciativa' | 'rotina';
+export const DESTINOS_TRIAGEM: readonly DestinoTriagem[] = ['acao', 'iniciativa', 'rotina'];
+
+/**
+ * A mitigação. Sai de dentro do registro de risco e vira linha própria.
+ *
+ * `iniciativa_id` é o coração da mudança: nulo = mitigação pequena e autônoma,
+ * que vive só aqui; preenchido = é executada dentro de uma iniciativa e segue
+ * os marcos dela. O vínculo fica na AÇÃO, não no risco — um risco pode ter
+ * cinco mitigações com destinos diferentes.
+ */
+export interface AcaoRisco extends EntidadePortfolio {
+  risco_id: string | null;
+  iniciativa_id: string | null;
+  descricao: string;
+  dono_id: string | null;
+  prazo: string | null;
+  indicador_sucesso: string;
+  status: StatusAcaoRisco;
+  /** Marca da triagem da migração. Vazio = ainda na fila. */
+  triagem: DestinoTriagem;
+}
+
+/** Pacote devolvido por `GET /api/portfolio` — todas as entidades de uma vez. */
+export interface PortfolioBundle {
+  pessoas: Pessoa[];
+  objetivos: Objetivo[];
+  medicoes: Medicao[];
+  iniciativas: Iniciativa[];
+  marcos: Marco[];
+  acoes_risco: AcaoRisco[];
+}

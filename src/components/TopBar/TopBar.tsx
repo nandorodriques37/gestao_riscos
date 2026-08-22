@@ -1,22 +1,37 @@
 import { useEffect, useState } from 'react';
 import type { Tab } from '../../types';
 import { applyThemePref, readThemePref, type ThemePref } from '../../lib/uiPrefs';
+import { lerAutor, gravarAutor } from '../../lib/autor';
 
 interface TopBarProps {
   tab: Tab;
   onChangeTab: (tab: Tab) => void;
   /** Estado de sincronização com o servidor, exibido à direita do header. */
   sync?: { state: 'idle' | 'saving' | 'error'; label: string };
+  /**
+   * Ações do plano de ação ainda esperando classificação. Enquanto houver
+   * alguma — ou enquanto a extração não tiver rodado — a aba Triagem aparece
+   * com o contador; depois some sozinha.
+   */
+  triagemPendente?: number;
+  /** Ações já marcadas como iniciativa que ainda não foram promovidas. */
+  promocaoPendente?: number;
+  /** Falso enquanto nenhum plano de ação foi extraído ainda. */
+  migracaoIniciada?: boolean;
 }
 
 // Rótulos curtos. Os anteriores ("Registro de Riscos e Ações", "Resumo de
 // Priorização", "Gestão de Tarefas") ocupavam metade do header e forçavam
 // quebra de linha já em telas de notebook.
 const TABS: { id: Tab; label: string }[] = [
-  { id: 'registro', label: 'Registro' },
+  { id: 'painel', label: 'Painel' },
+  { id: 'objetivos', label: 'Objetivos' },
+  { id: 'iniciativas', label: 'Iniciativas' },
+  { id: 'registro', label: 'Riscos' },
   { id: 'graficos', label: 'Gráficos' },
   { id: 'priorizacao', label: 'Priorização' },
   { id: 'tarefas', label: 'Tarefas' },
+  { id: 'pessoas', label: 'Pessoas' },
 ];
 
 const THEME_CYCLE: ThemePref[] = ['system', 'light', 'dark'];
@@ -26,10 +41,38 @@ const THEME_LABEL: Record<ThemePref, string> = {
   dark: 'Tema: escuro',
 };
 
-export function TopBar({ tab, onChangeTab, sync }: TopBarProps) {
+export function TopBar({
+  tab, onChangeTab, sync,
+  triagemPendente = 0, promocaoPendente = 0, migracaoIniciada = false,
+}: TopBarProps) {
   const [theme, setTheme] = useState<ThemePref>(() => readThemePref());
+  const [autor, setAutor] = useState(lerAutor);
+
+  /**
+   * Identidade autodeclarada: o nome vai junto de cada gravação e aparece no
+   * histórico. Não autentica ninguém — e o texto do prompt diz isso, para
+   * ninguém confundir a trilha com controle de acesso.
+   */
+  function pedirNome() {
+    const novo = window.prompt(
+      'Seu nome aparece no histórico de quem alterou o quê.\n\n'
+      + 'Isto não é login: qualquer pessoa com acesso ao app pode digitar qualquer nome.',
+      autor,
+    );
+    if (novo === null) return;
+    gravarAutor(novo);
+    setAutor(novo.trim());
+  }
 
   useEffect(() => { applyThemePref(theme); }, [theme]);
+
+  // A Triagem é uma aba de mudança, não de rotina: fica enquanto houver
+  // trabalho — fila por classificar, iniciativa por promover, ou a extração
+  // ainda nem rodou — e desaparece sozinha quando a migração termina.
+  const mostrarTriagem = tab === 'triagem'
+    || !migracaoIniciada
+    || triagemPendente > 0
+    || promocaoPendente > 0;
 
   function cycleTheme() {
     setTheme(t => THEME_CYCLE[(THEME_CYCLE.indexOf(t) + 1) % THEME_CYCLE.length]);
@@ -54,9 +97,33 @@ export function TopBar({ tab, onChangeTab, sync }: TopBarProps) {
               {t.label}
             </button>
           ))}
+          {mostrarTriagem && (
+            <button
+              className={`nav-tab${tab === 'triagem' ? ' active' : ''}`}
+              aria-current={tab === 'triagem' ? 'page' : undefined}
+              onClick={() => onChangeTab('triagem')}
+            >
+              Triagem
+              {triagemPendente > 0 && (
+                <span className="nav-tab-count tabular" aria-label={`${triagemPendente} na fila`}>
+                  {triagemPendente}
+                </span>
+              )}
+            </button>
+          )}
         </nav>
 
         <div className="header-aside">
+          <button
+            className="autor-chip"
+            data-vazio={autor ? undefined : 'true'}
+            onClick={pedirNome}
+            title={autor
+              ? `As suas alterações são registradas como "${autor}". Clique para trocar.`
+              : 'Diga quem é você — sem isso as alterações entram no histórico como "não identificado".'}
+          >
+            {autor || 'Quem é você?'}
+          </button>
           {sync && (
             <div className="sync-status" data-state={sync.state} role="status" aria-live="polite">
               <span className="sync-dot" aria-hidden="true" />

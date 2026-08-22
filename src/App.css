@@ -5,8 +5,11 @@
 @import './styles/base.css';
 @import './styles/primitives.css';
 @import './styles/layout.css';
+@import './styles/rail.css';
 @import './styles/table.css';
 @import './styles/kanban.css';
 @import './styles/charts.css';
 @import './styles/modal.css';
+@import './styles/portfolio.css';
+@import './styles/triagem.css';
 @import './styles/responsive.css';
