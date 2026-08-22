@@ -1,11 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { parseAcoes, resumirAcoes, acaoAtrasada, novaAcao } from './acoes';
+import { parseAcoes } from './acoes';
 import type { AcaoItem } from '../types';
 
 const base = { acoes: '', acoes_itens: undefined as AcaoItem[] | undefined, responsavel: '', status: '' };
 
 function item(patch: Partial<AcaoItem> = {}): AcaoItem {
-  return { ...novaAcao(), ...patch };
+  return { id: 'x', descricao: '', responsavel: '', prazo: '', status: 'A fazer' as const, ...patch };
 }
 
 describe('parseAcoes', () => {
@@ -48,46 +48,5 @@ describe('parseAcoes', () => {
   it('não usa o texto livre quando a lista estruturada está vazia mas presente', () => {
     // Lista esvaziada de propósito pelo usuário: o resumo `acoes` também some.
     expect(parseAcoes({ ...base, acoes: '', acoes_itens: [] })).toEqual([]);
-  });
-});
-
-describe('resumirAcoes', () => {
-  it('junta as descrições com separador', () => {
-    const itens = [item({ descricao: 'A' }), item({ descricao: 'B' })];
-    expect(resumirAcoes(itens)).toBe('A · B');
-  });
-
-  it('ignora descrições vazias ou só com espaços', () => {
-    const itens = [item({ descricao: 'A' }), item({ descricao: '  ' }), item({ descricao: '' })];
-    expect(resumirAcoes(itens)).toBe('A');
-  });
-
-  it('devolve string vazia para lista vazia', () => {
-    expect(resumirAcoes([])).toBe('');
-  });
-});
-
-describe('acaoAtrasada', () => {
-  const hoje = new Date(2026, 6, 29); // 29/07/2026, hora local
-
-  it('é falso sem prazo', () => {
-    expect(acaoAtrasada(item({ prazo: '' }), hoje)).toBe(false);
-  });
-
-  it('é falso no próprio dia do prazo', () => {
-    expect(acaoAtrasada(item({ prazo: '2026-07-29' }), hoje)).toBe(false);
-  });
-
-  it('é verdadeiro com prazo vencido e ação em aberto', () => {
-    expect(acaoAtrasada(item({ prazo: '2026-07-28' }), hoje)).toBe(true);
-    expect(acaoAtrasada(item({ prazo: '2026-07-28', status: 'Em andamento' }), hoje)).toBe(true);
-  });
-
-  it('é falso quando a ação já foi concluída, mesmo com prazo vencido', () => {
-    expect(acaoAtrasada(item({ prazo: '2020-01-01', status: 'Concluída' }), hoje)).toBe(false);
-  });
-
-  it('é falso com prazo futuro', () => {
-    expect(acaoAtrasada(item({ prazo: '2026-07-30' }), hoje)).toBe(false);
   });
 });

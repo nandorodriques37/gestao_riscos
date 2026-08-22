@@ -644,23 +644,26 @@
   text-decoration: line-through;
 }
 
-/* ---------- Ações vinculadas ---------- */
+/* ---------- Mitigações vistas de fora do editor ----------
+   Nome próprio, e não `.acao-card`: aquela classe é do editor de plano de ação
+   no modal do risco (modal.css), e as duas em cima do mesmo seletor faziam a
+   última folha importada mandar no visual da outra. */
 
-.acao-card {
+.mitigacao-card {
   background: var(--surface-2);
   border: 1px solid var(--line-hairline);
   border-radius: var(--r-md);
   padding: var(--sp-3);
 }
 
-/* Barra à esquerda = executada dentro de uma iniciativa. Sem barra, a
-   mitigação vive só na ação. */
-.acao-card[data-em-iniciativa='true'] {
-  border-left: 2px solid var(--brand);
+.mitigacao-card[data-de-origem='true'] {
+  border-left: 2px solid var(--risco-accent);
 }
 
-.acao-card[data-de-origem='true'] {
-  border-left: 2px solid var(--risco-accent);
+/* Barra à esquerda no cartão do editor = executada dentro de uma iniciativa.
+   Sem barra, a mitigação vive só na ação. */
+.acao-card[data-em-iniciativa='true'] {
+  border-left: 2px solid var(--brand);
 }
 
 .link-ini {

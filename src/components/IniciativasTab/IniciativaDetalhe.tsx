@@ -330,7 +330,7 @@ export function IniciativaDetalhe({
             {minhasAcoes.map(a => {
               const risco = a.risco_id ? riscos.find(r => r.id === a.risco_id) : undefined;
               return (
-                <div className="acao-card" data-de-origem="true" key={a.id}>
+                <div className="mitigacao-card" data-de-origem="true" key={a.id}>
                   {risco && (
                     <button
                       className="link-ini"

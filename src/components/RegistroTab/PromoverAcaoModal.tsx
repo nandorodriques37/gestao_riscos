@@ -88,7 +88,7 @@ export function PromoverAcaoModal({
       )}
 
       <div className="fato-label">Mitigação</div>
-      <div className="acao-card" style={{ marginBottom: 'var(--sp-4)' }}>{acao.descricao}</div>
+      <div className="mitigacao-card" style={{ marginBottom: 'var(--sp-4)' }}>{acao.descricao}</div>
 
       {objetivos.length === 0 ? (
         <div className="form-aviso">

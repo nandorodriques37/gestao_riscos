@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { PortfolioBundle } from '../types';
+import type { AcaoRisco, Pessoa, PortfolioBundle } from '../types';
 import {
   fetchPortfolio, patchEntidadeApi, createEntidadeApi, deleteEntidadeApi,
   migrarAcoesApi, promoverTriagemApi, PortfolioConflictError,
   type EntidadeUrl, type ResultadoMigracao, type ResultadoPromocao,
 } from '../lib/portfolioApi';
+import { salvarPlano, type LinhaPlano, type ResultadoSalvar } from '../lib/planoDeAcao';
 
 const CACHE_KEY = 'riskMatrix.portfolio.v1';
 
@@ -70,6 +71,13 @@ export interface UsePortfolio {
     entidade: EntidadeUrl, data: Record<string, unknown>,
   ) => Promise<T | null>;
   deleteEntidade: (entidade: EntidadeUrl, id: string) => Promise<boolean>;
+  /**
+   * Grava o plano de ação de um risco inteiro: cria, atualiza e remove linhas de
+   * `acoes_risco` conforme o que mudou, e refresca o pacote uma vez só no fim.
+   */
+  salvarPlanoDeAcao: (
+    riscoId: string, base: LinhaPlano[], atual: LinhaPlano[],
+  ) => Promise<ResultadoSalvar | null>;
   migrarAcoes: () => Promise<ResultadoMigracao | null>;
   /** Aplica a triagem: as marcadas como iniciativa viram iniciativas. */
   promoverTriagem: () => Promise<ResultadoPromocao | null>;
@@ -200,6 +208,38 @@ export function usePortfolio(): UsePortfolio {
     }
   }, [refresh]);
 
+  /**
+   * Grava o plano de ação de um risco. Cada linha é uma entidade própria, então
+   * a gravação vira várias chamadas — mas o polling só é refeito no fim, senão
+   * um plano de cinco ações dispararia cinco recargas do pacote inteiro.
+   */
+  const salvarPlanoDeAcao = useCallback(async (
+    riscoId: string, base: LinhaPlano[], atual: LinhaPlano[],
+  ) => {
+    try {
+      const resultado = await salvarPlano({
+        riscoId,
+        base,
+        atual,
+        pessoas: portfolio.pessoas,
+        api: {
+          criarPessoa: nome => createEntidadeApi<Pessoa>('pessoas', { nome, ativo: true }),
+          criarAcao: dados => createEntidadeApi<AcaoRisco>('acoes-risco', dados),
+          atualizarAcao: (id, patch) => patchEntidadeApi<AcaoRisco>('acoes-risco', id, patch),
+          removerAcao: id => deleteEntidadeApi('acoes-risco', id),
+        },
+      });
+      await refresh();
+      if (montado.current) {
+        setError(resultado.erros.length > 0 ? resultado.erros[0] : null);
+      }
+      return resultado;
+    } catch (err) {
+      if (montado.current) setError(err instanceof Error ? err.message : 'Falha ao gravar o plano de ação');
+      return null;
+    }
+  }, [portfolio.pessoas, refresh]);
+
   const migrarAcoes = useCallback(async () => {
     try {
       const resultado = await migrarAcoesApi();
@@ -242,6 +282,6 @@ export function usePortfolio(): UsePortfolio {
   return {
     portfolio, loading, error, refresh, clearError,
     patchEntidade, patchVarios, createEntidade, criarERetornar, deleteEntidade,
-    migrarAcoes, promoverTriagem,
+    salvarPlanoDeAcao, migrarAcoes, promoverTriagem,
   };
 }

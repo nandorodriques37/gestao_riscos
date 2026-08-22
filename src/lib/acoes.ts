@@ -1,26 +1,23 @@
-// Plano de ação estruturado de um registro de risco: leitura tolerante do que
-// vem do banco (inclusive registros antigos, que só têm o texto livre `acoes`),
-// resumo textual para as telas que ainda consomem `acoes` como string e cálculo
-// de atraso do prazo.
+// Leitura do plano de ação NO FORMATO ANTIGO, o que vive dentro do próprio
+// registro de risco (`acoes_itens`, ou o texto livre de `acoes` nos registros
+// mais velhos). É só leitura: desde que o plano passou a morar em
+// `acoes_risco`, ninguém escreve mais aqui.
+//
+// Continua vivo porque é o que converte o legado — usado pela extração no
+// servidor (`api/_migracaoAcoes.ts`) e pela conversão preguiçosa do editor
+// (`planoDeAcao.linhasDeLegado`). O resumo e o cálculo de atraso mudaram de
+// casa para `planoDeAcao.ts`, junto com o dono do dado.
 import type { AcaoItem, AcaoStatus, RiskRecord } from '../types';
 import { ACAO_STATUSES } from '../types';
 import { normStatus } from './calculations';
 
 const STATUS_SET = new Set<string>(ACAO_STATUSES);
 
-/** Separador do resumo textual gravado em `acoes`. */
-const RESUMO_SEP = ' · ';
-
 /** Id novo para uma linha de ação (chave de lista; `crypto` existe no browser e no Node ≥ 19). */
 function novoId(): string {
   return typeof crypto !== 'undefined' && 'randomUUID' in crypto
     ? crypto.randomUUID()
     : `acao-${Math.random().toString(36).slice(2)}-${Date.now()}`;
-}
-
-/** Linha em branco, pronta para ser preenchida pelo usuário. */
-export function novaAcao(): AcaoItem {
-  return { id: novoId(), descricao: '', responsavel: '', prazo: '', status: 'A fazer' };
 }
 
 /** Traduz o status do registro (Registro) para o status de uma ação. */
@@ -62,27 +59,4 @@ export function parseAcoes(record: Pick<RiskRecord, 'acoes' | 'acoes_itens' | 'r
     prazo: '',
     status: statusDoRegistro(record.status ?? ''),
   }];
-}
-
-/**
- * Resumo textual do plano, gravado em `acoes` a cada mudança da lista — é o que
- * a coluna "Ações" da tabela, a Priorização, os gráficos, o CSV e o KPI de
- * completude continuam lendo.
- */
-export function resumirAcoes(itens: AcaoItem[]): string {
-  return itens.map(i => i.descricao.trim()).filter(Boolean).join(RESUMO_SEP);
-}
-
-/** Data local de hoje em 'YYYY-MM-DD', para comparar com o valor do input de data. */
-function hojeISO(hoje: Date): string {
-  const mes = String(hoje.getMonth() + 1).padStart(2, '0');
-  const dia = String(hoje.getDate()).padStart(2, '0');
-  return `${hoje.getFullYear()}-${mes}-${dia}`;
-}
-
-/** Ação com prazo vencido e ainda não concluída. Vencer hoje não é atraso. */
-export function acaoAtrasada(item: AcaoItem, hoje: Date = new Date()): boolean {
-  if (!item.prazo) return false;
-  if (item.status === 'Concluída') return false;
-  return item.prazo < hojeISO(hoje);
 }

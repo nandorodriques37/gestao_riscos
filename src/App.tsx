@@ -321,9 +321,16 @@ function App() {
           recursoOptions={RECURSOS}
           responsavelOptions={RESPONSAVEIS}
           acoesVinculadas={pf.portfolio.acoes_risco.filter(a => a.risco_id === editingRecord.id)}
+          pessoas={pf.portfolio.pessoas}
           iniciativas={pf.portfolio.iniciativas}
           onAbrirIniciativa={id => { setEditingId(null); abrirIniciativa(id); }}
-          onPromoverAcao={acao => { setEditingId(null); setPromovendo(acao); }}
+          onPromoverAcao={id => {
+            const acao = pf.portfolio.acoes_risco.find(a => a.id === id);
+            if (!acao) return;
+            setEditingId(null);
+            setPromovendo(acao);
+          }}
+          onSalvarPlano={(base, atual) => pf.salvarPlanoDeAcao(editingRecord.id, base, atual)}
         />
       )}
 

@@ -1,39 +1,64 @@
 import { useRef } from 'react';
-import type { AcaoItem } from '../../types';
-import { ACAO_STATUSES } from '../../types';
-import { acaoAtrasada, novaAcao } from '../../lib/acoes';
+import type { Iniciativa } from '../../types';
+import { ROTULO_STATUS_ACAO, ROTULO_STATUS_INICIATIVA } from '../../lib/portfolioLabels';
+import {
+  linhaAtrasada, linhaVazia, STATUS_EDITAVEIS, type LinhaPlano,
+} from '../../lib/planoDeAcao';
 
 interface AcoesEditorProps {
-  itens: AcaoItem[];
-  onChange: (itens: AcaoItem[]) => void;
+  linhas: LinhaPlano[];
+  onChange: (linhas: LinhaPlano[]) => void;
   /** Id do <datalist> de responsáveis já declarado pelo modal. */
   responsavelListId: string;
+  /** Para mostrar dentro de qual iniciativa cada mitigação é executada. */
+  iniciativas: Iniciativa[];
+  onAbrirIniciativa: (id: string) => void;
+  /** Promover uma mitigação autônoma a iniciativa. */
+  onPromover: (linha: LinhaPlano) => void;
 }
 
 /**
- * Lista editável do plano de ação: cada ação é um cartão com o que fazer, quem
- * faz, até quando e em que pé está. A descrição fica sozinha numa linha de
- * largura total — em colunas ela disputava espaço com os outros três campos e
- * sobrava tela de menos para ler a frase. Controlado: o rascunho vive no
- * EditModal, que grava tudo de uma vez no Salvar.
+ * Lista editável do plano de ação. Cada ação é um cartão com o que fazer, quem
+ * faz, até quando, em que pé está — e, agora, para onde ela foi: autônoma, ou
+ * executada dentro de uma iniciativa.
+ *
+ * O plano vive só em `acoes_risco`. Antes existia uma segunda cópia dentro do
+ * próprio registro de risco, e este editor mexia nela enquanto o Rastro e as
+ * métricas liam a outra. Continua sendo rascunho: nada vai ao servidor até o
+ * modal salvar.
  */
-export function AcoesEditor({ itens, onChange, responsavelListId }: AcoesEditorProps) {
+export function AcoesEditor({
+  linhas, onChange, responsavelListId, iniciativas, onAbrirIniciativa, onPromover,
+}: AcoesEditorProps) {
   // Guarda o id da linha recém-criada para focar sua descrição assim que o
   // React a montar (o botão de adicionar fica abaixo da lista).
   const novoIdRef = useRef<string | null>(null);
+  const iniciativaPorId = new Map(iniciativas.map(i => [i.id, i]));
 
-  function patchItem(id: string, patch: Partial<AcaoItem>) {
-    onChange(itens.map(i => (i.id === id ? { ...i, ...patch } : i)));
+  function patchLinha(id: string, patch: Partial<LinhaPlano>) {
+    onChange(linhas.map(l => (l.id === id ? { ...l, ...patch } : l)));
   }
 
-  function removeItem(id: string) {
-    onChange(itens.filter(i => i.id !== id));
+  /**
+   * Remover uma mitigação que está dentro de uma iniciativa deixa a iniciativa
+   * sem cobrir aquele risco — e em silêncio, se ninguém avisar. Avisa, mas não
+   * bloqueia: travar prenderia o usuário a uma linha errada.
+   */
+  function removeLinha(linha: LinhaPlano) {
+    const ini = linha.iniciativa_id ? iniciativaPorId.get(linha.iniciativa_id) : undefined;
+    if (ini && !window.confirm(
+      `Esta mitigação é executada dentro de "${ini.nome || 'iniciativa sem nome'}".\n\n`
+      + 'Removendo-a, a iniciativa deixa de cobrir este risco — e o risco volta a contar '
+      + 'como sem tratamento, se não sobrar nenhuma outra ação.\n\n'
+      + 'Se a ideia é só marcar que ela foi abandonada, use o status "Cancelada" no lugar.',
+    )) return;
+    onChange(linhas.filter(l => l.id !== linha.id));
   }
 
-  function addItem() {
-    const item = novaAcao();
-    novoIdRef.current = item.id;
-    onChange([...itens, item]);
+  function addLinha() {
+    const nova = linhaVazia();
+    novoIdRef.current = nova.id;
+    onChange([...linhas, nova]);
   }
 
   function focarSeNovo(el: HTMLTextAreaElement | null, id: string) {
@@ -45,10 +70,11 @@ export function AcoesEditor({ itens, onChange, responsavelListId }: AcoesEditorP
 
   return (
     <div className="acoes-list">
-      {itens.map((item, i) => {
-        const atrasada = acaoAtrasada(item);
+      {linhas.map((linha, i) => {
+        const atrasada = linhaAtrasada(linha);
+        const ini = linha.iniciativa_id ? iniciativaPorId.get(linha.iniciativa_id) : undefined;
         return (
-          <div className="acao-card" key={item.id}>
+          <div className="acao-card" key={linha.id} data-em-iniciativa={Boolean(ini)}>
             <div className="acao-card-head">
               <span className="acao-card-title">Ação {i + 1}</span>
               <button
@@ -56,7 +82,7 @@ export function AcoesEditor({ itens, onChange, responsavelListId }: AcoesEditorP
                 className="delete-btn"
                 aria-label={`Remover ação ${i + 1}`}
                 title="Remover ação"
-                onClick={() => removeItem(item.id)}
+                onClick={() => removeLinha(linha)}
               >
                 ×
               </button>
@@ -65,11 +91,11 @@ export function AcoesEditor({ itens, onChange, responsavelListId }: AcoesEditorP
             <textarea
               className="modal-textarea acao-descricao"
               rows={2}
-              ref={el => focarSeNovo(el, item.id)}
+              ref={el => focarSeNovo(el, linha.id)}
               aria-label={`Ação ${i + 1}`}
               placeholder="O que será feito"
-              value={item.descricao}
-              onChange={e => patchItem(item.id, { descricao: e.target.value })}
+              value={linha.descricao}
+              onChange={e => patchLinha(linha.id, { descricao: e.target.value })}
             />
 
             <div className="modal-grid-3">
@@ -80,8 +106,8 @@ export function AcoesEditor({ itens, onChange, responsavelListId }: AcoesEditorP
                   list={responsavelListId}
                   aria-label={`Responsável pela ação ${i + 1}`}
                   placeholder="Quem"
-                  value={item.responsavel}
-                  onChange={e => patchItem(item.id, { responsavel: e.target.value })}
+                  value={linha.dono}
+                  onChange={e => patchLinha(linha.id, { dono: e.target.value })}
                 />
               </div>
               <div>
@@ -91,8 +117,8 @@ export function AcoesEditor({ itens, onChange, responsavelListId }: AcoesEditorP
                     className="modal-input"
                     type="date"
                     aria-label={`Prazo da ação ${i + 1}`}
-                    value={item.prazo}
-                    onChange={e => patchItem(item.id, { prazo: e.target.value })}
+                    value={linha.prazo}
+                    onChange={e => patchLinha(linha.id, { prazo: e.target.value })}
                   />
                   {atrasada && <span className="badge" data-badge="red">Atrasado</span>}
                 </div>
@@ -102,22 +128,49 @@ export function AcoesEditor({ itens, onChange, responsavelListId }: AcoesEditorP
                 <select
                   className="modal-input"
                   aria-label={`Status da ação ${i + 1}`}
-                  value={item.status}
-                  onChange={e => patchItem(item.id, { status: e.target.value as AcaoItem['status'] })}
+                  value={linha.status || 'aberta'}
+                  onChange={e => patchLinha(linha.id, { status: e.target.value as LinhaPlano['status'] })}
                 >
-                  {ACAO_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+                  {STATUS_EDITAVEIS.map(s => (
+                    <option key={s} value={s}>{ROTULO_STATUS_ACAO[s]}</option>
+                  ))}
                 </select>
               </div>
+            </div>
+
+            {/* Para onde a mitigação foi. É a informação que o plano em texto
+                nunca teve, e a que explica o estado de tratamento do risco. */}
+            <div className="acao-destino">
+              {ini ? (
+                <>
+                  <span>dentro de</span>
+                  <button type="button" className="link-ini" onClick={() => onAbrirIniciativa(ini.id)}>
+                    {ini.nome || 'Iniciativa sem nome'}
+                  </button>
+                  <span className="muted">· {ROTULO_STATUS_INICIATIVA[ini.status]}</span>
+                </>
+              ) : linha.nova ? (
+                <span className="muted">
+                  Mitigação nova — salve para poder promovê-la a iniciativa.
+                </span>
+              ) : (
+                <>
+                  <span className="muted">mitigação autônoma</span>
+                  <button type="button" className="link-ini" onClick={() => onPromover(linha)}>
+                    promover a iniciativa
+                  </button>
+                </>
+              )}
             </div>
           </div>
         );
       })}
 
-      {itens.length === 0 && (
+      {linhas.length === 0 && (
         <div className="acoes-empty">Nenhuma ação cadastrada.</div>
       )}
 
-      <button type="button" className="acoes-add" onClick={addItem}>+ Adicionar ação</button>
+      <button type="button" className="acoes-add" onClick={addLinha}>+ Adicionar ação</button>
     </div>
   );
 }
