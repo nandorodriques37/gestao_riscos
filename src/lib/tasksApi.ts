@@ -1,5 +1,6 @@
 import type { Task, StoredTask, TaskAttachment } from '../types';
 import type { PreparedAttachment } from './imageAttachments';
+import { cabecalhosDeEscrita } from './autor';
 
 const BASE = '/api';
 
@@ -34,7 +35,7 @@ export async function fetchTasks(): Promise<StoredTask[]> {
 export async function createTaskApi(task: Partial<Task> = {}): Promise<StoredTask> {
   return parse(await fetch(`${BASE}/tasks`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: cabecalhosDeEscrita(),
     body: JSON.stringify(task),
   }));
 }
@@ -42,7 +43,7 @@ export async function createTaskApi(task: Partial<Task> = {}): Promise<StoredTas
 export async function patchTaskApi(id: string, patch: Partial<Task>, expectedVersion?: number): Promise<StoredTask> {
   const res = await fetch(`${BASE}/tasks/${encodeURIComponent(id)}`, {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
+    headers: cabecalhosDeEscrita(),
     body: JSON.stringify({ ...patch, expectedVersion }),
   });
   if (res.status === 409) throw new TaskConflictError(await res.json());
@@ -70,7 +71,7 @@ export function taskAttachmentUrl(taskId: string, anexoId: string): string {
 export async function uploadTaskAttachmentApi(taskId: string, anexo: PreparedAttachment): Promise<TaskAttachment> {
   return parse(await fetch(anexosBase(taskId), {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: cabecalhosDeEscrita(),
     body: JSON.stringify(anexo),
   }));
 }

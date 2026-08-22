@@ -16,6 +16,7 @@ import {
 import { OBJETIVO_BALDE } from '../../lib/portfolioUi';
 import { baixarPortfolioCSV, baixarBackup } from '../../lib/portfolioCsv';
 import { EmptyState } from '../common/EmptyState';
+import { Historico } from '../common/Historico';
 
 interface PainelTabProps {
   records: StoredRiskRecord[];
@@ -603,6 +604,21 @@ export function PainelTab({ records, pf, onIrPara, onAbrirIniciativa }: PainelTa
               </div>
             </div>
           </div>
+        </div>
+
+        {/* ---- Atividade recente ---- */}
+
+        <div className="card" data-span="12">
+          <div className="section-title">Atividade recente</div>
+          <div className="bento-sub">
+            As últimas mudanças em riscos, objetivos, iniciativas, marcos, ações e pessoas.
+            O nome é o que cada um digitou no cabeçalho — serve para saber a quem perguntar,
+            não para autorizar ninguém.
+          </div>
+          <Historico
+            limite={20}
+            vazio="Nenhuma alteração registrada ainda. O histórico começa a contar a partir de agora."
+          />
         </div>
       </div>
     </div>

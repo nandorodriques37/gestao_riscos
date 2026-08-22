@@ -21,7 +21,7 @@ beforeAll(async () => {
     const result = await pg.query(text, params as unknown[]);
     return result.rows as Record<string, unknown>[];
   };
-  await ensureTasksSchema(sql);
+  await ensureTasksSchema(sql, { semear: true });
 });
 
 afterAll(async () => {

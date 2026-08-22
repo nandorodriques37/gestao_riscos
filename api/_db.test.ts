@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { PGlite } from '@electric-sql/pglite';
-import { ensureSchema, createRecord, updateRecordById, listRecords, type Sql } from './_db';
+import { ensureSchema, deveSemear, createRecord, updateRecordById, listRecords, type Sql } from './_db';
 
 // Testa a camada de acesso a dados contra um Postgres real (pglite, em
 // memória) — a mesma engine usada em produção (Neon), garantindo que a
@@ -15,7 +15,7 @@ beforeAll(async () => {
     const result = await pg.query(text, params as unknown[]);
     return result.rows as Record<string, unknown>[];
   };
-  await ensureSchema(sql);
+  await ensureSchema(sql, { semear: true });
 });
 
 afterAll(async () => {
@@ -109,5 +109,51 @@ describe('acoes_itens — plano de ação em jsonb', () => {
     const result = await updateRecordById(sql, created.id, { acoes_itens: [] });
     expect(result.status).toBe('ok');
     if (result.status === 'ok') expect(result.record.acoes_itens).toEqual([]);
+  });
+});
+
+describe('autorização da semeadura', () => {
+  const original = process.env.SEED_ON_EMPTY;
+  afterAll(() => {
+    if (original === undefined) delete process.env.SEED_ON_EMPTY;
+    else process.env.SEED_ON_EMPTY = original;
+  });
+
+  it('não semeia por padrão — produção vazia abre vazia', () => {
+    delete process.env.SEED_ON_EMPTY;
+    expect(deveSemear()).toBe(false);
+    expect(deveSemear({})).toBe(false);
+  });
+
+  it('semeia quando a variável autoriza', () => {
+    process.env.SEED_ON_EMPTY = '1';
+    expect(deveSemear()).toBe(true);
+  });
+
+  it('qualquer outro valor não autoriza — "true" e "0" não ligam nada', () => {
+    process.env.SEED_ON_EMPTY = 'true';
+    expect(deveSemear()).toBe(false);
+    process.env.SEED_ON_EMPTY = '0';
+    expect(deveSemear()).toBe(false);
+  });
+
+  it('o parâmetro explícito ganha da variável, nos dois sentidos', () => {
+    process.env.SEED_ON_EMPTY = '1';
+    expect(deveSemear({ semear: false })).toBe(false);
+    delete process.env.SEED_ON_EMPTY;
+    expect(deveSemear({ semear: true })).toBe(true);
+  });
+
+  it('base vazia sem autorização continua vazia depois do ensureSchema', async () => {
+    delete process.env.SEED_ON_EMPTY;
+    const outro = new PGlite();
+    const sqlOutro: Sql = async (text, params = []) => {
+      const r = await outro.query(text, params as unknown[]);
+      return r.rows as Record<string, unknown>[];
+    };
+    // Sem `{ semear: true }` — é como as rotas de produção chamam.
+    await ensureSchema(sqlOutro);
+    expect(await listRecords(sqlOutro)).toEqual([]);
+    await outro.close();
   });
 });

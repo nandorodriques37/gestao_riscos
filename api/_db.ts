@@ -106,7 +106,28 @@ function placeholder(field: RecordField, n: number): string {
   return JSON_FIELDS.has(field) ? `$${n}::jsonb` : `$${n}`;
 }
 
-export async function ensureSchema(sql: Sql): Promise<void> {
+export interface OpcoesSchema {
+  /**
+   * Autoriza popular a tabela vazia com os registros iniciais.
+   *
+   * Omitido, vale o que `SEED_ON_EMPTY` disser — e ela vem desligada. O padrão
+   * é NÃO semear porque a semeadura dispara em qualquer base vazia, inclusive
+   * numa produção que ficou vazia por acidente: em vez de o app abrir em branco
+   * e alguém investigar, ele reabriria com 62 registros de exemplo misturados
+   * ao que sobrou, sem aviso nenhum.
+   *
+   * Quem quer semear diz explicitamente: o servidor de desenvolvimento e os
+   * testes passam `{ semear: true }`; a primeira publicação de uma base nova
+   * liga `SEED_ON_EMPTY=1`, confere e desliga.
+   */
+  semear?: boolean;
+}
+
+export function deveSemear(opts: OpcoesSchema = {}): boolean {
+  return opts.semear ?? process.env.SEED_ON_EMPTY === '1';
+}
+
+export async function ensureSchema(sql: Sql, opts: OpcoesSchema = {}): Promise<void> {
   await sql(`
     create table if not exists risk_records (
       id          uuid primary key default gen_random_uuid(),
@@ -146,10 +167,17 @@ export async function ensureSchema(sql: Sql): Promise<void> {
   await sql('alter table risk_records add column if not exists data_situacao date');
   const rows = await sql('select count(*)::int as count from risk_records');
   const count = Number(rows[0]?.count ?? 0);
-  if (count === 0) {
-    console.log(`[db] tabela vazia — populando com ${INITIAL_RECORDS.length} registros iniciais`);
-    await seed(sql);
+  if (count > 0) return;
+
+  if (!deveSemear(opts)) {
+    console.warn(
+      '[db] risk_records está vazia e a semeadura não está autorizada. '
+      + 'Se esta base deveria ter dados, restaure um backup — não republique com SEED_ON_EMPTY.',
+    );
+    return;
   }
+  console.log(`[db] tabela vazia — populando com ${INITIAL_RECORDS.length} registros iniciais`);
+  await seed(sql);
 }
 
 /** Quantidade de registros-semente disponíveis no bundle (diagnóstico). */

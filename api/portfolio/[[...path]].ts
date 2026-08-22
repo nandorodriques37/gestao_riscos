@@ -6,6 +6,10 @@ import {
 } from '../_portfolioDb.js';
 import { migrarAcoes } from '../_migracaoAcoes.js';
 import { promoverTriagem } from '../_promocaoTriagem.js';
+import {
+  ensureAuditoriaSchema, autorDaRequisicao, listarAuditoria,
+  registrarCriacao, registrarAlteracao, registrarExclusao,
+} from '../_auditoria.js';
 
 // Rota única de todo o portfólio. Cinco entidades × 2 rotas dariam 10 funções
 // serverless a mais — o projeto já tem 8 e o limite do plano Hobby é 12. Um
@@ -49,6 +53,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const sql = neonSql();
     // A ordem importa: `acoes_risco.risco_id` referencia `risk_records`.
     await ensureSchema(sql);
+    await ensureAuditoriaSchema(sql);
     await ensurePortfolioSchema(sql);
 
     // GET /api/portfolio
@@ -75,6 +80,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // POST /api/portfolio/migrar-acoes — idempotente, só insere.
+    // GET /api/portfolio/auditoria?tabela=&registro_id=&limite=
+    if (partes.length === 1 && partes[0] === 'auditoria') {
+      if (method !== 'GET') {
+        res.setHeader('Allow', 'GET');
+        res.status(405).json({ error: 'Método não permitido' });
+        return;
+      }
+      const q = req.query as Record<string, string | string[] | undefined>;
+      const um = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
+      res.status(200).json(await listarAuditoria(sql, {
+        tabela: um(q.tabela),
+        registroId: um(q.registro_id),
+        limite: Number(um(q.limite) ?? 50) || 50,
+      }));
+      return;
+    }
+
     if (partes.length === 1 && partes[0] === 'migrar-acoes') {
       if (method !== 'POST') {
         res.setHeader('Allow', 'POST');
@@ -102,6 +124,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return;
     }
     const tabela = ENTIDADES[nome];
+    const autor = autorDaRequisicao(req.headers as Record<string, unknown>);
 
     // /api/portfolio/:entidade
     if (partes.length === 1) {
@@ -116,7 +139,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           res.status(400).json({ error: erro });
           return;
         }
-        res.status(201).json(await tabela.create(sql, body));
+        const criado = await tabela.create(sql, body);
+        await registrarCriacao(sql, tabela.nome, criado, autor);
+        res.status(201).json(criado);
         return;
       }
       res.setHeader('Allow', 'GET, POST');
@@ -145,15 +170,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           res.status(404).json({ error: 'Registro não encontrado' });
           return;
         }
+        if (result.status === 'ok') {
+          await registrarAlteracao(
+            sql, tabela.nome, atual, patch, autor,
+          );
+        }
         res.status(result.status === 'conflict' ? 409 : 200).json(result.item);
         return;
       }
 
       if (method === 'DELETE') {
+        // Lê antes de apagar: depois do delete não há mais rótulo para gravar,
+        // e "excluiu alguma coisa" não serve de histórico.
+        const antes = await tabela.byId(sql, id);
         const ok = await tabela.remove(sql, id);
         if (!ok) {
           res.status(404).json({ error: 'Registro não encontrado' });
           return;
+        }
+        if (antes) {
+          await registrarExclusao(sql, tabela.nome, antes, autor);
         }
         res.status(200).json({ ok: true });
         return;

@@ -18,8 +18,8 @@ beforeAll(async () => {
     return result.rows as Record<string, unknown>[];
   };
   // Mesma ordem da produção: `acoes_risco.risco_id` referencia `risk_records`.
-  await ensureSchema(sql);
-  await ensureTasksSchema(sql);
+  await ensureSchema(sql, { semear: true });
+  await ensureTasksSchema(sql, { semear: true });
   await ensurePortfolioSchema(sql);
 });
 

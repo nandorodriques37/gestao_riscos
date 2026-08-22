@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { Tab } from '../../types';
 import { applyThemePref, readThemePref, type ThemePref } from '../../lib/uiPrefs';
+import { lerAutor, gravarAutor } from '../../lib/autor';
 
 interface TopBarProps {
   tab: Tab;
@@ -45,6 +46,23 @@ export function TopBar({
   triagemPendente = 0, promocaoPendente = 0, migracaoIniciada = false,
 }: TopBarProps) {
   const [theme, setTheme] = useState<ThemePref>(() => readThemePref());
+  const [autor, setAutor] = useState(lerAutor);
+
+  /**
+   * Identidade autodeclarada: o nome vai junto de cada gravação e aparece no
+   * histórico. Não autentica ninguém — e o texto do prompt diz isso, para
+   * ninguém confundir a trilha com controle de acesso.
+   */
+  function pedirNome() {
+    const novo = window.prompt(
+      'Seu nome aparece no histórico de quem alterou o quê.\n\n'
+      + 'Isto não é login: qualquer pessoa com acesso ao app pode digitar qualquer nome.',
+      autor,
+    );
+    if (novo === null) return;
+    gravarAutor(novo);
+    setAutor(novo.trim());
+  }
 
   useEffect(() => { applyThemePref(theme); }, [theme]);
 
@@ -96,6 +114,16 @@ export function TopBar({
         </nav>
 
         <div className="header-aside">
+          <button
+            className="autor-chip"
+            data-vazio={autor ? undefined : 'true'}
+            onClick={pedirNome}
+            title={autor
+              ? `As suas alterações são registradas como "${autor}". Clique para trocar.`
+              : 'Diga quem é você — sem isso as alterações entram no histórico como "não identificado".'}
+          >
+            {autor || 'Quem é você?'}
+          </button>
           {sync && (
             <div className="sync-status" data-state={sync.state} role="status" aria-live="polite">
               <span className="sync-dot" aria-hidden="true" />

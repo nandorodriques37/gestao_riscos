@@ -15,6 +15,7 @@ import { estadoDoMarco } from '../../lib/marcos';
 import { TrilhaMarcos, LegendaTrilha } from './TrilhaMarcos';
 import { MarcoModal } from './MarcoModal';
 import { VincularRiscoModal } from './VincularRiscoModal';
+import { Historico } from '../common/Historico';
 
 interface IniciativaDetalheProps {
   iniciativa: Iniciativa;
@@ -359,6 +360,21 @@ export function IniciativaDetalhe({
           </div>
         </div>
       )}
+
+      {/* ---- Histórico ---- */}
+
+      <div className="card">
+        <div className="section-title">Histórico</div>
+        <div className="bento-sub">
+          Quem mudou status, dono, objetivo, prazo ou impacto — e quando. Marcos e
+          ações têm trilha própria, sob o registro de cada um.
+        </div>
+        <Historico
+          registroId={iniciativa.id}
+          chaveDeAtualizacao={iniciativa.version}
+          vazio="Nada mudou nesta iniciativa desde que o histórico passou a existir."
+        />
+      </div>
 
       {(criandoMarco || marcoEditando) && (
         <MarcoModal

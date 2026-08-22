@@ -1,6 +1,7 @@
 // Cliente HTTP do portfólio. Uma rota só (`/api/portfolio`) atende as cinco
 // entidades, então este módulo é bem mais fino que `api.ts` e `tasksApi.ts`.
 import type { PortfolioBundle } from '../types';
+import { cabecalhosDeEscrita } from './autor';
 
 const BASE = '/api/portfolio';
 
@@ -38,7 +39,7 @@ export async function fetchPortfolio(): Promise<PortfolioBundle> {
 export async function createEntidadeApi<T>(entidade: EntidadeUrl, data: Record<string, unknown>): Promise<T> {
   return parse(await fetch(`${BASE}/${entidade}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: cabecalhosDeEscrita(),
     body: JSON.stringify(data),
   }));
 }
@@ -48,7 +49,7 @@ export async function patchEntidadeApi<T>(
 ): Promise<T> {
   const res = await fetch(`${BASE}/${entidade}/${encodeURIComponent(id)}`, {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
+    headers: cabecalhosDeEscrita(),
     body: JSON.stringify({ ...patch, expectedVersion }),
   });
   if (res.status === 409) throw new PortfolioConflictError(await res.json());

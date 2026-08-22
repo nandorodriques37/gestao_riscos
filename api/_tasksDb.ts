@@ -3,7 +3,7 @@
 // parametrizada por um executor `Sql` para ser testável e portável.
 import { INITIAL_TASKS } from './_tasksSeed.js';
 import type { Task, TaskAttachment } from '../src/types';
-import { neonSql, type Sql } from './_db.js';
+import { neonSql, deveSemear, type Sql, type OpcoesSchema } from './_db.js';
 import { ensureAttachmentsSchema, listAttachments, attachmentsByTask } from './_attachmentsDb.js';
 
 export { neonSql };
@@ -67,7 +67,7 @@ function fieldValue(rec: Partial<Task>, field: TaskField): unknown {
   return v ?? '';
 }
 
-export async function ensureTasksSchema(sql: Sql): Promise<void> {
+export async function ensureTasksSchema(sql: Sql, opts: OpcoesSchema = {}): Promise<void> {
   await sql(`
     create table if not exists tasks (
       id          uuid primary key default gen_random_uuid(),
@@ -89,10 +89,14 @@ export async function ensureTasksSchema(sql: Sql): Promise<void> {
   await ensureAttachmentsSchema(sql);
   const rows = await sql('select count(*)::int as count from tasks');
   const count = Number(rows[0]?.count ?? 0);
-  if (count === 0) {
-    console.log(`[db] tabela tasks vazia — populando com ${INITIAL_TASKS.length} tarefas iniciais`);
-    await seed(sql);
+  if (count > 0) return;
+
+  if (!deveSemear(opts)) {
+    console.warn('[db] tasks está vazia e a semeadura não está autorizada.');
+    return;
   }
+  console.log(`[db] tabela tasks vazia — populando com ${INITIAL_TASKS.length} tarefas iniciais`);
+  await seed(sql);
 }
 
 /** Insere as tarefas iniciais preservando a ordem original. */

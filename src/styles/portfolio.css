@@ -1108,3 +1108,101 @@
   border-top: 1px solid var(--line-border);
   color: var(--ink-3);
 }
+
+/* ---------- Histórico ----------
+   Lista, não linha do tempo desenhada: os eventos são densos e o que se procura
+   é um valor específico ("quando virou mitigado"), não a forma da sequência. */
+
+.historico {
+  list-style: none;
+  margin: var(--sp-2) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.historico-item {
+  display: grid;
+  grid-template-columns: 74px minmax(0, 1fr);
+  gap: var(--sp-3);
+  padding: var(--sp-2) 0;
+  align-items: baseline;
+}
+
+.historico-item + .historico-item {
+  border-top: 1px solid var(--line-hairline);
+}
+
+.historico-quando {
+  font-size: var(--fs-2xs);
+  color: var(--ink-4);
+  white-space: nowrap;
+}
+
+.historico-corpo {
+  min-width: 0;
+}
+
+.historico-texto {
+  font-size: var(--fs-xs);
+  color: var(--ink-1);
+  line-height: 1.45;
+}
+
+/* Criação e exclusão são os marcos da vida do registro; alteração é rotina. */
+.historico-item[data-acao='criou'] .historico-texto,
+.historico-item[data-acao='excluiu'] .historico-texto {
+  font-weight: var(--fw-semibold);
+}
+
+.historico-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  flex-wrap: wrap;
+  margin-top: 2px;
+  font-size: var(--fs-2xs);
+  color: var(--ink-4);
+}
+
+.historico-rotulo {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 32ch;
+}
+
+/* ---------- Identidade autodeclarada no header ---------- */
+
+.autor-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  height: 28px;
+  padding: 0 var(--sp-3);
+  border-radius: var(--r-full);
+  border: 1px solid var(--line-border);
+  background: var(--bg-surface);
+  font-size: var(--fs-xs);
+  color: var(--ink-2);
+  white-space: nowrap;
+  transition: border-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+
+.autor-chip:hover {
+  border-color: var(--line-strong);
+  color: var(--ink-1);
+}
+
+/* Sem nome, o chip chama atenção: as gravações estão indo para o histórico
+   como "não identificado", e isso é justamente o que ele existe para evitar. */
+.autor-chip[data-vazio='true'] {
+  border-color: color-mix(in oklab, var(--tier-alto) 40%, transparent);
+  color: var(--tier-alto);
+}
+
+@media (max-width: 900px) {
+  .autor-chip {
+    display: none;
+  }
+}

@@ -24,8 +24,8 @@ beforeAll(async () => {
     const result = await pg.query(text, params as unknown[]);
     return result.rows as Record<string, unknown>[];
   };
-  await ensureSchema(sql);
-  await ensureTasksSchema(sql);
+  await ensureSchema(sql, { semear: true });
+  await ensureTasksSchema(sql, { semear: true });
   await ensurePortfolioSchema(sql);
 });
 

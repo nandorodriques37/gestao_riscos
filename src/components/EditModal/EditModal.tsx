@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import type { AcaoRisco, Iniciativa, Pessoa, RiskRecord, SituacaoRisco } from '../../types';
+import type {
+  AcaoRisco, Iniciativa, Pessoa, RiskRecord, SituacaoRisco, StoredRiskRecord,
+} from '../../types';
 import { SITUACOES_RISCO } from '../../types';
 import type { SaveStatus } from '../../hooks/useRecords';
 import { computeScore, computePrioriz, round1, round2, scoreTier, priorizTier } from '../../lib/calculations';
@@ -10,6 +12,7 @@ import {
   paraLinhas, linhasDeLegado, diffPlano, type LinhaPlano, type ResultadoSalvar,
 } from '../../lib/planoDeAcao';
 import { AcoesEditor } from './AcoesEditor';
+import { Historico } from '../common/Historico';
 
 const FOCUSABLE = 'a[href], button:not([disabled]), input, select, textarea, [tabindex]:not([tabindex="-1"])';
 
@@ -21,7 +24,11 @@ const SAVE_STATUS_TEXT: Record<SaveStatus, string> = {
 };
 
 interface EditModalProps {
-  record: RiskRecord;
+  /**
+   * Vem do banco: o histórico precisa do `id` para filtrar a trilha, e da
+   * `version` para saber que houve gravação e recarregar.
+   */
+  record: StoredRiskRecord;
   saveStatus?: SaveStatus;
   onCommit: (patch: Partial<RiskRecord>) => void;
   onClose: () => void;
@@ -414,6 +421,15 @@ export function EditModal({
                 </div>
               </div>
             </div>
+          </div>
+
+          <div>
+            <div className="modal-section-title">Histórico</div>
+            <Historico
+              registroId={record.id}
+              chaveDeAtualizacao={record.version}
+              vazio="Nada mudou neste risco desde que o histórico passou a existir."
+            />
           </div>
 
           <div>

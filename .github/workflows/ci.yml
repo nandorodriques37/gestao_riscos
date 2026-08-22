@@ -1,0 +1,54 @@
+# Portão de qualidade. Roda antes de qualquer merge e a cada push — o Vercel
+# publica o que chega na branch principal, então isto é o que separa um erro de
+# tipo de uma produção quebrada.
+#
+# Um job só, sequencial: o typecheck é o mais rápido a falhar e o mais comum,
+# então vem primeiro. Paralelizar em quatro jobs custaria quatro instalações de
+# dependência para economizar segundos num projeto deste tamanho.
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+# Um push novo cancela a execução anterior da mesma branch: ninguém precisa do
+# resultado de um commit que já foi substituído.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # Bate com o `engines` do package.json.
+          node-version: '22'
+          cache: npm
+
+      # `npm ci` e não `npm install`: instala exatamente o que está no
+      # package-lock, então o CI testa as mesmas versões que rodam em produção.
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Tipos
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      # Os testes de API sobem um Postgres embarcado (pglite) por arquivo. Não
+      # precisam de serviço externo, mas são o passo mais lento.
+      - name: Testes
+        run: npm run test
+
+      # O build pega o que typecheck e teste não pegam: import quebrado de
+      # asset, CSS inválido, problema de resolução do Vite.
+      - name: Build
+        run: npm run build
