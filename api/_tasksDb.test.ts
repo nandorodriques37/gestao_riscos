@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { PGlite } from '@electric-sql/pglite';
-import { ensureTasksSchema, createTask, updateTaskById, type Sql } from './_tasksDb';
+import { ensureTasksSchema, createTask, updateTaskById, type Sql } from './_tasksDb.js';
 
 // Testa a camada de acesso a dados das Tarefas contra um Postgres real
 // (pglite, em memória) — mesma engine usada em produção (Neon), garantindo

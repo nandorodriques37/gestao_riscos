@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { PGlite } from '@electric-sql/pglite';
-import { ensureSchema, deveSemear, createRecord, updateRecordById, listRecords, type Sql } from './_db';
+import { ensureSchema, deveSemear, createRecord, updateRecordById, listRecords, type Sql } from './_db.js';
 
 // Testa a camada de acesso a dados contra um Postgres real (pglite, em
 // memória) — a mesma engine usada em produção (Neon), garantindo que a
