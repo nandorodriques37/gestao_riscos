@@ -1,6 +1,15 @@
 import type { TaskStatus } from '../../types';
 import { TASK_STATUSES } from '../../types';
 import type { KanbanGroupBy, TaskView } from '../../lib/uiPrefs';
+import type { FiltroVinculo } from './TarefasTab';
+
+/** Rótulos do recorte por origem. "Livres" e não "Tarefas": desde a unificação
+ *  as duas coisas são tarefa, e o que muda é ter ou não risco atrás. */
+const VINCULO_OPTIONS: { value: FiltroVinculo; label: string; title: string }[] = [
+  { value: 'todas', label: 'Todas', title: 'Tarefas livres e mitigações de risco' },
+  { value: 'risco', label: 'De risco', title: 'Só o que mitiga um risco do registro' },
+  { value: 'livres', label: 'Livres', title: 'Só o que não está ligado a risco nenhum' },
+];
 
 const VIEW_OPTIONS: { value: TaskView; label: string; title: string }[] = [
   { value: 'lista', label: 'Lista', title: 'Tabela com todas as colunas' },
@@ -22,6 +31,9 @@ interface TarefasFilterBarProps {
   onGroupByChange: (v: KanbanGroupBy) => void;
   visibleCount: number;
   totalCount: number;
+  vinculoFilter: FiltroVinculo;
+  onVinculoFilterChange: (v: FiltroVinculo) => void;
+  vinculadasCount: number;
 }
 
 export function TarefasFilterBar({
@@ -30,14 +42,34 @@ export function TarefasFilterBar({
   tipoFilter, onTipoFilterChange, tipoOptions,
   view, onViewChange, groupBy, onGroupByChange,
   visibleCount, totalCount,
+  vinculoFilter, onVinculoFilterChange, vinculadasCount,
 }: TarefasFilterBarProps) {
   return (
     <div className="filter-row">
+      {/* Mesmo segmentado do modo de visualização — o recorte por origem é da
+          mesma natureza: uma escolha entre poucas, sempre visível. */}
+      <div className="view-toggle" role="group" aria-label="Origem do trabalho">
+        {VINCULO_OPTIONS.map(o => (
+          <button
+            key={o.value}
+            className={vinculoFilter === o.value ? 'active' : ''}
+            onClick={() => onVinculoFilterChange(o.value)}
+            aria-pressed={vinculoFilter === o.value}
+            title={o.title}
+          >
+            {o.label}
+            {o.value === 'risco' && vinculadasCount > 0 && (
+              <span className="view-toggle-count tabular">{vinculadasCount}</span>
+            )}
+          </button>
+        ))}
+      </div>
+
       <input
         className="search-input"
         value={search}
         onChange={e => onSearchChange(e.target.value)}
-        placeholder="Buscar por tarefa, detalhes, responsável…"
+        placeholder="Buscar por tarefa, detalhes, responsável, risco…"
       />
       <div className="filter-pills">
         {/* Seleção múltipla: cada pill alterna; "Todos" (nenhum selecionado) limpa o filtro. */}

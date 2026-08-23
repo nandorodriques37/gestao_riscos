@@ -18,6 +18,9 @@ export const TASK_COLUMNS: TaskColumnDef[] = [
   { id: 'prioridade', label: 'Prioridade', width: 108 },
   { id: 'rank', label: 'Rank', width: 56 },
   { id: 'status', label: 'Status', width: 140 },
+  // Prazo nasceu com a unificação: a mitigação sempre teve data combinada, a
+  // tarefa livre não tinha onde guardar uma.
+  { id: 'prazo', label: 'Prazo', width: 104, sortKey: 'prazo' },
   { id: 'responsavel', label: 'Responsável', width: 140 },
   // "Observações" fica só no modal de edição: é texto longo, raramente legível
   // na largura de uma coluna, e alongava o scroll horizontal da tabela.

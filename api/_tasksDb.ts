@@ -2,19 +2,18 @@
 // de `_db.ts` (riscos). Mesmo padrão: toda a lógica SQL fica aqui,
 // parametrizada por um executor `Sql` para ser testável e portável.
 import { INITIAL_TASKS } from './_tasksSeed.js';
-import type { Task, TaskAttachment } from '../src/types.js';
+import type { Task, TaskAttachment, StoredTask } from '../src/types.js';
 import { neonSql, deveSemear, type Sql, type OpcoesSchema } from './_db.js';
 import { ensureAttachmentsSchema, listAttachments, attachmentsByTask } from './_attachmentsDb.js';
 import { ensureColunasDeVinculo } from './_trabalhoDb.js';
+import { toDateISO } from './_table.js';
 
 export { neonSql };
 export type { Sql };
 
-export interface StoredTask extends Task {
-  id: string;
-  version: number;
-  anexos: TaskAttachment[];
-}
+// `StoredTask` vem do front e não é redeclarada aqui: eram duas definições da
+// mesma coisa, e a cópia local ficou para trás quando a tarefa ganhou vínculo.
+export type { StoredTask };
 
 /** Resultado de uma tentativa de atualização com checagem de concorrência otimista. */
 export type TaskUpdateOutcome =
@@ -23,11 +22,14 @@ export type TaskUpdateOutcome =
   | { status: 'not_found' };
 
 /** Campos editáveis da tarefa (na ordem das colunas da tabela). */
-export const TASK_FIELDS = ['tipo', 'tarefa', 'detalhes', 'g', 'u', 't', 'status', 'responsavel', 'obs'] as const;
+export const TASK_FIELDS = [
+  'tipo', 'tarefa', 'detalhes', 'g', 'u', 't', 'status', 'responsavel', 'obs', 'prazo',
+] as const;
 
 type TaskField = (typeof TASK_FIELDS)[number];
 
 const NUMERIC_FIELDS = new Set<TaskField>(['g', 'u', 't']);
+const DATE_FIELDS = new Set<TaskField>(['prazo']);
 const FIELD_SET = new Set<string>(TASK_FIELDS);
 
 function toNumberOrNull(v: unknown): number | null {
@@ -47,6 +49,15 @@ function rowToTask(row: Record<string, unknown>, anexos: TaskAttachment[] = []):
     status: (row.status as string) ?? '',
     responsavel: (row.responsavel as string) ?? '',
     obs: (row.obs as string) ?? '',
+    prazo: toDateISO(row.prazo),
+    // Vínculo: só leitura por aqui. Quem edita é o plano de ação do risco, e
+    // deixar de fora da allowlist é o que impede o quadro de desvincular uma
+    // mitigação sem querer — inclusive por um PATCH que mande o objeto inteiro.
+    risco_id: row.risco_id == null ? null : String(row.risco_id),
+    iniciativa_id: row.iniciativa_id == null ? null : String(row.iniciativa_id),
+    dono_id: row.dono_id == null ? null : String(row.dono_id),
+    triagem: (row.triagem as string) ?? '',
+    indicador_sucesso: (row.indicador_sucesso as string) ?? '',
     version: Number(row.version ?? 1),
     anexos,
   };
@@ -64,7 +75,7 @@ async function rowWithAnexos(sql: Sql, row: Record<string, unknown>): Promise<St
 
 function fieldValue(rec: Partial<Task>, field: TaskField): unknown {
   const v = rec[field];
-  if (NUMERIC_FIELDS.has(field)) return v == null || v === '' ? null : v;
+  if (NUMERIC_FIELDS.has(field) || DATE_FIELDS.has(field)) return v == null || v === '' ? null : v;
   return v ?? '';
 }
 
@@ -120,17 +131,12 @@ async function seed(sql: Sql): Promise<void> {
 }
 
 /**
- * Tarefas do quadro.
- *
- * `incluirVinculadas` está em falso enquanto a aba não sabe desenhar uma
- * mitigação: as linhas vindas dos riscos já vivem nesta tabela, mas apareceriam
- * sem vínculo, sem prazo e com o status traduzido pela metade. A etapa que dá
- * ao quadro o cartão vinculado inverte este padrão — é o único lugar que
- * precisa mudar.
+ * Todo o trabalho do quadro — tarefa livre e mitigação de risco na mesma lista,
+ * distinguidas por `risco_id`. Foram duas listas até a unificação; o filtro que
+ * escondia as mitigações saiu quando o cartão aprendeu a mostrar o vínculo.
  */
-export async function listTasks(sql: Sql, incluirVinculadas = false): Promise<StoredTask[]> {
-  const filtro = incluirVinculadas ? '' : 'where risco_id is null';
-  const rows = await sql(`select * from tasks ${filtro} order by position asc, created_at asc`);
+export async function listTasks(sql: Sql): Promise<StoredTask[]> {
+  const rows = await sql('select * from tasks order by position asc, created_at asc');
   // Duas consultas para a lista toda — não uma por tarefa.
   const byTask = await attachmentsByTask(sql);
   return rows.map(row => rowToTask(row, byTask.get(String(row.id)) ?? []));

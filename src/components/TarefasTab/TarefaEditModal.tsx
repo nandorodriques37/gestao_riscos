@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Task, TaskAttachment } from '../../types';
+import type { VinculoDaLinha } from '../../lib/taskRows';
 import type { TaskSaveStatus } from '../../hooks/useTasks';
 import { computeGUT, gutTier, prioridadeLabel } from '../../lib/taskCalculations';
 import { AnexosEditor } from './AnexosEditor';
@@ -26,12 +27,18 @@ interface TarefaEditModalProps {
   onRemoveAnexo: (anexoId: string) => Promise<void>;
   tipoOptions: string[];
   responsavelOptions: string[];
+  /** Preenchido quando esta linha é mitigação de um risco. */
+  vinculo?: VinculoDaLinha | null;
+  /** Nome de quem responde, venha do texto livre ou da pessoa do plano de ação. */
+  dono?: string;
 }
 
 const STATUS_SELECT_OPTIONS: { value: string; label: string }[] = [
   { value: '', label: 'A fazer' },
   { value: 'Em andamento', label: 'Em andamento' },
   { value: 'Concluída', label: 'Concluída' },
+  // Entrou com a unificação: a mitigação sempre teve esse estado.
+  { value: 'Cancelada', label: 'Cancelada' },
 ];
 
 function numOrNull(value: string): number | null {
@@ -41,6 +48,7 @@ function numOrNull(value: string): number | null {
 export function TarefaEditModal({
   task, taskId, anexos, saveStatus, onCommit, onClose, onDelete,
   onAddAnexo, onRemoveAnexo, tipoOptions, responsavelOptions,
+  vinculo = null, dono = '',
 }: TarefaEditModalProps) {
   // Rascunho local: digitar altera só este estado (instantâneo, sem re-render
   // global, sem rede). A gravação acontece por ação explícita — ver commit().
@@ -125,6 +133,22 @@ export function TarefaEditModal({
           <datalist id="dl-tipo">{tipoOptions.map(o => <option key={o} value={o} />)}</datalist>
           <datalist id="dl-responsavel-tarefa">{responsavelOptions.map(o => <option key={o} value={o} />)}</datalist>
 
+          {vinculo && (
+            <div className="modal-vinculo" data-tier={vinculo.tier}>
+              <span className="modal-vinculo-rotulo">
+                {vinculo.rotina ? 'Controle contínuo do risco' : 'Mitiga o risco'}
+              </span>
+              <span className="modal-vinculo-nome">
+                {vinculo.risco || (vinculo.orfa ? 'risco excluído' : '…')}
+              </span>
+              {vinculo.iniciativa && (
+                <span className="modal-vinculo-ini">
+                  executada na iniciativa <strong>{vinculo.iniciativa}</strong>
+                </span>
+              )}
+            </div>
+          )}
+
           <div>
             <div className="modal-section-title">Identificação</div>
             <div className="modal-grid-3">
@@ -196,13 +220,35 @@ export function TarefaEditModal({
             <div className="modal-grid-3">
               <div>
                 <div className="modal-field-label">Responsável</div>
-                <input className="modal-input" list="dl-responsavel-tarefa" value={draft.responsavel} onChange={e => setField({ responsavel: e.target.value })} />
+                {vinculo ? (
+                  // Mitigação guarda dono de verdade (FK `pessoas`), e quem o
+                  // edita é o plano de ação do risco. Um campo de texto livre
+                  // aqui criaria um segundo dono para a mesma linha.
+                  <>
+                    <input className="modal-input" value={dono || '—'} readOnly disabled />
+                    <div className="modal-field-hint">Editável no plano de ação do risco.</div>
+                  </>
+                ) : (
+                  <input className="modal-input" list="dl-responsavel-tarefa" value={draft.responsavel} onChange={e => setField({ responsavel: e.target.value })} />
+                )}
               </div>
               <div>
                 <div className="modal-field-label">Status</div>
                 <select className="modal-input" value={draft.status} onChange={e => setField({ status: e.target.value })}>
                   {STATUS_SELECT_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                 </select>
+              </div>
+              <div>
+                <div className="modal-field-label">Prazo</div>
+                <input
+                  type="date"
+                  className="modal-input"
+                  value={draft.prazo ?? ''}
+                  onChange={e => setField({ prazo: e.target.value || null })}
+                  disabled={!!vinculo?.rotina}
+                  title={vinculo?.rotina ? 'Controle contínuo não tem prazo' : undefined}
+                />
+                {vinculo?.rotina && <div className="modal-field-hint">Controle contínuo — sem prazo.</div>}
               </div>
             </div>
             <div style={{ marginTop: 12 }}>

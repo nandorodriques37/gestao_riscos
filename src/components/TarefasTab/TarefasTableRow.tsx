@@ -3,6 +3,8 @@ import { initials } from '../../lib/taskRows';
 import { gutTier, taskStatusKind } from '../../lib/taskCalculations';
 import { onActivateKey } from '../../lib/a11y';
 import { AnexosBadge } from './AnexosBadge';
+import { VinculoChip } from './VinculoChip';
+import { PrazoCell } from './PrazoCell';
 
 interface TarefasTableRowProps {
   row: EnrichedTaskRow;
@@ -12,7 +14,7 @@ interface TarefasTableRowProps {
 }
 
 export function TarefasTableRow({ row, onOpen, onToggleConcluida, onDelete }: TarefasTableRowProps) {
-  const { task: t, gut, prioridade, rank, normSt, idx } = row;
+  const { task: t, gut, prioridade, prioridadeHerdada, rank, normSt, idx, vinculo, dono, atrasada } = row;
   const concluida = normSt === 'Concluída';
   const titulo = t.tarefa || 'sem título';
 
@@ -38,6 +40,7 @@ export function TarefasTableRow({ row, onOpen, onToggleConcluida, onDelete }: Ta
       <td className="tarefa-cell" title={t.tarefa}>
         <span className="clamp-2">{t.tarefa}</span>
         <AnexosBadge quantidade={t.anexos?.length ?? 0} />
+        {vinculo && <VinculoChip vinculo={vinculo} />}
       </td>
       <td className="cell-wrap" title={t.detalhes}><span className="clamp-2">{t.detalhes}</span></td>
       <td className="center gut-note">{t.g ?? '—'}</td>
@@ -50,20 +53,29 @@ export function TarefasTableRow({ row, onOpen, onToggleConcluida, onDelete }: Ta
         </span>
       </td>
       <td className="center">
-        <span className="tier-chip" data-tier={gutTier(gut)}>
+        <span
+          className="tier-chip"
+          data-tier={prioridadeHerdada ? vinculo?.tier : gutTier(gut)}
+          data-herdada={prioridadeHerdada}
+          title={prioridadeHerdada ? 'Faixa herdada da criticidade do risco — esta linha não tem nota GUT' : undefined}
+        >
           <span className="tier-dot" />
           {prioridade ?? '—'}
+          {prioridadeHerdada && <span className="tier-chip-herdada" aria-label="herdada do risco">*</span>}
         </span>
       </td>
       <td className="num">{rank ?? '—'}</td>
       <td className="center">
         <span className="badge" data-badge={taskStatusKind(normSt)}>{normSt}</span>
       </td>
-      <td title={t.responsavel}>
-        {t.responsavel ? (
+      <td className="center">
+        <PrazoCell prazo={t.prazo} atrasada={atrasada} rotina={!!vinculo?.rotina} />
+      </td>
+      <td title={dono}>
+        {dono ? (
           <div className="owner-cell">
-            <span className="owner-avatar" aria-hidden="true">{initials(t.responsavel)}</span>
-            <span className="owner-name">{t.responsavel}</span>
+            <span className="owner-avatar" aria-hidden="true">{initials(dono)}</span>
+            <span className="owner-name">{dono}</span>
           </div>
         ) : '—'}
       </td>

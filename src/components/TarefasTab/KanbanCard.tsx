@@ -5,6 +5,8 @@ import { gutTier, taskStatusKind } from '../../lib/taskCalculations';
 import { onActivateKey } from '../../lib/a11y';
 import { MoveMenu, type MoveOption } from './MoveMenu';
 import { AnexosBadge } from './AnexosBadge';
+import { VinculoChip } from './VinculoChip';
+import { PrazoCell } from './PrazoCell';
 
 interface KanbanCardProps {
   row: EnrichedTaskRow;
@@ -24,7 +26,7 @@ interface KanbanCardProps {
 export function KanbanCardFace({
   row, currentColumnId, moveOptions, onMove, onToggleConcluida,
 }: Omit<KanbanCardProps, 'onOpen'>) {
-  const { task: t, gut, rank, normSt, idx } = row;
+  const { task: t, gut, rank, normSt, idx, vinculo, dono, atrasada } = row;
   const concluida = normSt === 'Concluída';
   const titulo = t.tarefa || 'sem título';
 
@@ -37,6 +39,8 @@ export function KanbanCardFace({
 
       <div className="kanban-card-title"><span className="clamp-3">{titulo}</span></div>
 
+      {vinculo && <div className="kanban-card-vinculo"><VinculoChip vinculo={vinculo} /></div>}
+
       <div className="kanban-card-badges">
         {/* O número acompanha a cor: a faixa nunca é identificada só pela matiz. */}
         <span className="tier-chip" data-tier={gutTier(gut)}>
@@ -44,14 +48,17 @@ export function KanbanCardFace({
           GUT {gut ?? '—'}
         </span>
         {rank != null && <span className="kanban-card-rank">#{rank}</span>}
+        {(t.prazo || vinculo?.rotina) && (
+          <PrazoCell prazo={t.prazo} atrasada={atrasada} rotina={!!vinculo?.rotina} />
+        )}
         <AnexosBadge quantidade={t.anexos?.length ?? 0} />
       </div>
 
       <div className="kanban-card-foot">
-        {t.responsavel ? (
-          <div className="owner-cell" title={t.responsavel}>
-            <span className="owner-avatar" aria-hidden="true">{initials(t.responsavel)}</span>
-            <span className="owner-name">{t.responsavel}</span>
+        {dono ? (
+          <div className="owner-cell" title={dono}>
+            <span className="owner-avatar" aria-hidden="true">{initials(dono)}</span>
+            <span className="owner-name">{dono}</span>
           </div>
         ) : (
           <span className="kanban-card-sem-resp">Sem responsável</span>

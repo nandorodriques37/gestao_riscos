@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { Task, TaskStatus, TaskSortKey } from '../../types';
+import type { StoredRiskRecord, Task, TaskStatus, TaskSortKey } from '../../types';
 import { TASK_STATUSES } from '../../types';
 import { useTasks } from '../../hooks/useTasks';
+import type { UsePortfolio } from '../../hooks/usePortfolio';
 import { buildTaskRows, type EnrichedTaskRow } from '../../lib/taskRows';
 import { computeAvaliacao, normTaskStatus } from '../../lib/taskCalculations';
 import {
@@ -26,6 +27,17 @@ const VIEW_KEY = 'riskMatrix.tasks.view.v1';
 const GROUP_BY_KEY = 'riskMatrix.tasks.groupBy.v1';
 const COL_WIDTHS_SAVE_DELAY = 300;
 const UNDO_TIMEOUT = 10000;
+const VINCULO_KEY = 'riskMatrix.tasks.vinculo.v1';
+
+/**
+ * Recorte por origem do trabalho. O quadro passou a mostrar tarefa livre e
+ * mitigação de risco na mesma lista — são a mesma coisa, distinguidas por
+ * `risco_id` —, e são rituais diferentes: acompanhamento do time de um lado,
+ * prestação de contas de risco do outro. O filtro é o que faz uma lista só
+ * servir aos dois.
+ */
+export type FiltroVinculo = 'todas' | 'risco' | 'livres';
+const FILTROS_VINCULO: readonly FiltroVinculo[] = ['todas', 'risco', 'livres'];
 
 /** Notas anteriores de uma tarefa re-priorizada por arraste, para o "Desfazer". */
 interface PendingPriorityUndo {
@@ -39,10 +51,21 @@ function sortValue(row: EnrichedTaskRow, key: TaskSortKey): number | null {
   if (key === 'g') return row.task.g;
   if (key === 'u') return row.task.u;
   if (key === 't') return row.task.t;
+  // Data vira número para caber na mesma comparação. Sem prazo continua no fim,
+  // como toda ausência aqui — e é o que se quer: o que não tem data combinada
+  // não disputa a atenção com o que vence amanhã.
+  if (key === 'prazo') return row.task.prazo ? Date.parse(row.task.prazo) : null;
   return null;
 }
 
-export function TarefasTab() {
+interface TarefasTabProps {
+  /** Para o cartão dizer QUAL risco a mitigação segura, e com que criticidade. */
+  records: StoredRiskRecord[];
+  /** Iniciativas e pessoas: o vínculo de execução e o dono de verdade. */
+  pf: UsePortfolio;
+}
+
+export function TarefasTab({ records, pf }: TarefasTabProps) {
   const {
     tasks, loading, error,
     hasPendingWrites, saveStatus, updateTaskById, addTask, deleteTaskById,
@@ -55,6 +78,9 @@ export function TarefasTab() {
   // Seleção múltipla de status persistida entre sessões; array vazio = todos.
   const [statusFilter, setStatusFilter] = useState<TaskStatus[]>(() => readStatusFilter(STATUS_FILTER_KEY, TASK_STATUSES));
   const [tipoFilter, setTipoFilter] = useState('Todos');
+  const [vinculoFilter, setVinculoFilter] = useState<FiltroVinculo>(
+    () => readEnumPref(VINCULO_KEY, FILTROS_VINCULO, 'todas'),
+  );
   const [sortKey, setSortKey] = useState<TaskSortKey>('gut');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [colWidths, setColWidths] = useState(() => readColWidths(COL_WIDTHS_KEY));
@@ -77,6 +103,7 @@ export function TarefasTab() {
   useEffect(() => { writePref(STATUS_FILTER_KEY, statusFilter); }, [statusFilter]);
   useEffect(() => { writePref(VIEW_KEY, view); }, [view]);
   useEffect(() => { writePref(GROUP_BY_KEY, groupBy); }, [groupBy]);
+  useEffect(() => { writePref(VINCULO_KEY, vinculoFilter); }, [vinculoFilter]);
 
   useEffect(() => {
     if (!pendingUndo) return;
@@ -94,10 +121,20 @@ export function TarefasTab() {
     return () => { clearInterval(interval); window.removeEventListener('focus', onFocus); };
   }, [editingId, hasPendingWrites, refresh]);
 
-  const rows = useMemo(() => buildTaskRows(tasks), [tasks]);
+  const rows = useMemo(
+    () => buildTaskRows(tasks, {
+      riscos: records,
+      iniciativas: pf.portfolio.iniciativas,
+      pessoas: pf.portfolio.pessoas,
+    }),
+    [tasks, records, pf.portfolio.iniciativas, pf.portfolio.pessoas],
+  );
+
+  const vinculadas = useMemo(() => rows.filter(r => r.vinculo != null).length, [rows]);
+  const atrasadas = useMemo(() => rows.filter(r => r.atrasada).length, [rows]);
 
   const tipoOptions = useMemo(() => [...new Set(tasks.map(t => t.tipo).filter(Boolean))], [tasks]);
-  const responsavelOptions = useMemo(() => [...new Set(tasks.map(t => t.responsavel).filter(Boolean))], [tasks]);
+  const responsavelOptions = useMemo(() => [...new Set(rows.map(r => r.dono).filter(Boolean))], [rows]);
 
   const total = tasks.length;
   const aFazer = useMemo(() => rows.filter(r => r.normSt === 'A fazer').length, [rows]);
@@ -111,9 +148,16 @@ export function TarefasTab() {
     let result = rows.filter(row => {
       if (statusFilter.length > 0 && !statusFilter.includes(row.normSt as TaskStatus)) return false;
       if (tipoFilter !== 'Todos' && row.task.tipo !== tipoFilter) return false;
+      if (vinculoFilter === 'risco' && row.vinculo == null) return false;
+      if (vinculoFilter === 'livres' && row.vinculo != null) return false;
       if (!q) return true;
-      const hay = [row.task.tipo, row.task.tarefa, row.task.detalhes, row.task.responsavel, row.task.obs]
-        .join(' ').toLowerCase();
+      // O nome do risco entra na busca: procurar pelo risco é como se chega à
+      // mitigação, e era o caminho que existia antes de as duas listas virarem
+      // uma.
+      const hay = [
+        row.task.tipo, row.task.tarefa, row.task.detalhes, row.dono, row.task.obs,
+        row.vinculo?.risco ?? '', row.vinculo?.iniciativa ?? '',
+      ].join(' ').toLowerCase();
       return hay.includes(q);
     });
     if (sortKey) {
@@ -128,15 +172,16 @@ export function TarefasTab() {
       });
     }
     return result;
-  }, [rows, search, statusFilter, tipoFilter, sortKey, sortDir]);
+  }, [rows, search, statusFilter, tipoFilter, vinculoFilter, sortKey, sortDir]);
 
   function handleSort(key: NonNullable<TaskSortKey>) {
     if (sortKey === key) {
       setSortDir(d => (d === 'asc' ? 'desc' : 'asc'));
-    } else {
-      setSortKey(key);
-      setSortDir('desc');
+      return;
     }
+    setSortKey(key);
+    // Nota alta primeiro; prazo é o contrário — o que vence antes vem antes.
+    setSortDir(key === 'prazo' ? 'asc' : 'desc');
   }
 
   function handleColWidthChange(id: string, width: number) {
@@ -206,10 +251,26 @@ export function TarefasTab() {
     setPendingUndo(null);
   }
 
+  /**
+   * Excluir mitigação não é o mesmo que excluir tarefa: some do plano de ação
+   * do risco e muda o estado de tratamento dele, que é o número que vai ao
+   * comitê. O aviso diz de qual risco se trata.
+   */
+  function confirmarExclusao(idx: number): boolean {
+    const row = rows.find(r => r.idx === idx);
+    const vinculo = row?.vinculo;
+    if (!vinculo) return window.confirm('Tem certeza que deseja excluir esta tarefa?');
+    return window.confirm(
+      `Esta é uma mitigação do risco "${vinculo.risco || 'sem título'}".\n\n`
+      + 'Excluir remove a ação do plano do risco e altera o estado de tratamento dele. '
+      + 'Tem certeza?',
+    );
+  }
+
   async function handleDeleteRow(idx: number) {
     const t = tasks[idx];
     if (!t) return;
-    if (!window.confirm('Tem certeza que deseja excluir esta tarefa?')) return;
+    if (!confirmarExclusao(idx)) return;
     if (editingId === t.id) setEditingId(null);
     await deleteTaskById(t.id);
   }
@@ -236,13 +297,15 @@ export function TarefasTab() {
 
   async function handleDeleteFromModal() {
     if (!editingId) return;
-    if (!window.confirm('Tem certeza que deseja excluir esta tarefa?')) return;
+    const idx = tasks.findIndex(t => t.id === editingId);
+    if (!confirmarExclusao(idx)) return;
     const id = editingId;
     setEditingId(null);
     await deleteTaskById(id);
   }
 
   const editingTask = editingId != null ? tasks.find(t => t.id === editingId) ?? null : null;
+  const editingRow = editingId != null ? rows.find(r => r.task.id === editingId) ?? null : null;
   const showLoading = loading && tasks.length === 0;
 
   const emptyMessage = rows.length === 0
@@ -284,6 +347,7 @@ export function TarefasTab() {
             concluidas={concluidas}
             criticas={criticas}
             avaliacao={avaliacao}
+            atrasadas={atrasadas}
           />
 
           <TarefasFilterBar
@@ -301,6 +365,9 @@ export function TarefasTab() {
             onGroupByChange={setGroupBy}
             visibleCount={visibleRows.length}
             totalCount={rows.length}
+            vinculoFilter={vinculoFilter}
+            onVinculoFilterChange={setVinculoFilter}
+            vinculadasCount={vinculadas}
           />
 
           {view === 'kanban' ? (
@@ -344,6 +411,8 @@ export function TarefasTab() {
           onRemoveAnexo={anexoId => removeAttachment(editingTask.id, anexoId)}
           tipoOptions={tipoOptions}
           responsavelOptions={responsavelOptions}
+          vinculo={editingRow?.vinculo ?? null}
+          dono={editingRow?.dono ?? ''}
         />
       )}
 

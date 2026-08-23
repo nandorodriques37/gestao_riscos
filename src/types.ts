@@ -107,6 +107,8 @@ export interface Task {
   status: string;
   responsavel: string;
   obs: string;
+  /** 'YYYY-MM-DD'. Nulo = sem data combinada; rotina nunca tem. */
+  prazo: string | null;
 }
 
 /**
@@ -125,11 +127,27 @@ export interface TaskAttachment {
   tamanho: number;
 }
 
-/** Tarefa como vem do backend — igual a Task, mas com id, versão e anexos. */
+/** Tarefa como vem do backend — igual a Task, mas com id, versão, anexos e vínculo. */
 export interface StoredTask extends Task {
   id: string;
   /** Incrementada a cada gravação; usada para detectar edição concorrente. */
   version: number;
+  /**
+   * Vínculo com o risco que esta entrega mitiga. Preenchido = é mitigação;
+   * nulo = tarefa livre. É a única diferença entre as duas coisas.
+   *
+   * Fora de `Task` porque é SÓ LEITURA no quadro: quem cria e desfaz o vínculo
+   * é o plano de ação dentro do risco. Deixar de fora da allowlist de escrita é
+   * o que impede o quadro de desvincular uma mitigação sem querer.
+   */
+  risco_id: string | null;
+  /** Preenchido quando a mitigação é executada dentro de uma iniciativa. */
+  iniciativa_id: string | null;
+  /** Dono de verdade (FK `pessoas`), quando a linha veio do plano de ação. */
+  dono_id: string | null;
+  /** 'rotina' = controle contínuo: não tem prazo e nunca está atrasado. */
+  triagem: string;
+  indicador_sucesso: string;
   /**
    * Imagens anexadas (só o metadado). Fora de `Task` de propósito: anexo não é
    * campo editável do formulário — entra e sai por endpoint próprio, não pelo
@@ -138,13 +156,15 @@ export interface StoredTask extends Task {
   anexos: TaskAttachment[];
 }
 
-export type TaskStatusFilterValue = 'Todos' | 'A fazer' | 'Em andamento' | 'Concluída';
+export type TaskStatusFilterValue = 'Todos' | 'A fazer' | 'Em andamento' | 'Concluída' | 'Cancelada';
 
 /** Status "reais" da aba Tarefas (sem "Todos"), usados na seleção múltipla do filtro. */
-export type TaskStatus = 'A fazer' | 'Em andamento' | 'Concluída';
-export const TASK_STATUSES: readonly TaskStatus[] = ['A fazer', 'Em andamento', 'Concluída'];
+export type TaskStatus = 'A fazer' | 'Em andamento' | 'Concluída' | 'Cancelada';
+// 'Cancelada' entrou com a unificação: a mitigação sempre teve esse estado, e
+// tarefa também se cancela. Fica por último — é saída, não etapa.
+export const TASK_STATUSES: readonly TaskStatus[] = ['A fazer', 'Em andamento', 'Concluída', 'Cancelada'];
 
-export type TaskSortKey = 'g' | 'u' | 't' | 'gut' | null;
+export type TaskSortKey = 'g' | 'u' | 't' | 'gut' | 'prazo' | null;
 
 /* ==========================================================================
    Portfólio — objetivo → iniciativa → marco, mais riscos e suas ações.
