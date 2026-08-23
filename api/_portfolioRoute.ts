@@ -1,13 +1,14 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { neonSql, ensureSchema } from './_db.js';
+import { neonSql } from './_db.js';
 import {
-  ENTIDADES, ehEntidade, ensurePortfolioSchema, listPortfolio, backup,
+  ENTIDADES, ehEntidade, listPortfolio, backup,
   validarEntidade,
 } from './_portfolioDb.js';
+import { ensureTudo } from './_schema.js';
 import { migrarAcoes } from './_migracaoAcoes.js';
 import { promoverTriagem } from './_promocaoTriagem.js';
 import {
-  ensureAuditoriaSchema, autorDaRequisicao, listarAuditoria,
+  autorDaRequisicao, listarAuditoria,
   registrarCriacao, registrarAlteracao, registrarExclusao,
 } from './_auditoria.js';
 
@@ -78,10 +79,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const method = (req.method || 'GET').toUpperCase();
 
     const sql = neonSql();
-    // A ordem importa: `acoes_risco.risco_id` referencia `risk_records`.
-    await ensureSchema(sql);
-    await ensureAuditoriaSchema(sql);
-    await ensurePortfolioSchema(sql);
+    // Sequência completa (inclusive a cópia única das mitigações para `tasks`).
+    // Roda no caminho de leitura porque a projeção que serve `acoes-risco` lê
+    // de lá — sem a cópia, a fila da Triagem e o Rastro apareceriam vazios em
+    // vez de errados.
+    await ensureTudo(sql);
 
     // GET /api/portfolio
     if (partes.length === 0) {

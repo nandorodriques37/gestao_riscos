@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { neonSql, ensureSchema, restoreRecords } from './_db.js';
 import { ensurePortfolioSchema, contarAcoesRisco } from './_portfolioDb.js';
+import { ensureTasksSchema } from './_tasksDb.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
@@ -14,6 +15,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Precisa existir antes da contagem abaixo — num banco novo a tabela ainda
     // não foi criada e o `select` estouraria.
     await ensurePortfolioSchema(sql);
+    // O guarda conta as mitigações onde elas vivem hoje: em `tasks`.
+    await ensureTasksSchema(sql);
 
     // `restoreRecords` faz `delete from risk_records`, e `acoes_risco.risco_id`
     // é `on delete cascade`: restaurar levaria junto todo o plano de mitigação

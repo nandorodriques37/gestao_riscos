@@ -6,6 +6,7 @@
 // apenas a referencia.
 import type { Sql } from './_db.js';
 import { makeTable, type Tabela } from './_table.js';
+import { acoesRiscoSobreTasks } from './_trabalhoDb.js';
 import type {
   Pessoa, Objetivo, Medicao, Iniciativa, Marco, AcaoRisco, PortfolioBundle,
 } from '../src/types.js';
@@ -99,7 +100,15 @@ export const marcos: Tabela<Marco> = makeTable<Marco>({
   ],
 });
 
-export const acoesRisco: Tabela<AcaoRisco> = makeTable<AcaoRisco>({
+/**
+ * CONGELADA. As mitigações passaram a viver em `tasks` — tarefa e mitigação são
+ * a mesma coisa, distinguidas por `risco_id` estar preenchido ou não. Ninguém
+ * escreve mais aqui: quem serve a entidade é `acoesRiscoSobreTasks`, e esta
+ * definição continua existindo por dois motivos — é a origem da cópia única
+ * (`unificarTrabalho`) e as linhas antigas ficam, como `acoes_itens` antes
+ * dela. Não apagar a tabela.
+ */
+export const acoesRiscoCongelada: Tabela<AcaoRisco> = makeTable<AcaoRisco>({
   nome: 'acoes_risco',
   ordenavel: true,
   indices: ['risco_id', 'iniciativa_id'],
@@ -120,6 +129,14 @@ export const acoesRisco: Tabela<AcaoRisco> = makeTable<AcaoRisco>({
     { nome: 'triagem', tipo: 'text' },
   ],
 });
+
+/**
+ * A entidade "ação de risco", onde quer que ela esteja armazenada. Hoje é a
+ * projeção sobre `tasks`; quem escreve mitigação (extração dos planos,
+ * promoção da triagem, editor do plano de ação) passa por aqui e não precisa
+ * saber disso.
+ */
+export const acoesRisco: Tabela<AcaoRisco> = acoesRiscoSobreTasks;
 
 /** Entidades expostas na rota, pelo nome que aparece na URL. */
 export const ENTIDADES = {
@@ -148,7 +165,7 @@ export async function ensurePortfolioSchema(sql: Sql): Promise<void> {
   await medicoes.ensure(sql);
   await iniciativas.ensure(sql);
   await marcos.ensure(sql);
-  await acoesRisco.ensure(sql);
+  await acoesRiscoCongelada.ensure(sql);
 }
 
 /** Todas as listas de uma vez — o front faz um polling só sobre este pacote. */
@@ -286,7 +303,12 @@ export async function validarEntidade(
 
 /** Quantas ações de risco existem — usado pelo guarda do /api/restore. */
 export async function contarAcoesRisco(sql: Sql): Promise<number> {
-  const rows = await sql('select count(*)::int as count from acoes_risco');
+  // Conta onde as mitigações vivem hoje (`tasks` com risco), não na tabela
+  // congelada — senão o guarda do restore leria zero e liberaria o que existe
+  // justamente para impedir.
+  const rows = await sql(
+    'select count(*)::int as count from tasks where risco_id is not null',
+  );
   return Number(rows[0]?.count ?? 0);
 }
 

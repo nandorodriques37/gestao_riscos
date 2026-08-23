@@ -5,6 +5,7 @@ import { INITIAL_TASKS } from './_tasksSeed.js';
 import type { Task, TaskAttachment } from '../src/types.js';
 import { neonSql, deveSemear, type Sql, type OpcoesSchema } from './_db.js';
 import { ensureAttachmentsSchema, listAttachments, attachmentsByTask } from './_attachmentsDb.js';
+import { ensureColunasDeVinculo } from './_trabalhoDb.js';
 
 export { neonSql };
 export type { Sql };
@@ -87,6 +88,11 @@ export async function ensureTasksSchema(sql: Sql, opts: OpcoesSchema = {}): Prom
     )
   `);
   await ensureAttachmentsSchema(sql);
+  // Tarefa e mitigação são a mesma tabela: as colunas de vínculo entram aqui,
+  // sem as chaves estrangeiras, para esta função continuar podendo rodar antes
+  // de `risk_records`, `pessoas` e `iniciativas` existirem. As referências
+  // entram em `ensureVinculosFK`, na rota que já garante as três.
+  await ensureColunasDeVinculo(sql);
   const rows = await sql('select count(*)::int as count from tasks');
   const count = Number(rows[0]?.count ?? 0);
   if (count > 0) return;
@@ -113,8 +119,18 @@ async function seed(sql: Sql): Promise<void> {
   await sql(text, params);
 }
 
-export async function listTasks(sql: Sql): Promise<StoredTask[]> {
-  const rows = await sql('select * from tasks order by position asc, created_at asc');
+/**
+ * Tarefas do quadro.
+ *
+ * `incluirVinculadas` está em falso enquanto a aba não sabe desenhar uma
+ * mitigação: as linhas vindas dos riscos já vivem nesta tabela, mas apareceriam
+ * sem vínculo, sem prazo e com o status traduzido pela metade. A etapa que dá
+ * ao quadro o cartão vinculado inverte este padrão — é o único lugar que
+ * precisa mudar.
+ */
+export async function listTasks(sql: Sql, incluirVinculadas = false): Promise<StoredTask[]> {
+  const filtro = incluirVinculadas ? '' : 'where risco_id is null';
+  const rows = await sql(`select * from tasks ${filtro} order by position asc, created_at asc`);
   // Duas consultas para a lista toda — não uma por tarefa.
   const byTask = await attachmentsByTask(sql);
   return rows.map(row => rowToTask(row, byTask.get(String(row.id)) ?? []));
