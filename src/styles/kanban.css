@@ -310,3 +310,110 @@
 .kanban-card-badges .anexos-badge {
   margin-top: 0;
 }
+
+/* ============================================================================
+   Vínculo com risco — tarefa livre e mitigação no mesmo quadro.
+
+   Só a mitigação recebe selo: ausência de vínculo é o caso comum, e rotular o
+   comum é ruído. O acento vem da criticidade do risco de origem, mas o NOME do
+   risco vai junto — identidade nunca por cor sozinha.
+   ========================================================================= */
+
+.vinculo-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  max-width: 100%;
+  margin-top: var(--sp-1);
+  padding: 1px var(--sp-2) 1px var(--sp-1);
+  border: 1px solid var(--line-hairline);
+  border-radius: var(--r-full);
+  background: var(--bg-sunken);
+  font-size: var(--fs-2xs);
+  line-height: 1.5;
+  color: var(--ink-3);
+  min-width: 0;
+}
+
+/* Ponto da faixa do risco: mesma escala de criticidade do resto do app. */
+.vinculo-chip-marca {
+  width: 6px;
+  height: 6px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--tier-null);
+}
+
+.vinculo-chip[data-tier='baixo']   .vinculo-chip-marca { background: var(--tier-baixo); }
+.vinculo-chip[data-tier='medio']   .vinculo-chip-marca { background: var(--tier-medio); }
+.vinculo-chip[data-tier='alto']    .vinculo-chip-marca { background: var(--tier-alto); }
+.vinculo-chip[data-tier='critico'] .vinculo-chip-marca { background: var(--tier-critico); }
+
+.vinculo-chip-rotulo {
+  flex: none;
+  font-weight: var(--fw-medium);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--ink-4);
+}
+
+.vinculo-chip-nome {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vinculo-chip-ini {
+  flex: none;
+  color: var(--ink-4);
+}
+
+.kanban-card-vinculo {
+  margin-top: var(--sp-2);
+  min-width: 0;
+}
+
+/* Prazo. O atraso mostra o TAMANHO, não só o fato: dois dias e três meses não
+   são a mesma conversa. */
+.prazo-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  font-size: var(--fs-xs);
+  color: var(--ink-2);
+}
+
+.prazo-cell[data-atrasada='true'] {
+  color: var(--tier-critico);
+  font-weight: var(--fw-medium);
+}
+
+.prazo-atraso {
+  padding: 0 4px;
+  border-radius: var(--r-xs);
+  background: color-mix(in oklab, var(--tier-critico) 14%, transparent);
+  font-size: var(--fs-2xs);
+}
+
+.prazo-vazio {
+  font-size: var(--fs-xs);
+  color: var(--ink-4);
+}
+
+.view-toggle-count {
+  margin-left: 4px;
+  padding: 0 4px;
+  border-radius: var(--r-full);
+  background: color-mix(in oklab, var(--brand) 14%, transparent);
+  font-size: var(--fs-2xs);
+}
+
+/* Asterisco da faixa herdada: a mitigação não tem nota GUT, e a faixa veio da
+   criticidade do risco. Sem a marca, o "Crítica" ao lado de um GUT vazio parece
+   erro de conta. */
+.tier-chip-herdada {
+  margin-left: 1px;
+  font-size: var(--fs-2xs);
+  opacity: 0.7;
+}

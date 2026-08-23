@@ -5,9 +5,11 @@ interface TarefasKpiCardsProps {
   concluidas: number;
   criticas: number;
   avaliacao: number;
+  /** Prazo vencido e trabalho aberto. Só existe desde que tarefa tem prazo. */
+  atrasadas: number;
 }
 
-export function TarefasKpiCards({ total, aFazer, emAndamento, concluidas, criticas, avaliacao }: TarefasKpiCardsProps) {
+export function TarefasKpiCards({ total, aFazer, emAndamento, concluidas, criticas, avaliacao, atrasadas }: TarefasKpiCardsProps) {
   return (
     <div className="kpi-strip">
       <div className="kpi-card" data-accent="brand">
@@ -26,6 +28,12 @@ export function TarefasKpiCards({ total, aFazer, emAndamento, concluidas, critic
         <div className="kpi-body">
           <div className="kpi-label">Em andamento</div>
           <div className="kpi-value">{emAndamento}</div>
+        </div>
+      </div>
+      <div className="kpi-card" data-accent={atrasadas > 0 ? 'critico' : 'baixo'}>
+        <div className="kpi-body">
+          <div className="kpi-label">Atrasadas</div>
+          <div className="kpi-value">{atrasadas}</div>
         </div>
       </div>
       <div className="kpi-card" data-accent="baixo">

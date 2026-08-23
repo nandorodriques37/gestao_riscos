@@ -3,7 +3,8 @@ import { PGlite } from '@electric-sql/pglite';
 import { createRecord, type Sql } from './_db.js';
 import { ensureTudo } from './_schema.js';
 import { acoesRisco } from './_portfolioDb.js';
-import { listTasks, createTask } from './_tasksDb.js';
+import { listTasks, createTask, updateTaskById } from './_tasksDb.js';
+import type { StoredTask } from '../src/types.js';
 import { statusParaAcao, statusParaQuadro, unificarTrabalho } from './_trabalhoDb.js';
 
 let pg: PGlite;
@@ -146,19 +147,41 @@ describe('projeção — a mitigação lida e escrita sobre `tasks`', () => {
   });
 });
 
-describe('quadro — enquanto a aba não sabe desenhar mitigação', () => {
+describe('quadro — uma lista só', () => {
   beforeEach(zerar);
 
-  it('lista só as tarefas livres por padrão, e as duas quando pedido', async () => {
+  it('mostra tarefa livre e mitigação juntas, com o vínculo em cada linha', async () => {
     const risco = await createRecord(sql, { risco: 'R' });
-    await acoesRisco.create(sql, { risco_id: risco.id, descricao: 'Mitigação' });
+    await acoesRisco.create(sql, {
+      risco_id: risco.id, descricao: 'Mitigação', prazo: '2026-10-31', status: 'em_andamento',
+    });
     await createTask(sql, { tarefa: 'Tarefa livre' });
 
-    const padrao = await listTasks(sql);
-    expect(padrao.map(t => t.tarefa)).toEqual(['Tarefa livre']);
+    const linhas = await listTasks(sql);
+    expect(linhas.map(t => t.tarefa).sort()).toEqual(['Mitigação', 'Tarefa livre']);
 
-    const tudo = await listTasks(sql, true);
-    expect(tudo.map(t => t.tarefa).sort()).toEqual(['Mitigação', 'Tarefa livre']);
+    const mitigacao = linhas.find(t => t.tarefa === 'Mitigação')!;
+    expect(mitigacao.risco_id).toBe(risco.id);
+    expect(mitigacao.prazo).toBe('2026-10-31');
+    // O quadro lê no vocabulário dele, não no da ação.
+    expect(mitigacao.status).toBe('Em andamento');
+
+    expect(linhas.find(t => t.tarefa === 'Tarefa livre')!.risco_id).toBeNull();
+  });
+
+  it('o quadro escreve prazo, mas não desvincula: `risco_id` fica fora da allowlist', async () => {
+    const risco = await createRecord(sql, { risco: 'R' });
+    const acao = await acoesRisco.create(sql, { risco_id: risco.id, descricao: 'Mitigação' });
+
+    await updateTaskById(sql, acao.id, {
+      prazo: '2026-11-30',
+      // Vem junto num PATCH que mande o objeto inteiro — e tem de ser ignorado.
+      risco_id: null,
+    } as Partial<StoredTask>);
+
+    const depois = (await listTasks(sql)).find(t => t.id === acao.id)!;
+    expect(depois.prazo).toBe('2026-11-30');
+    expect(depois.risco_id).toBe(risco.id);
   });
 });
 

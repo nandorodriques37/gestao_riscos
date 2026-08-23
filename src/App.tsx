@@ -301,7 +301,7 @@ function App() {
             />
           )}
 
-          {tab === 'tarefas' && <TarefasTab />}
+          {tab === 'tarefas' && <TarefasTab records={records} pf={pf} />}
 
           {tab === 'pessoas' && <PessoasTab pf={pf} onIrPara={irPara} />}
 

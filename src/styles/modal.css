@@ -596,3 +596,48 @@ select.modal-input {
   border-radius: var(--r-sm);
   background: var(--bg-surface);
 }
+
+/* Faixa de origem no modal da tarefa: quando a linha é mitigação, a primeira
+   coisa a saber é de qual risco — o que se decide aqui muda o tratamento dele. */
+.modal-vinculo {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-4);
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--line-hairline);
+  border-left: 3px solid var(--tier-null);
+  border-radius: var(--r-md);
+  background: var(--bg-sunken);
+  font-size: var(--fs-xs);
+  color: var(--ink-2);
+}
+
+.modal-vinculo[data-tier='baixo']   { border-left-color: var(--tier-baixo); }
+.modal-vinculo[data-tier='medio']   { border-left-color: var(--tier-medio); }
+.modal-vinculo[data-tier='alto']    { border-left-color: var(--tier-alto); }
+.modal-vinculo[data-tier='critico'] { border-left-color: var(--tier-critico); }
+
+.modal-vinculo-rotulo {
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-medium);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-4);
+}
+
+.modal-vinculo-nome {
+  font-weight: var(--fw-medium);
+  color: var(--ink-1);
+}
+
+.modal-vinculo-ini {
+  color: var(--ink-3);
+}
+
+.modal-field-hint {
+  margin-top: var(--sp-1);
+  font-size: var(--fs-2xs);
+  color: var(--ink-4);
+}
