@@ -15,10 +15,11 @@ import { parseAcoes } from './acoes';
 // Vive em `nomes.ts` para a API poder usá-la sem arrastar código de tela
 // junto; reexportada aqui para os importadores antigos não mudarem.
 import { chaveDoNome } from './nomes';
+import { resumoDeAcoes } from './resumoAcoes';
 export { chaveDoNome };
 
 /** Separador do resumo textual gravado em `acoes`. Igual ao de `resumirAcoes`. */
-const RESUMO_SEP = ' · ';
+
 
 /** Status que o editor oferece, na ordem em que uma ação costuma andar. */
 export const STATUS_EDITAVEIS: readonly StatusAcaoRisco[] = [
@@ -159,11 +160,7 @@ export function diffPlano(base: LinhaPlano[], atual: LinhaPlano[]): DiffPlano {
  * como plano existente em nenhum dos quatro.
  */
 export function resumoDoPlano(linhas: LinhaPlano[]): string {
-  return linhas
-    .filter(l => l.status !== 'cancelada')
-    .map(l => l.descricao.trim())
-    .filter(Boolean)
-    .join(RESUMO_SEP);
+  return resumoDeAcoes(linhas);
 }
 
 /** Data local de hoje em 'YYYY-MM-DD', para comparar com o valor do input. */

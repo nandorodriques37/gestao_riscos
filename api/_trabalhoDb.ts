@@ -24,6 +24,7 @@
 import type { Sql } from './_db.js';
 import { toDateISO, type Campo, type Tabela, type UpdateOutcome } from './_table.js';
 import type { AcaoRisco, StatusAcaoRisco } from '../src/types.js';
+import { resumoDeAcoes } from '../src/lib/resumoAcoes.js';
 
 /** Nome da tabela na trilha de auditoria. Continua `acoes_risco` de propósito:
  *  o histórico já gravado usa esse rótulo, e o registro é sobre a mitigação,
@@ -181,6 +182,46 @@ export async function unificarTrabalho(sql: Sql): Promise<ResultadoUnificacao> {
 }
 
 /* ------------------------------------------------------------------ */
+/* Resumo derivado em `risk_records.acoes`                             */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Regrava o resumo textual do plano do risco a partir das mitigações que
+ * REALMENTE estão no banco.
+ *
+ * `risk_records.acoes` é campo derivado, e é o que a tabela do Registro, a
+ * busca, os Gráficos, o CSV e o KPI de completude leem. Enquanto só o modal do
+ * risco editava mitigação, derivar lá bastava. Desde que o quadro passou a
+ * renomear e excluir a mesma linha, passaram a existir duas telas escrevendo e
+ * uma só regravando o resumo — e renomear pelo quadro deixava o registro do
+ * risco anunciando uma ação que já não existe, calado.
+ *
+ * Por isso mora aqui, na camada de dados, junto de quem escreve: rota nova,
+ * tela nova ou script novo passam por este ponto sem precisar lembrar.
+ *
+ * NÃO mexe em `version`. O resumo não é edição de ninguém, e bumpar a versão
+ * faria conflitar a gravação de quem estivesse com o risco aberto por uma
+ * mudança que essa pessoa não fez.
+ */
+export async function sincronizarResumoDoPlano(sql: Sql, riscoId: string | null): Promise<void> {
+  if (!riscoId) return;
+  const linhas = await sql(
+    `select tarefa, status from tasks
+     where risco_id = $1 order by position asc, created_at asc`,
+    [riscoId],
+  );
+  const resumo = resumoDeAcoes(linhas.map(l => ({
+    descricao: String(l.tarefa ?? ''),
+    status: statusParaAcao(String(l.status ?? '')),
+  })));
+  await sql(
+    `update risk_records set acoes = $1, updated_at = now()
+     where id = $2 and acoes is distinct from $1`,
+    [resumo, riscoId],
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /* Projeção: as mitigações de `tasks` na forma `AcaoRisco`             */
 /* ------------------------------------------------------------------ */
 
@@ -268,7 +309,9 @@ export const acoesRiscoSobreTasks: Tabela<AcaoRisco> = {
        returning *`,
       params,
     );
-    return paraAcao(rows[0]);
+    const criada = paraAcao(rows[0]);
+    await sincronizarResumoDoPlano(sql, criada.risco_id);
+    return criada;
   },
 
   async update(sql, id, patch, expectedVersion) {
@@ -291,7 +334,11 @@ export const acoesRiscoSobreTasks: Tabela<AcaoRisco> = {
     }
     text += ' returning *';
     const rows = await sql(text, params);
-    if (rows[0]) return { status: 'ok', item: paraAcao(rows[0]) };
+    if (rows[0]) {
+      const item = paraAcao(rows[0]);
+      await sincronizarResumoDoPlano(sql, item.risco_id);
+      return { status: 'ok', item };
+    }
 
     const atual = await this.byId(sql, id);
     return (atual ? { status: 'conflict', item: atual } : { status: 'not_found' }) as UpdateOutcome<AcaoRisco>;
@@ -299,8 +346,12 @@ export const acoesRiscoSobreTasks: Tabela<AcaoRisco> = {
 
   async remove(sql, id) {
     const rows = await sql(
-      'delete from tasks where id = $1 and risco_id is not null returning id', [id],
+      'delete from tasks where id = $1 and risco_id is not null returning risco_id', [id],
     );
-    return rows.length > 0;
+    if (rows.length === 0) return false;
+    // O `returning` traz o vínculo porque depois do delete não há mais de onde
+    // descobrir qual risco perdeu uma ação.
+    await sincronizarResumoDoPlano(sql, rows[0].risco_id == null ? null : String(rows[0].risco_id));
+    return true;
   },
 };

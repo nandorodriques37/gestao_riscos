@@ -51,7 +51,10 @@ export async function patchTaskApi(id: string, patch: Partial<Task>, expectedVer
 }
 
 export async function deleteTaskApi(id: string): Promise<void> {
-  await parse(await fetch(`${BASE}/tasks/${encodeURIComponent(id)}`, { method: 'DELETE' }));
+  await parse(await fetch(`${BASE}/tasks/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    headers: cabecalhosDeEscrita(),
+  }));
 }
 
 // ---------- Anexos de imagem ----------
@@ -77,5 +80,8 @@ export async function uploadTaskAttachmentApi(taskId: string, anexo: PreparedAtt
 }
 
 export async function deleteTaskAttachmentApi(taskId: string, anexoId: string): Promise<void> {
-  await parse(await fetch(taskAttachmentUrl(taskId, anexoId), { method: 'DELETE' }));
+  await parse(await fetch(taskAttachmentUrl(taskId, anexoId), {
+    method: 'DELETE',
+    headers: cabecalhosDeEscrita(),
+  }));
 }

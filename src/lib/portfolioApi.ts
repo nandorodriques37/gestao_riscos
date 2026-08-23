@@ -57,7 +57,10 @@ export async function patchEntidadeApi<T>(
 }
 
 export async function deleteEntidadeApi(entidade: EntidadeUrl, id: string): Promise<void> {
-  await parse(await fetch(`${BASE}/${entidade}/${encodeURIComponent(id)}`, { method: 'DELETE' }));
+  await parse(await fetch(`${BASE}/${entidade}/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    headers: cabecalhosDeEscrita(),
+  }));
 }
 
 export interface ResultadoMigracao {

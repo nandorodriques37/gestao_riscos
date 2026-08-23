@@ -1,20 +1,33 @@
-import type { Task } from '../types';
-import { computeGUT, prioridadeLabel, normTaskStatus } from './taskCalculations';
+import type { EnrichedTaskRow } from './taskRows';
+import { computeGUT, normTaskStatus } from './taskCalculations';
 
-type ColDef = [keyof Task | 'gut' | 'prioridade', string];
+/**
+ * O CSV sai da LINHA ENRIQUECIDA, não da tarefa crua.
+ *
+ * Exportava `responsavel`, que virou texto congelado de antes da conversão:
+ * mitigação saía sem responsável nenhum e tarefa cujo dono mudou saía com o
+ * nome antigo. Quem sabe quem responde hoje é a mesma função que a tela usa —
+ * e daí saem também o prazo e o vínculo, que a tabela já mostra.
+ */
+type Valor = (row: EnrichedTaskRow) => unknown;
 
-const COLUMNS: ColDef[] = [
-  ['tipo', 'Tipo'],
-  ['tarefa', 'Tarefa'],
-  ['detalhes', 'Detalhes'],
-  ['g', 'Gravidade'],
-  ['u', 'Urgência'],
-  ['t', 'Tendência'],
-  ['gut', 'GUT'],
-  ['prioridade', 'Prioridade'],
-  ['status', 'Status'],
-  ['responsavel', 'Responsável'],
-  ['obs', 'Observações'],
+const COLUNAS: [string, Valor][] = [
+  ['Tipo', r => r.task.tipo],
+  ['Tarefa', r => r.task.tarefa],
+  ['Detalhes', r => r.task.detalhes],
+  ['Vínculo', r => (r.vinculo ? (r.vinculo.rotina ? 'Rotina de risco' : 'Mitigação de risco') : 'Tarefa livre')],
+  ['Risco de origem', r => r.vinculo?.risco ?? ''],
+  ['Iniciativa', r => r.vinculo?.iniciativa ?? ''],
+  ['Gravidade', r => r.task.g],
+  ['Urgência', r => r.task.u],
+  ['Tendência', r => r.task.t],
+  ['GUT', r => computeGUT(r.task) ?? ''],
+  ['Prioridade', r => (r.prioridade ?? '') + (r.prioridadeHerdada ? ' (herdada do risco)' : '')],
+  ['Status', r => normTaskStatus(r.task.status)],
+  ['Responsável', r => r.dono],
+  ['Prazo', r => r.task.prazo ?? ''],
+  ['Atrasada', r => (r.atrasada ? 'sim' : '')],
+  ['Observações', r => r.task.obs],
 ];
 
 function esc(v: unknown): string {
@@ -22,22 +35,16 @@ function esc(v: unknown): string {
   return '"' + s.replace(/"/g, '""') + '"';
 }
 
-export function tasksToCSV(tasks: Task[]): string {
-  const lines = [COLUMNS.map(c => esc(c[1])).join(';')];
-  tasks.forEach(task => {
-    const row = COLUMNS.map(([key]) => {
-      if (key === 'status') return esc(normTaskStatus(task.status));
-      if (key === 'gut') return esc(computeGUT(task) ?? '');
-      if (key === 'prioridade') return esc(prioridadeLabel(computeGUT(task)) ?? '');
-      return esc(task[key as keyof Task]);
-    });
-    lines.push(row.join(';'));
+export function tasksToCSV(rows: EnrichedTaskRow[]): string {
+  const linhas = [COLUNAS.map(c => esc(c[0])).join(';')];
+  rows.forEach(row => {
+    linhas.push(COLUNAS.map(([, valor]) => esc(valor(row))).join(';'));
   });
-  return lines.join('\r\n');
+  return linhas.join('\r\n');
 }
 
-export function downloadTasksCSV(tasks: Task[], filename = 'gestao-de-tarefas.csv'): void {
-  const csv = tasksToCSV(tasks);
+export function downloadTasksCSV(rows: EnrichedTaskRow[], filename = 'gestao-de-tarefas.csv'): void {
+  const csv = tasksToCSV(rows);
   const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');

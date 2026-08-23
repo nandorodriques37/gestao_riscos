@@ -123,4 +123,16 @@ describe('computeAvaliacao', () => {
   it('conta parcialmente preenchido como não avaliado', () => {
     expect(computeAvaliacao([task({ g: 1, u: 1, t: null }), task({ g: 5, u: 5, t: 5 })])).toBe(50);
   });
+
+  it('mitigação de risco fica fora da conta — ela nunca terá nota GUT', () => {
+    // Contá-la derrubou a métrica de 90% para 52% no dia da unificação, sem
+    // que ninguém tivesse deixado de priorizar nada.
+    const livre = task({ g: 5, u: 5, t: 5 });
+    const mitigacao = { ...task(), risco_id: 'r1' };
+    expect(computeAvaliacao([livre, mitigacao])).toBe(100);
+  });
+
+  it('só mitigação → 0, porque não há tarefa livre para medir', () => {
+    expect(computeAvaliacao([{ ...task(), risco_id: 'r1' }])).toBe(0);
+  });
 });

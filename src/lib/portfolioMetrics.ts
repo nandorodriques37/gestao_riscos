@@ -618,7 +618,13 @@ export interface UsoDaPessoa {
   pessoa: Pessoa;
   objetivos: number;
   iniciativas: number;
-  acoes: number;
+  /**
+   * Trabalho: mitigação de risco E tarefa livre, que são a mesma tabela desde
+   * a unificação. Contar só as mitigações subnotificava o aviso de exclusão
+   * justamente onde o estrago é silencioso — `tasks.dono_id` é `set null`,
+   * então excluir a pessoa não falha, só tira o dono das tarefas dela.
+   */
+  trabalho: number;
   /** Soma dos três. Zero = ninguém depende dela; pode sair sem deixar buraco. */
   total: number;
 }
@@ -632,7 +638,8 @@ export interface UsoDaPessoa {
  * silenciosamente deixa itens sem dono.
  */
 export function usoPorPessoa(
-  pessoas: Pessoa[], objetivos: Objetivo[], iniciativas: Iniciativa[], acoes: AcaoRisco[],
+  pessoas: Pessoa[], objetivos: Objetivo[], iniciativas: Iniciativa[],
+  trabalho: { dono_id: string | null }[],
 ): UsoDaPessoa[] {
   const conta = (id: string, lista: { dono_id: string | null }[]) =>
     lista.reduce((n, x) => n + (x.dono_id === id ? 1 : 0), 0);
@@ -640,8 +647,8 @@ export function usoPorPessoa(
   return pessoas.map(pessoa => {
     const o = conta(pessoa.id, objetivos);
     const i = conta(pessoa.id, iniciativas);
-    const a = conta(pessoa.id, acoes);
-    return { pessoa, objetivos: o, iniciativas: i, acoes: a, total: o + i + a };
+    const t = conta(pessoa.id, trabalho);
+    return { pessoa, objetivos: o, iniciativas: i, trabalho: t, total: o + i + t };
   });
 }
 

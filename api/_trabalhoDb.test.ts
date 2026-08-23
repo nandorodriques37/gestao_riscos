@@ -3,7 +3,7 @@ import { PGlite } from '@electric-sql/pglite';
 import { createRecord, type Sql } from './_db.js';
 import { ensureTudo } from './_schema.js';
 import { acoesRisco } from './_portfolioDb.js';
-import { listTasks, createTask, updateTaskById } from './_tasksDb.js';
+import { listTasks, createTask, updateTaskById, deleteTaskById } from './_tasksDb.js';
 import type { StoredTask } from '../src/types.js';
 import { statusParaAcao, statusParaQuadro, unificarTrabalho } from './_trabalhoDb.js';
 
@@ -259,5 +259,80 @@ describe('unificarTrabalho — a cópia única', () => {
 
     const posicoes = await sql('select position from tasks order by position asc');
     expect(posicoes.map(p => Number(p.position))).toEqual([0, 1, 2]);
+  });
+});
+
+/**
+ * O resumo em `risk_records.acoes` é derivado, e é o que a tabela do Registro,
+ * a busca, os Gráficos, o CSV e o KPI de completude leem. Enquanto só o modal
+ * do risco editava mitigação, derivar lá bastava; desde que o quadro passou a
+ * renomear e excluir a mesma linha, duas telas escrevem e o resumo tem de sair
+ * de quem grava, não de quem desenha.
+ */
+describe('resumo do plano — derivado a cada escrita', () => {
+  beforeEach(zerar);
+
+  async function resumo(riscoId: string): Promise<string> {
+    const rows = await sql('select acoes from risk_records where id = $1', [riscoId]);
+    return String(rows[0]?.acoes ?? '');
+  }
+
+  it('criar mitigação entra no resumo do risco', async () => {
+    const risco = await createRecord(sql, { risco: 'R' });
+    await acoesRisco.create(sql, { risco_id: risco.id, descricao: 'Primeira' });
+    await acoesRisco.create(sql, { risco_id: risco.id, descricao: 'Segunda' });
+    expect(await resumo(risco.id)).toBe('Primeira · Segunda');
+  });
+
+  it('renomear PELO QUADRO atualiza o resumo — era aqui que o registro mentia', async () => {
+    const risco = await createRecord(sql, { risco: 'R' });
+    const acao = await acoesRisco.create(sql, { risco_id: risco.id, descricao: 'Nome antigo' });
+
+    await updateTaskById(sql, acao.id, { tarefa: 'Nome novo' });
+
+    expect(await resumo(risco.id)).toBe('Nome novo');
+  });
+
+  it('excluir pelo quadro tira do resumo', async () => {
+    const risco = await createRecord(sql, { risco: 'R' });
+    const fica = await acoesRisco.create(sql, { risco_id: risco.id, descricao: 'Fica' });
+    const sai = await acoesRisco.create(sql, { risco_id: risco.id, descricao: 'Sai' });
+
+    await deleteTaskById(sql, sai.id);
+
+    expect(await resumo(risco.id)).toBe('Fica');
+    expect(await acoesRisco.byId(sql, fica.id)).not.toBeNull();
+  });
+
+  it('cancelada sai do resumo, sem sair do plano', async () => {
+    const risco = await createRecord(sql, { risco: 'R' });
+    await acoesRisco.create(sql, { risco_id: risco.id, descricao: 'Vale' });
+    const morta = await acoesRisco.create(sql, { risco_id: risco.id, descricao: 'Cancelada' });
+
+    await acoesRisco.update(sql, morta.id, { status: 'cancelada' });
+
+    expect(await resumo(risco.id)).toBe('Vale');
+    expect(await acoesRisco.byId(sql, morta.id)).not.toBeNull();
+  });
+
+  it('tarefa livre não mexe em resumo nenhum', async () => {
+    const risco = await createRecord(sql, { risco: 'R' });
+    await acoesRisco.create(sql, { risco_id: risco.id, descricao: 'Mitigação' });
+    const livre = await createTask(sql, { tarefa: 'Comprar café' });
+
+    await updateTaskById(sql, livre.id, { tarefa: 'Comprar chá' });
+    await deleteTaskById(sql, livre.id);
+
+    expect(await resumo(risco.id)).toBe('Mitigação');
+  });
+
+  it('não bumpa a versão do risco: o resumo não é edição de ninguém', async () => {
+    // Bumpar faria conflitar a gravação de quem estivesse com o risco aberto,
+    // por uma mudança que essa pessoa não fez.
+    const risco = await createRecord(sql, { risco: 'R' });
+    const antes = (await sql('select version from risk_records where id = $1', [risco.id]))[0].version;
+    await acoesRisco.create(sql, { risco_id: risco.id, descricao: 'Nova' });
+    const depois = (await sql('select version from risk_records where id = $1', [risco.id]))[0].version;
+    expect(depois).toBe(antes);
   });
 });

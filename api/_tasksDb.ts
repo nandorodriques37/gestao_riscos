@@ -5,7 +5,7 @@ import { INITIAL_TASKS } from './_tasksSeed.js';
 import type { Task, TaskAttachment, StoredTask } from '../src/types.js';
 import { neonSql, deveSemear, type Sql, type OpcoesSchema } from './_db.js';
 import { ensureAttachmentsSchema, listAttachments, attachmentsByTask } from './_attachmentsDb.js';
-import { ensureColunasDeVinculo } from './_trabalhoDb.js';
+import { ensureColunasDeVinculo, sincronizarResumoDoPlano } from './_trabalhoDb.js';
 import { toDateISO } from './_table.js';
 
 export { neonSql };
@@ -189,7 +189,12 @@ export async function updateTaskById(
   }
   text += ' returning *';
   const rows = await sql(text, params);
-  if (rows[0]) return { status: 'ok', task: await rowWithAnexos(sql, rows[0]) };
+  if (rows[0]) {
+    // Renomear ou cancelar uma mitigação pelo quadro muda o resumo do plano no
+    // risco. Fica aqui, e não na rota, para nenhuma tela precisar lembrar.
+    await sincronizarResumoDoPlano(sql, rows[0].risco_id == null ? null : String(rows[0].risco_id));
+    return { status: 'ok', task: await rowWithAnexos(sql, rows[0]) };
+  }
 
   // Nenhuma linha batida: distingue "não existe" de "existe, mas a versão mudou".
   const current = await sql('select * from tasks where id = $1', [id]);
@@ -198,6 +203,10 @@ export async function updateTaskById(
 }
 
 export async function deleteTaskById(sql: Sql, id: string): Promise<boolean> {
-  const rows = await sql('delete from tasks where id = $1 returning id', [id]);
-  return rows.length > 0;
+  // `returning risco_id`: depois do delete não há mais de onde descobrir qual
+  // risco acabou de perder uma ação do plano.
+  const rows = await sql('delete from tasks where id = $1 returning risco_id', [id]);
+  if (rows.length === 0) return false;
+  await sincronizarResumoDoPlano(sql, rows[0].risco_id == null ? null : String(rows[0].risco_id));
+  return true;
 }

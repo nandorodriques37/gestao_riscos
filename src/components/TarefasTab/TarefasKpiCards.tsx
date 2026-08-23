@@ -53,7 +53,7 @@ export function TarefasKpiCards({ total, aFazer, emAndamento, concluidas, critic
           <div className="kpi-label">Avaliadas (GUT)</div>
           <div className="kpi-value-row">
             <div className="kpi-value">{avaliacao}%</div>
-            <span className="kpi-value-sub">com G/U/T preenchidos</span>
+            <span className="kpi-value-sub">das tarefas livres com G/U/T</span>
           </div>
           <div className="kpi-progress-track">
             <div className="kpi-progress-bar" style={{ width: `${avaliacao}%` }} />
