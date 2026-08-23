@@ -73,8 +73,17 @@ export function computeTaskRanks<T extends { gut: number | null }>(items: T[]): 
 }
 
 /** % de tarefas com Gravidade, Urgência e Tendência totalmente avaliadas. */
-export function computeAvaliacao(tasks: Task[]): number {
-  if (tasks.length === 0) return 0;
-  const avaliadas = tasks.filter(t => t.g != null && t.u != null && t.t != null).length;
-  return Math.round((avaliadas / tasks.length) * 100);
+/**
+ * Proporção do quadro com nota GUT — medindo só a TAREFA LIVRE.
+ *
+ * A mitigação de risco não tem nota por decisão de projeto: GUT é o esquema do
+ * quadro, criticidade é o do risco, e ela herda a faixa do risco de origem.
+ * Contá-la no denominador derrubou a métrica de 90% para 52% no dia em que as
+ * duas listas viraram uma — sem que ninguém tivesse deixado de priorizar nada.
+ */
+export function computeAvaliacao(tasks: { g: number | null; u: number | null; t: number | null; risco_id?: string | null }[]): number {
+  const livres = tasks.filter(t => t.risco_id == null);
+  if (livres.length === 0) return 0;
+  const avaliadas = livres.filter(t => t.g != null && t.u != null && t.t != null).length;
+  return Math.round((avaliadas / livres.length) * 100);
 }

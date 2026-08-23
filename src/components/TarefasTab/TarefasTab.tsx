@@ -359,11 +359,11 @@ export function TarefasTab({ records, pf }: TarefasTabProps) {
           <div className="page-bar">
             <div className="tarefas-heading">
               <div className="tarefas-heading-title">Gestão de Tarefas</div>
-              <div className="tarefas-heading-subtitle">Priorização do dia a dia pela Matriz GUT (Gravidade × Urgência × Tendência)</div>
+              <div className="tarefas-heading-subtitle">Tarefas do time e mitigações dos riscos, no mesmo lugar. Tarefa livre prioriza pela Matriz GUT (Gravidade × Urgência × Tendência); mitigação herda a criticidade do risco.</div>
             </div>
             <div className="actions-row">
               <GutGuide />
-              <button className="btn btn-ghost" onClick={() => downloadTasksCSV(tasks)}>↓ Exportar CSV</button>
+              <button className="btn btn-ghost" onClick={() => downloadTasksCSV(visibleRows)}>↓ Exportar CSV</button>
               <button className="btn btn-navy" onClick={handleAddRow}>+ Adicionar tarefa</button>
             </div>
           </div>

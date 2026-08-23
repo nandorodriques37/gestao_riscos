@@ -50,7 +50,10 @@ export async function patchRecordApi(id: string, patch: Partial<RiskRecord>, exp
 }
 
 export async function deleteRecordApi(id: string): Promise<void> {
-  await parse(await fetch(`${BASE}/records/${encodeURIComponent(id)}`, { method: 'DELETE' }));
+  await parse(await fetch(`${BASE}/records/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    headers: cabecalhosDeEscrita(),
+  }));
 }
 
 export async function restoreRecordsApi(): Promise<StoredRiskRecord[]> {

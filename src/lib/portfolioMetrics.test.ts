@@ -672,8 +672,18 @@ describe('usoPorPessoa', () => {
       [acao({ dono_id: ana.id }), acao({ dono_id: null })],
     );
     const porNome = new Map(uso.map(u => [u.pessoa.nome, u]));
-    expect(porNome.get('Ana')).toMatchObject({ objetivos: 1, iniciativas: 1, acoes: 1, total: 3 });
-    expect(porNome.get('Bruno')).toMatchObject({ objetivos: 0, iniciativas: 1, acoes: 0, total: 1 });
+    expect(porNome.get('Ana')).toMatchObject({ objetivos: 1, iniciativas: 1, trabalho: 1, total: 3 });
+    expect(porNome.get('Bruno')).toMatchObject({ objetivos: 0, iniciativas: 1, trabalho: 0, total: 1 });
+  });
+
+  it('conta tarefa livre junto — é o mesmo trabalho, na mesma tabela', () => {
+    // Contar só as mitigações subnotificava o aviso de exclusão justamente onde
+    // o estrago é silencioso: `dono_id` é `set null`, então excluir não falha.
+    const ana = pessoa({ nome: 'Ana' });
+    const uso = usoPorPessoa([ana], [], [], [
+      { dono_id: ana.id }, { dono_id: ana.id }, { dono_id: null },
+    ]);
+    expect(uso[0]).toMatchObject({ trabalho: 2, total: 2 });
   });
 
   it('quem não é dono de nada tem total zero — pode sair sem deixar buraco', () => {

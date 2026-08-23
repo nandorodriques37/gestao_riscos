@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { Pessoa, Tab } from '../../types';
 import type { UsePortfolio } from '../../hooks/usePortfolio';
 import {
@@ -8,6 +8,7 @@ import { chaveDoNome } from '../../lib/planoDeAcao';
 import { formatarNumero, plural } from '../../lib/portfolioLabels';
 import { EmptyState } from '../common/EmptyState';
 import { PessoaModal } from './PessoaModal';
+import { fetchTasks } from '../../lib/tasksApi';
 
 interface PessoasTabProps {
   pf: UsePortfolio;
@@ -19,7 +20,7 @@ export function PessoasTab({ pf, onIrPara }: PessoasTabProps) {
     portfolio, loading, error, clearError,
     createEntidade, patchEntidade, deleteEntidade, mesclarPessoas,
   } = pf;
-  const { pessoas, objetivos, iniciativas, acoes_risco } = portfolio;
+  const { pessoas, objetivos, iniciativas } = portfolio;
 
   const [editando, setEditando] = useState<Pessoa | null>(null);
   const [criando, setCriando] = useState(false);
@@ -29,9 +30,21 @@ export function PessoasTab({ pf, onIrPara }: PessoasTabProps) {
 
   const hojeStr = hojeISO();
 
+  // Todo o trabalho, não só as mitigações: tarefa livre e mitigação são a
+  // mesma tabela, e as duas apontam para `pessoas`. Uma busca só, sem polling —
+  // esta tela não muda enquanto está aberta.
+  const [trabalho, setTrabalho] = useState<{ dono_id: string | null }[]>([]);
+  useEffect(() => {
+    let vivo = true;
+    void fetchTasks()
+      .then(t => { if (vivo) setTrabalho(t); })
+      .catch(() => { /* sem a lista, o aviso conta só o que o portfólio sabe */ });
+    return () => { vivo = false; };
+  }, []);
+
   const uso = useMemo(
-    () => usoPorPessoa(pessoas, objetivos, iniciativas, acoes_risco),
-    [pessoas, objetivos, iniciativas, acoes_risco],
+    () => usoPorPessoa(pessoas, objetivos, iniciativas, trabalho),
+    [pessoas, objetivos, iniciativas, trabalho],
   );
   const wip = useMemo(() => wipPorDono(iniciativas, pessoas), [iniciativas, pessoas]);
   const carga = useMemo(
@@ -73,7 +86,7 @@ export function PessoasTab({ pf, onIrPara }: PessoasTabProps) {
     if (u && u.total > 0) {
       if (!window.confirm(
         `${p.nome} é dona de ${plural(u.total, 'item', 'itens')} `
-        + `(${u.objetivos} objetivos, ${u.iniciativas} iniciativas, ${u.acoes} ações).\n\n`
+        + `(${u.objetivos} objetivos, ${u.iniciativas} iniciativas, ${u.trabalho} tarefas e ações).\n\n`
         + 'Excluir não apaga esses itens — deixa todos sem dono, e não há como saber depois '
         + 'quem era.\n\nSe a pessoa apenas saiu do time, marque como inativa: o histórico fica de pé.',
       )) return;
@@ -218,7 +231,7 @@ export function PessoasTab({ pf, onIrPara }: PessoasTabProps) {
                 <th>Área</th>
                 <th className="num">Objetivos</th>
                 <th className="num">Iniciativas</th>
-                <th className="num">Ações</th>
+                <th className="num">Trabalho</th>
                 <th className="num">Em execução</th>
                 <th>Carga do mês</th>
                 <th style={{ width: 72 }} />
@@ -242,7 +255,7 @@ export function PessoasTab({ pf, onIrPara }: PessoasTabProps) {
                     <td className="muted">{p.area || '—'}</td>
                     <td className="num">{u?.objetivos ?? 0}</td>
                     <td className="num">{u?.iniciativas ?? 0}</td>
-                    <td className="num">{u?.acoes ?? 0}</td>
+                    <td className="num">{u?.trabalho ?? 0}</td>
                     <td className="num">
                       {w?.acimaDoLimite ? (
                         <span className="tier-chip" data-tier="alto">

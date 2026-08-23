@@ -137,7 +137,8 @@ export function devApiPlugin(): Plugin {
             const force = new URL(url, 'http://localhost').searchParams.get('force') === '1';
             if (acoes > 0 && !force) {
               return send(res, 409, {
-                error: `Restaurar apaga os ${acoes} registros de ações de risco junto com a matriz. `
+                error: `A matriz vai ser substituída, e as ${acoes} mitigações ligadas a ela `
+                  + 'perdem o vínculo — viram tarefas soltas no quadro, sem apontar para risco nenhum. '
                   + 'Baixe o backup em /api/portfolio/backup e repita com ?force=1 para confirmar.',
                 acoesRisco: acoes,
               });
