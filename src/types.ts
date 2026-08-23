@@ -109,6 +109,14 @@ export interface Task {
   obs: string;
   /** 'YYYY-MM-DD'. Nulo = sem data combinada; rotina nunca tem. */
   prazo: string | null;
+  /**
+   * Quem responde, como pessoa de verdade (FK `pessoas`).
+   *
+   * `responsavel` continua na tabela, congelado, com o texto que estava escrito
+   * ali antes da conversão — é histórico, não campo. Quem lê prefere o
+   * `dono_id`, e é ele que a carga do Painel e a aba Pessoas enxergam.
+   */
+  dono_id: string | null;
 }
 
 /**
@@ -143,8 +151,6 @@ export interface StoredTask extends Task {
   risco_id: string | null;
   /** Preenchido quando a mitigação é executada dentro de uma iniciativa. */
   iniciativa_id: string | null;
-  /** Dono de verdade (FK `pessoas`), quando a linha veio do plano de ação. */
-  dono_id: string | null;
   /** 'rotina' = controle contínuo: não tem prazo e nunca está atrasado. */
   triagem: string;
   indicador_sucesso: string;

@@ -84,6 +84,24 @@ export interface ResultadoPromocao {
   nomes: string[];
 }
 
+export interface ResultadoMesclagem {
+  /** Linhas que trocaram de dono, somando todas as tabelas. */
+  movidas: number;
+}
+
+/**
+ * Junta duas fichas da mesma pessoa. Roda no servidor porque quem sabe quais
+ * tabelas apontam para `pessoas` é o esquema — a versão que vivia na tela não
+ * conhecia as tarefas livres, que agora também têm dono.
+ */
+export async function mesclarPessoasApi(destino: string, origem: string): Promise<ResultadoMesclagem> {
+  return parse(await fetch(`${BASE}/mesclar-pessoas`, {
+    method: 'POST',
+    headers: cabecalhosDeEscrita(),
+    body: JSON.stringify({ destino, origem }),
+  }));
+}
+
 /** Promove a iniciativa as ações marcadas na triagem. Idempotente. */
 export async function promoverTriagemApi(): Promise<ResultadoPromocao> {
   return parse(await fetch(`${BASE}/promover-triagem`, { method: 'POST' }));

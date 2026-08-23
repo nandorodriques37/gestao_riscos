@@ -24,12 +24,17 @@ export type TaskUpdateOutcome =
 /** Campos editáveis da tarefa (na ordem das colunas da tabela). */
 export const TASK_FIELDS = [
   'tipo', 'tarefa', 'detalhes', 'g', 'u', 't', 'status', 'responsavel', 'obs', 'prazo',
+  // `dono_id` é gravável; `risco_id` e `iniciativa_id` NÃO são. A diferença é
+  // que dono é decisão do quadro — quem toca a entrega —, e vínculo é decisão
+  // do plano de ação do risco.
+  'dono_id',
 ] as const;
 
 type TaskField = (typeof TASK_FIELDS)[number];
 
 const NUMERIC_FIELDS = new Set<TaskField>(['g', 'u', 't']);
 const DATE_FIELDS = new Set<TaskField>(['prazo']);
+const UUID_FIELDS = new Set<TaskField>(['dono_id']);
 const FIELD_SET = new Set<string>(TASK_FIELDS);
 
 function toNumberOrNull(v: unknown): number | null {
@@ -50,12 +55,12 @@ function rowToTask(row: Record<string, unknown>, anexos: TaskAttachment[] = []):
     responsavel: (row.responsavel as string) ?? '',
     obs: (row.obs as string) ?? '',
     prazo: toDateISO(row.prazo),
+    dono_id: row.dono_id == null ? null : String(row.dono_id),
     // Vínculo: só leitura por aqui. Quem edita é o plano de ação do risco, e
     // deixar de fora da allowlist é o que impede o quadro de desvincular uma
     // mitigação sem querer — inclusive por um PATCH que mande o objeto inteiro.
     risco_id: row.risco_id == null ? null : String(row.risco_id),
     iniciativa_id: row.iniciativa_id == null ? null : String(row.iniciativa_id),
-    dono_id: row.dono_id == null ? null : String(row.dono_id),
     triagem: (row.triagem as string) ?? '',
     indicador_sucesso: (row.indicador_sucesso as string) ?? '',
     version: Number(row.version ?? 1),
@@ -75,7 +80,9 @@ async function rowWithAnexos(sql: Sql, row: Record<string, unknown>): Promise<St
 
 function fieldValue(rec: Partial<Task>, field: TaskField): unknown {
   const v = rec[field];
-  if (NUMERIC_FIELDS.has(field) || DATE_FIELDS.has(field)) return v == null || v === '' ? null : v;
+  if (NUMERIC_FIELDS.has(field) || DATE_FIELDS.has(field) || UUID_FIELDS.has(field)) {
+    return v == null || v === '' ? null : v;
+  }
   return v ?? '';
 }
 
