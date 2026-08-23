@@ -86,3 +86,8 @@ Para rodar as funções localmente contra o Neon (em vez do pglite), use
 Implementado a partir do pacote de handoff em `design_handoff_matriz_risco/`
 (modelo de dados, fórmulas de negócio, telas e design tokens). Ver `CLAUDE.md`
 para as regras de negócio e convenções que devem ser preservadas.
+
+## Histórico
+
+`HISTORICO.md` mapeia o que já foi construído, na ordem em que aconteceu, e o
+porquê das decisões que viraram regra.
