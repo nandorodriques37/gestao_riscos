@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { AcaoRisco, Pessoa, PortfolioBundle } from '../types';
 import {
   fetchPortfolio, patchEntidadeApi, createEntidadeApi, deleteEntidadeApi,
-  migrarAcoesApi, promoverTriagemApi, PortfolioConflictError,
+  migrarAcoesApi, promoverTriagemApi, mesclarPessoasApi, PortfolioConflictError,
   type EntidadeUrl, type ResultadoMigracao, type ResultadoPromocao,
 } from '../lib/portfolioApi';
 import { salvarPlano, type LinhaPlano, type ResultadoSalvar } from '../lib/planoDeAcao';
@@ -82,6 +82,8 @@ export interface UsePortfolio {
   migrarAcoes: () => Promise<ResultadoMigracao | null>;
   /** Aplica a triagem: as marcadas como iniciativa viram iniciativas. */
   promoverTriagem: () => Promise<ResultadoPromocao | null>;
+  /** Junta duas fichas da mesma pessoa e devolve quantas linhas mudaram de dono. */
+  mesclarPessoas: (destino: string, origem: string) => Promise<number | null>;
 }
 
 /**
@@ -263,6 +265,17 @@ export function usePortfolio(): UsePortfolio {
     }
   }, [refresh]);
 
+  const mesclarPessoas = useCallback(async (destino: string, origem: string) => {
+    try {
+      const r = await mesclarPessoasApi(destino, origem);
+      await refresh();
+      return r.movidas;
+    } catch (err) {
+      if (montado.current) setError(err instanceof Error ? err.message : 'Falha ao juntar as fichas');
+      return null;
+    }
+  }, [refresh]);
+
   const clearError = useCallback(() => setError(null), []);
 
   useEffect(() => {
@@ -283,6 +296,6 @@ export function usePortfolio(): UsePortfolio {
   return {
     portfolio, loading, error, refresh, clearError,
     patchEntidade, patchVarios, createEntidade, criarERetornar, deleteEntidade,
-    salvarPlanoDeAcao, migrarAcoes, promoverTriagem,
+    salvarPlanoDeAcao, migrarAcoes, promoverTriagem, mesclarPessoas,
   };
 }

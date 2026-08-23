@@ -6,7 +6,7 @@ function tarefa(p: Partial<StoredTask> = {}): StoredTask {
   return {
     id: 't1', tipo: '', tarefa: 'Fazer algo', detalhes: '',
     g: null, u: null, t: null, status: 'A fazer', responsavel: '', obs: '',
-    prazo: null, risco_id: null, iniciativa_id: null, dono_id: null,
+    prazo: null, dono_id: null, risco_id: null, iniciativa_id: null,
     triagem: '', indicador_sucesso: '', version: 1, anexos: [],
     ...p,
   };
@@ -62,14 +62,21 @@ describe('vínculo — de onde a linha veio', () => {
 });
 
 describe('dono — um nome, duas origens', () => {
-  it('usa o texto livre da tarefa quando existe', () => {
-    const [row] = buildTaskRows([tarefa({ responsavel: 'Kauan' })], CTX);
-    expect(row.dono).toBe('Kauan');
+  it('usa a pessoa vinculada', () => {
+    const [row] = buildTaskRows([tarefa({ dono_id: 'p1' })], CTX);
+    expect(row.dono).toBe('João Fernando');
   });
 
-  it('cai para a pessoa do plano de ação quando o texto está vazio', () => {
-    const [row] = buildTaskRows([tarefa({ risco_id: 'r1', dono_id: 'p1' })], CTX);
+  it('a pessoa ganha do texto congelado — ele é de antes da conversão', () => {
+    const [row] = buildTaskRows(
+      [tarefa({ dono_id: 'p1', responsavel: 'Nome antigo' })], CTX,
+    );
     expect(row.dono).toBe('João Fernando');
+  });
+
+  it('cai no texto enquanto a linha não foi convertida', () => {
+    const [row] = buildTaskRows([tarefa({ responsavel: 'Kauan' })], CTX);
+    expect(row.dono).toBe('Kauan');
   });
 
   it('fica vazio quando não há nem um nem outro', () => {

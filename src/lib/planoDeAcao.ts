@@ -12,6 +12,11 @@
 import type { AcaoRisco, Pessoa, RiskRecord, StatusAcaoRisco } from '../types';
 import { parseAcoes } from './acoes';
 
+// Vive em `nomes.ts` para a API poder usá-la sem arrastar código de tela
+// junto; reexportada aqui para os importadores antigos não mudarem.
+import { chaveDoNome } from './nomes';
+export { chaveDoNome };
+
 /** Separador do resumo textual gravado em `acoes`. Igual ao de `resumirAcoes`. */
 const RESUMO_SEP = ' · ';
 
@@ -57,15 +62,6 @@ export function linhaVazia(): LinhaPlano {
   };
 }
 
-/** Normaliza um nome para comparação: sem acento, sem caixa, sem espaço sobrando. */
-export function chaveDoNome(nome: string): string {
-  return nome
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, ' ');
-}
 
 /** Converte as linhas gravadas na forma que o editor manipula. */
 export function paraLinhas(acoes: AcaoRisco[], pessoas: Pessoa[]): LinhaPlano[] {

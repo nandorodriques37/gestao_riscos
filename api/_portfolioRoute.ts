@@ -7,6 +7,7 @@ import {
 import { ensureTudo } from './_schema.js';
 import { migrarAcoes } from './_migracaoAcoes.js';
 import { promoverTriagem } from './_promocaoTriagem.js';
+import { mesclarPessoas } from './_donos.js';
 import {
   autorDaRequisicao, listarAuditoria,
   registrarCriacao, registrarAlteracao, registrarExclusao,
@@ -133,6 +134,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return;
       }
       res.status(200).json(await migrarAcoes(sql));
+      return;
+    }
+
+    // POST /api/portfolio/mesclar-pessoas — junta duas fichas da mesma pessoa.
+    //
+    // Fica no servidor, e não na tela, porque quem sabe quais tabelas apontam
+    // para `pessoas` é o esquema. A versão que vivia no componente repontava
+    // três listas do pacote do portfólio e não conhecia as tarefas livres —
+    // que passaram a ter dono. FK esquecida aqui não falha: `set null` aceita,
+    // e o dono some em silêncio.
+    if (partes.length === 1 && partes[0] === 'mesclar-pessoas') {
+      if (method !== 'POST') {
+        res.setHeader('Allow', 'POST');
+        res.status(405).json({ error: 'Método não permitido' });
+        return;
+      }
+      const body = parseBody(req);
+      const destino = String(body.destino ?? '');
+      const origem = String(body.origem ?? '');
+      if (!destino || !origem) {
+        res.status(400).json({ error: 'Informe as fichas de destino e de origem.' });
+        return;
+      }
+      const antes = await ENTIDADES.pessoas.byId(sql, origem);
+      const r = await mesclarPessoas(sql, destino, origem);
+      if (antes) await registrarExclusao(sql, 'pessoas', antes, autorDaRequisicao(req.headers as Record<string, unknown>));
+      res.status(200).json(r);
       return;
     }
 

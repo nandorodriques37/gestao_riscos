@@ -17,6 +17,7 @@ import {
   contarAcoesRisco, validarEntidade,
 } from './api/_portfolioDb.js';
 import { ensureTudo } from './api/_schema.js';
+import { mesclarPessoas } from './api/_donos.js';
 import { migrarAcoes } from './api/_migracaoAcoes.js';
 import { promoverTriagem } from './api/_promocaoTriagem.js';
 import {
@@ -169,6 +170,22 @@ export function devApiPlugin(): Plugin {
           if (path === '/api/portfolio/migrar-acoes') {
             if (method !== 'POST') return send(res, 405, { error: 'Método não permitido' });
             return send(res, 200, await migrarAcoes(sql));
+          }
+
+          if (path === '/api/portfolio/mesclar-pessoas') {
+            if (method !== 'POST') return send(res, 405, { error: 'Método não permitido' });
+            const body = (await readJsonBody(req)) as Record<string, unknown>;
+            const destino = String(body.destino ?? '');
+            const origem = String(body.origem ?? '');
+            if (!destino || !origem) {
+              return send(res, 400, { error: 'Informe as fichas de destino e de origem.' });
+            }
+            const antes = await ENTIDADES.pessoas.byId(sql, origem);
+            const r = await mesclarPessoas(sql, destino, origem);
+            if (antes) {
+              await registrarExclusao(sql, 'pessoas', antes, autorDaRequisicao(req.headers as Record<string, unknown>));
+            }
+            return send(res, 200, r);
           }
 
           if (path === '/api/portfolio/promover-triagem') {

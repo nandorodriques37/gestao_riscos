@@ -29,8 +29,14 @@ interface TarefaEditModalProps {
   responsavelOptions: string[];
   /** Preenchido quando esta linha é mitigação de um risco. */
   vinculo?: VinculoDaLinha | null;
-  /** Nome de quem responde, venha do texto livre ou da pessoa do plano de ação. */
+  /** Nome de quem responde hoje — vem da pessoa vinculada. */
   dono?: string;
+  /**
+   * Grava o dono a partir do nome digitado: casa com uma pessoa existente
+   * (ignorando acento e caixa) ou cadastra uma nova. Fica fora do diff de
+   * campos porque o que se digita é nome e o que se grava é id.
+   */
+  onCommitDono?: (nome: string) => void;
 }
 
 const STATUS_SELECT_OPTIONS: { value: string; label: string }[] = [
@@ -48,11 +54,12 @@ function numOrNull(value: string): number | null {
 export function TarefaEditModal({
   task, taskId, anexos, saveStatus, onCommit, onClose, onDelete,
   onAddAnexo, onRemoveAnexo, tipoOptions, responsavelOptions,
-  vinculo = null, dono = '',
+  vinculo = null, dono = '', onCommitDono,
 }: TarefaEditModalProps) {
   // Rascunho local: digitar altera só este estado (instantâneo, sem re-render
   // global, sem rede). A gravação acontece por ação explícita — ver commit().
   const [draft, setDraft] = useState<Task>(task);
+  const [donoNome, setDonoNome] = useState(dono);
   const [dirty, setDirty] = useState(false);
   const gut = computeGUT(draft);
   const prioridade = prioridadeLabel(gut);
@@ -67,10 +74,12 @@ export function TarefaEditModal({
   function commit() {
     const patch: Partial<Task> = {};
     (Object.keys(draft) as (keyof Task)[]).forEach(key => {
+      // `dono_id` sai do nome digitado, não do rascunho — ver `onCommitDono`.
+      if (key === 'dono_id') return;
       if (draft[key] !== task[key]) (patch as Record<string, unknown>)[key] = draft[key];
     });
-    if (Object.keys(patch).length === 0) return;
-    onCommit(patch);
+    if (Object.keys(patch).length > 0) onCommit(patch);
+    if (donoNome.trim() !== dono.trim()) onCommitDono?.(donoNome.trim());
     setDirty(false);
   }
 
@@ -220,17 +229,17 @@ export function TarefaEditModal({
             <div className="modal-grid-3">
               <div>
                 <div className="modal-field-label">Responsável</div>
-                {vinculo ? (
-                  // Mitigação guarda dono de verdade (FK `pessoas`), e quem o
-                  // edita é o plano de ação do risco. Um campo de texto livre
-                  // aqui criaria um segundo dono para a mesma linha.
-                  <>
-                    <input className="modal-input" value={dono || '—'} readOnly disabled />
-                    <div className="modal-field-hint">Editável no plano de ação do risco.</div>
-                  </>
-                ) : (
-                  <input className="modal-input" list="dl-responsavel-tarefa" value={draft.responsavel} onChange={e => setField({ responsavel: e.target.value })} />
-                )}
+                {/* Nome que vira pessoa: casa com uma ficha existente ou
+                    cadastra uma nova ao salvar. Vale para tarefa livre e para
+                    mitigação — desde que dono virou um só, não há dois lugares
+                    para editar a mesma coisa. */}
+                <input
+                  className="modal-input"
+                  list="dl-responsavel-tarefa"
+                  value={donoNome}
+                  placeholder="Quem"
+                  onChange={e => { setDonoNome(e.target.value); setDirty(true); }}
+                />
               </div>
               <div>
                 <div className="modal-field-label">Status</div>

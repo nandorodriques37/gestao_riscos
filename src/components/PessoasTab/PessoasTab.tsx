@@ -17,7 +17,7 @@ interface PessoasTabProps {
 export function PessoasTab({ pf, onIrPara }: PessoasTabProps) {
   const {
     portfolio, loading, error, clearError,
-    createEntidade, patchEntidade, patchVarios, deleteEntidade,
+    createEntidade, patchEntidade, deleteEntidade, mesclarPessoas,
   } = pf;
   const { pessoas, objetivos, iniciativas, acoes_risco } = portfolio;
 
@@ -98,36 +98,15 @@ export function PessoasTab({ pf, onIrPara }: PessoasTabProps) {
     )) return;
 
     setMesclando(true);
-    const patch = { dono_id: destino.id };
-    const alvos = [
-      ['objetivos', objetivos] as const,
-      ['iniciativas', iniciativas] as const,
-      ['acoes-risco', acoes_risco] as const,
-    ];
-
-    let movidos = 0;
-    for (const [entidade, lista] of alvos) {
-      const itens = lista
-        .filter(x => x.dono_id === origem.id)
-        .map(x => ({ id: x.id, patch }));
-      if (itens.length === 0) continue;
-      const ok = await patchVarios(entidade, itens);
-      movidos += ok;
-      if (ok < itens.length) {
-        setMesclando(false);
-        setResumoMesclagem(
-          `Parou no meio: ${ok} de ${itens.length} itens de ${entidade} foram movidos. `
-          + `"${origem.nome}" não foi excluída — tente de novo.`,
-        );
-        return;
-      }
-    }
-
-    const ok = await deleteEntidade('pessoas', origem.id);
+    // Quem repõe as FKs é o servidor. Esta função já fez isso aqui, item a
+    // item, sobre três listas do pacote do portfólio — e não enxergava as
+    // tarefas livres, que passaram a ter dono. Uma tabela esquecida não falha:
+    // `set null` aceita, e o dono some calado de tudo que a pessoa carregava.
+    const movidos = await mesclarPessoas(destino.id, origem.id);
     setMesclando(false);
-    setResumoMesclagem(ok
-      ? `"${origem.nome}" virou "${destino.nome}". ${plural(movidos, 'item movido', 'itens movidos')}.`
-      : `Os ${movidos} itens foram movidos, mas a ficha "${origem.nome}" não pôde ser excluída.`);
+    setResumoMesclagem(movidos == null
+      ? `Não foi possível juntar "${origem.nome}" em "${destino.nome}".`
+      : `"${origem.nome}" virou "${destino.nome}". ${plural(movidos, 'item movido', 'itens movidos')}.`);
   }
 
   if (loading && pessoas.length === 0) {

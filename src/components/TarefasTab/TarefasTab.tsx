@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { StoredRiskRecord, Task, TaskStatus, TaskSortKey } from '../../types';
+import type { Pessoa, StoredRiskRecord, Task, TaskStatus, TaskSortKey } from '../../types';
 import { TASK_STATUSES } from '../../types';
 import { useTasks } from '../../hooks/useTasks';
 import type { UsePortfolio } from '../../hooks/usePortfolio';
 import { buildTaskRows, type EnrichedTaskRow } from '../../lib/taskRows';
+import { chaveDoNome } from '../../lib/nomes';
 import { computeAvaliacao, normTaskStatus } from '../../lib/taskCalculations';
 import {
   SEM_NOTA, adjustGutToBand, bandOf, describeChanges, type PriorityBand,
@@ -134,7 +135,13 @@ export function TarefasTab({ records, pf }: TarefasTabProps) {
   const atrasadas = useMemo(() => rows.filter(r => r.atrasada).length, [rows]);
 
   const tipoOptions = useMemo(() => [...new Set(tasks.map(t => t.tipo).filter(Boolean))], [tasks]);
-  const responsavelOptions = useMemo(() => [...new Set(rows.map(r => r.dono).filter(Boolean))], [rows]);
+  // A lista de sugestão passa a ser o cadastro de pessoas, não os nomes que
+  // por acaso já aparecem no quadro: é assim que se para de criar ficha nova
+  // por diferença de grafia.
+  const responsavelOptions = useMemo(
+    () => pf.portfolio.pessoas.map(p => p.nome).sort((a, b) => a.localeCompare(b, 'pt-BR')),
+    [pf.portfolio.pessoas],
+  );
 
   const total = tasks.length;
   const aFazer = useMemo(() => rows.filter(r => r.normSt === 'A fazer').length, [rows]);
@@ -295,6 +302,27 @@ export function TarefasTab({ records, pf }: TarefasTabProps) {
     void flushPending();
   }
 
+  /**
+   * Nome digitado vira pessoa: casa com uma ficha existente ignorando acento e
+   * caixa, ou cadastra uma nova. É a mesma regra do editor de plano de ação —
+   * e comparar pela grafia crua é exatamente o que criou 11 fichas para 8
+   * pessoas.
+   */
+  async function handleCommitDono(id: string, nome: string) {
+    const limpo = nome.trim();
+    if (!limpo) {
+      updateTaskById(id, { dono_id: null });
+      void flushPending();
+      return;
+    }
+    const chave = chaveDoNome(limpo);
+    const existente = pf.portfolio.pessoas.find(p => chaveDoNome(p.nome) === chave);
+    const pessoa = existente ?? await pf.criarERetornar<Pessoa>('pessoas', { nome: limpo, ativo: true });
+    if (!pessoa) return;
+    updateTaskById(id, { dono_id: pessoa.id });
+    void flushPending();
+  }
+
   async function handleDeleteFromModal() {
     if (!editingId) return;
     const idx = tasks.findIndex(t => t.id === editingId);
@@ -413,6 +441,7 @@ export function TarefasTab({ records, pf }: TarefasTabProps) {
           responsavelOptions={responsavelOptions}
           vinculo={editingRow?.vinculo ?? null}
           dono={editingRow?.dono ?? ''}
+          onCommitDono={nome => { void handleCommitDono(editingTask.id, nome); }}
         />
       )}
 

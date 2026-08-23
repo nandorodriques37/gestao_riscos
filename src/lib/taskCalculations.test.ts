@@ -15,7 +15,7 @@ function task(partial: Partial<Task> = {}): Task {
   return {
     tipo: '', tarefa: '', detalhes: '',
     g: null, u: null, t: null,
-    status: '', responsavel: '', obs: '', prazo: null,
+    status: '', responsavel: '', obs: '', prazo: null, dono_id: null,
     ...partial,
   };
 }

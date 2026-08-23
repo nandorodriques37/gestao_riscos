@@ -58,9 +58,8 @@ export interface EnrichedTaskRow {
   /** Nulo = tarefa livre. */
   vinculo: VinculoDaLinha | null;
   /**
-   * Quem responde. A tarefa livre guarda texto; a mitigação guarda `dono_id`,
-   * porque veio do plano de ação, onde responsável é pessoa de verdade. A tela
-   * mostra um só nome — de onde ele vem é problema desta função.
+   * Quem responde. Sai de `dono_id` — pessoa de verdade — e só cai no
+   * `responsavel` congelado quando a linha ainda não foi convertida.
    */
   dono: string;
   /** Prazo vencido e trabalho ainda aberto. Rotina nunca atrasa. */
@@ -128,8 +127,10 @@ export function buildTaskRows(
       }
       : null;
 
-    const dono = task.responsavel
-      || (task.dono_id ? pessoaPorId.get(task.dono_id) ?? '' : '');
+    // Pessoa primeiro: `responsavel` é o texto congelado de antes da
+    // conversão, e ficaria mentindo assim que alguém trocasse o dono.
+    const dono = (task.dono_id ? pessoaPorId.get(task.dono_id) ?? '' : '')
+      || task.responsavel;
 
     const propria = prioridadeLabel(guts[idx]);
     const herdada = propria == null && vinculo ? FAIXA_POR_TIER[vinculo.tier] ?? null : null;
