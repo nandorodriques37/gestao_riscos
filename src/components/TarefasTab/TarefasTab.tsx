@@ -295,31 +295,33 @@ export function TarefasTab({ records, pf }: TarefasTabProps) {
     setEditingId(null);
   }
 
-  // Grava o rascunho do modal imediatamente: estaciona o patch e força o flush
-  // num único PATCH, reutilizando saveStatus/conflito/retry do hook.
-  function handleCommitEdit(id: string, patch: Partial<Task>) {
-    updateTaskById(id, patch);
-    void flushPending();
-  }
-
   /**
    * Nome digitado vira pessoa: casa com uma ficha existente ignorando acento e
    * caixa, ou cadastra uma nova. É a mesma regra do editor de plano de ação —
-   * e comparar pela grafia crua é exatamente o que criou 11 fichas para 8
-   * pessoas.
+   * comparar pela grafia crua é o que criou 11 fichas para 8 pessoas.
    */
-  async function handleCommitDono(id: string, nome: string) {
+  async function resolverDono(nome: string): Promise<string | null> {
     const limpo = nome.trim();
-    if (!limpo) {
-      updateTaskById(id, { dono_id: null });
-      void flushPending();
-      return;
-    }
+    if (!limpo) return null;
     const chave = chaveDoNome(limpo);
     const existente = pf.portfolio.pessoas.find(p => chaveDoNome(p.nome) === chave);
-    const pessoa = existente ?? await pf.criarERetornar<Pessoa>('pessoas', { nome: limpo, ativo: true });
-    if (!pessoa) return;
-    updateTaskById(id, { dono_id: pessoa.id });
+    if (existente) return existente.id;
+    const nova = await pf.criarERetornar<Pessoa>('pessoas', { nome: limpo, ativo: true });
+    return nova?.id ?? null;
+  }
+
+  /**
+   * Grava o rascunho do modal num PATCH só: estaciona o patch e força o flush,
+   * reutilizando saveStatus/conflito/retry do hook.
+   *
+   * O dono entra no MESMO patch. Resolver o nome e gravar à parte fazia duas
+   * gravações na mesma ação, com a mesma versão esperada — a segunda voltava
+   * 409 e o dono se perdia calado.
+   */
+  async function handleCommitEdit(id: string, patch: Partial<Task>, donoNome?: string) {
+    const completo: Partial<Task> = { ...patch };
+    if (donoNome !== undefined) completo.dono_id = await resolverDono(donoNome);
+    updateTaskById(id, completo);
     void flushPending();
   }
 
@@ -432,7 +434,7 @@ export function TarefasTab({ records, pf }: TarefasTabProps) {
           taskId={editingTask.id}
           anexos={editingTask.anexos}
           saveStatus={saveStatus[editingTask.id]}
-          onCommit={patch => handleCommitEdit(editingTask.id, patch)}
+          onCommit={(patch, donoNome) => { void handleCommitEdit(editingTask.id, patch, donoNome); }}
           onClose={handleCloseModal}
           onDelete={handleDeleteFromModal}
           onAddAnexo={file => addAttachment(editingTask.id, file)}
@@ -441,7 +443,6 @@ export function TarefasTab({ records, pf }: TarefasTabProps) {
           responsavelOptions={responsavelOptions}
           vinculo={editingRow?.vinculo ?? null}
           dono={editingRow?.dono ?? ''}
-          onCommitDono={nome => { void handleCommitDono(editingTask.id, nome); }}
         />
       )}
 

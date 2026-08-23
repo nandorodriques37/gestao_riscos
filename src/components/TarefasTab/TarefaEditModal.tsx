@@ -20,7 +20,13 @@ interface TarefaEditModalProps {
   taskId: string;
   anexos: TaskAttachment[];
   saveStatus?: TaskSaveStatus;
-  onCommit: (patch: Partial<Task>) => void;
+  /**
+   * Grava o rascunho. O nome do dono vai JUNTO, e não por uma chamada própria:
+   * duas gravações na mesma ação viram dois PATCH com a mesma versão esperada,
+   * e o segundo volta 409 — o dono se perdia calado ao salvar campo e
+   * responsável de uma vez.
+   */
+  onCommit: (patch: Partial<Task>, donoNome?: string) => void;
   onClose: () => void;
   onDelete: () => void;
   onAddAnexo: (file: File) => Promise<void>;
@@ -31,12 +37,6 @@ interface TarefaEditModalProps {
   vinculo?: VinculoDaLinha | null;
   /** Nome de quem responde hoje — vem da pessoa vinculada. */
   dono?: string;
-  /**
-   * Grava o dono a partir do nome digitado: casa com uma pessoa existente
-   * (ignorando acento e caixa) ou cadastra uma nova. Fica fora do diff de
-   * campos porque o que se digita é nome e o que se grava é id.
-   */
-  onCommitDono?: (nome: string) => void;
 }
 
 const STATUS_SELECT_OPTIONS: { value: string; label: string }[] = [
@@ -54,7 +54,7 @@ function numOrNull(value: string): number | null {
 export function TarefaEditModal({
   task, taskId, anexos, saveStatus, onCommit, onClose, onDelete,
   onAddAnexo, onRemoveAnexo, tipoOptions, responsavelOptions,
-  vinculo = null, dono = '', onCommitDono,
+  vinculo = null, dono = '',
 }: TarefaEditModalProps) {
   // Rascunho local: digitar altera só este estado (instantâneo, sem re-render
   // global, sem rede). A gravação acontece por ação explícita — ver commit().
@@ -78,8 +78,9 @@ export function TarefaEditModal({
       if (key === 'dono_id') return;
       if (draft[key] !== task[key]) (patch as Record<string, unknown>)[key] = draft[key];
     });
-    if (Object.keys(patch).length > 0) onCommit(patch);
-    if (donoNome.trim() !== dono.trim()) onCommitDono?.(donoNome.trim());
+    const mudouDono = donoNome.trim() !== dono.trim();
+    if (Object.keys(patch).length === 0 && !mudouDono) return;
+    onCommit(patch, mudouDono ? donoNome.trim() : undefined);
     setDirty(false);
   }
 
