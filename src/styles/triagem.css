@@ -13,6 +13,36 @@
   gap: var(--sp-3);
 }
 
+/* Aqui o contador CLICA — é a exceção à regra do .kpi-card inerte, e por um
+   motivo: os três cartões levam o nome exato dos destinos da triagem, então
+   são onde a mão vai primeiro. Ganham por isso a affordance que o resto dos
+   KPIs não tem, e a barra de acento do próprio cartão (--c) é quem pinta o
+   estado — nada de cor nova. */
+.triagem-resumo .kpi-card {
+  display: block;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .triagem-resumo .kpi-card {
+    transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease);
+  }
+}
+
+.triagem-resumo .kpi-card:hover {
+  border-color: color-mix(in oklab, var(--c) 40%, var(--line-border));
+  background: color-mix(in oklab, var(--c) 4%, var(--bg-surface));
+}
+
+.triagem-resumo .kpi-card[aria-pressed='true'] {
+  border-color: color-mix(in oklab, var(--c) 55%, transparent);
+  background: color-mix(in oklab, var(--c) 8%, var(--bg-surface));
+}
+
 /* Cartão da ação a classificar: o risco de origem em cima, pequeno, e a ação
    embaixo em tinta cheia — é a ação que está sendo decidida, não o risco. */
 .triagem-item {
