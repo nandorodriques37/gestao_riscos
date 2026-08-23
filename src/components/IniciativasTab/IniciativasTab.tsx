@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Iniciativa, StoredRiskRecord } from '../../types';
 import type { UsePortfolio } from '../../hooks/usePortfolio';
 import { computePrioriz, priorizTier, round2 } from '../../lib/calculations';
@@ -39,6 +39,7 @@ export function IniciativasTab({
   const [soAtivas, setSoAtivas] = useState(false);
   const [criando, setCriando] = useState(false);
   const [editando, setEditando] = useState<Iniciativa | null>(null);
+  const listaRef = useRef<HTMLDivElement>(null);
 
   const objetivoPorId = useMemo(() => new Map(objetivos.map(o => [o.id, o])), [objetivos]);
   const pessoaPorId = useMemo(() => new Map(pessoas.map(p => [p.id, p.nome])), [pessoas]);
@@ -200,10 +201,18 @@ export function IniciativasTab({
         </div>
       ) : (
         <div className="ini-layout">
-          <div className="card card-col ini-lista" style={{ gap: 'var(--sp-3)', padding: 'var(--sp-4)' }}>
+          <div className="card card-col ini-lista" ref={listaRef}>
+            <div className="ini-lista-topo">
+              <span className="ini-lista-titulo">Lista de iniciativas</span>
+              <span className="ini-lista-conta">
+                {filtradas.length === iniciativas.length
+                  ? plural(iniciativas.length, 'iniciativa', 'iniciativas')
+                  : `${filtradas.length} de ${iniciativas.length}`}
+              </span>
+            </div>
+
             <input
               className="search-input"
-              style={{ maxWidth: 'none', width: '100%', minWidth: 0 }}
               placeholder="Buscar iniciativa…"
               value={busca}
               onChange={e => setBusca(e.target.value)}
@@ -235,7 +244,7 @@ export function IniciativasTab({
             ) : (
               grupos.map(g => (
                 <div key={g.titulo}>
-                  <div className="fato-label" style={{ paddingLeft: 'var(--sp-3)' }}>
+                  <div className="fato-label ini-grupo-label">
                     {g.titulo} · {g.nota}
                   </div>
                   {g.itens.map(i => {
@@ -268,6 +277,7 @@ export function IniciativasTab({
                             {String(round2(p)).replace('.', ',')}
                           </span>
                         )}
+                        <span className="ini-chevron" aria-hidden="true">›</span>
                       </button>
                     );
                   })}
@@ -276,8 +286,22 @@ export function IniciativasTab({
             )}
           </div>
 
-          <div style={{ minWidth: 0 }}>
-            {atual ? (
+          {atual ? (
+            <div className="ini-detalhe">
+              {/* Cabeçalho do detalhe: onde a lista acaba e uma iniciativa só começa.
+                  Empilhado, é ele que ainda diz de quem é o que está na tela. */}
+              <div className="ini-detalhe-topo">
+                <span className="ini-detalhe-marca" aria-hidden="true" />
+                <span className="ini-detalhe-kicker">Detalhe</span>
+                <span className="ini-detalhe-nome">{atual.nome || 'Iniciativa sem nome'}</span>
+                <button
+                  className="btn btn-ghost ini-voltar"
+                  onClick={() => listaRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' })}
+                >
+                  ↑ Lista
+                </button>
+              </div>
+
               <IniciativaDetalhe
                 key={atual.id}
                 iniciativa={atual}
@@ -290,16 +314,16 @@ export function IniciativasTab({
                 onEditar={() => setEditando(atual)}
                 onAbrirRisco={onAbrirRisco}
               />
-            ) : (
-              <div className="card">
-                <EmptyState
-                  icon="›"
-                  message="Escolha uma iniciativa na lista"
-                  hint="O detalhe traz a trilha de marcos, a origem e os riscos que ela cobre hoje."
-                />
-              </div>
-            )}
-          </div>
+            </div>
+          ) : (
+            <div className="card ini-detalhe-vazio">
+              <EmptyState
+                icon="›"
+                message="Escolha uma iniciativa na lista"
+                hint="O detalhe traz a trilha de marcos, a origem e os riscos que ela cobre hoje."
+              />
+            </div>
+          )}
         </div>
       )}
 
