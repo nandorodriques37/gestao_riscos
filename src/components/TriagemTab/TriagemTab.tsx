@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import type { AcaoRisco, DestinoTriagem, StoredRiskRecord } from '../../types';
 import type { UsePortfolio } from '../../hooks/usePortfolio';
 import { sugerirDestino, ROTULO_DESTINO, type DestinoSugerido } from '../../lib/triagem';
@@ -14,6 +14,12 @@ interface TriagemTabProps {
 }
 
 const DESTINOS: DestinoSugerido[] = ['acao', 'iniciativa', 'rotina'];
+
+/**
+ * O que a lista mostra. `fila` = ainda sem destino; `decididas` = tudo que já
+ * foi classificado; um destino = só as daquele destino.
+ */
+type Filtro = 'fila' | 'decididas' | DestinoSugerido;
 
 /** Cor do destino: categórica, não ordinal — nenhum destino é "pior". */
 const BADGE_DESTINO: Record<DestinoSugerido, string> = {
@@ -49,9 +55,10 @@ export function TriagemTab({ records, pf }: TriagemTabProps) {
   const [promovendo, setPromovendo] = useState(false);
   const [resumoMigracao, setResumoMigracao] = useState<string | null>(null);
   const [resumoPromocao, setResumoPromocao] = useState<string | null>(null);
-  const [mostrarDecididas, setMostrarDecididas] = useState(false);
+  const [filtro, setFiltro] = useState<Filtro>('fila');
   const [aceitando, setAceitando] = useState(false);
   const [resumoAceite, setResumoAceite] = useState<string | null>(null);
+  const listaRef = useRef<HTMLDivElement>(null);
 
   const riscoPorId = useMemo(() => new Map(records.map(r => [r.id, r])), [records]);
   const pessoaPorId = useMemo(
@@ -112,6 +119,20 @@ export function TriagemTab({ records, pf }: TriagemTabProps) {
   }
 
   /**
+   * Troca o recorte da lista e a traz para a vista. O contador fica no alto e a
+   * lista começa abaixo da dobra num notebook: sem o rolar, clicar no número
+   * mudaria só o que não está na tela e pareceria não ter feito nada.
+   */
+  function filtrar(f: Filtro) {
+    setFiltro(f);
+    const suave = typeof matchMedia !== 'function'
+      || !matchMedia('(prefers-reduced-motion: reduce)').matches;
+    requestAnimationFrame(() => {
+      listaRef.current?.scrollIntoView({ behavior: suave ? 'smooth' : 'auto', block: 'start' });
+    });
+  }
+
+  /**
    * Aceita a sugestão de todas as linhas da fila de uma vez. As fracas entram
    * junto — foi o pedido —, mas o resumo diz quantas eram, porque são
    * justamente as que merecem uma segunda olhada.
@@ -133,7 +154,7 @@ export function TriagemTab({ records, pf }: TriagemTabProps) {
         : `${fracas} eram sugestões fracas — vale conferir`);
     }
     setResumoAceite(`${partes.join(' · ')}.`);
-    setMostrarDecididas(true);
+    setFiltro('decididas');
   }
 
   async function handlePromover() {
@@ -175,7 +196,11 @@ export function TriagemTab({ records, pf }: TriagemTabProps) {
     );
   }
 
-  const listaVisivel = mostrarDecididas ? decididas : pendentes;
+  const naFila = filtro === 'fila';
+  const listaVisivel = naFila
+    ? pendentes
+    : filtro === 'decididas' ? decididas
+      : decididas.filter(l => l.acao.triagem === filtro);
 
   return (
     <div className="tab-page">
@@ -210,20 +235,41 @@ export function TriagemTab({ records, pf }: TriagemTabProps) {
         </div>
       ) : (
         <>
+          {/* Os quatro contadores levam o nome exato dos destinos, então são a
+              primeira coisa em que se clica para classificar. Card inerte com
+              nome de destino é affordance falsa: em vez de tirar o clique,
+              ele passa a filtrar a lista — que é a pergunta que o número
+              levanta ("quais são essas?"). A decisão continua sendo dos
+              botões de cada linha. */}
           <div className="triagem-resumo" style={{ marginBottom: 'var(--sp-4)' }}>
-            <div className="kpi-card" data-accent={pendentes.length > 0 ? 'alto' : 'baixo'}>
+            <button
+              type="button"
+              className="kpi-card"
+              data-accent={pendentes.length > 0 ? 'alto' : 'baixo'}
+              aria-pressed={naFila}
+              onClick={() => filtrar('fila')}
+              title="Mostra as ações que ainda não têm destino"
+            >
               <div className="kpi-body">
                 <div className="kpi-label">Na fila</div>
                 <div className="kpi-value tabular">{pendentes.length}</div>
               </div>
-            </div>
+            </button>
             {DESTINOS.map(d => (
-              <div className="kpi-card" data-accent="brand" key={d}>
+              <button
+                type="button"
+                className="kpi-card"
+                data-accent="brand"
+                key={d}
+                aria-pressed={filtro === d}
+                onClick={() => filtrar(d)}
+                title={`Mostra as ações classificadas como "${ROTULO_DESTINO[d]}"`}
+              >
                 <div className="kpi-body">
                   <div className="kpi-label">{ROTULO_DESTINO[d]}</div>
                   <div className="kpi-value tabular">{contagem[d]}</div>
                 </div>
-              </div>
+              </button>
             ))}
           </div>
 
@@ -281,14 +327,14 @@ export function TriagemTab({ records, pf }: TriagemTabProps) {
 
           <div className="filter-pills" style={{ marginBottom: 'var(--sp-3)' }}>
             <button
-              className={`filter-pill${mostrarDecididas ? '' : ' active'}`}
-              onClick={() => setMostrarDecididas(false)}
+              className={`filter-pill${naFila ? ' active' : ''}`}
+              onClick={() => setFiltro('fila')}
             >
               Na fila · {pendentes.length}
             </button>
             <button
-              className={`filter-pill${mostrarDecididas ? ' active' : ''}`}
-              onClick={() => setMostrarDecididas(true)}
+              className={`filter-pill${naFila ? '' : ' active'}`}
+              onClick={() => setFiltro('decididas')}
             >
               Já classificadas · {decididas.length}
             </button>
@@ -315,17 +361,20 @@ export function TriagemTab({ records, pf }: TriagemTabProps) {
           </div>
 
           {listaVisivel.length === 0 ? (
-            <div className="card">
+            <div className="card" ref={listaRef}>
               <EmptyState
                 icon="✓"
-                message={mostrarDecididas ? 'Nada classificado ainda' : 'Fila vazia — tudo classificado'}
-                hint={mostrarDecididas
-                  ? 'Classifique alguma ação na fila para ela aparecer aqui.'
-                  : 'As ações marcadas como iniciativa serão promovidas na próxima etapa.'}
+                message={naFila
+                  ? 'Fila vazia — tudo classificado'
+                  : filtro === 'decididas' ? 'Nada classificado ainda'
+                    : `Nenhuma ação em "${ROTULO_DESTINO[filtro]}"`}
+                hint={naFila
+                  ? 'As ações marcadas como iniciativa serão promovidas na próxima etapa.'
+                  : 'Classifique alguma ação na fila para ela aparecer aqui.'}
               />
             </div>
           ) : (
-            <div>
+            <div ref={listaRef}>
               {listaVisivel.map(({ acao, risco, sugestao }) => {
                 const decidida = Boolean(acao.triagem);
                 const dono = acao.dono_id ? pessoaPorId.get(acao.dono_id) : '';

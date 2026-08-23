@@ -1,19 +1,30 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { neonSql, ensureSchema } from '../_db.js';
+import { neonSql, ensureSchema } from './_db.js';
 import {
   ENTIDADES, ehEntidade, ensurePortfolioSchema, listPortfolio, backup,
   validarEntidade,
-} from '../_portfolioDb.js';
-import { migrarAcoes } from '../_migracaoAcoes.js';
-import { promoverTriagem } from '../_promocaoTriagem.js';
+} from './_portfolioDb.js';
+import { migrarAcoes } from './_migracaoAcoes.js';
+import { promoverTriagem } from './_promocaoTriagem.js';
 import {
   ensureAuditoriaSchema, autorDaRequisicao, listarAuditoria,
   registrarCriacao, registrarAlteracao, registrarExclusao,
-} from '../_auditoria.js';
+} from './_auditoria.js';
 
-// Rota única de todo o portfólio. Cinco entidades × 2 rotas dariam 10 funções
-// serverless a mais — o projeto já tem 8 e o limite do plano Hobby é 12. Um
-// catch-all resolve tudo com uma.
+// Handler único de todo o portfólio. Cinco entidades × 2 rotas dariam 10
+// funções serverless a mais, e o limite do plano Hobby é 12 — então um handler
+// só atende tudo.
+//
+// Este arquivo NÃO é uma rota: o `_` no nome o mantém fora das funções
+// publicadas. Quem publica são os três arquivos de `api/portfolio/`, que só
+// reexportam o que está aqui — um por profundidade de caminho.
+//
+// A profundidade importa porque catch-all NÃO funciona nas funções avulsas
+// desta Vercel. `[[...path]].ts` e `[...path].ts` casavam no máximo um
+// segmento, e `/api/portfolio/:entidade/:id` — todo PATCH e todo DELETE do
+// portfólio — morria em 404 na borda, sem invocar a função e sem deixar log.
+// Pasta dinâmica funciona (`api/tasks/[id]/anexos.ts` já provava isso), e é o
+// que `[entidade]/[id].ts` usa.
 //
 //   GET    /api/portfolio                  → pacote das 5 listas
 //   GET    /api/portfolio/backup           → dump completo (?anexos=1 inclui bytes)
