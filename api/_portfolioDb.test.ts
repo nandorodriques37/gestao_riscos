@@ -1,12 +1,12 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { PGlite } from '@electric-sql/pglite';
-import { ensureSchema, createRecord, type Sql } from './_db.js';
+import { createRecord, type Sql } from './_db.js';
 import {
   ensurePortfolioSchema, listPortfolio, backup, contarAcoesRisco,
   pessoas, objetivos, medicoes, iniciativas, marcos, acoesRisco,
   validarIniciativa, validarMarco, validarMedicao, validarEntidade, ehEntidade,
 } from './_portfolioDb.js';
-import { ensureTasksSchema } from './_tasksDb.js';
+import { ensureTudo } from './_schema.js';
 
 let pg: PGlite;
 let sql: Sql;
@@ -17,10 +17,8 @@ beforeAll(async () => {
     const result = await pg.query(text, params as unknown[]);
     return result.rows as Record<string, unknown>[];
   };
-  // Mesma ordem da produção: `acoes_risco.risco_id` referencia `risk_records`.
-  await ensureSchema(sql, { semear: true });
-  await ensureTasksSchema(sql, { semear: true });
-  await ensurePortfolioSchema(sql);
+  // A mesma sequência da produção, de um lugar só.
+  await ensureTudo(sql, { semear: true });
 });
 
 afterAll(async () => {
@@ -240,11 +238,24 @@ describe('acoes_risco — o vínculo dos dois lados', () => {
     expect(lida?.iniciativa_id).toBeNull();
   });
 
-  it('apagar o risco leva as ações dele junto (cascade)', async () => {
+  // MUDANÇA DE CONTRATO. Era `cascade`: apagar o risco apagava as mitigações.
+  // Agora é `set null` — a mitigação sobrevive, desvinculada, e vira uma linha
+  // livre do quadro. Dois motivos: o "desfazer" da exclusão de risco recria o
+  // registro com id novo e nunca trouxe as ações de volta (perda silenciosa), e
+  // desde a unificação a linha apagada pode carregar anexos, que iriam junto.
+  // Órfã visível é recuperável; linha apagada não é.
+  it('apagar o risco desvincula as ações, sem apagá-las', async () => {
     const risco = await createRecord(sql, { risco: 'Vai embora' });
-    const acao = await acoesRisco.create(sql, { risco_id: risco.id, descricao: 'Some junto' });
+    const acao = await acoesRisco.create(sql, { risco_id: risco.id, descricao: 'Fica' });
     await sql('delete from risk_records where id = $1', [risco.id]);
+
+    // Some da entidade "ação de risco", que só enxerga linha vinculada…
     expect(await acoesRisco.byId(sql, acao.id)).toBeNull();
+    // …mas a linha continua lá, agora como tarefa livre.
+    const linha = await sql('select id, risco_id, tarefa from tasks where id = $1', [acao.id]);
+    expect(linha).toHaveLength(1);
+    expect(linha[0].risco_id).toBeNull();
+    expect(linha[0].tarefa).toBe('Fica');
   });
 
   it('contarAcoesRisco enxerga o que existe — é o guarda do /api/restore', async () => {

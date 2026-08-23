@@ -2,24 +2,25 @@ import type { Plugin, Connect } from 'vite';
 import type { ServerResponse } from 'node:http';
 import { PGlite } from '@electric-sql/pglite';
 import {
-  ensureSchema, listRecords, createRecord, updateRecordById, deleteRecordById, restoreRecords,
+  listRecords, createRecord, updateRecordById, deleteRecordById, restoreRecords,
   countRecords, seedSize, type Sql,
 } from './api/_db.js';
 import {
-  ensureTasksSchema, listTasks, createTask, updateTaskById, deleteTaskById,
+  listTasks, createTask, updateTaskById, deleteTaskById,
 } from './api/_tasksDb.js';
 import {
   listAttachments, createAttachment, getAttachment, deleteAttachment,
   contentDisposition, CACHE_CONTROL_IMUTAVEL,
 } from './api/_attachmentsDb.js';
 import {
-  ENTIDADES, ehEntidade, ensurePortfolioSchema, listPortfolio, backup,
+  ENTIDADES, ehEntidade, listPortfolio, backup,
   contarAcoesRisco, validarEntidade,
 } from './api/_portfolioDb.js';
+import { ensureTudo } from './api/_schema.js';
 import { migrarAcoes } from './api/_migracaoAcoes.js';
 import { promoverTriagem } from './api/_promocaoTriagem.js';
 import {
-  ensureAuditoriaSchema, autorDaRequisicao, listarAuditoria,
+  autorDaRequisicao, listarAuditoria,
   registrarCriacao, registrarAlteracao, registrarExclusao,
 } from './api/_auditoria.js';
 
@@ -38,11 +39,8 @@ function getSql(): Promise<Sql> {
         const result = await pg.query(text, params as unknown[]);
         return result.rows as Record<string, unknown>[];
       };
-      await ensureSchema(sql, { semear: true });
-      await ensureTasksSchema(sql, { semear: true });
-      await ensureAuditoriaSchema(sql);
-      // Depois de `ensureSchema`: `acoes_risco.risco_id` referencia `risk_records`.
-      await ensurePortfolioSchema(sql);
+      // Exatamente a mesma sequência da produção, semeando os dados de exemplo.
+      await ensureTudo(sql, { semear: true });
       return sql;
     })();
   }
