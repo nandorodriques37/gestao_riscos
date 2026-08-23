@@ -334,53 +334,17 @@
   }
 }
 
-/* ---------- Iniciativas: lista ---------- */
-
-.ini-linha {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-3);
-  width: 100%;
-  padding: var(--sp-3);
-  border: 1px solid transparent;
-  border-radius: var(--r-md);
-  background: none;
-  text-align: left;
-  transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
-}
-
-.ini-linha:hover {
-  background: var(--surface-2);
-}
-
-.ini-linha[data-ativa='true'] {
-  background: var(--brand-soft);
-  border-color: color-mix(in oklab, var(--brand) 30%, transparent);
-}
-
-.ini-nome {
-  flex: 1;
-  min-width: 0;
-  font-size: var(--fs-sm);
-  font-weight: var(--fw-medium);
-  color: var(--ink-1);
-  line-height: 1.4;
-}
-
-.ini-meta {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-2);
-  margin-top: var(--sp-1);
-  font-size: var(--fs-2xs);
-  color: var(--ink-4);
-  flex-wrap: wrap;
-}
+/* ---------- Iniciativas: índice × detalhe ----------
+   As duas metades da aba são coisas diferentes e precisavam parecer diferentes:
+   antes eram dois cartões brancos iguais, e empilhado (≤1280px) o detalhe virava
+   só "mais um cartão embaixo da lista". Agora o índice é chão rebaixado com as
+   linhas flutuando por cima, e o detalhe é papel sobre esse chão, amarrado por
+   uma faixa da marca que desce por todos os cartões dele. */
 
 .ini-layout {
   display: grid;
   grid-template-columns: 380px minmax(0, 1fr);
-  gap: var(--sp-4);
+  gap: var(--sp-5);
   align-items: start;
 }
 
@@ -393,6 +357,185 @@
   max-height: calc(100dvh - var(--header-h) - var(--sp-6));
   overflow-y: auto;
   scrollbar-width: thin;
+  gap: var(--sp-3);
+  padding: var(--sp-4);
+  background: var(--bg-sunken);
+  border-color: var(--line-hairline);
+}
+
+.ini-lista .search-input {
+  min-width: 0;
+  max-width: none;
+  width: 100%;
+}
+
+.ini-lista-topo {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+
+.ini-lista-titulo {
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.ini-lista-conta {
+  font-size: var(--fs-2xs);
+  color: var(--ink-4);
+}
+
+.ini-grupo-label {
+  padding: var(--sp-1) var(--sp-3);
+}
+
+.ini-linha {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  width: 100%;
+  padding: var(--sp-3);
+  padding-left: var(--sp-4);
+  border: 1px solid transparent;
+  border-radius: var(--r-md);
+  background: none;
+  text-align: left;
+  transition:
+    background var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease),
+    box-shadow var(--dur-fast) var(--ease);
+}
+
+/* Sobre chão rebaixado a linha sobe em vez de escurecer — é o que separa o
+   índice do detalhe sem depender de sombra em cartão parado. */
+.ini-linha:hover {
+  background: var(--bg-surface);
+  border-color: var(--line-hairline);
+}
+
+.ini-linha[data-ativa='true'] {
+  background: var(--brand-soft);
+  border-color: color-mix(in oklab, var(--brand) 30%, transparent);
+  box-shadow: inset 3px 0 0 var(--brand);
+}
+
+.ini-nome {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  color: var(--ink-1);
+  line-height: 1.4;
+}
+
+.ini-linha[data-ativa='true'] .ini-nome {
+  font-weight: var(--fw-semibold);
+}
+
+/* Diz para onde a linha abriu: ao lado no layout largo, abaixo no empilhado. */
+.ini-chevron {
+  flex: none;
+  font-size: var(--fs-md);
+  line-height: 1;
+  color: var(--brand);
+  opacity: 0;
+  transform: translateX(-2px);
+  transition: opacity var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
+}
+
+.ini-linha[data-ativa='true'] .ini-chevron {
+  opacity: 1;
+  transform: none;
+}
+
+.ini-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-top: var(--sp-1);
+  font-size: var(--fs-2xs);
+  color: var(--ink-4);
+  flex-wrap: wrap;
+}
+
+/* ---------- Iniciativas: coluna do detalhe ---------- */
+
+/* A faixa desce por todos os cartões do detalhe: é ela que responde "isto ainda
+   é a mesma iniciativa" quando a página já rolou dois metros. */
+.ini-detalhe {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding-left: var(--sp-4);
+  border-left: 2px solid color-mix(in oklab, var(--brand) 45%, transparent);
+}
+
+/* O cabeçalho diz em palavras o que a faixa diz em cor, e gruda no topo porque
+   o detalhe passa de uma tela de altura — o nome é a única âncora. */
+.ini-detalhe-topo {
+  position: sticky;
+  top: calc(var(--header-h) + var(--sp-4));
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-width: 0;
+  padding: var(--sp-2) 0;
+  background: var(--bg-canvas);
+  border-bottom: 1px solid var(--line-hairline);
+}
+
+.ini-detalhe-marca {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: var(--r-full);
+  background: var(--brand);
+}
+
+.ini-detalhe-kicker {
+  flex: none;
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--brand);
+}
+
+.ini-detalhe-nome {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--fs-2xs);
+  color: var(--ink-4);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Só existe empilhado: no layout largo a lista está do lado, sempre visível. */
+.ini-voltar {
+  display: none;
+  height: 24px;
+  padding: 0 var(--sp-2);
+  font-size: var(--fs-2xs);
+}
+
+.ini-detalhe-vazio {
+  min-width: 0;
+}
+
+.ini-hero-titulo {
+  font-size: var(--fs-xl);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--tracking-tight);
+  line-height: 1.3;
+  color: var(--ink-1);
+  margin-top: var(--sp-2);
 }
 
 @media (max-width: 1280px) {
@@ -403,6 +546,32 @@
   .ini-lista {
     position: static;
     max-height: 60vh;
+  }
+
+  .ini-chevron {
+    transform: rotate(90deg) translateX(-2px);
+  }
+
+  .ini-linha[data-ativa='true'] .ini-chevron {
+    transform: rotate(90deg);
+  }
+
+  /* Empilhado a faixa vira topo: o corte entre lista e detalhe passa a ser uma
+     linha da marca atravessando a página, não mais um cartão colado no outro. */
+  .ini-detalhe {
+    padding-left: 0;
+    padding-top: var(--sp-4);
+    border-left: none;
+    border-top: 2px solid color-mix(in oklab, var(--brand) 45%, transparent);
+  }
+
+  .ini-detalhe-topo {
+    top: var(--header-h);
+  }
+
+  .ini-voltar {
+    display: inline-flex;
+    flex: none;
   }
 }
 

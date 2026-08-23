@@ -121,7 +121,7 @@ export function IniciativaDetalhe({
               <span>{iniciativa.dono_id ? pessoaPorId.get(iniciativa.dono_id) ?? 'Dono removido' : 'Sem dono'}</span>
               {iniciativa.recurso && <><span>·</span><span>{iniciativa.recurso}</span></>}
             </div>
-            <div className="objetivo-titulo">{iniciativa.nome || 'Iniciativa sem nome'}</div>
+            <div className="ini-hero-titulo">{iniciativa.nome || 'Iniciativa sem nome'}</div>
             {iniciativa.descricao && (
               <div className="bento-sub" style={{ maxWidth: '70ch' }}>{iniciativa.descricao}</div>
             )}
