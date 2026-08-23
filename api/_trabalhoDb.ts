@@ -108,15 +108,18 @@ export async function ensureVinculosFK(sql: Sql): Promise<void> {
     ['tasks_dono_fk', 'dono_id', 'pessoas', 'set null'],
   ];
   for (const [nome, coluna, alvo, onDelete] of fks) {
+    // A checagem vem antes num `select` comum, e não num bloco `do $$`, porque
+    // o driver da Neon é HTTP: uma instrução por requisição, protocolo
+    // estendido. Cifrão duplo ali é aposta desnecessária quando duas
+    // instruções triviais resolvem — e são as mesmas que o resto do esquema
+    // já usa em produção.
+    const existe = await sql(
+      'select 1 from pg_constraint where conname = $1', [nome],
+    );
+    if (existe.length > 0) continue;
     await sql(`
-      do $$
-      begin
-        if not exists (select 1 from pg_constraint where conname = '${nome}') then
-          alter table tasks add constraint ${nome}
-            foreign key (${coluna}) references ${alvo}(id) on delete ${onDelete};
-        end if;
-      end
-      $$;
+      alter table tasks add constraint ${nome}
+        foreign key (${coluna}) references ${alvo}(id) on delete ${onDelete}
     `);
   }
 }
