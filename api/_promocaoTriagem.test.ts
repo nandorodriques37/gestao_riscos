@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { PGlite } from '@electric-sql/pglite';
-import { ensureSchema, createRecord, listRecords, type Sql } from './_db.js';
-import { ensureTasksSchema } from './_tasksDb.js';
+import { createRecord, listRecords, type Sql } from './_db.js';
+import { ensureTudo } from './_schema.js';
 import {
-  ensurePortfolioSchema, pessoas, objetivos, iniciativas, acoesRisco, validarIniciativa,
+  pessoas, objetivos, iniciativas, acoesRisco, validarIniciativa,
 } from './_portfolioDb.js';
 import { migrarAcoes } from './_migracaoAcoes.js';
 import { promoverTriagem, OBJETIVO_A_CLASSIFICAR } from './_promocaoTriagem.js';
@@ -12,6 +12,9 @@ let pg: PGlite;
 let sql: Sql;
 
 async function zerar() {
+  // As mitigações vivem em `tasks` desde a unificação; limpar só a tabela
+  // congelada deixaria as linhas de um teste vazando para o seguinte.
+  await sql('delete from tasks');
   await sql('delete from acoes_risco');
   await sql('delete from marcos');
   await sql('delete from iniciativas');
@@ -35,9 +38,8 @@ beforeAll(async () => {
     const result = await pg.query(text, params as unknown[]);
     return result.rows as Record<string, unknown>[];
   };
-  await ensureSchema(sql, { semear: true });
-  await ensureTasksSchema(sql, { semear: true });
-  await ensurePortfolioSchema(sql);
+  // A mesma sequência da produção, de um lugar só.
+  await ensureTudo(sql, { semear: true });
 });
 
 afterAll(async () => {
@@ -184,9 +186,16 @@ describe('promoverTriagem — só promove o que foi marcado', () => {
     expect(lista[0].nome).toBe('Vira iniciativa');
   });
 
-  it('rotina não cria tarefa nenhuma', async () => {
+  // "Tarefa" aqui é tarefa LIVRE — desde a unificação a própria mitigação é uma
+  // linha de `tasks`, então contar a tabela inteira mediria a extração do plano,
+  // não a promoção. O que a regra diz é que marcar rotina não gera trabalho novo
+  // no quadro.
+  it('rotina não cria tarefa livre nenhuma', async () => {
     await zerar();
-    const antes = (await sql('select count(*)::int as n from tasks'))[0].n;
+    const livres = async () => (await sql(
+      'select count(*)::int as n from tasks where risco_id is null',
+    ))[0].n;
+    const antes = await livres();
     await createRecord(sql, {
       risco: 'R',
       acoes_itens: [{ id: '1', descricao: 'Revisão quinzenal', responsavel: '', prazo: '', status: 'A fazer' }],
@@ -195,8 +204,7 @@ describe('promoverTriagem — só promove o que foi marcado', () => {
     const [acao] = await acoesRisco.list(sql);
     await acoesRisco.update(sql, acao.id, { triagem: 'rotina' });
     await promoverTriagem(sql);
-    const depois = (await sql('select count(*)::int as n from tasks'))[0].n;
-    expect(depois).toBe(antes);
+    expect(await livres()).toBe(antes);
   });
 });
 

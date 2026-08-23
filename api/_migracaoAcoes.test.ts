@@ -1,8 +1,9 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { PGlite } from '@electric-sql/pglite';
-import { ensureSchema, createRecord, updateRecordById, listRecords, type Sql } from './_db.js';
-import { ensureTasksSchema, createTask } from './_tasksDb.js';
-import { ensurePortfolioSchema, pessoas, acoesRisco } from './_portfolioDb.js';
+import { createRecord, updateRecordById, listRecords, type Sql } from './_db.js';
+import { createTask } from './_tasksDb.js';
+import { ensureTudo } from './_schema.js';
+import { pessoas, acoesRisco } from './_portfolioDb.js';
 import { migrarAcoes } from './_migracaoAcoes.js';
 
 // A migração é o único ponto da reestruturação que toca dado real do usuário.
@@ -24,9 +25,8 @@ beforeAll(async () => {
     const result = await pg.query(text, params as unknown[]);
     return result.rows as Record<string, unknown>[];
   };
-  await ensureSchema(sql, { semear: true });
-  await ensureTasksSchema(sql, { semear: true });
-  await ensurePortfolioSchema(sql);
+  // A mesma sequência da produção, de um lugar só.
+  await ensureTudo(sql, { semear: true });
 });
 
 afterAll(async () => {
