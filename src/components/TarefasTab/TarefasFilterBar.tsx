@@ -1,5 +1,6 @@
-import type { TaskStatus } from '../../types';
+import type { Density, TaskStatus } from '../../types';
 import { TASK_STATUSES } from '../../types';
+import { DensityToggle } from '../common/DensityToggle';
 import { FiltrosDobraveis } from '../common/FiltrosDobraveis';
 import type { KanbanGroupBy, TaskView } from '../../lib/uiPrefs';
 import type { FiltroVinculo } from './TarefasTab';
@@ -35,6 +36,8 @@ interface TarefasFilterBarProps {
   vinculoFilter: FiltroVinculo;
   onVinculoFilterChange: (v: FiltroVinculo) => void;
   vinculadasCount: number;
+  density: Density;
+  onDensityChange: (v: Density) => void;
 }
 
 export function TarefasFilterBar({
@@ -44,6 +47,7 @@ export function TarefasFilterBar({
   view, onViewChange, groupBy, onGroupByChange,
   visibleCount, totalCount,
   vinculoFilter, onVinculoFilterChange, vinculadasCount,
+  density, onDensityChange,
 }: TarefasFilterBarProps) {
   // Recortes ativos, para o selo do botão "Filtros" no celular. Modo de
   // visualização e agrupamento ficam de fora: eles mudam como a lista aparece,
@@ -143,6 +147,10 @@ export function TarefasFilterBar({
         ))}
       </div>
 
+      {/* Densidade só na lista, pelo mesmo motivo do agrupamento só no quadro:
+          é a tabela que fica mais apertada, e um controle que não faz nada na
+          vista aberta é ruído. */}
+      {view === 'lista' && <DensityToggle density={density} onChange={onDensityChange} />}
     </FiltrosDobraveis>
   );
 }

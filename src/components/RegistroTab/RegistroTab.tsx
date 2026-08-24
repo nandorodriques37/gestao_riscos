@@ -3,7 +3,7 @@ import type { Density, RegistroStatus, RiskRecord, SortDir, SortKey } from '../.
 import { REGISTRO_STATUSES } from '../../types';
 import { buildRows, type EnrichedRow } from '../../lib/rows';
 import { computeCompletude } from '../../lib/calculations';
-import { readColWidths, readStatusFilter, writePref } from '../../lib/uiPrefs';
+import { readColWidths, readDensity, readStatusFilter, writeDensity, writePref } from '../../lib/uiPrefs';
 import { Kpi, KpiRow } from '../common/Kpi';
 import { FilterBar } from './FilterBar';
 import { RiskTable } from './RiskTable';
@@ -12,16 +12,6 @@ const COL_WIDTHS_KEY = 'riskMatrix.colWidths.v1';
 const DENSITY_KEY = 'riskMatrix.density.v1';
 const STATUS_FILTER_KEY = 'riskMatrix.statusFilter.v1';
 const COL_WIDTHS_SAVE_DELAY = 300;
-
-function readDensity(): Density {
-  try {
-    const raw = localStorage.getItem(DENSITY_KEY);
-    if (raw === 'compact' || raw === 'comfortable') return raw;
-  } catch {
-    // storage ausente — usa padrão
-  }
-  return 'comfortable';
-}
 
 interface RegistroTabProps {
   records: RiskRecord[];
@@ -59,7 +49,7 @@ export function RegistroTab({
   const [sortKey, setSortKey] = useState<SortKey>(null);
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [colWidths, setColWidths] = useState(() => readColWidths(COL_WIDTHS_KEY));
-  const [density, setDensity] = useState<Density>(readDensity);
+  const [density, setDensity] = useState<Density>(() => readDensity(DENSITY_KEY));
 
   // O drag de resize atualiza colWidths a cada mousemove; grava com debounce
   // para não escrever no localStorage dezenas de vezes por segundo.
@@ -74,13 +64,7 @@ export function RegistroTab({
     return () => clearTimeout(timer);
   }, [colWidths]);
 
-  useEffect(() => {
-    try {
-      localStorage.setItem(DENSITY_KEY, density);
-    } catch {
-      // storage indisponível — preferência vale só para a sessão
-    }
-  }, [density]);
+  useEffect(() => { writeDensity(DENSITY_KEY, density); }, [density]);
 
   useEffect(() => { writePref(STATUS_FILTER_KEY, statusFilter); }, [statusFilter]);
 

@@ -1,4 +1,4 @@
-import type { ColWidths, TaskSortKey } from '../../types';
+import type { ColWidths, Density, TaskSortKey } from '../../types';
 import type { EnrichedTaskRow } from '../../lib/taskRows';
 import { TASK_COLUMNS } from './columns';
 import { TarefasTableRow } from './TarefasTableRow';
@@ -17,6 +17,7 @@ interface TarefasTableProps {
   onToggleConcluida: (idx: number) => void;
   onDeleteRow: (idx: number) => void;
   emptyMessage?: string;
+  density: Density;
 }
 
 function startColResize(e: React.MouseEvent, id: string, startWidth: number, onWidthChange: (id: string, w: number) => void) {
@@ -37,12 +38,12 @@ function startColResize(e: React.MouseEvent, id: string, startWidth: number, onW
   window.addEventListener('mouseup', onUp);
 }
 
-export function TarefasTable({ rows, colWidths, onColWidthChange, sortKey, sortDir, onSort, onOpenEdit, onToggleConcluida, onDeleteRow, emptyMessage }: TarefasTableProps) {
+export function TarefasTable({ rows, colWidths, onColWidthChange, sortKey, sortDir, onSort, onOpenEdit, onToggleConcluida, onDeleteRow, emptyMessage, density }: TarefasTableProps) {
   const isEmpty = rows.length === 0 && !!emptyMessage;
 
   return (
     <>
-      <div className="tarefas-table-wrap">
+      <div className={`tarefas-table-wrap${density === 'compact' ? ' density-compact' : ''}`}>
       <table className="risk-table">
         <thead>
           <tr>
