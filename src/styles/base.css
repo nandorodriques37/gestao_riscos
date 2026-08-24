@@ -24,6 +24,13 @@ body {
   -moz-osx-font-smoothing: grayscale;
   /* cv05: "l" com cauda, evita confundir com "1" em coluna numérica. */
   font-feature-settings: 'cv05' 1;
+  /* O eixo óptico segue o tamanho de fonte por conta própria — é o que faz o
+     título a 24px e a célula a 11px terem desenhos diferentes sem uma regra
+     por componente. Explícito porque é decisão, não herança acidental. */
+  font-optical-sizing: auto;
+  /* Sem peso sintético: sem isto o navegador finge um semibold engordando o
+     traço quando o eixo não é aplicado, e o resultado é sujo ao lado do real. */
+  font-synthesis: none;
 }
 
 /* Figuras tabulares só onde precisam alinhar verticalmente — colunas de tabela

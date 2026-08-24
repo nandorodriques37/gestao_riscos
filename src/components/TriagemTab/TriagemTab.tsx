@@ -3,6 +3,7 @@ import type { AcaoRisco, DestinoTriagem, StoredRiskRecord } from '../../types';
 import type { UsePortfolio } from '../../hooks/usePortfolio';
 import { sugerirDestino, ROTULO_DESTINO, type DestinoSugerido } from '../../lib/triagem';
 import { EmptyState } from '../common/EmptyState';
+import { Kpi } from '../common/Kpi';
 
 interface TriagemTabProps {
   records: StoredRiskRecord[];
@@ -242,34 +243,24 @@ export function TriagemTab({ records, pf }: TriagemTabProps) {
               levanta ("quais são essas?"). A decisão continua sendo dos
               botões de cada linha. */}
           <div className="triagem-resumo" style={{ marginBottom: 'var(--sp-4)' }}>
-            <button
-              type="button"
-              className="kpi-card"
-              data-accent={pendentes.length > 0 ? 'alto' : 'baixo'}
-              aria-pressed={naFila}
+            <Kpi
+              label="Na fila"
+              valor={pendentes.length}
+              acento={pendentes.length > 0 ? 'alto' : 'baixo'}
+              ativo={naFila}
               onClick={() => filtrar('fila')}
               title="Mostra as ações que ainda não têm destino"
-            >
-              <div className="kpi-body">
-                <div className="kpi-label">Na fila</div>
-                <div className="kpi-value tabular">{pendentes.length}</div>
-              </div>
-            </button>
+            />
             {DESTINOS.map(d => (
-              <button
-                type="button"
-                className="kpi-card"
-                data-accent="brand"
+              <Kpi
                 key={d}
-                aria-pressed={filtro === d}
+                label={ROTULO_DESTINO[d]}
+                valor={contagem[d]}
+                acento="brand"
+                ativo={filtro === d}
                 onClick={() => filtrar(d)}
                 title={`Mostra as ações classificadas como "${ROTULO_DESTINO[d]}"`}
-              >
-                <div className="kpi-body">
-                  <div className="kpi-label">{ROTULO_DESTINO[d]}</div>
-                  <div className="kpi-value tabular">{contagem[d]}</div>
-                </div>
-              </button>
+              />
             ))}
           </div>
 

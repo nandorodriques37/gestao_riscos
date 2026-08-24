@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ModoRisco, RiskRecord, StoredRiskRecord, Tab } from './types';
+import { MODOS_RISCO } from './types';
 import { TopBar } from './components/TopBar/TopBar';
 import { NavRail } from './components/NavRail/NavRail';
 import { PainelTab } from './components/PainelTab/PainelTab';
@@ -19,20 +20,28 @@ import { prontosParaFechar } from './lib/portfolioMetrics';
 import type { AcaoRisco } from './types';
 import { AREAS, ROTINAS, CATEGORIAS, RECURSOS, RESPONSAVEIS } from './data/RiskData';
 import { useRecords } from './hooks/useRecords';
+import { useTasks } from './hooks/useTasks';
 import { usePortfolio } from './hooks/usePortfolio';
 import { downloadRecordsCSV } from './lib/csv';
-import { readRailExpandido, writeRailExpandido, trocarComTransicao } from './lib/uiPrefs';
+import {
+  readRailExpandido, writeRailExpandido, trocarComTransicao, readEnumPref, writePref,
+} from './lib/uiPrefs';
 import './App.css';
 
 const POLL_INTERVAL = 15000;
 const UNDO_TIMEOUT = 8000;
+const MODO_RISCO_KEY = 'riskMatrix.modoRisco.v1';
 
 function App() {
   const [tab, setTab] = useState<Tab>('painel');
   const [railExpandido, setRailExpandido] = useState(readRailExpandido);
   const [editingId, setEditingId] = useState<string | null>(null);
-  // Os dois modos de leitura do registro de risco. Não é destino de menu.
-  const [modoRisco, setModoRisco] = useState<ModoRisco>('tabela');
+  // As três leituras do registro de risco. Não é destino de menu — e é
+  // persistida como as outras preferências de aba: quem trabalha no rastro ou
+  // na análise não quer voltar para a tabela a cada recarga.
+  const [modoRisco, setModoRisco] = useState<ModoRisco>(
+    () => readEnumPref(MODO_RISCO_KEY, MODOS_RISCO, 'tabela'),
+  );
   // Vive no App para o Painel e os Objetivos conseguirem abrir uma iniciativa.
   const [iniciativaSel, setIniciativaSel] = useState<string | null>(null);
   // Promoção de uma mitigação a iniciativa. Fica aqui, e não dentro do
@@ -50,6 +59,11 @@ function App() {
   // Fica no App porque decide se a aba Triagem aparece — e porque duas
   // instâncias do mesmo estado dariam duas verdades sobre a mesma fila.
   const pf = usePortfolio();
+
+  // Mesmo argumento: o quadro era dono de `useTasks`, e por isso o Painel não
+  // conseguia contar tarefa nenhuma — a aba Tarefas não está montada quando o
+  // Painel está. Uma instância só, aqui, e as duas telas leem a mesma lista.
+  const tarefas = useTasks();
   const triagemPendente = pf.portfolio.acoes_risco.filter(a => !a.triagem).length;
   // Promoção pendente também segura a aba: sem isso ela sumiria assim que a
   // fila esvaziasse, e o botão de promover ficaria inalcançável.
@@ -66,6 +80,8 @@ function App() {
   // Espelha o estado do rail no <html> já na primeira pintura: o grid do shell
   // precisa saber a largura antes de o rail montar, senão o conteúdo salta.
   useEffect(() => { writeRailExpandido(railExpandido); }, [railExpandido]);
+
+  useEffect(() => { writePref(MODO_RISCO_KEY, modoRisco); }, [modoRisco]);
 
   /** Troca de seção com cross-fade onde o navegador suportar. */
   const irPara = useCallback((destino: Tab) => {
@@ -116,13 +132,24 @@ function App() {
 
   // Mantém a matriz atualizada com o servidor (dados compartilhados pelo time),
   // sem atrapalhar quem está editando ou com gravações pendentes.
+  //
+  // As tarefas entram no mesmo relógio, mas SÓ fora da aba Tarefas: lá dentro
+  // quem sincroniza é o próprio quadro, que sabe se há um arraste ou um modal
+  // aberto. Dois relógios sobre a mesma lista embaralhariam os cards.
+  const tarefasRefresh = tarefas.refresh;
+  const tarefasPendentes = tarefas.hasPendingWrites;
+  const foraDoQuadro = tab !== 'tarefas';
   useEffect(() => {
     const canSync = () => editingId == null && !hasPendingWrites();
-    const interval = setInterval(() => { if (canSync()) void refresh(); }, POLL_INTERVAL);
-    const onFocus = () => { if (canSync()) void refresh(); };
-    window.addEventListener('focus', onFocus);
-    return () => { clearInterval(interval); window.removeEventListener('focus', onFocus); };
-  }, [editingId, hasPendingWrites, refresh]);
+    const sync = () => {
+      if (!canSync()) return;
+      void refresh();
+      if (foraDoQuadro && !tarefasPendentes()) void tarefasRefresh();
+    };
+    const interval = setInterval(sync, POLL_INTERVAL);
+    window.addEventListener('focus', sync);
+    return () => { clearInterval(interval); window.removeEventListener('focus', sync); };
+  }, [editingId, hasPendingWrites, refresh, foraDoQuadro, tarefasRefresh, tarefasPendentes]);
 
   function handleOpenEdit(idx: number) {
     const rec = records[idx];
@@ -171,6 +198,26 @@ function App() {
   const editingRecord = editingId != null ? records.find(r => r.id === editingId) ?? null : null;
   const showLoading = loading && records.length === 0;
 
+  /**
+   * Cabeçalho das leituras do risco que não trazem o seu. A tabela monta o
+   * dela (tem os botões de exportar e adicionar); o rastro e a análise
+   * recebem este, para as três terem a mesma barra e o mesmo alternador —
+   * antes a análise era uma aba que começava direto num filtro, sem título.
+   */
+  function cabecalhoRisco(titulo: string, subtitulo: string) {
+    return (
+      <div className="page-bar">
+        <div>
+          <div className="page-title">{titulo}</div>
+          <div className="page-subtitle">{subtitulo}</div>
+        </div>
+        <div className="actions-row">
+          <ModoRiscoToggle modo={modoRisco} onChange={setModoRisco} pendentes={prontos.length} />
+        </div>
+      </div>
+    );
+  }
+
   // Resumo do estado de gravação para o header. O detalhe por registro continua
   // no modal; aqui interessa só se o time está vendo dados sincronizados.
   const sync = (() => {
@@ -191,9 +238,8 @@ function App() {
         tab={tab}
         onChangeTab={irPara}
         sync={sync}
+        mostrarTriagem={mostrarTriagem}
         triagemPendente={triagemPendente}
-        promocaoPendente={promocaoPendente}
-        migracaoIniciada={migracaoIniciada}
       />
 
       <NavRail
@@ -229,13 +275,21 @@ function App() {
             <PainelTab
               records={records}
               pf={pf}
+              tarefas={tarefas.tasks}
               onIrPara={irPara}
               onAbrirIniciativa={abrirIniciativa}
+              onAbrirRisco={abrirRisco}
             />
           )}
 
           {tab === 'objetivos' && (
-            <ObjetivosTab pf={pf} onIrPara={irPara} onAbrirIniciativa={abrirIniciativa} />
+            <ObjetivosTab
+              riscos={records}
+              pf={pf}
+              onIrPara={irPara}
+              onAbrirIniciativa={abrirIniciativa}
+              onAbrirRisco={abrirRisco}
+            />
           )}
 
           {tab === 'iniciativas' && (
@@ -272,24 +326,24 @@ function App() {
               onAbrirIniciativa={abrirIniciativa}
               onPromoverAcao={setPromovendo}
               onIrPara={irPara}
-              cabecalho={
-                <div className="page-bar">
-                  <div>
-                    <div className="page-title">Rastro de mitigação</div>
-                    <div className="page-subtitle">
-                      Os mesmos riscos, lidos pelo tratamento: o que foi feito, onde foi feito
-                      e o que já pode ser fechado
-                    </div>
-                  </div>
-                  <div className="actions-row">
-                    <ModoRiscoToggle modo={modoRisco} onChange={setModoRisco} pendentes={prontos.length} />
-                  </div>
-                </div>
-              }
+              cabecalho={cabecalhoRisco(
+                'Rastro de mitigação',
+                'Os mesmos riscos, lidos pelo tratamento: o que foi feito, onde foi feito '
+                + 'e o que já pode ser fechado',
+              )}
             />
           )}
 
-          {tab === 'graficos' && <GraficosTab records={records} />}
+          {tab === 'registro' && modoRisco === 'analise' && (
+            <GraficosTab
+              records={records}
+              cabecalho={cabecalhoRisco(
+                'Análise de riscos',
+                'Os mesmos riscos, lidos pela distribuição: onde a exposição se concentra '
+                + 'por probabilidade, impacto, área, rotina e recurso',
+              )}
+            />
+          )}
 
           {tab === 'priorizacao' && (
             <PriorizacaoTab
@@ -301,7 +355,7 @@ function App() {
             />
           )}
 
-          {tab === 'tarefas' && <TarefasTab records={records} pf={pf} />}
+          {tab === 'tarefas' && <TarefasTab records={records} pf={pf} tarefas={tarefas} />}
 
           {tab === 'pessoas' && <PessoasTab pf={pf} onIrPara={irPara} />}
 

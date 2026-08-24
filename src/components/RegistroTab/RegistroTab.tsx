@@ -4,7 +4,7 @@ import { REGISTRO_STATUSES } from '../../types';
 import { buildRows, type EnrichedRow } from '../../lib/rows';
 import { computeCompletude } from '../../lib/calculations';
 import { readColWidths, readStatusFilter, writePref } from '../../lib/uiPrefs';
-import { KpiCards } from './KpiCards';
+import { Kpi, KpiRow } from '../common/Kpi';
 import { FilterBar } from './FilterBar';
 import { RiskTable } from './RiskTable';
 
@@ -170,13 +170,20 @@ export function RegistroTab({
         </div>
       </div>
 
-      <KpiCards
-        totalRiscos={totalRiscos}
-        totalEmAndamento={totalEmAndamento}
-        totalConcluido={totalConcluido}
-        totalCritico={totalCritico}
-        completude={completude}
-      />
+      <KpiRow>
+        <Kpi label="Riscos mapeados" valor={totalRiscos} acento="brand" />
+        <Kpi label="Em andamento" valor={totalEmAndamento} acento="alto" />
+        <Kpi label="Concluídas" valor={totalConcluido} acento="baixo" />
+        <Kpi label="Priorização crítica" valor={totalCritico} acento="critico" />
+        <Kpi
+          label="Completude"
+          valor={`${completude}%`}
+          sub={<>campos preenchidos</>}
+          progresso={completude / 100}
+          acento="brand"
+          largo
+        />
+      </KpiRow>
 
       <FilterBar
         search={search}

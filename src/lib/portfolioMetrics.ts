@@ -8,6 +8,12 @@ import type {
   AcaoRisco, FonteIniciativa, Iniciativa, Marco, Medicao, Objetivo, Pessoa,
   RiskRecord, StatusIniciativa, VetorIniciativa,
 } from '../types';
+import { STATUS_INICIATIVA } from '../types';
+// A faixa de criticidade e a normalização de status vêm de onde a tabela e o
+// quadro já as leem. Uma segunda régua aqui daria dois números para a mesma
+// pergunta — que é exatamente o problema que estas métricas vieram resolver.
+import { computeScore, scoreTier, type TierKind } from './calculations';
+import { normTaskStatus } from './taskCalculations';
 
 /* ------------------------------------------------------------------ */
 /* Conjuntos de status                                                 */
@@ -580,8 +586,14 @@ export function riscosMitigados(riscos: RiscoComId[], ano: number): RiscoComId[]
   return riscos.filter(r => r.situacao === 'mitigado' && (r.data_situacao ?? '').startsWith(prefixo));
 }
 
-/** Riscos ainda em pé: nem mitigados, nem obsoletos, nem descartados. */
-export function riscosAbertos(riscos: RiscoComId[]): RiscoComId[] {
+/**
+ * Riscos ainda em pé: nem mitigados, nem obsoletos, nem descartados.
+ *
+ * Genérica porque é um filtro: quem entrega `StoredRiskRecord[]` recebe
+ * `StoredRiskRecord[]` de volta, com `id` e `version` intactos. Devolver o tipo
+ * base obrigaria a tela a fazer um cast para reencontrar o que ela mesma passou.
+ */
+export function riscosAbertos<T extends RiscoComId>(riscos: T[]): T[] {
   return riscos.filter(r => !SITUACOES_FINAIS.has(r.situacao ?? ''));
 }
 
@@ -715,4 +727,384 @@ export function progressoObjetivo(
   }
 
   return { atual, data: ultima?.data ?? null, pct, anterior, tendencia, serie };
+}
+
+/* ------------------------------------------------------------------ */
+/* Saúde da cadeia: objetivo → iniciativa → risco → trabalho           */
+/*                                                                     */
+/* Uma função por pergunta do Painel. Elas existem porque cada camada  */
+/* só sabia se contar dentro da própria aba: "quantas iniciativas      */
+/* concluí" vivia dentro do card de um objetivo, "quantos objetivos    */
+/* atingi" não vivia em lugar nenhum, e o trabalho não chegava ao      */
+/* Painel. Nenhuma delas normaliza status por conta própria — a régua  */
+/* é a mesma que a tela usa.                                           */
+/* ------------------------------------------------------------------ */
+
+export interface SaudeObjetivos {
+  total: number;
+  ativos: number;
+  /** O número que responde "quantos objetivos eu alcancei". */
+  atingidos: number;
+  abandonados: number;
+  /**
+   * Ativos cuja série já cobriu todo o caminho entre baseline e meta.
+   *
+   * É a mesma doutrina do "prontos para fechar" do risco: o sistema prova que
+   * a meta foi alcançada, mas quem declara `atingido` é o gestor. Nada aqui
+   * muda status sozinho.
+   */
+  prontosParaAtingir: Objetivo[];
+  /** Ativos sem indicador — objetivo sem número vira opinião no fim do trimestre. */
+  semIndicador: number;
+  /** Ativos com indicador e nenhuma leitura: não dá para dizer se anda. */
+  semMedicao: number;
+}
+
+export function saudeObjetivos(objetivos: Objetivo[], medicoes: Medicao[]): SaudeObjetivos {
+  const ativos = objetivos.filter(o => o.status === 'ativo');
+  const prontosParaAtingir: Objetivo[] = [];
+  let semIndicador = 0;
+  let semMedicao = 0;
+
+  for (const o of ativos) {
+    const p = progressoObjetivo(o, medicoes);
+    if (!o.indicador.trim()) semIndicador++;
+    else if (p.serie.length === 0) semMedicao++;
+    if (p.pct === 1) prontosParaAtingir.push(o);
+  }
+
+  return {
+    total: objetivos.length,
+    ativos: ativos.length,
+    atingidos: objetivos.filter(o => o.status === 'atingido').length,
+    abandonados: objetivos.filter(o => o.status === 'abandonado').length,
+    prontosParaAtingir,
+    semIndicador,
+    semMedicao,
+  };
+}
+
+export interface SaudeIniciativas {
+  total: number;
+  /** Contagem por status, na ordem do ciclo de vida — não na de frequência. */
+  porStatus: { status: StatusIniciativa; n: number }[];
+  /** O número que responde "quantas iniciativas foram concluídas". */
+  concluidas: number;
+  ativas: number;
+  /** Ativas sem nenhum marco. A regra do servidor barra novas, não as antigas. */
+  semMarco: Iniciativa[];
+  /** Ativas com pelo menos um marco vencido e não entregue. */
+  atrasadas: Iniciativa[];
+}
+
+export function saudeIniciativas(
+  iniciativas: Iniciativa[], marcos: Marco[], hoje: Date = new Date(),
+): SaudeIniciativas {
+  const limite = hojeISO(hoje);
+  const marcosPorIniciativa = new Map<string, Marco[]>();
+  for (const m of marcos) {
+    if (!m.iniciativa_id) continue;
+    const lista = marcosPorIniciativa.get(m.iniciativa_id) ?? [];
+    lista.push(m);
+    marcosPorIniciativa.set(m.iniciativa_id, lista);
+  }
+
+  const semMarco: Iniciativa[] = [];
+  const atrasadas: Iniciativa[] = [];
+  for (const i of iniciativas) {
+    if (!iniciativaAtiva(i)) continue;
+    const meus = marcosPorIniciativa.get(i.id) ?? [];
+    if (meus.length === 0) {
+      semMarco.push(i);
+      continue;
+    }
+    const venceu = meus.some(m => (
+      m.status !== 'cancelado'
+      && m.status !== 'entregue'
+      && !!(m.data_plano_atual ?? m.data_plano_original)
+      && (m.data_plano_atual ?? m.data_plano_original as string) < limite
+    ));
+    if (venceu) atrasadas.push(i);
+  }
+
+  const contagem = new Map<StatusIniciativa, number>();
+  for (const i of iniciativas) contagem.set(i.status, (contagem.get(i.status) ?? 0) + 1);
+  // A ordem é a do ciclo de vida, e o "sem status" fecha a fila: uma barra
+  // empilhada só se lê como progresso se os segmentos estiverem em ordem.
+  const ordem: StatusIniciativa[] = [...STATUS_INICIATIVA, ''];
+
+  return {
+    total: iniciativas.length,
+    porStatus: ordem
+      .filter(s => (contagem.get(s) ?? 0) > 0)
+      .map(status => ({ status, n: contagem.get(status) as number })),
+    concluidas: contagem.get('concluida') ?? 0,
+    ativas: iniciativas.filter(iniciativaAtiva).length,
+    semMarco,
+    atrasadas,
+  };
+}
+
+/** Faixas de criticidade, da pior para a melhor. `null` fecha, como toda ausência. */
+const ORDEM_TIER: TierKind[] = ['critico', 'alto', 'medio', 'baixo', 'null'];
+
+export interface SaudeRiscos {
+  /** Riscos com descrição. Linha em branco não é risco mapeado. */
+  total: number;
+  /** Linhas em branco no registro — contá-las como risco infla o número. */
+  semDescricao: number;
+  /**
+   * Quantos riscos em cada faixa de criticidade — a resposta a "qual a
+   * gravidade deles". Sai de `computeScore`/`scoreTier`, as mesmas funções da
+   * tabela e do heatmap: uma segunda régua de faixa aqui daria dois números
+   * para a mesma pergunta.
+   */
+  porTier: { tier: TierKind; n: number }[];
+  abertos: number;
+  mitigadosNoAno: number;
+  obsoletos: number;
+  descartados: number;
+  /** Abertos sem nenhuma ação viva — e que não foram aceitos. */
+  semTratamento: number;
+  prontosParaFechar: number;
+}
+
+export function saudeRiscos(
+  riscos: RiscoComId[], acoes: AcaoRisco[], iniciativas: Iniciativa[], ano: number,
+): SaudeRiscos {
+  /*
+   * Linha em branco não é risco mapeado. O registro aceita linha vazia — é
+   * assim que se adiciona uma —, e contá-la infla justamente o número que
+   * responde "quantos riscos eu mapeei". É a MESMA régua da aba Registro e da
+   * Análise (`records.filter(r => r.risco)`); duas contagens diferentes para a
+   * mesma pergunta em duas telas é como se perde a confiança nas duas.
+   */
+  const semDescricao = riscos.filter(r => !r.risco.trim()).length;
+  const mapeados = riscos.filter(r => r.risco.trim());
+
+  const contagem = new Map<TierKind, number>();
+  for (const r of mapeados) {
+    const t = scoreTier(computeScore(r));
+    contagem.set(t, (contagem.get(t) ?? 0) + 1);
+  }
+
+  const tratamento = tratamentoDosRiscos(mapeados, acoes, iniciativas);
+  const semTratamento = tratamento.filter(t => (
+    t.estado === 'sem_tratamento' && !SITUACOES_FINAIS.has(t.risco.situacao ?? '')
+  )).length;
+
+  return {
+    total: mapeados.length,
+    semDescricao,
+    porTier: ORDEM_TIER
+      .filter(t => (contagem.get(t) ?? 0) > 0)
+      .map(tier => ({ tier, n: contagem.get(tier) as number })),
+    abertos: riscosAbertos(mapeados).length,
+    mitigadosNoAno: riscosMitigados(mapeados, ano).length,
+    obsoletos: mapeados.filter(r => r.situacao === 'obsoleto').length,
+    descartados: mapeados.filter(r => r.situacao === 'descartado').length,
+    semTratamento,
+    prontosParaFechar: prontosParaFechar(mapeados, acoes, iniciativas).length,
+  };
+}
+
+/**
+ * O trabalho como o quadro o conhece: mitigação de risco e tarefa livre são a
+ * mesma tabela, distinguidas por `risco_id`. O tipo pede só o que a conta usa —
+ * assim o Painel pode somar sem arrastar anexo, versão e detalhes junto.
+ */
+export interface TrabalhoParaSaude {
+  id: string;
+  status: string;
+  prazo: string | null;
+  risco_id: string | null;
+  dono_id: string | null;
+  /** 'rotina' = controle contínuo: não tem prazo e nunca atrasa. */
+  triagem: string;
+}
+
+/** Status do quadro, na ordem do fluxo. 'Cancelada' fecha: é saída, não etapa. */
+const ORDEM_STATUS_TRABALHO = ['A fazer', 'Em andamento', 'Concluída', 'Cancelada'];
+
+export interface SaudeTrabalho {
+  total: number;
+  porStatus: { status: string; n: number }[];
+  aFazer: number;
+  emAndamento: number;
+  /** O número que responde "quantas ações/tarefas foram concluídas". */
+  concluidas: number;
+  canceladas: number;
+  /** Prazo vencido e trabalho ainda aberto. Rotina nunca entra. */
+  atrasadas: number;
+  /** Mitigações: `risco_id` preenchido. */
+  deRisco: number;
+  livres: number;
+  /** Abertas sem dono — ninguém responde por elas. */
+  semDono: number;
+}
+
+export function saudeTrabalho(
+  trabalho: TrabalhoParaSaude[], hoje: string = hojeISO(),
+): SaudeTrabalho {
+  const contagem = new Map<string, number>();
+  let atrasadas = 0;
+  let semDono = 0;
+  let deRisco = 0;
+
+  for (const t of trabalho) {
+    const norm = normTaskStatus(t.status);
+    contagem.set(norm, (contagem.get(norm) ?? 0) + 1);
+    if (t.risco_id) deRisco++;
+    const aberta = norm !== 'Concluída' && norm !== 'Cancelada';
+    if (!aberta) continue;
+    if (!t.dono_id) semDono++;
+    if (t.triagem !== 'rotina' && !!t.prazo && t.prazo < hoje) atrasadas++;
+  }
+
+  // Status fora do vocabulário conhecido não some da barra: ficam no fim, na
+  // ordem em que apareceram, senão o total da legenda não bate com o do tile.
+  const extras = [...contagem.keys()].filter(s => !ORDEM_STATUS_TRABALHO.includes(s));
+
+  return {
+    total: trabalho.length,
+    porStatus: [...ORDEM_STATUS_TRABALHO, ...extras]
+      .filter(s => (contagem.get(s) ?? 0) > 0)
+      .map(status => ({ status, n: contagem.get(status) as number })),
+    aFazer: contagem.get('A fazer') ?? 0,
+    emAndamento: contagem.get('Em andamento') ?? 0,
+    concluidas: contagem.get('Concluída') ?? 0,
+    canceladas: contagem.get('Cancelada') ?? 0,
+    atrasadas,
+    deRisco,
+    livres: trabalho.length - deRisco,
+    semDono,
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/* Risco ↔ objetivo: derivado, nunca declarado                         */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Riscos que ameaçam um objetivo — pelo caminho que já existe:
+ * objetivo ← iniciativa ← ação ← risco.
+ *
+ * Derivado de propósito. Um `objetivo_id` no próprio risco criaria um segundo
+ * caminho para o mesmo fato, e quando os dois discordassem ninguém saberia
+ * qual vale. Ação cancelada não liga nada: mitigação abandonada não sustenta
+ * objetivo.
+ */
+export function riscosPorObjetivo<T extends RiscoComId>(
+  objetivoId: string, iniciativas: Iniciativa[], acoes: AcaoRisco[], riscos: T[],
+): T[] {
+  const doObjetivo = new Set(
+    iniciativas.filter(i => i.objetivo_id === objetivoId).map(i => i.id),
+  );
+  if (doObjetivo.size === 0) return [];
+  const ids = new Set(
+    acoes
+      .filter(a => a.status !== 'cancelada'
+        && a.risco_id
+        && a.iniciativa_id
+        && doObjetivo.has(a.iniciativa_id))
+      .map(a => a.risco_id as string),
+  );
+  return riscos.filter(r => ids.has(r.id));
+}
+
+/**
+ * Riscos abertos que não chegam a objetivo nenhum por caminho nenhum.
+ *
+ * É a lacuna que a derivação deixa à mostra: uma mitigação autônoma trata o
+ * risco, mas não diz que resultado de negócio ela protege. Risco com resposta
+ * "Aceitar" fica de fora — dele não se cobra tratamento, então também não se
+ * cobra objetivo.
+ */
+export function riscosSemObjetivo<T extends RiscoComId>(
+  riscos: T[], acoes: AcaoRisco[], iniciativas: Iniciativa[],
+): T[] {
+  const comObjetivo = new Set(
+    iniciativas.filter(i => i.objetivo_id).map(i => i.id),
+  );
+  const sustentam = new Set(
+    acoes
+      .filter(a => a.status !== 'cancelada'
+        && a.risco_id
+        && a.iniciativa_id
+        && comObjetivo.has(a.iniciativa_id))
+      .map(a => a.risco_id as string),
+  );
+  return riscosAbertos(riscos)
+    .filter(r => r.resposta !== 'Aceitar' && !sustentam.has(r.id));
+}
+
+/* ------------------------------------------------------------------ */
+/* Cadeia quebrada: todo elo solto num lugar só                        */
+/* ------------------------------------------------------------------ */
+
+export type ChaveLacuna =
+  | 'objetivo_sem_iniciativa'
+  | 'iniciativa_sem_objetivo'
+  | 'iniciativa_sem_marco'
+  | 'iniciativa_parada'
+  | 'risco_sem_tratamento'
+  | 'risco_sem_objetivo'
+  | 'trabalho_sem_dono'
+  | 'trabalho_atrasado';
+
+export interface Lacuna {
+  chave: ChaveLacuna;
+  n: number;
+  /**
+   * Ids dos itens, na ordem de exibição. Só os ids: quem sabe transformar um
+   * id em nome legível é a tela, e este arquivo não conhece rótulo nem cor.
+   */
+  ids: string[];
+}
+
+export interface EntradaCadeia {
+  objetivos: Objetivo[];
+  iniciativas: Iniciativa[];
+  marcos: Marco[];
+  riscos: RiscoComId[];
+  acoes: AcaoRisco[];
+  trabalho: TrabalhoParaSaude[];
+  hoje?: Date;
+}
+
+/**
+ * Onde a cadeia objetivo → iniciativa → risco → trabalho está rompida.
+ *
+ * Devolve as oito lacunas SEMPRE, inclusive as zeradas: a tela precisa poder
+ * dizer "este elo está inteiro" com a mesma autoridade com que diz o contrário.
+ */
+export function cadeiaQuebrada(e: EntradaCadeia): Lacuna[] {
+  const hoje = e.hoje ?? new Date();
+  const hojeStr = hojeISO(hoje);
+
+  const cobertura = coberturaObjetivos(e.objetivos, e.iniciativas);
+  const saudeIni = saudeIniciativas(e.iniciativas, e.marcos, hoje);
+  const parados = zumbis(e.iniciativas, e.marcos, hoje);
+  const semTratamento = tratamentoDosRiscos(e.riscos, e.acoes, e.iniciativas)
+    .filter(t => t.estado === 'sem_tratamento' && !SITUACOES_FINAIS.has(t.risco.situacao ?? ''));
+
+  const abertas = e.trabalho.filter(t => {
+    const norm = normTaskStatus(t.status);
+    return norm !== 'Concluída' && norm !== 'Cancelada';
+  });
+
+  const lacuna = (chave: ChaveLacuna, ids: string[]): Lacuna => ({ chave, n: ids.length, ids });
+
+  return [
+    lacuna('objetivo_sem_iniciativa', cobertura.orfaos.map(o => o.id)),
+    lacuna('iniciativa_sem_objetivo', e.iniciativas.filter(i => !i.objetivo_id).map(i => i.id)),
+    lacuna('iniciativa_sem_marco', saudeIni.semMarco.map(i => i.id)),
+    lacuna('iniciativa_parada', parados.map(z => z.iniciativa.id)),
+    lacuna('risco_sem_tratamento', semTratamento.map(t => t.risco.id)),
+    lacuna('risco_sem_objetivo', riscosSemObjetivo(e.riscos, e.acoes, e.iniciativas).map(r => r.id)),
+    lacuna('trabalho_sem_dono', abertas.filter(t => !t.dono_id).map(t => t.id)),
+    lacuna('trabalho_atrasado', abertas
+      .filter(t => t.triagem !== 'rotina' && !!t.prazo && t.prazo < hojeStr)
+      .map(t => t.id)),
+  ];
 }

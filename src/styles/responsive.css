@@ -73,17 +73,18 @@
     padding: var(--sp-3);
   }
 
+  /* Vence o data-colunas: quatro tiles a 320px de largura não são quatro
+     tiles, são quatro colunas de número cortado. */
   .kpi-strip,
-  .kpi-grid-4 {
-    grid-template-columns: repeat(2, 1fr);
+  .kpi-strip[data-colunas] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .kpi-card.wide {
     grid-column: 1 / -1;
   }
 
-  .kpi-value,
-  .kpi-tile-value {
+  .kpi-value {
     font-size: var(--fs-xl);
   }
 

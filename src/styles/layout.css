@@ -278,9 +278,12 @@
 }
 
 .page-title {
-  font-size: var(--fs-xl);
+  font-size: var(--fs-2xl);
   font-weight: var(--fw-semibold);
-  letter-spacing: var(--tracking-tight);
+  /* Quanto maior o corpo, mais fechado o tracking — e o eixo óptico já entrega
+     um desenho mais compacto neste tamanho, então o par se acompanha. */
+  letter-spacing: var(--tracking-display);
+  line-height: 1.2;
   color: var(--ink-1);
 }
 
@@ -308,7 +311,11 @@
 
 /* ---------- KPIs ----------
    Sem sombra e sem hover-lift: o lift em cartão que não clica é affordance
-   falsa. O acento de cor virou uma barra de 3px na borda esquerda. */
+   falsa. O acento de cor é uma barra de 3px na borda esquerda.
+
+   Um NOME só. `.kpi-tile` era um segundo seletor com exatamente as mesmas
+   regras, e o resultado eram dois tamanhos de número para o mesmo papel
+   dependendo da aba. Quem monta o tile agora é `components/common/Kpi.tsx`. */
 
 .kpi-strip {
   display: grid;
@@ -316,14 +323,12 @@
   gap: var(--sp-3);
 }
 
-.kpi-grid-4 {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: var(--sp-3);
-}
+/* Contagem fixa de colunas, quando a faixa tem um número redondo de tiles e
+   deixá-los se acomodarem sozinhos criaria uma órfã na segunda linha. */
+.kpi-strip[data-colunas='3'] { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.kpi-strip[data-colunas='4'] { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 
-.kpi-card,
-.kpi-tile {
+.kpi-card {
   --c: var(--brand);
   position: relative;
   background: var(--bg-surface);
@@ -333,8 +338,7 @@
   overflow: hidden;
 }
 
-.kpi-card::before,
-.kpi-tile::before {
+.kpi-card::before {
   content: '';
   position: absolute;
   left: 0;
@@ -345,12 +349,12 @@
   background: var(--c);
 }
 
-.kpi-card[data-accent='brand'], .kpi-tile[data-accent='brand'] { --c: var(--brand); }
-.kpi-card[data-accent='baixo'], .kpi-tile[data-accent='baixo'] { --c: var(--tier-baixo); }
-.kpi-card[data-accent='medio'], .kpi-tile[data-accent='medio'] { --c: var(--tier-medio); }
-.kpi-card[data-accent='alto'], .kpi-tile[data-accent='alto'] { --c: var(--tier-alto); }
-.kpi-card[data-accent='critico'], .kpi-tile[data-accent='critico'] { --c: var(--tier-critico); }
-.kpi-card[data-accent='null'], .kpi-tile[data-accent='null'] { --c: var(--tier-null); }
+.kpi-card[data-accent='brand'] { --c: var(--brand); }
+.kpi-card[data-accent='baixo'] { --c: var(--tier-baixo); }
+.kpi-card[data-accent='medio'] { --c: var(--tier-medio); }
+.kpi-card[data-accent='alto'] { --c: var(--tier-alto); }
+.kpi-card[data-accent='critico'] { --c: var(--tier-critico); }
+.kpi-card[data-accent='null'] { --c: var(--tier-null); }
 
 .kpi-body {
   min-width: 0;
@@ -366,8 +370,7 @@
 
 /* Número grande em figuras proporcionais — tabular só onde precisa alinhar
    em coluna. */
-.kpi-value,
-.kpi-tile-value {
+.kpi-value {
   font-size: var(--fs-num);
   font-weight: var(--fw-bold);
   letter-spacing: var(--tracking-tighter);
@@ -387,8 +390,7 @@
   margin-top: var(--sp-1);
 }
 
-.kpi-value-sub,
-.kpi-tile-value-sub {
+.kpi-value-sub {
   font-size: var(--fs-xs);
   color: var(--ink-3);
   font-weight: var(--fw-regular);

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Pessoa, StoredRiskRecord, Task, TaskStatus, TaskSortKey } from '../../types';
 import { TASK_STATUSES } from '../../types';
-import { useTasks } from '../../hooks/useTasks';
+import type { UseTasks } from '../../hooks/useTasks';
 import type { UsePortfolio } from '../../hooks/usePortfolio';
 import { buildTaskRows, type EnrichedTaskRow } from '../../lib/taskRows';
 import { chaveDoNome } from '../../lib/nomes';
@@ -14,7 +14,7 @@ import {
   KANBAN_GROUP_BYS, TASK_VIEWS, readColWidths, readEnumPref, readStatusFilter, writePref,
   type KanbanGroupBy, type TaskView,
 } from '../../lib/uiPrefs';
-import { TarefasKpiCards } from './TarefasKpiCards';
+import { Kpi, KpiRow } from '../common/Kpi';
 import { TarefasFilterBar } from './TarefasFilterBar';
 import { TarefasTable } from './TarefasTable';
 import { TarefasKanban } from './TarefasKanban';
@@ -64,15 +64,22 @@ interface TarefasTabProps {
   records: StoredRiskRecord[];
   /** Iniciativas e pessoas: o vínculo de execução e o dono de verdade. */
   pf: UsePortfolio;
+  /**
+   * O quadro NÃO é mais dono do hook. Ele subiu para o `App` porque o Painel
+   * também precisa contar tarefa — e o Painel não monta esta aba. Duas
+   * instâncias dariam duas verdades sobre a mesma lista, que é exatamente o
+   * argumento que já valia para `usePortfolio`.
+   */
+  tarefas: UseTasks;
 }
 
-export function TarefasTab({ records, pf }: TarefasTabProps) {
+export function TarefasTab({ records, pf, tarefas }: TarefasTabProps) {
   const {
     tasks, loading, error,
     hasPendingWrites, saveStatus, updateTaskById, addTask, deleteTaskById,
     addAttachment, removeAttachment,
     refresh, flushPending, clearError,
-  } = useTasks();
+  } = tarefas;
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
@@ -359,9 +366,13 @@ export function TarefasTab({ records, pf }: TarefasTabProps) {
       ) : (
         <>
           <div className="page-bar">
-            <div className="tarefas-heading">
-              <div className="tarefas-heading-title">Gestão de Tarefas</div>
-              <div className="tarefas-heading-subtitle">Tarefas do time e mitigações dos riscos, no mesmo lugar. Tarefa livre prioriza pela Matriz GUT (Gravidade × Urgência × Tendência); mitigação herda a criticidade do risco.</div>
+            <div>
+              <div className="page-title">Tarefas e ações</div>
+              <div className="page-subtitle">
+                Tarefas do time e mitigações dos riscos, no mesmo lugar. Tarefa livre prioriza
+                pela Matriz GUT (Gravidade × Urgência × Tendência); mitigação herda a
+                criticidade do risco.
+              </div>
             </div>
             <div className="actions-row">
               <GutGuide />
@@ -370,15 +381,22 @@ export function TarefasTab({ records, pf }: TarefasTabProps) {
             </div>
           </div>
 
-          <TarefasKpiCards
-            total={total}
-            aFazer={aFazer}
-            emAndamento={emAndamento}
-            concluidas={concluidas}
-            criticas={criticas}
-            avaliacao={avaliacao}
-            atrasadas={atrasadas}
-          />
+          <KpiRow>
+            <Kpi label="Tarefas e ações" valor={total} acento="brand" />
+            <Kpi label="A fazer" valor={aFazer} acento="null" />
+            <Kpi label="Em andamento" valor={emAndamento} acento="alto" />
+            <Kpi label="Atrasadas" valor={atrasadas} acento={atrasadas > 0 ? 'critico' : 'baixo'} />
+            <Kpi label="Concluídas" valor={concluidas} acento="baixo" />
+            <Kpi label="GUT crítico" valor={criticas} acento="critico" />
+            <Kpi
+              label="Avaliadas (GUT)"
+              valor={`${avaliacao}%`}
+              sub={<>das tarefas livres com G/U/T</>}
+              progresso={avaliacao / 100}
+              acento="brand"
+              largo
+            />
+          </KpiRow>
 
           <TarefasFilterBar
             search={search}

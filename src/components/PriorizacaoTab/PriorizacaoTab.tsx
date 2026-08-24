@@ -101,6 +101,20 @@ export function PriorizacaoTab({
 
   return (
     <div className="tab-page-lg">
+      {/* Esta tela era a única, junto da Análise, que começava direto num
+          filtro — sem dizer o que era nem o que estava rankeando. */}
+      <div className="page-bar">
+        <div>
+          <div className="page-title">Priorização</div>
+          <div className="page-subtitle">
+            {fonteEfetiva === 'iniciativas'
+              ? 'O que fazer primeiro no portfólio: impacto² ÷ esforço + gravidade, '
+                + 'com a matriz de quadrantes e o ranking'
+              : 'Leitura anterior: os mesmos três campos ainda preenchidos no registro de risco'}
+          </div>
+        </div>
+      </div>
+
       <div className="prio-filter-row">
         <span className="prio-filter-label">Filtrar por status:</span>
         {STATUS_PILLS.map(s => (

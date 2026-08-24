@@ -5,7 +5,7 @@ import type { UsePortfolio } from '../../hooks/usePortfolio';
 import { computeScore, scoreTier } from '../../lib/calculations';
 import {
   tratamentoDosRiscos, prontosParaFechar, riscosMitigados, exposicaoResidual,
-  hojeISO, type EstadoTratamento,
+  riscosSemObjetivo, hojeISO, type EstadoTratamento,
 } from '../../lib/portfolioMetrics';
 import {
   ROTULO_SITUACAO, AJUDA_SITUACAO, BADGE_SITUACAO, ROTULO_STATUS_ACAO,
@@ -13,6 +13,7 @@ import {
 } from '../../lib/portfolioLabels';
 import { ROTULO_TRATAMENTO, BADGE_TRATAMENTO, AJUDA_TRATAMENTO } from '../../lib/portfolioUi';
 import { EmptyState } from '../common/EmptyState';
+import { Kpi, KpiRow } from '../common/Kpi';
 
 interface RastroTabProps {
   records: StoredRiskRecord[];
@@ -68,6 +69,16 @@ export function RastroTab({
   const mitigados = useMemo(() => riscosMitigados(records, ano), [records, ano]);
   const exposicao = useMemo(() => exposicaoResidual(records), [records]);
 
+  /**
+   * Riscos que não chegam a objetivo nenhum. Tratar não é o mesmo que proteger
+   * um resultado: uma mitigação autônoma resolve a ameaça, mas não diz o que
+   * ela defende. É o elo que o Painel cobra, marcado aqui na própria linha.
+   */
+  const semObjetivo = useMemo(
+    () => new Set(riscosSemObjetivo(records, acoes_risco, iniciativas).map(r => r.id)),
+    [records, acoes_risco, iniciativas],
+  );
+
   const contagem = useMemo(() => {
     const c = new Map<EstadoTratamento, number>();
     tratamento.forEach(t => c.set(t.estado, (c.get(t.estado) ?? 0) + 1));
@@ -99,38 +110,32 @@ export function RastroTab({
     <div className="tab-page-lg">
       {cabecalho}
 
-      <div className="kpi-grid-4" style={{ marginBottom: 'var(--sp-4)' }}>
-        <div className="kpi-card" data-accent="baixo">
-          <div className="kpi-body">
-            <div className="kpi-label">Mitigados em {ano}</div>
-            <div className="kpi-value tabular">{mitigados.length}</div>
-            <div className="kpi-value-sub">confirmados por você, com data</div>
-          </div>
-        </div>
-        <div className="kpi-card" data-accent="brand">
-          <div className="kpi-body">
-            <div className="kpi-label">Prontos para fechar</div>
-            <div className="kpi-value tabular">{prontos.length}</div>
-            <div className="kpi-value-sub">tratamento entregue, decisão pendente</div>
-          </div>
-        </div>
-        <div className="kpi-card" data-accent="medio">
-          <div className="kpi-body">
-            <div className="kpi-label">Em tratamento</div>
-            <div className="kpi-value tabular">{contagem.get('em_tratamento') ?? 0}</div>
-            <div className="kpi-value-sub">com ação ou iniciativa em aberto</div>
-          </div>
-        </div>
-        <div className="kpi-card" data-accent="critico">
-          <div className="kpi-body">
-            <div className="kpi-label">Sem tratamento</div>
-            <div className="kpi-value tabular">{contagem.get('sem_tratamento') ?? 0}</div>
-            <div className="kpi-value-sub">
-              {formatarMoeda(exposicao.total)} de exposição aberta no total
-            </div>
-          </div>
-        </div>
-      </div>
+      <KpiRow colunas={4}>
+        <Kpi
+          label={`Mitigados em ${ano}`}
+          valor={mitigados.length}
+          sub="confirmados por você, com data"
+          acento="baixo"
+        />
+        <Kpi
+          label="Prontos para fechar"
+          valor={prontos.length}
+          sub="tratamento entregue, decisão pendente"
+          acento="brand"
+        />
+        <Kpi
+          label="Em tratamento"
+          valor={contagem.get('em_tratamento') ?? 0}
+          sub="com ação ou iniciativa em aberto"
+          acento="medio"
+        />
+        <Kpi
+          label="Sem tratamento"
+          valor={contagem.get('sem_tratamento') ?? 0}
+          sub={`${formatarMoeda(exposicao.total)} de exposição aberta no total`}
+          acento="critico"
+        />
+      </KpiRow>
 
       {migracaoNaoRodou && (
         <div className="card" style={{ marginBottom: 'var(--sp-4)' }}>
@@ -317,6 +322,14 @@ export function RastroTab({
                     {t.estado === 'tratamento_concluido' && !situacao && (
                       <div className="lista-nota" style={{ marginTop: 'var(--sp-1)' }}>
                         Esperando sua confirmação.
+                      </div>
+                    )}
+                    {semObjetivo.has(t.risco.id) && (
+                      <div
+                        className="bento-lacuna"
+                        title="Nenhuma ação viva deste risco está dentro de uma iniciativa com objetivo. Promover a mitigação a iniciativa, ou vinculá-la a uma, fecha o elo."
+                      >
+                        <span aria-hidden="true">▲</span> Não sustenta objetivo
                       </div>
                     )}
                   </div>
