@@ -252,11 +252,11 @@ export function PessoasTab({ pf, onIrPara }: PessoasTabProps) {
                         {[p.papel, p.ativo ? null : 'inativa'].filter(Boolean).join(' · ') || '—'}
                       </div>
                     </td>
-                    <td className="muted">{p.area || '—'}</td>
-                    <td className="num">{u?.objetivos ?? 0}</td>
-                    <td className="num">{u?.iniciativas ?? 0}</td>
-                    <td className="num">{u?.trabalho ?? 0}</td>
-                    <td className="num">
+                    <td className="muted" data-rotulo="Área">{p.area || '—'}</td>
+                    <td className="num" data-rotulo="Objetivos">{u?.objetivos ?? 0}</td>
+                    <td className="num" data-rotulo="Iniciativas">{u?.iniciativas ?? 0}</td>
+                    <td className="num" data-rotulo="Trabalho">{u?.trabalho ?? 0}</td>
+                    <td className="num" data-rotulo="Em execução">
                       {w?.acimaDoLimite ? (
                         <span className="tier-chip" data-tier="alto">
                           <span className="tier-dot" aria-hidden="true" />
@@ -264,7 +264,7 @@ export function PessoasTab({ pf, onIrPara }: PessoasTabProps) {
                         </span>
                       ) : (w?.wip ?? 0)}
                     </td>
-                    <td>
+                    <td data-rotulo="Carga do mês">
                       {c ? (
                         <div className="carga-linha">
                           <span className="carga-track">

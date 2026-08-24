@@ -1,7 +1,16 @@
 /* ============================================================================
-   Nav rail — navegação lateral, no lugar das abas do topo.
+   Navegação — as três formas e o que decide entre elas.
 
-   Duas larguras, uma variável: `--rail-w` expandido, `--rail-w-mini`
+   Uma lista de destinos (`components/NavRail/secoes.tsx`), três formas, e as
+   regras de visibilidade das TRÊS ficam neste arquivo, juntas, no fim. Espalhá-
+   las pelos arquivos de cada componente é como duas formas acabam visíveis ao
+   mesmo tempo numa faixa que ninguém olhou.
+
+       ≥1101px   rail lateral
+       761–1100  abas do topo (estilo em layout.css)
+       ≤760px    barra inferior
+
+   Rail: duas larguras, uma variável — `--rail-w` expandido, `--rail-w-mini`
    colapsado. O estado mora no <html data-rail>, não numa classe do próprio
    rail, porque o grid do shell também precisa saber a largura.
 
@@ -128,10 +137,16 @@
   opacity: 0;
 }
 
-.rail-item:hover,
-.rail-toggle:hover {
-  background: var(--surface-2);
-  color: var(--ink-1);
+/* Guardado por `hover: hover` por causa da folha "Mais", que reusa `.rail-item`:
+   no toque o navegador mantém o estado de hover no último elemento tocado, e
+   como a folha nasce exatamente sob o dedo que tocou "Mais", um destino
+   qualquer aparecia realçado como se fosse o atual. Com mouse nada muda. */
+@media (hover: hover) {
+  .rail-item:hover,
+  .rail-toggle:hover {
+    background: var(--surface-2);
+    color: var(--ink-1);
+  }
 }
 
 .rail-item[data-ativo='true'] {
@@ -185,8 +200,201 @@
   color: var(--ink-4);
 }
 
-/* Abaixo de 1100px o rail sai de cena e a navegação volta para o topo: a
-   largura mínima do rail sozinha já comeria o espaço da tabela. */
+/* ============================================================================
+   Barra inferior — a navegação do celular.
+
+   Fica na zona do polegar, não no topo: é o único lugar de uma tela de 844px de
+   altura que a mão alcança sem trocar a pegada. Pertence ao mesmo chrome do
+   header, e por isso repete o vidro dele (superfície translúcida + blur) em vez
+   de inventar uma superfície própria.
+   ========================================================================= */
+
+.nav-bottom {
+  display: none;
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 40;
+  background: color-mix(in oklab, var(--bg-surface) 92%, transparent);
+  backdrop-filter: saturate(1.6) blur(10px);
+  border-top: 1px solid var(--line-border);
+  /* A faixa do indicador de gestos do iPhone. Sem isto a última linha de
+     rótulos fica embaixo dela. */
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.nav-bottom-item {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  height: var(--nav-bottom-h);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  border: none;
+  background: none;
+  color: var(--ink-3);
+  transition: color var(--dur-fast) var(--ease);
+}
+
+.nav-bottom-item svg {
+  width: 20px;
+  height: 20px;
+  flex: none;
+}
+
+/* Rótulo sempre escrito, nunca só o ícone: a barra tem cinco fatias e quatro
+   delas são substantivos que o desenho sozinho não distingue (Objetivos e
+   Riscos são ambos "um símbolo redondo pequeno" a 20px). */
+.nav-bottom-label {
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-medium);
+  line-height: 1;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Ativo por tinta + peso, e mais um traço curto no topo da fatia. A tinta
+   sozinha não basta: é o mesmo azul da marca em cinco fatias de largura igual,
+   e de relance a diferença de saturação some. */
+.nav-bottom-item[data-ativo='true'] {
+  color: var(--brand);
+}
+
+.nav-bottom-item[data-ativo='true'] .nav-bottom-label {
+  font-weight: var(--fw-semibold);
+}
+
+.nav-bottom-item[data-ativo='true']::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 24px;
+  height: 2px;
+  border-radius: 0 0 2px 2px;
+  background: var(--brand);
+}
+
+/* Fila de triagem: selo sobre o ícone do "Mais", que é onde a seção mora. */
+.nav-bottom-count {
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  margin-left: 4px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-full);
+  background: var(--tier-alto);
+  color: var(--ink-on-solid);
+  font-size: 10px;
+  font-weight: var(--fw-semibold);
+}
+
+/* ---------- Folha "Mais" ----------
+   Os grupos inteiros, com os mesmos rótulos do rail. Reusa `.rail-item` e
+   `.rail-group-label` de propósito: é a mesma lista, e um segundo vocabulário
+   visual para os mesmos destinos faria a folha parecer outra coisa. */
+
+.nav-sheet-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: var(--bg-overlay);
+  backdrop-filter: blur(3px);
+  display: flex;
+  align-items: flex-end;
+}
+
+.nav-sheet {
+  width: 100%;
+  /* Alto o bastante para os oito destinos, os quatro rótulos de grupo e o pé
+     com autor e tema caberem sem rolar: quem abre "Mais" está procurando um
+     destino, e um menu que exige rolagem para revelar metade deles devolve o
+     problema da fita de abas. */
+  max-height: 92dvh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3) var(--sp-4);
+  padding-bottom: max(var(--sp-4), env(safe-area-inset-bottom));
+  background: var(--bg-surface);
+  border-top: 1px solid var(--line-border);
+  border-radius: var(--r-lg) var(--r-lg) 0 0;
+  box-shadow: var(--elev-3);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .nav-sheet-overlay {
+    animation: overlay-in var(--dur-fast) var(--ease) both;
+  }
+
+  .nav-sheet {
+    animation: sheet-in var(--dur) var(--ease) both;
+  }
+
+  @keyframes sheet-in {
+    from { transform: translateY(12px); }
+  }
+}
+
+/* Alça: diz que a folha veio de baixo e volta para lá. Puramente decorativa —
+   quem fecha é o toque fora, o Esc e a escolha de um destino. */
+.nav-sheet-alca {
+  flex: none;
+  align-self: center;
+  width: 36px;
+  height: 4px;
+  margin-bottom: var(--sp-1);
+  border-radius: var(--r-full);
+  background: var(--line-strong);
+}
+
+.nav-sheet-grupo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.nav-sheet .rail-item {
+  height: max(36px, var(--tap-min));
+}
+
+/* Autor e tema: os dois moradores do header que não cabem no celular. */
+.nav-sheet-pe {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--line-hairline);
+}
+
+/* O chip some do header a 900px (portfolio.css); aqui ele é o conteúdo, e
+   precisa ganhar a linha em vez de encolher. */
+.nav-sheet-pe .autor-chip {
+  display: inline-flex;
+  flex: 1;
+  min-width: 0;
+  justify-content: center;
+}
+
+/* ============================================================================
+   Quem aparece em cada faixa
+   ========================================================================= */
+
+/* Abaixo de 1100px o rail sai de cena: a largura mínima dele sozinha já comeria
+   o espaço da tabela. */
 @media (max-width: 1100px) {
   .nav-rail {
     display: none;
@@ -194,9 +402,21 @@
 }
 
 /* Com o rail em cena, as abas do topo seriam navegação duplicada. Elas
-   continuam no DOM e voltam a aparecer abaixo de 1100px, onde o rail sai. */
+   continuam no DOM e voltam a aparecer entre 761 e 1100px. */
 @media (min-width: 1101px) {
   .app-header .nav-tabs {
     display: none;
+  }
+}
+
+/* Abaixo de 760px as abas também saem — a 375px cabiam duas de oito, sem barra
+   de rolagem visível — e quem navega é a barra inferior. */
+@media (max-width: 760px) {
+  .app-header .nav-tabs {
+    display: none;
+  }
+
+  .nav-bottom {
+    display: flex;
   }
 }

@@ -563,9 +563,10 @@
 }
 
 /* Só existe empilhado: no layout largo a lista está do lado, sempre visível. */
-.ini-voltar {
+.ini-voltar,
+.ini-voltar-lista {
   display: none;
-  height: 24px;
+  height: max(24px, var(--tap-min));
   padding: 0 var(--sp-2);
   font-size: var(--fs-2xs);
 }
@@ -615,6 +616,41 @@
   }
 
   .ini-voltar {
+    display: inline-flex;
+    flex: none;
+  }
+}
+
+/* ---------- Iniciativas no celular: lista → detalhe ----------
+   Empilhado a ≤1280px a lista virava uma caixa estática de 60vh com o detalhe
+   embaixo: rolagem dentro de rolagem, e o detalhe começando fora da tela. A
+   375px isso é uma janela de duas linhas e meia.
+
+   Aqui vale o padrão de celular: sem seleção, a lista é a tela inteira e a
+   página rola; com seleção, ela sai e o detalhe assume, com um botão de volta.
+   O estado já existe (`selecionada` mora no `App`) — não há estado novo. */
+@media (max-width: 760px) {
+  .ini-lista {
+    max-height: none;
+    overflow-y: visible;
+  }
+
+  .ini-layout[data-detalhe='true'] .ini-lista {
+    display: none;
+  }
+
+  /* Sem a lista acima dele, o detalhe não é mais a metade de baixo de nada: a
+     faixa da marca no topo perde a função e vira só um traço solto. */
+  .ini-layout[data-detalhe='true'] .ini-detalhe {
+    padding-top: 0;
+    border-top: none;
+  }
+
+  .ini-layout[data-detalhe='true'] .ini-voltar {
+    display: none;
+  }
+
+  .ini-layout[data-detalhe='true'] .ini-voltar-lista {
     display: inline-flex;
     flex: none;
   }
@@ -948,6 +984,107 @@
 .data-riscada {
   color: var(--ink-4);
   text-decoration: line-through;
+}
+
+/* ---------- Tabela leve no celular ----------
+   `min-width: 760px` num envelope que rola só adia o problema: a 375px a
+   pessoa arrasta a tabela de lado e o cabeçalho — que é quem diz o que cada
+   número significa — sai de cena junto.
+
+   Empilha, e cada célula passa a carregar o próprio rótulo. É o MESMO idioma
+   que `.rastro-linha` já usa quando o grid dela colapsa (`data-rotulo` +
+   `::before` com `attr()`), e não um segundo padrão de tabela empilhada. A
+   primeira célula não recebe rótulo: ela é o nome da linha, e "Pessoa: Ana"
+   seria ruído. */
+@media (max-width: 760px) {
+  .tabela-simples-wrap {
+    padding: var(--sp-2) var(--sp-3) var(--sp-3);
+  }
+
+  .tabela-simples,
+  .marcos-tabela {
+    min-width: 0;
+    display: block;
+  }
+
+  .tabela-simples thead,
+  .marcos-tabela thead {
+    display: none;
+  }
+
+  .tabela-simples tbody,
+  .marcos-tabela tbody {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-2);
+  }
+
+  /* Cada linha vira um bloco com contorno próprio — sem ele, empilhadas, não
+     se sabe onde uma pessoa termina e a outra começa. */
+  .tabela-simples tr,
+  .marcos-tabela tr {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-1);
+    padding: var(--sp-3);
+    border: 1px solid var(--line-hairline);
+    border-radius: var(--r-md);
+    background: var(--surface-2);
+  }
+
+  /* Célula rotulada é uma linha "rótulo → valor". */
+  .tabela-simples td[data-rotulo],
+  .marcos-tabela td[data-rotulo] {
+    display: flex;
+    align-items: baseline;
+    gap: var(--sp-2);
+    padding: 0;
+    border-bottom: none;
+  }
+
+  /* Célula SEM rótulo é a primeira (o nome da linha, que costuma trazer uma
+     nota embaixo) ou a última (os botões). As duas empilham o próprio conteúdo
+     — em `flex`, o nome e a nota dele saíam lado a lado, como se a nota fosse
+     um segundo campo. */
+  .tabela-simples td:not([data-rotulo]),
+  .marcos-tabela td:not([data-rotulo]) {
+    display: block;
+    padding: 0;
+    border-bottom: none;
+  }
+
+  /* Numérica alinhada à direita não faz sentido fora de uma coluna. */
+  .tabela-simples td.num,
+  .marcos-tabela td.num {
+    text-align: left;
+  }
+
+  .tabela-simples td[data-rotulo]::before,
+  .marcos-tabela td[data-rotulo]::before {
+    content: attr(data-rotulo);
+    flex: none;
+    min-width: 11ch;
+    font-size: var(--fs-2xs);
+    font-weight: var(--fw-medium);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--ink-4);
+  }
+
+  /* Célula sem rótulo que não seja a primeira é a dos botões: ganha um filete
+     e a linha inteira, para o "Editar" não ficar colado no último número. */
+  .tabela-simples td:last-child:not([data-rotulo]):not(:first-child),
+  .marcos-tabela td:last-child:not([data-rotulo]):not(:first-child) {
+    margin-top: var(--sp-1);
+    padding-top: var(--sp-2);
+    border-top: 1px solid var(--line-hairline);
+  }
+
+  /* A barra de carga precisa da largura da linha, não de 160px de mínimo. */
+  .carga-linha {
+    flex: 1;
+    min-width: 0;
+  }
 }
 
 /* ---------- Mitigações vistas de fora do editor ----------
@@ -1392,7 +1529,7 @@
   display: inline-flex;
   align-items: center;
   gap: var(--sp-2);
-  height: 28px;
+  height: max(28px, var(--tap-min));
   padding: 0 var(--sp-3);
   border-radius: var(--r-full);
   border: 1px solid var(--line-border);

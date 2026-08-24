@@ -4,6 +4,7 @@ import { TASK_COLUMNS } from './columns';
 import { TarefasTableRow } from './TarefasTableRow';
 import { onActivateKey } from '../../lib/a11y';
 import { EmptyState } from '../common/EmptyState';
+import { TarefaCardList } from './TarefaCardList';
 
 interface TarefasTableProps {
   rows: EnrichedTaskRow[];
@@ -40,7 +41,8 @@ export function TarefasTable({ rows, colWidths, onColWidthChange, sortKey, sortD
   const isEmpty = rows.length === 0 && !!emptyMessage;
 
   return (
-    <div className="tarefas-table-wrap">
+    <>
+      <div className="tarefas-table-wrap">
       <table className="risk-table">
         <thead>
           <tr>
@@ -84,7 +86,16 @@ export function TarefasTable({ rows, colWidths, onColWidthChange, sortKey, sortD
           ))}
         </tbody>
       </table>
+      </div>
+
+      {/* Celular: um cartão por tarefa (ver styles/responsive.css — escondido em
+          telas largas, e a tabela escondida onde ele aparece). */}
+      <TarefaCardList rows={rows} onOpen={onOpenEdit} onToggleConcluida={onToggleConcluida} />
+
+      {/* Fora dos dois de propósito: dentro do envelope da tabela, a mensagem
+          de "nenhuma tarefa" sumia junto com ela no celular. É onde o
+          `RiskTable` já a coloca. */}
       {isEmpty && <EmptyState message={emptyMessage} />}
-    </div>
+    </>
   );
 }

@@ -1,4 +1,5 @@
 import { useEffect, useRef, type ReactNode, type KeyboardEvent } from 'react';
+import { useBloqueioDeRolagem } from '../../hooks/useBloqueioDeRolagem';
 
 const FOCUSABLE = 'a[href], button:not([disabled]), input, select, textarea, [tabindex]:not([tabindex="-1"])';
 
@@ -24,6 +25,10 @@ interface ModalShellProps {
  */
 export function ModalShell({ titulo, subtitulo, onClose, children, rodape, largo }: ModalShellProps) {
   const cardRef = useRef<HTMLDivElement>(null);
+
+  // No celular o cartão é uma folha colada na base; sem a trava, chegar ao fim
+  // da rolagem dele passa o gesto para a página de trás.
+  useBloqueioDeRolagem();
 
   useEffect(() => {
     const anterior = document.activeElement as HTMLElement | null;

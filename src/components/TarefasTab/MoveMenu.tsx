@@ -23,6 +23,8 @@ interface MoveMenuProps {
 /** Altura estimada do painel, só para decidir se ele abre para cima ou para baixo. */
 const ALTURA_ITEM = 32;
 const ALTURA_EXTRA = 44;
+/** Quanto o gatilho pode andar antes de o painel deixar de apontar para ele. */
+const TOLERANCIA_ANCORA = 12;
 
 export function MoveMenu({ options, currentId, onMove, taskLabel }: MoveMenuProps) {
   const [open, setOpen] = useState(false);
@@ -32,12 +34,21 @@ export function MoveMenu({ options, currentId, onMove, taskLabel }: MoveMenuProp
   const wrapRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
-  // Fecha ao clicar fora ou no Esc, devolvendo o foco ao gatilho — senão o foco
+  // Fecha ao apontar fora ou no Esc, devolvendo o foco ao gatilho — senão o foco
   // cairia no <body> e a navegação por teclado perderia o lugar.
-  // Rolar também fecha: um painel ancorado na viewport descolaria do card.
+  //
+  // Rolar TAMBÉM fecha, mas só quando o gatilho de fato se moveu: o painel é
+  // `fixed` e descolaria do card. Antes qualquer evento de rolagem fechava, e
+  // no celular isso o tornava inutilizável — o próprio toque produz alguns
+  // pixels de rolagem elástica, então o menu piscava e sumia antes de o dedo
+  // chegar a um destino. Comparar a posição resolve sem abrir mão do motivo
+  // original.
   useEffect(() => {
     if (!open) return;
-    const onDown = (e: MouseEvent) => {
+    const ancora = triggerRef.current?.getBoundingClientRect();
+    // `pointerdown` e não `mousedown`: cobre toque e caneta sem depender do
+    // evento de mouse sintético, que nem sempre chega antes do clique.
+    const onDown = (e: PointerEvent) => {
       if (!wrapRef.current?.contains(e.target as Node)) setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
@@ -47,16 +58,26 @@ export function MoveMenu({ options, currentId, onMove, taskLabel }: MoveMenuProp
         triggerRef.current?.focus();
       }
     };
-    const onScroll = () => setOpen(false);
-    document.addEventListener('mousedown', onDown);
+    const onScroll = () => {
+      const agora = triggerRef.current?.getBoundingClientRect();
+      if (!ancora || !agora) { setOpen(false); return; }
+      const andou = Math.abs(agora.top - ancora.top) > TOLERANCIA_ANCORA
+        || Math.abs(agora.left - ancora.left) > TOLERANCIA_ANCORA;
+      if (andou) setOpen(false);
+    };
+    // Redimensionar fecha sempre: as coordenadas foram calculadas contra a
+    // viewport antiga, e no celular a barra do navegador aparecendo já é um
+    // resize.
+    const onResize = () => setOpen(false);
+    document.addEventListener('pointerdown', onDown);
     document.addEventListener('keydown', onKey, true);
     window.addEventListener('scroll', onScroll, true);
-    window.addEventListener('resize', onScroll);
+    window.addEventListener('resize', onResize);
     return () => {
-      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('pointerdown', onDown);
       document.removeEventListener('keydown', onKey, true);
       window.removeEventListener('scroll', onScroll, true);
-      window.removeEventListener('resize', onScroll);
+      window.removeEventListener('resize', onResize);
     };
   }, [open]);
 

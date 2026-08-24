@@ -54,15 +54,16 @@
 /* ---------- Celular / tablet retrato ---------- */
 
 @media (max-width: 760px) {
+  /* O `max()` com o inset lateral é por causa do viewport-fit=cover: em
+     paisagem, num aparelho com entalhe, o conteúdo alcançaria a borda física da
+     tela e a primeira coluna sumiria embaixo dela. */
   .app-header-inner {
-    padding-inline: var(--sp-3);
+    padding-inline: max(var(--sp-3), env(safe-area-inset-left));
     gap: var(--sp-3);
   }
 
-  .brand-name {
-    display: none;
-  }
-
+  /* O nome da marca VOLTA. Ele sumia para dar espaço à fita de abas; agora quem
+     navega é a barra inferior, e o header ficou com espaço sobrando. */
   .sync-status span {
     display: none;
   }
@@ -71,6 +72,51 @@
   .tab-page-lg,
   .app-loading {
     padding: var(--sp-3);
+    padding-inline: max(var(--sp-3), env(safe-area-inset-left));
+  }
+
+  /* Espaço para a barra inferior não cobrir a última linha de conteúdo. */
+  .app-conteudo {
+    padding-bottom: calc(var(--nav-bottom-h) + env(safe-area-inset-bottom));
+  }
+
+  /* Botões de ação ganham a linha inteira em vez de espremer o título — a aba
+     Tarefas tem três, e a 375px eles empurravam "Tarefas e ações" para duas
+     linhas de uma palavra. */
+  .page-bar .actions-row {
+    width: 100%;
+  }
+
+  /* Duas linhas de subtítulo, no máximo. O da aba Tarefas explica a fórmula GUT
+     em quatro linhas — 90px de prosa antes do primeiro dado, e logo abaixo dele
+     está o botão "Guia GUT", que explica a mesma coisa melhor e sob demanda. Os
+     subtítulos curtos ("62 registros · clique em uma linha para editar") não
+     mudam; o texto inteiro continua no DOM para o leitor de tela. */
+  .page-subtitle {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
+  }
+
+  /* O aviso de desfazer é fixo na base: sem isto ele nasce atrás da barra. */
+  .undo-snackbar {
+    left: var(--sp-3);
+    right: var(--sp-3);
+    transform: none;
+    bottom: calc(var(--nav-bottom-h) + env(safe-area-inset-bottom) + var(--sp-3));
+  }
+
+  /* O snackbar largo não é mais centrado por `translateX(-50%)`, então a
+     entrada original — que reaplicava esse -50% — o jogaria para fora da tela.
+     Uma definição de keyframes que só existe nesta faixa; quem dispara a
+     animação continua sendo a regra guardada por reduced-motion em layout.css. */
+  @keyframes snackbar-in {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
   }
 
   /* Vence o data-colunas: quatro tiles a 320px de largura não são quatro
@@ -88,12 +134,47 @@
     font-size: var(--fs-xl);
   }
 
-  /* Tabela dá lugar aos cartões. */
-  .table-wrap {
+  /* ---------- Faixa de KPI compacta ----------
+     Empilhado, rótulo em cima e número embaixo dá ~100px por tile: sete tiles
+     viravam 460px, e na aba Tarefas a pessoa rolava um título, três botões e
+     quatro fileiras de número antes de ver UMA tarefa. Num telefone o que
+     importa primeiro é o trabalho; o indicador é contexto.
+
+     Deitado — rótulo à esquerda, número à direita, numa linha — o mesmo tile
+     cai para ~48px e a faixa inteira para ~230px. Nenhum número sai da tela:
+     é a mesma informação, na metade da altura.
+
+     Só o tile SIMPLES deita. Quem carrega barra de progresso, subtítulo ou
+     aviso de lacuna continua em pé, porque essas três coisas moram embaixo do
+     número e não têm para onde ir numa linha só — e `:has()` é o que permite
+     distinguir os dois sem inventar uma variante no componente. */
+  .kpi-card:not(:has(.kpi-progress-track)):not(:has(.kpi-value-sub)):not(:has(.bento-lacuna)) {
+    padding: var(--sp-3);
+  }
+
+  .kpi-card:not(:has(.kpi-progress-track)):not(:has(.kpi-value-sub)):not(:has(.bento-lacuna)) .kpi-body {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--sp-2);
+  }
+
+  .kpi-card:not(:has(.kpi-progress-track)):not(:has(.kpi-value-sub)):not(:has(.bento-lacuna)) .kpi-value {
+    margin-top: 0;
+    flex: none;
+  }
+
+  /* Tabela dá lugar aos cartões — nas DUAS abas. A de Tarefas ficou de fora
+     por anos porque a regra citava só `.table-wrap`, que é o envelope do
+     Registro; a de Tarefas é `.tarefas-table-wrap` e continuava rolando 15
+     colunas de lado no celular. As duas formas nunca aparecem juntas. */
+  .table-wrap,
+  .tarefas-table-wrap {
     display: none;
   }
 
-  .risk-card-list {
+  .risk-card-list,
+  .tarefa-card-list {
     display: flex;
   }
 
@@ -115,6 +196,52 @@
     width: 100%;
   }
 
+  /* ---------- Filtros dobrados ----------
+     Empilhados, os controles secundários da aba Tarefas somavam ~200px:
+     quatro pílulas de status, dois selects e dois segmentados, cada fileira
+     com 44px de alvo de toque. Somados ao título, aos botões e à faixa de
+     KPIs, empurravam o primeiro cartão para além de 850px — duas telas de
+     rolagem antes de ver UMA tarefa, num app que no celular serve para
+     consultar.
+
+     A busca fica; o resto se abre quando se precisa. O selo no botão diz
+     quantos recortes estão ativos. */
+  .filtros-toggle {
+    display: inline-flex;
+    flex: none;
+  }
+
+  .filtros-dobra {
+    display: none;
+    width: 100%;
+    flex-wrap: wrap;
+    gap: var(--sp-2);
+  }
+
+  .filter-row[data-aberto] .filtros-dobra {
+    display: flex;
+  }
+
+  /* Aberta, a dobra é uma coluna de controles de largura cheia: select e
+     segmentado meio a meio numa linha de 390px cortam o rótulo. */
+  .filtros-dobra > * {
+    width: 100%;
+  }
+
+  .filtros-dobra .filter-pills {
+    width: 100%;
+  }
+
+  .filtros-dobra .view-toggle,
+  .filtros-dobra .density-toggle {
+    justify-content: center;
+  }
+
+  .filtros-dobra .view-toggle button,
+  .filtros-dobra .density-toggle button {
+    flex: 1;
+  }
+
   .card {
     padding: var(--sp-4);
   }
@@ -128,9 +255,11 @@
     align-items: flex-end;
   }
 
+  /* `dvh` e não `vh`: com a barra de endereço do navegador aberta, `vh` mede a
+     tela inteira e empurra o rodapé com "Salvar" para fora dela. */
   .modal-card {
     max-width: none;
-    max-height: 94vh;
+    max-height: 94dvh;
     border-radius: var(--r-lg) var(--r-lg) 0 0;
     border-bottom: none;
   }
@@ -140,10 +269,16 @@
     padding: var(--sp-4);
   }
 
+  /* O rodapé encosta na base da tela: sem o inset, "Salvar" fica atrás do
+     indicador de gestos do iPhone. */
   .modal-footer {
     padding: var(--sp-3) var(--sp-4);
+    padding-bottom: max(var(--sp-3), env(safe-area-inset-bottom));
   }
 
+  /* Quatro colunas guardam a trinca G/U/T — números de 1 a 5, que continuam
+     legíveis em duas colunas e ganhariam quatro linhas de rótulo à toa se
+     colapsassem. As de três guardam campos com rótulo de verdade. */
   .modal-grid-3,
   .modal-grid-4 {
     grid-template-columns: repeat(2, 1fr);
@@ -159,19 +294,33 @@
     gap: var(--sp-4);
   }
 
+  /* O guia GUT vira folha inferior. Antes só virava `fixed` com `top: auto` e
+     sem `bottom` — o que mantém a posição estática do popover, ou seja, o
+     painel ancorava onde o botão estivesse e podia nascer cortado no meio da
+     tela. Aqui ele tem os quatro lados. */
   .gut-guide-panel {
     position: fixed;
-    left: var(--sp-3);
-    right: var(--sp-3);
+    left: 0;
+    right: 0;
+    bottom: 0;
     top: auto;
     width: auto;
     max-width: none;
+    max-height: 80dvh;
+    overflow-y: auto;
+    border-radius: var(--r-lg) var(--r-lg) 0 0;
+    box-shadow: var(--elev-3);
+    padding-bottom: max(var(--sp-4), env(safe-area-inset-bottom));
+    /* Acima da barra de navegação, que também é fixa na base. */
+    z-index: 45;
   }
 }
 
-@media (max-width: 480px) {
-  .modal-grid-3,
-  .modal-grid-4 {
+@media (max-width: 560px) {
+  /* Duas colunas de campo com rótulo não cabem: "Resultado esperado" e
+     "Responsável" viram duas palavras por linha. A trinca G/U/T (grid-4)
+     continua em duas — ver acima. */
+  .modal-grid-3 {
     grid-template-columns: 1fr;
   }
 }

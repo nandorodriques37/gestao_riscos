@@ -1,5 +1,6 @@
 import type { TaskStatus } from '../../types';
 import { TASK_STATUSES } from '../../types';
+import { FiltrosDobraveis } from '../common/FiltrosDobraveis';
 import type { KanbanGroupBy, TaskView } from '../../lib/uiPrefs';
 import type { FiltroVinculo } from './TarefasTab';
 
@@ -44,10 +45,32 @@ export function TarefasFilterBar({
   visibleCount, totalCount,
   vinculoFilter, onVinculoFilterChange, vinculadasCount,
 }: TarefasFilterBarProps) {
+  // Recortes ativos, para o selo do botão "Filtros" no celular. Modo de
+  // visualização e agrupamento ficam de fora: eles mudam como a lista aparece,
+  // não quais linhas entram nela.
+  const ativos = (statusFilter.length > 0 ? 1 : 0)
+    + (tipoFilter !== 'Todos' ? 1 : 0)
+    + (vinculoFilter !== 'todas' ? 1 : 0);
+
   return (
-    <div className="filter-row">
+    <FiltrosDobraveis
+      ativos={ativos}
+      busca={
+        <input
+          className="search-input"
+          value={search}
+          onChange={e => onSearchChange(e.target.value)}
+          placeholder="Buscar por tarefa, detalhes, responsável, risco…"
+        />
+      }
+      contagem={
+        <div className="filter-count">
+          {visibleCount} de {totalCount} tarefas · clique {view === 'kanban' ? 'em um card' : 'em uma linha'} para editar
+        </div>
+      }
+    >
       {/* Mesmo segmentado do modo de visualização — o recorte por origem é da
-          mesma natureza: uma escolha entre poucas, sempre visível. */}
+          mesma natureza: uma escolha entre poucas. */}
       <div className="view-toggle" role="group" aria-label="Origem do trabalho">
         {VINCULO_OPTIONS.map(o => (
           <button
@@ -65,12 +88,6 @@ export function TarefasFilterBar({
         ))}
       </div>
 
-      <input
-        className="search-input"
-        value={search}
-        onChange={e => onSearchChange(e.target.value)}
-        placeholder="Buscar por tarefa, detalhes, responsável, risco…"
-      />
       <div className="filter-pills">
         {/* Seleção múltipla: cada pill alterna; "Todos" (nenhum selecionado) limpa o filtro. */}
         <button
@@ -126,9 +143,6 @@ export function TarefasFilterBar({
         ))}
       </div>
 
-      <div className="filter-count">
-        {visibleCount} de {totalCount} tarefas · clique {view === 'kanban' ? 'em um card' : 'em uma linha'} para editar
-      </div>
-    </div>
+    </FiltrosDobraveis>
   );
 }

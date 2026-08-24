@@ -29,6 +29,16 @@ const AGRUPAMENTOS: { chave: Agrupamento; label: string }[] = [
   { chave: 'dono', label: 'Por dono' },
 ];
 
+/**
+ * Abaixo disto a aba deixa de mostrar índice e detalhe juntos e vira lista →
+ * detalhe. Tem de casar com a faixa de celular de `styles/responsive.css` e a
+ * regra de `.ini-layout[data-detalhe]` em `styles/portfolio.css` — é o único
+ * ponto do componente que precisa saber a largura, e ele precisa porque a
+ * escolha automática da primeira iniciativa só faz sentido quando as duas
+ * metades cabem na tela ao mesmo tempo.
+ */
+const LARGURA_EMPILHADO = 760;
+
 export function IniciativasTab({
   riscos, pf, selecionada, onSelecionar, onAbrirRisco,
 }: IniciativasTabProps) {
@@ -128,9 +138,18 @@ export function IniciativasTab({
 
   // Seleciona a primeira ao abrir, e recupera a seleção quando a escolhida some
   // (excluída em outra aba, ou filtrada para fora da lista).
+  //
+  // NÃO no celular. Lá o layout é lista → detalhe: com seleção, o índice sai de
+  // cena (ver styles/portfolio.css). Escolher sozinho jogaria a pessoa direto
+  // num detalhe que ela não pediu, e — pior — o botão "‹ Todas" viraria um
+  // no-op, porque zerar a seleção dispararia este efeito de volta na hora.
+  //
+  // Em tela larga as duas metades convivem e um detalhe vazio é só espaço
+  // desperdiçado, então lá a escolha automática continua certa.
   useEffect(() => {
     if (iniciativas.length === 0) return;
     if (atual) return;
+    if (window.matchMedia(`(max-width: ${LARGURA_EMPILHADO}px)`).matches) return;
     const primeira = grupos[0]?.itens[0];
     if (primeira) onSelecionar(primeira.id);
   }, [iniciativas.length, atual, grupos, onSelecionar]);
@@ -226,7 +245,11 @@ export function IniciativasTab({
           />
         </div>
       ) : (
-        <div className="ini-layout">
+        // `data-detalhe` diz ao CSS que há uma iniciativa aberta. No celular
+        // (≤760px) é o que faz o índice sair de cena e o detalhe ocupar a tela
+        // — lista → detalhe, sem rolagem dentro de rolagem. Acima disso os dois
+        // convivem e o atributo não muda nada.
+        <div className="ini-layout" data-detalhe={atual ? 'true' : undefined}>
           <div className="card card-col ini-lista" ref={listaRef}>
             <div className="ini-lista-topo">
               <span className="ini-lista-titulo">Lista de iniciativas</span>
@@ -320,11 +343,22 @@ export function IniciativasTab({
                 <span className="ini-detalhe-marca" aria-hidden="true" />
                 <span className="ini-detalhe-kicker">Detalhe</span>
                 <span className="ini-detalhe-nome">{atual.nome || 'Iniciativa sem nome'}</span>
+                {/* Dois botões porque são duas ações diferentes, não duas
+                    aparências da mesma: entre 761 e 1280px a lista está na
+                    tela e o botão leva o olho até ela; a ≤760px ela não está
+                    montada em cena, e voltar é desfazer a seleção. Qual dos
+                    dois aparece é decidido no CSS, como o resto das faixas. */}
                 <button
                   className="btn btn-ghost ini-voltar"
                   onClick={() => listaRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' })}
                 >
                   ↑ Lista
+                </button>
+                <button
+                  className="btn btn-ghost ini-voltar-lista"
+                  onClick={() => onSelecionar(null)}
+                >
+                  ‹ Todas
                 </button>
               </div>
 

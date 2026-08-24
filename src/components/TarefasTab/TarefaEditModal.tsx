@@ -4,6 +4,7 @@ import type { VinculoDaLinha } from '../../lib/taskRows';
 import type { TaskSaveStatus } from '../../hooks/useTasks';
 import { computeGUT, gutTier, prioridadeLabel } from '../../lib/taskCalculations';
 import { AnexosEditor } from './AnexosEditor';
+import { useBloqueioDeRolagem } from '../../hooks/useBloqueioDeRolagem';
 
 const FOCUSABLE = 'a[href], button:not([disabled]), input, select, textarea, [tabindex]:not([tabindex="-1"])';
 
@@ -56,6 +57,10 @@ export function TarefaEditModal({
   onAddAnexo, onRemoveAnexo, tipoOptions, responsavelOptions,
   vinculo = null, dono = '',
 }: TarefaEditModalProps) {
+  // No celular o cartão é folha colada na base; sem a trava, chegar ao fim da
+  // rolagem dele passa o gesto para a página de trás.
+  useBloqueioDeRolagem();
+
   // Rascunho local: digitar altera só este estado (instantâneo, sem re-render
   // global, sem rede). A gravação acontece por ação explícita — ver commit().
   const [draft, setDraft] = useState<Task>(task);
