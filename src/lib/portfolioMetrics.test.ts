@@ -56,7 +56,7 @@ function marco(m: Partial<Marco> = {}): Marco {
   return {
     id: id(), iniciativa_id: null, nome: 'Marco', criterio_aceite: '',
     data_plano_original: null, data_plano_atual: null, data_real: null,
-    status: 'previsto', motivo_replanejamento: '',
+    status: 'previsto', motivo_replanejamento: '', obs: '',
     version: 1, updated_at: '2026-01-01T00:00:00.000Z', ...m,
   };
 }

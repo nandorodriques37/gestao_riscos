@@ -97,6 +97,7 @@ export const marcos: Tabela<Marco> = makeTable<Marco>({
     { nome: 'data_real', tipo: 'date' },
     { nome: 'status', tipo: 'text' },
     { nome: 'motivo_replanejamento', tipo: 'text' },
+    { nome: 'obs', tipo: 'text' },
   ],
 });
 

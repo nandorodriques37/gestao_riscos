@@ -1,4 +1,5 @@
 import { useEffect, useRef, type ReactNode, type KeyboardEvent } from 'react';
+import { createPortal } from 'react-dom';
 import { useBloqueioDeRolagem } from '../../hooks/useBloqueioDeRolagem';
 
 const FOCUSABLE = 'a[href], button:not([disabled]), input, select, textarea, [tabindex]:not([tabindex="-1"])';
@@ -53,7 +54,13 @@ export function ModalShell({ titulo, subtitulo, onClose, children, rodape, largo
     }
   }
 
-  return (
+  // Fora da árvore da aba: `position: fixed` mede a viewport, mas qualquer
+  // `transform`/`filter`/`contain` num ancestral o faz medir aquele ancestral —
+  // e o diálogo nasce deslocado e cortado. Foi o que a animação de entrada de
+  // `.tab-page` causava (a nota está em `styles/layout.css`). A causa foi
+  // removida lá; o portal impede que a próxima propriedade de pintura que
+  // alguém acrescentar a um contêiner de página reabra o mesmo buraco calado.
+  return createPortal((
     <div className="modal-overlay" onClick={onClose}>
       <div
         ref={cardRef}
@@ -78,5 +85,5 @@ export function ModalShell({ titulo, subtitulo, onClose, children, rodape, largo
         {rodape && <div className="modal-footer">{rodape}</div>}
       </div>
     </div>
-  );
+  ), document.body);
 }

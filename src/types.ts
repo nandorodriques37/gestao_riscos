@@ -317,6 +317,13 @@ export interface Marco extends EntidadePortfolio {
   status: StatusMarco;
   /** Obrigatório ao mover `data_plano_atual` de uma data já existente. */
   motivo_replanejamento: string;
+  /**
+   * Nota livre. NÃO se confunde com `criterio_aceite` (como se verifica a
+   * entrega) nem com `motivo_replanejamento` (por que a data mudou, e que o
+   * servidor exige): é o contexto que não cabe nos dois — dependência externa,
+   * combinado de reunião, ressalva do dono.
+   */
+  obs: string;
 }
 
 export type StatusAcaoRisco = '' | 'aberta' | 'em_andamento' | 'concluida' | 'cancelada';
