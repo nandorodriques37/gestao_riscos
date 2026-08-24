@@ -255,6 +255,21 @@
   gap: var(--sp-5);
 }
 
+/* A entrada da aba anima SÓ a opacidade. O `translateY(4px)` que havia aqui
+   custava caro: `animation-fill-mode: both` mantém o valor animado depois que a
+   animação acaba, então `.tab-page` ficava para sempre com um `transform`
+   (identidade, mas presente) — e um transform, mesmo identidade, torna o
+   elemento o bloco recipiente de todo descendente `position: fixed`.
+
+   Resultado: modal, lightbox, o guia GUT em folha inferior e o menu de mover do
+   Kanban deixavam de se ancorar na viewport e passavam a se ancorar na página
+   da aba. O modal nascia deslocado para a direita (a largura do rail) e para
+   baixo (a altura do header), e o rodapé com "Salvar" caía fora da tela — num
+   notebook de 680px de altura o cartão terminava em 826px.
+
+   Não basta trocar `both` por `backwards`: durante os milissegundos da animação
+   a armadilha continuaria armada. Sem transform nenhum ela deixa de existir, e
+   qualquer camada fixa volta a medir a viewport. */
 @media (prefers-reduced-motion: no-preference) {
   .tab-page,
   .tab-page-lg {
@@ -264,7 +279,6 @@
   @keyframes tab-enter {
     from {
       opacity: 0;
-      transform: translateY(4px);
     }
   }
 }

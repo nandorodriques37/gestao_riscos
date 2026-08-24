@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import type {
   AcaoRisco, Iniciativa, Pessoa, RiskRecord, SituacaoRisco, StoredRiskRecord,
 } from '../../types';
@@ -192,7 +193,13 @@ export function EditModal({
     }
   }
 
-  return (
+  // Fora da árvore da aba: `position: fixed` mede a viewport, mas qualquer
+  // `transform`/`filter`/`contain` num ancestral o faz medir aquele ancestral —
+  // e o diálogo nasce deslocado e cortado. Foi o que a animação de entrada de
+  // `.tab-page` causava (a nota está em `styles/layout.css`). A causa foi
+  // removida lá; o portal impede que a próxima propriedade de pintura que
+  // alguém acrescentar a um contêiner de página reabra o mesmo buraco calado.
+  return createPortal((
     <div className="modal-overlay" onClick={() => { void requestClose(); }}>
       <div
         ref={cardRef}
@@ -483,5 +490,5 @@ export function EditModal({
         </div>
       </div>
     </div>
-  );
+  ), document.body);
 }

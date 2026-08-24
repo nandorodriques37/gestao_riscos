@@ -27,6 +27,12 @@ Os `.dc.html` são **referência de design, não código de produção**. Recrie
 - **Backend:** dados centralizados em Postgres (Neon) via funções serverless em `api/`. Toda a lógica SQL fica em `api/_db.ts` (executor `Sql` injetável). O front consome a API (`src/lib/api.ts` + hook `src/hooks/useRecords.ts`) com atualização otimista, *debounce* de escrita e polling. `localStorage` (`riskMatrix.cache.v1`) é só cache/fallback.
 - **Anexos de imagem (tarefas):** tabela própria `task_attachments` (`api/_attachmentsDb.ts`), nunca coluna em `tasks` — a aba faz polling e os bytes não podem viajar no `GET /api/tasks`, que carrega só o metadado (`anexos`). Os bytes saem por `GET /api/tasks/:id/anexos/:anexoId`, com cache imutável, e vão direto no `src` de um `<img>`. O cliente reduz a imagem antes de subir (`src/lib/imageAttachments.ts`: teto de 1600px e 3 MB, re-encode em WebP); o servidor revalida formato e tamanho. Anexo **não** é campo de `Task`: entra e sai por endpoint próprio, fora do PATCH com debounce.
 - **Portfólio (objetivo → iniciativa → marco):** seis entidades (`pessoas`, `objetivos`, `medicoes`, `iniciativas`, `marcos`, `acoes_risco`) sobre a fábrica genérica `api/_table.ts`, atendidas por um handler único (`api/_portfolioRoute.ts`) e **um arquivo de rota por profundidade de caminho** — `index.ts`, `[entidade].ts`, `[entidade]/[id].ts` — porque catch-all (`[...path]`, `[[...path]]`) **não casa dois segmentos** nas funções avulsas da Vercel: todo PATCH e DELETE do portfólio morria em 404 na borda, sem invocar função e sem log. O plano Hobby limita a 12 funções, e o projeto está nas 12. O front carrega todas de uma vez (`GET /api/portfolio`) pelo hook `src/hooks/usePortfolio.ts`; as métricas são funções puras em `src/lib/portfolioMetrics.ts`. Regra de integridade nova entra em **`validarEntidade`** (`api/_portfolioDb.ts`) — é o despacho único que a rota de produção e `vite-plugin-dev-api.ts` chamam; cadeia de `if` própria em cada lado já fez uma regra valer só em metade dos ambientes.
+- **Marco tem três campos de texto, e eles não se substituem:**
+  `criterio_aceite` (como se verifica a entrega), `motivo_replanejamento` (por
+  que a data mudou — o servidor **exige** ao mover `data_plano_atual` de uma
+  data já gravada) e `obs`, nota livre para o contexto que não cabe nos dois.
+  `obs` fica fora de `CAMPOS_AUDITADOS` de propósito: a trilha guarda o que
+  alguém pode ser cobrado depois, não observação que só um humano lê.
 - **Medição de objetivo:** `medicoes` é uma linha por leitura do indicador, nunca um campo `valor_atual` — sobrescrever o valor apaga a tendência, que é o que interessa. `progressoObjetivo` deriva atual, % do caminho e tendência; a direção da melhora sai dos próprios números (meta menor que baseline = descer é melhorar), sem campo de "quanto menor melhor".
 - **Pessoas:** tem tela própria (`PessoasTab`), com capacidade (`dias_projeto_mes`, que a carga do Painel usa como régua), ativo/inativo e mesclagem de fichas duplicadas. **Dono é `dono_id` em toda linha** — objetivo, iniciativa e tarefa (livre ou mitigação). `tasks.responsavel` está **congelado** com o texto de antes da conversão; quem lê prefere a pessoa. A mesclagem vive no servidor (`POST /api/portfolio/mesclar-pessoas`, `api/_donos.ts`), porque quem sabe quais tabelas apontam para `pessoas` é o esquema: a versão anterior morava no componente, repontava três listas do pacote e não enxergava as tarefas livres. FK esquecida não falha — é `set null`, e o dono some calado. Repor as FKs vem **antes** de excluir a ficha, nunca depois. A duplicata nascia da semeadura comparando grafia crua (`DERYLSON` e `Derylson` passavam juntas na mesma rodada); agora tudo casa por `chaveDoNome` (`src/lib/nomes.ts`, sem acento e sem caixa), inclusive o campo de responsável do quadro.
 - **Plano de ação:** uma linha por mitigação, editável pelo `AcoesEditor` dentro do `EditModal`. `risk_records.acoes` continua sendo gravado, mas como **resumo derivado** (é o que tabela, busca, Gráficos, CSV e KPI de completude leem). Quem regrava é o SERVIDOR, em `sincronizarResumoDoPlano` (`api/_trabalhoDb.ts`), chamado de dentro de toda escrita de mitigação — pelo plano de ação e pelo quadro, que editam a mesma linha. A regra de montar o texto é única (`src/lib/resumoAcoes.ts`) e roda sempre sobre o que persistiu, nunca sobre o que a tela pretendia salvar. Derivar só na tela funcionou enquanto havia uma tela: quando o quadro passou a renomear e excluir mitigação, o registro do risco começou a anunciar ação que não existia mais. `acoes_itens` está **congelado**: ninguém escreve mais nele, e `src/lib/acoes.ts` só o lê para converter o legado. Não apagar a coluna.
@@ -110,6 +116,17 @@ nessa ordem.
 - Sem ícones externos: glifos Unicode (↓ + × ▲ ▼ ‹ ›) ou desenho em CSS/SVG inline
   (ver `AnexosBadge`). Sem emojis. Cuidado: o Inter **não** tem ☀ ☾ ◐ — glifos
   assim caem em fallback torto.
+- **Camada fixa não tolera `transform` em contêiner de página.** `transform`,
+  `filter`, `contain` ou `will-change` num ancestral — mesmo identidade, mesmo
+  residual de `animation-fill-mode: both` — tornam o elemento o bloco recipiente
+  de todo descendente `position: fixed`. Modal, lightbox, guia GUT em folha e
+  menu do Kanban param de medir a viewport e passam a medir a aba: o diálogo
+  nasce deslocado (largura do rail + altura do header) e o rodapé com "Salvar"
+  cai fora da tela. Foi o que a animação de entrada de `.tab-page` fazia; hoje
+  ela anima só opacidade. Os três modais (`ModalShell`, `TarefaEditModal`,
+  `EditModal`) saem por `createPortal` no `<body>` como segunda linha de defesa.
+  Altura de modal é `dvh`, nunca `vh` — com a barra de endereço aberta `vh` mede
+  a tela inteira e empurra o rodapé para fora.
 - O visualizador de imagem em tela cheia é escuro nos dois temas (`--scrim`,
   `--scrim-ink`): scrim claro lava as cores da imagem.
 

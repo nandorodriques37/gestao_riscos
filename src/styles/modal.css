@@ -14,10 +14,13 @@
   padding: var(--sp-5);
 }
 
+/* `dvh` pela mesma razão que a folha inferior (ver o @media em responsive.css):
+   com a barra de endereço aberta, `vh` mede a tela inteira e o rodapé com
+   "Salvar" cai fora dela. No desktop os dois valores coincidem. */
 .modal-card {
   width: 100%;
   max-width: 780px;
-  max-height: 88vh;
+  max-height: 88dvh;
   display: flex;
   flex-direction: column;
   background: var(--bg-surface);

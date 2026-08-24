@@ -25,6 +25,7 @@ export function MarcoModal({
     data_plano_atual: marco?.data_plano_atual ?? '',
     data_real: marco?.data_real ?? '',
     status: marco?.status ?? ('previsto' as Marco['status']),
+    obs: marco?.obs ?? '',
     motivo_replanejamento: '',
   }));
   const [salvando, setSalvando] = useState(false);
@@ -49,6 +50,7 @@ export function MarcoModal({
       data_plano_atual: d.data_plano_atual || null,
       data_real: d.data_real || null,
       status: d.status,
+      obs: d.obs,
     };
     // Só manda a data original quando ela ainda pode ser gravada; reenviar o
     // mesmo valor numa data travada faria o servidor recusar por regra 3.
@@ -138,6 +140,15 @@ export function MarcoModal({
         onChange={v => set('status', v)}
         opcoes={STATUS_MARCO}
         rotulo={v => ROTULO_STATUS_MARCO[v]}
+      />
+
+      <CampoArea
+        label="Observações"
+        valor={d.obs}
+        onChange={v => set('obs', v)}
+        placeholder="Contexto que não é critério de aceite nem motivo de replanejamento"
+        linhas={2}
+        ajuda="Dependência de terceiro, combinado de reunião, ressalva do dono. Fica visível na lista de marcos."
       />
 
       {replanejando && (

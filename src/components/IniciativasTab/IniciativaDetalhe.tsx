@@ -292,6 +292,7 @@ export function IniciativaDetalhe({
                       {m.motivo_replanejamento && (
                         <div className="lista-nota">Replanejado: {m.motivo_replanejamento}</div>
                       )}
+                      {m.obs && <div className="lista-nota">Obs.: {m.obs}</div>}
                     </td>
                     <td className={`num${moveu ? ' data-riscada' : ''}`} data-rotulo="Plano original">
                       {formatarData(m.data_plano_original)}
