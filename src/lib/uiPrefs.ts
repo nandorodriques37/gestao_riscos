@@ -1,4 +1,4 @@
-import type { ColWidths } from '../types';
+import type { ColWidths, Density } from '../types';
 
 /**
  * Preferências de UI persistidas em localStorage (larguras de coluna e seleção
@@ -62,6 +62,34 @@ export function readEnumPref<T extends string>(key: string, allowed: readonly T[
     // storage ausente/corrompido — usa o padrão
   }
   return fallback;
+}
+
+/** Densidade das tabelas — o mesmo par nas duas abas que têm tabela. */
+export const DENSITIES: readonly Density[] = ['comfortable', 'compact'];
+
+/**
+ * Densidade salva. Gravada como string crua, e não JSON como as outras
+ * preferências: é o formato que `riskMatrix.density.v1` já tem no navegador de
+ * quem escolheu compacto na aba Registro, e trocar por JSON zeraria a escolha
+ * em silêncio. Uma régua só para as duas abas — a de Tarefas tem chave própria,
+ * não o mesmo valor, porque as duas tabelas são lidas em rituais diferentes.
+ */
+export function readDensity(key: string): Density {
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw === 'compact' || raw === 'comfortable') return raw;
+  } catch {
+    // storage ausente/corrompido — usa o padrão
+  }
+  return 'comfortable';
+}
+
+export function writeDensity(key: string, value: Density): void {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // storage indisponível — preferência vale só para a sessão
+  }
 }
 
 export type ThemePref = 'light' | 'dark' | 'system';

@@ -1,11 +1,7 @@
 import type { Density, RegistroStatus } from '../../types';
 import { REGISTRO_STATUSES } from '../../types';
+import { DensityToggle } from '../common/DensityToggle';
 import { FiltrosDobraveis } from '../common/FiltrosDobraveis';
-
-const DENSITY_OPTIONS: { value: Density; label: string; title: string }[] = [
-  { value: 'comfortable', label: 'Confortável', title: 'Linhas com mais respiro' },
-  { value: 'compact', label: 'Compacto', title: 'Mais linhas visíveis por tela' },
-];
 
 interface FilterBarProps {
   search: string;
@@ -86,19 +82,7 @@ export function FilterBar({
         <option value="Todos">Todos</option>
         {categoriaOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
       </select>
-      <div className="density-toggle" role="group" aria-label="Densidade da tabela">
-        {DENSITY_OPTIONS.map(opt => (
-          <button
-            key={opt.value}
-            className={density === opt.value ? 'active' : ''}
-            title={opt.title}
-            aria-pressed={density === opt.value}
-            onClick={() => onDensityChange(opt.value)}
-          >
-            {opt.label}
-          </button>
-        ))}
-      </div>
+      <DensityToggle density={density} onChange={onDensityChange} />
     </FiltrosDobraveis>
   );
 }

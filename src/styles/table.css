@@ -469,6 +469,34 @@
   color: var(--ink-4);
 }
 
+/* ---------- Tarefas: forma compacta ----------
+   Mesmo par da aba Registro (Confortável/Compacto), mas aqui apertar a linha
+   não é só baixar a altura: o que faz a linha crescer nesta tabela é o texto
+   em duas linhas e o selo de vínculo abaixo do título. Compacto é uma linha de
+   texto por célula e o selo no mesmo fluxo — a altura passa a ser consequência
+   disso, não um número novo.
+
+   A regra genérica `.density-compact .risk-table tbody td` não serve aqui: a
+   célula de Tarefas é `height: auto` de propósito (texto que quebra), e fixar
+   altura cortaria o clamp pelo meio. */
+.tarefas-table-wrap.density-compact .risk-table tbody td {
+  min-height: 30px;
+  padding: var(--sp-1) var(--sp-3);
+}
+
+.tarefas-table-wrap.density-compact .risk-table thead th {
+  height: 30px;
+}
+
+.tarefas-table-wrap.density-compact .risk-table .clamp-2 {
+  -webkit-line-clamp: 1;
+  line-clamp: 1;
+}
+
+.tarefas-table-wrap.density-compact .risk-table .vinculo-chip {
+  margin-top: 0;
+}
+
 .tarefa-cell {
   color: var(--ink-1);
   font-weight: var(--fw-medium);

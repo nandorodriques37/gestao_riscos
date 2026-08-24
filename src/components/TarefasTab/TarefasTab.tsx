@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { Pessoa, StoredRiskRecord, Task, TaskStatus, TaskSortKey } from '../../types';
+import type { Density, Pessoa, StoredRiskRecord, Task, TaskStatus, TaskSortKey } from '../../types';
 import { TASK_STATUSES } from '../../types';
 import type { UseTasks } from '../../hooks/useTasks';
 import type { UsePortfolio } from '../../hooks/usePortfolio';
@@ -11,7 +11,8 @@ import {
 } from '../../lib/taskPriority';
 import { downloadTasksCSV } from '../../lib/taskCsv';
 import {
-  KANBAN_GROUP_BYS, TASK_VIEWS, readColWidths, readEnumPref, readStatusFilter, writePref,
+  KANBAN_GROUP_BYS, TASK_VIEWS, readColWidths, readDensity, readEnumPref, readStatusFilter,
+  writeDensity, writePref,
   type KanbanGroupBy, type TaskView,
 } from '../../lib/uiPrefs';
 import { Kpi, KpiRow } from '../common/Kpi';
@@ -26,6 +27,9 @@ const COL_WIDTHS_KEY = 'riskMatrix.tasks.colWidths.v1';
 const STATUS_FILTER_KEY = 'riskMatrix.tasks.statusFilter.v1';
 const VIEW_KEY = 'riskMatrix.tasks.view.v1';
 const GROUP_BY_KEY = 'riskMatrix.tasks.groupBy.v1';
+// Chave própria, não a do Registro: as duas tabelas são lidas em rituais
+// diferentes e quem quer a de riscos apertada nem sempre quer esta.
+const DENSITY_KEY = 'riskMatrix.tasks.density.v1';
 const COL_WIDTHS_SAVE_DELAY = 300;
 const UNDO_TIMEOUT = 10000;
 const VINCULO_KEY = 'riskMatrix.tasks.vinculo.v1';
@@ -92,6 +96,7 @@ export function TarefasTab({ records, pf, tarefas }: TarefasTabProps) {
   const [sortKey, setSortKey] = useState<TaskSortKey>('gut');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [colWidths, setColWidths] = useState(() => readColWidths(COL_WIDTHS_KEY));
+  const [density, setDensity] = useState<Density>(() => readDensity(DENSITY_KEY));
   const [view, setView] = useState<TaskView>(() => readEnumPref(VIEW_KEY, TASK_VIEWS, 'lista'));
   const [groupBy, setGroupBy] = useState<KanbanGroupBy>(
     () => readEnumPref(GROUP_BY_KEY, KANBAN_GROUP_BYS, 'prioridade'),
@@ -112,6 +117,7 @@ export function TarefasTab({ records, pf, tarefas }: TarefasTabProps) {
   useEffect(() => { writePref(VIEW_KEY, view); }, [view]);
   useEffect(() => { writePref(GROUP_BY_KEY, groupBy); }, [groupBy]);
   useEffect(() => { writePref(VINCULO_KEY, vinculoFilter); }, [vinculoFilter]);
+  useEffect(() => { writeDensity(DENSITY_KEY, density); }, [density]);
 
   useEffect(() => {
     if (!pendingUndo) return;
@@ -416,6 +422,8 @@ export function TarefasTab({ records, pf, tarefas }: TarefasTabProps) {
             vinculoFilter={vinculoFilter}
             onVinculoFilterChange={setVinculoFilter}
             vinculadasCount={vinculadas}
+            density={density}
+            onDensityChange={setDensity}
           />
 
           {view === 'kanban' ? (
@@ -440,6 +448,7 @@ export function TarefasTab({ records, pf, tarefas }: TarefasTabProps) {
               onToggleConcluida={handleToggleConcluida}
               onDeleteRow={handleDeleteRow}
               emptyMessage={emptyMessage}
+              density={density}
             />
           )}
         </>
