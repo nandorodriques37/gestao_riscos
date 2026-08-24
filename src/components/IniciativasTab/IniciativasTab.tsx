@@ -2,13 +2,14 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Iniciativa, StoredRiskRecord } from '../../types';
 import type { UsePortfolio } from '../../hooks/usePortfolio';
 import { computePrioriz, priorizTier, round2 } from '../../lib/calculations';
-import { portfolioPorOrigem, iniciativaAtiva } from '../../lib/portfolioMetrics';
+import { portfolioPorOrigem, iniciativaAtiva, saudeIniciativas } from '../../lib/portfolioMetrics';
 import {
   ROTULO_FONTE, ROTULO_STATUS_INICIATIVA, BADGE_STATUS_INICIATIVA,
   formatarMoeda, plural,
 } from '../../lib/portfolioLabels';
 import { OBJETIVO_BALDE } from '../../lib/portfolioUi';
 import { EmptyState } from '../common/EmptyState';
+import { Kpi, KpiRow } from '../common/Kpi';
 import { IniciativaDetalhe } from './IniciativaDetalhe';
 import { IniciativaModal } from './IniciativaModal';
 
@@ -44,6 +45,7 @@ export function IniciativasTab({
   const objetivoPorId = useMemo(() => new Map(objetivos.map(o => [o.id, o])), [objetivos]);
   const pessoaPorId = useMemo(() => new Map(pessoas.map(p => [p.id, p.nome])), [pessoas]);
   const origem = useMemo(() => portfolioPorOrigem(iniciativas), [iniciativas]);
+  const saude = useMemo(() => saudeIniciativas(iniciativas, marcos), [iniciativas, marcos]);
 
   const marcosPorIniciativa = useMemo(() => {
     const m = new Map<string, number>();
@@ -185,6 +187,30 @@ export function IniciativasTab({
           </button>
         </div>
       </div>
+
+      {iniciativas.length > 0 && (
+        <KpiRow>
+          <Kpi label="No portfólio" valor={saude.total} acento="brand" />
+          <Kpi label="Concluídas" valor={saude.concluidas} acento="baixo" />
+          <Kpi
+            label="Ativas"
+            valor={saude.ativas}
+            sub="aprovada, em execução ou pausada"
+            acento="alto"
+          />
+          <Kpi
+            label="Sem marco"
+            valor={saude.semMarco.length}
+            sub="ativas, sem entrega verificável"
+            acento={saude.semMarco.length > 0 ? 'medio' : 'null'}
+          />
+          <Kpi
+            label="Com marco vencido"
+            valor={saude.atrasadas.length}
+            acento={saude.atrasadas.length > 0 ? 'critico' : 'null'}
+          />
+        </KpiRow>
+      )}
 
       {iniciativas.length === 0 ? (
         <div className="card">

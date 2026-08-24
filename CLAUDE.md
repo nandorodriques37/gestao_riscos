@@ -3,7 +3,16 @@
 Instruções persistentes para implementar e evoluir este projeto.
 
 ## O que é
-App web de página única para **registro, análise e priorização de riscos corporativos**, com três abas: Registro (tabela editável), Gráficos (indicadores com cross-filter) e Resumo de Priorização (matriz esforço × impacto + ranking).
+App web de página única para **direção e execução**, organizado pela cadeia
+**objetivo → iniciativa → risco → tarefa**. Oito destinos no trilho, em três
+grupos: Direção (Painel, Objetivos, Iniciativas, Priorização), Risco (Riscos) e
+Execução (Tarefas, Pessoas), mais a Triagem temporária da migração.
+
+O **Painel** abre respondendo quatro perguntas, uma por camada — quantos existem
+e quantos terminaram — e logo abaixo mostra **onde a cadeia quebra**: todo elo
+solto (objetivo sem iniciativa, iniciativa sem marco, risco sem tratamento,
+risco que não sustenta objetivo, trabalho sem dono ou atrasado) numa lista só,
+com o botão que leva a quem resolve.
 
 ## Fonte da verdade do design
 - `design_handoff_matriz_risco/README.md` — especificação completa (modelo de dados, fórmulas, telas, tokens, interações, estado). **Leia antes de implementar qualquer coisa.**
@@ -22,6 +31,27 @@ Os `.dc.html` são **referência de design, não código de produção**. Recrie
 - **Pessoas:** tem tela própria (`PessoasTab`), com capacidade (`dias_projeto_mes`, que a carga do Painel usa como régua), ativo/inativo e mesclagem de fichas duplicadas. **Dono é `dono_id` em toda linha** — objetivo, iniciativa e tarefa (livre ou mitigação). `tasks.responsavel` está **congelado** com o texto de antes da conversão; quem lê prefere a pessoa. A mesclagem vive no servidor (`POST /api/portfolio/mesclar-pessoas`, `api/_donos.ts`), porque quem sabe quais tabelas apontam para `pessoas` é o esquema: a versão anterior morava no componente, repontava três listas do pacote e não enxergava as tarefas livres. FK esquecida não falha — é `set null`, e o dono some calado. Repor as FKs vem **antes** de excluir a ficha, nunca depois. A duplicata nascia da semeadura comparando grafia crua (`DERYLSON` e `Derylson` passavam juntas na mesma rodada); agora tudo casa por `chaveDoNome` (`src/lib/nomes.ts`, sem acento e sem caixa), inclusive o campo de responsável do quadro.
 - **Plano de ação:** uma linha por mitigação, editável pelo `AcoesEditor` dentro do `EditModal`. `risk_records.acoes` continua sendo gravado, mas como **resumo derivado** (é o que tabela, busca, Gráficos, CSV e KPI de completude leem). Quem regrava é o SERVIDOR, em `sincronizarResumoDoPlano` (`api/_trabalhoDb.ts`), chamado de dentro de toda escrita de mitigação — pelo plano de ação e pelo quadro, que editam a mesma linha. A regra de montar o texto é única (`src/lib/resumoAcoes.ts`) e roda sempre sobre o que persistiu, nunca sobre o que a tela pretendia salvar. Derivar só na tela funcionou enquanto havia uma tela: quando o quadro passou a renomear e excluir mitigação, o registro do risco começou a anunciar ação que não existia mais. `acoes_itens` está **congelado**: ninguém escreve mais nele, e `src/lib/acoes.ts` só o lê para converter o legado. Não apagar a coluna.
 - **Tarefa e mitigação são a mesma tabela:** `tasks`, distinguidas por `risco_id` — preenchido = mitigação de risco, nulo = tarefa livre. Eram duas tabelas e a mesma entrega era cadastrada nas duas. `tasks` é a sobrevivente porque os anexos referenciam `tasks(id)`; `acoes_risco` está **congelada** como `acoes_itens`, e a cópia (`unificarTrabalho`, marcada em `migracoes`) preservou o `id` de cada linha — é o que mantém a trilha de auditoria válida. Quem serve a entidade é `acoesRiscoSobreTasks` (`api/_trabalhoDb.ts`), que implementa a **mesma** interface `Tabela<AcaoRisco>`: a rota, a auditoria, o backup e as telas que leem ação não sabem da mudança. A coluna `status` guarda o vocabulário do quadro ('A fazer'…) e a projeção traduz para o da ação ('aberta'…) nos dois sentidos — as 68 tarefas existentes não foram reescritas. `tasks.risco_id` é `set null`, não `cascade`: apagar um risco desvincula a mitigação em vez de apagá-la (com anexos junto). A aba Tarefas mostra as duas coisas numa lista só, com recorte por origem (Todas / De risco / Livres) e o chip do risco em cada linha vinculada. Vínculo é **só leitura** no quadro (fica fora de `TASK_FIELDS`) — quem cria e desfaz é o plano de ação dentro do risco. Mitigação sem nota GUT **herda a faixa da criticidade do risco**, senão as 50 caem em "Sem nota" e o Kanban por prioridade fica inútil para metade das linhas; a faixa herdada é marcada com `*`. Rotina não tem prazo e nunca atrasa. "Risco excluído" só aparece quando a lista de riscos já carregou — sem essa distinção toda linha vinculada mente durante o carregamento.
+- **Risco ↔ objetivo é DERIVADO, nunca declarado:** o caminho é
+  `objetivo ← iniciativa ← ação ← risco`, e é o que `riscosPorObjetivo` percorre.
+  Não existe `risk_records.objetivo_id` — um segundo caminho para o mesmo fato
+  discordaria do primeiro e ninguém saberia qual vale. O buraco que a derivação
+  deixa (mitigação autônoma não sustenta objetivo nenhum) é mostrado como
+  lacuna, em `riscosSemObjetivo`, e não tapado com um campo.
+- **Saúde da cadeia:** `saudeObjetivos`, `saudeIniciativas`, `saudeRiscos`,
+  `saudeTrabalho` e `cadeiaQuebrada` (`src/lib/portfolioMetrics.ts`), funções
+  puras como o resto do arquivo. Elas NÃO conhecem rótulo, cor nem aba:
+  `cadeiaQuebrada` devolve `{ chave, n, ids }` e quem traduz para texto e
+  destino é `LACUNAS` (`src/lib/portfolioUi.ts`). Régua de status e de faixa vem
+  de `normTaskStatus`/`scoreTier` — nunca reimplementada.
+- **Uma régua por pergunta:** "quantos riscos eu mapeei" conta linhas COM
+  descrição, no Painel, no Registro e na Análise. Linha em branco é como se
+  adiciona uma, não é risco. O nome das faixas sai de `ROTULO_TIER`
+  (`calculations.ts`) — havia quatro cópias de "Crítico/Alto/Médio/Baixo".
+- **`useTasks` mora no `App`**, como `usePortfolio`: o Painel precisa contar
+  tarefa e a aba Tarefas não está montada quando ele está. O quadro recebe o
+  hook por prop e continua dono do próprio polling; o `App` só sincroniza as
+  tarefas quando está FORA da aba Tarefas, senão são dois relógios sobre a
+  mesma lista.
 - **Sequência de esquema:** só existe em `api/_schema.ts` (`ensureTudo`). A ordem é dependência, não gosto — `risk_records` antes das FKs de `tasks`, `acoes_risco` congelada antes da cópia. Produção, `vite-plugin-dev-api.ts` e os testes chamam a mesma função; uma segunda versão da sequência faz o teste passar sobre um esquema que a produção não tem.
 - **Dev:** `npm run dev` sobe a mesma API com Postgres embarcado (pglite) via `vite-plugin-dev-api.ts` — sem precisar de banco. Produção usa Neon (`DATABASE_URL`).
 - Sem lib de charts obrigatória — heatmap/donuts/barras são CSS (grid, conic-gradient, larguras %).
@@ -60,9 +90,21 @@ nessa ordem.
   `--container` (1600px).
 - Coluna "Riscos": acento no rótulo do header e faixa vertical de 2px — não mais
   fundo rosa em toda célula.
-- Tipografia: **Inter Variable** auto-hospedada (`@fontsource-variable/inter`,
-  sem CDN). `tabular-nums` só em coluna de tabela e eixo; número grande (KPI,
-  centro do donut) usa figuras proporcionais.
+- Tipografia: **Inter Variable com eixo óptico**, auto-hospedada. O import é
+  `@fontsource-variable/inter/opsz.css`, NÃO o `index.css` do pacote — mesma
+  família e mesmo peso variável, mais o eixo `opsz`. Com
+  `font-optical-sizing: auto` (em `base.css`), o título a 24px recebe o corte
+  Display e a tabela a 11px o corte Text, sem uma regra por componente; só o
+  número da cadeia força o teto (`font-variation-settings: 'opsz' 32`).
+  `font-synthesis: none`, porque peso sintético suja o traço ao lado do real.
+  `tabular-nums` só em coluna de tabela e eixo; número grande (KPI, centro do
+  donut) usa figuras proporcionais.
+- **Um primitivo por papel**: `common/Kpi.tsx` (`<Kpi>` / `<KpiRow>`) é o ÚNICO
+  tile de indicador, e `common/Composicao.tsx` a única barra empilhada. Havia
+  três componentes de KPI quase idênticos e dois seletores CSS com as mesmas
+  regras (`.kpi-card` e `.kpi-tile`) — o resultado eram tamanhos de número
+  diferentes para o mesmo papel, dependendo da aba. Cabeçalho é sempre
+  `.page-bar` + `.page-title`, e toda aba tem um.
 - Sem ícones externos: glifos Unicode (↓ + × ▲ ▼ ‹ ›) ou desenho em CSS/SVG inline
   (ver `AnexosBadge`). Sem emojis. Cuidado: o Inter **não** tem ☀ ☾ ◐ — glifos
   assim caem em fallback torto.

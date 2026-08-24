@@ -63,16 +63,24 @@ export interface StoredRiskRecord extends RiskRecord {
   version: number;
 }
 
+/**
+ * Destinos do menu, na ordem da jornada: objetivo → iniciativa → risco →
+ * trabalho. `graficos` saiu daqui — os gráficos viraram um MODO de leitura do
+ * registro de risco, não uma seção à parte: eram análise do mesmo dado da aba
+ * ao lado, e como aba interrompiam a jornada entre risco e tarefa.
+ */
 export type Tab =
-  | 'painel' | 'objetivos' | 'iniciativas'
-  | 'registro' | 'graficos' | 'priorizacao'
+  | 'painel' | 'objetivos' | 'iniciativas' | 'priorizacao'
+  | 'registro'
   | 'tarefas' | 'pessoas' | 'triagem';
 
 /**
- * Os dois modos de leitura do registro de risco. Não é destino de menu: é a
- * mesma seção vista pela tabela (o cadastro) ou pelo rastro (o tratamento).
+ * As três leituras do registro de risco. Não é destino de menu: é a mesma
+ * seção vista pelo cadastro (tabela), pelo tratamento (rastro) ou pela
+ * distribuição (análise).
  */
-export type ModoRisco = 'tabela' | 'rastro';
+export type ModoRisco = 'tabela' | 'rastro' | 'analise';
+export const MODOS_RISCO: readonly ModoRisco[] = ['tabela', 'rastro', 'analise'];
 
 export type StatusFilterValue = 'Todos' | 'Não iniciado' | 'Em andamento' | 'Concluído';
 

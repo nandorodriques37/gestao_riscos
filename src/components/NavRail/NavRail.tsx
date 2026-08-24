@@ -3,10 +3,10 @@ import type { Tab } from '../../types';
 
 /**
  * Navegação lateral. Substitui as abas do topo, que já quebravam linha em
- * notebook com quatro rótulos e não seguram as sete seções do portfólio.
+ * notebook com quatro rótulos e não seguram as seções do portfólio.
  *
  * Colapsado mostra só o ícone, com o rótulo em tooltip — é a única forma de
- * manter sete destinos identificáveis a 72 px. Os ícones são SVG traçado em
+ * manter os destinos identificáveis a 72 px. Os ícones são SVG traçado em
  * grade de 24: sem lib e sem emoji, como o resto do app.
  */
 
@@ -31,13 +31,22 @@ const ICONES = {
   objetivos: svg(<><circle cx="12" cy="12" r="8.5" /><circle cx="12" cy="12" r="4" /><circle cx="12" cy="12" r="0.6" fill="currentColor" /></>),
   iniciativas: svg(<><path d="M3.5 18.5h17" /><path d="M6 18.5V9.5l6-4.5 6 4.5v9" /><path d="M12 18.5v-5" /></>),
   registro: svg(<><path d="M12 4.2 20.8 19.4H3.2Z" /><path d="M12 10v3.6" /><path d="M12 16.6v.3" /></>),
-  graficos: svg(<><path d="M5 20V11" /><path d="M12 20V4.5" /><path d="M19 20v-6.5" /></>),
   priorizacao: svg(<><rect x="3" y="3" width="18" height="18" rx="2.5" /><path d="M3 12h18M12 3v18" /></>),
   tarefas: svg(<><rect x="3" y="3" width="18" height="18" rx="3" /><polyline points="8 12.4 11 15.4 16.4 9" /></>),
   pessoas: svg(<><circle cx="9" cy="8" r="3.2" /><path d="M3.5 19.5c0-3 2.5-5 5.5-5s5.5 2 5.5 5" /><path d="M16.5 5.4a3.2 3.2 0 0 1 0 5.2" /><path d="M17.5 14.9c2 .6 3.2 2.3 3.2 4.6" /></>),
   triagem: svg(<><path d="M4 5h16" /><path d="M7 12h10" /><path d="M10 19h4" /></>),
 };
 
+/**
+ * Os grupos são a jornada, não um armário: objetivo → iniciativa → risco →
+ * trabalho, de cima para baixo. Duas correções entraram aqui:
+ *
+ * - "Gráficos" saiu do rail. Viraram o modo Análise dentro de Riscos, porque
+ *   liam exatamente os mesmos registros da seção ao lado.
+ * - "Priorização" saiu de Risco e foi para Direção. Ela já lê INICIATIVAS por
+ *   padrão desde a migração — estava catalogada onde não mora mais, e de
+ *   quebra interrompia o caminho entre o risco e a tarefa que o trata.
+ */
 const GRUPOS: Grupo[] = [
   {
     titulo: 'Direção',
@@ -45,14 +54,13 @@ const GRUPOS: Grupo[] = [
       { id: 'painel', label: 'Painel', icone: ICONES.painel },
       { id: 'objetivos', label: 'Objetivos', icone: ICONES.objetivos },
       { id: 'iniciativas', label: 'Iniciativas', icone: ICONES.iniciativas },
+      { id: 'priorizacao', label: 'Priorização', icone: ICONES.priorizacao },
     ],
   },
   {
     titulo: 'Risco',
     itens: [
       { id: 'registro', label: 'Riscos', icone: ICONES.registro },
-      { id: 'graficos', label: 'Gráficos', icone: ICONES.graficos },
-      { id: 'priorizacao', label: 'Priorização', icone: ICONES.priorizacao },
     ],
   },
   {

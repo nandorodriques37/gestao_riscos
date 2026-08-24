@@ -40,10 +40,7 @@ export function scoreColor(score: number | null): string {
 /** Rótulo de criticidade — mesmos limiares de scoreColor, expressos como faixas. */
 export function criticidadeLabel(score: number | null): 'Crítico' | 'Alto' | 'Médio' | 'Baixo' | null {
   if (score == null) return null;
-  if (score > 14) return 'Crítico';
-  if (score > 9) return 'Alto';
-  if (score > 4) return 'Médio';
-  return 'Baixo';
+  return ROTULO_TIER[scoreTier(score)] as 'Crítico' | 'Alto' | 'Médio' | 'Baixo';
 }
 
 export function priorizColor(p: number | null): string {
@@ -55,6 +52,19 @@ export function priorizColor(p: number | null): string {
 }
 
 export type TierKind = 'baixo' | 'medio' | 'alto' | 'critico' | 'null';
+
+/**
+ * Nome de cada faixa. Fonte única: quem tem o score chama `criticidadeLabel`,
+ * quem já tem a faixa lê este mapa. Antes o Painel, os Gráficos e esta função
+ * escreviam "Crítico/Alto/Médio/Baixo" cada um por conta própria.
+ */
+export const ROTULO_TIER: Record<TierKind, string> = {
+  critico: 'Crítico',
+  alto: 'Alto',
+  medio: 'Médio',
+  baixo: 'Baixo',
+  null: 'Sem score',
+};
 
 /** Faixa de criticidade do score — mesmos limiares de scoreColor. */
 export function scoreTier(score: number | null): TierKind {

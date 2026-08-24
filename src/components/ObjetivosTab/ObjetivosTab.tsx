@@ -1,22 +1,29 @@
 import { useMemo, useState } from 'react';
-import type { Objetivo, Tab } from '../../types';
+import type { Objetivo, StoredRiskRecord, Tab } from '../../types';
 import type { UsePortfolio } from '../../hooks/usePortfolio';
-import { iniciativaAtiva, progressoObjetivo } from '../../lib/portfolioMetrics';
+import {
+  iniciativaAtiva, progressoObjetivo, riscosPorObjetivo, saudeObjetivos,
+} from '../../lib/portfolioMetrics';
+import { computeScore, scoreTier } from '../../lib/calculations';
 import {
   ROTULO_HORIZONTE, ROTULO_STATUS_OBJETIVO, ROTULO_STATUS_INICIATIVA,
   BADGE_STATUS_INICIATIVA, formatarData, formatarMoeda, formatarNumero,
-  formatarPct, plural,
+  formatarPct, nomeRisco, plural,
 } from '../../lib/portfolioLabels';
 import { OBJETIVO_BALDE } from '../../lib/portfolioUi';
 import { EmptyState } from '../common/EmptyState';
+import { Kpi, KpiRow } from '../common/Kpi';
 import { ObjetivoModal } from './ObjetivoModal';
 import { MedicaoModal } from './MedicaoModal';
 import { Sparkline } from './Sparkline';
 
 interface ObjetivosTabProps {
+  /** Para o bloco "riscos que ameaçam este objetivo", derivado das iniciativas. */
+  riscos: StoredRiskRecord[];
   pf: UsePortfolio;
   onIrPara: (tab: Tab) => void;
   onAbrirIniciativa: (id: string) => void;
+  onAbrirRisco: (id: string) => void;
 }
 
 const ROTULO_TENDENCIA: Record<string, string> = {
@@ -28,9 +35,11 @@ const BADGE_STATUS: Record<string, string> = {
   ativo: 'blue', atingido: 'green', abandonado: 'slate', '': 'slate',
 };
 
-export function ObjetivosTab({ pf, onIrPara, onAbrirIniciativa }: ObjetivosTabProps) {
+export function ObjetivosTab({
+  riscos, pf, onIrPara, onAbrirIniciativa, onAbrirRisco,
+}: ObjetivosTabProps) {
   const { portfolio, loading, error, clearError, createEntidade, patchEntidade, deleteEntidade } = pf;
-  const { objetivos, medicoes, iniciativas, pessoas } = portfolio;
+  const { objetivos, medicoes, iniciativas, acoes_risco, pessoas } = portfolio;
   const [editando, setEditando] = useState<Objetivo | null>(null);
   const [medindo, setMedindo] = useState<Objetivo | null>(null);
   const [criando, setCriando] = useState(false);
@@ -63,8 +72,38 @@ export function ObjetivosTab({ pf, onIrPara, onAbrirIniciativa }: ObjetivosTabPr
 
   const encerrados = objetivos.length - objetivos.filter(o => o.status !== 'abandonado').length;
 
+  const saude = useMemo(() => saudeObjetivos(objetivos, medicoes), [objetivos, medicoes]);
+
+  /**
+   * Riscos que ameaçam cada objetivo, derivados do caminho que já existe:
+   * objetivo ← iniciativa ← ação ← risco. Um `objetivo_id` no próprio risco
+   * criaria um segundo caminho para o mesmo fato — e quando os dois
+   * discordassem, ninguém saberia qual vale.
+   */
+  const riscosPorObj = useMemo(() => {
+    const m = new Map<string, StoredRiskRecord[]>();
+    for (const o of objetivos) {
+      m.set(o.id, riscosPorObjetivo(o.id, iniciativas, acoes_risco, riscos));
+    }
+    return m;
+  }, [objetivos, iniciativas, acoes_risco, riscos]);
+
   async function salvarNovo(dados: Record<string, unknown>) {
     return createEntidade('objetivos', dados);
+  }
+
+  /**
+   * Declara o objetivo atingido. É decisão, não cálculo — igual ao "confirmar
+   * mitigado" do Rastro. A métrica só prova que a série cobriu o caminho até a
+   * meta; quem responde pelo resultado é quem clica.
+   */
+  async function declararAtingido(o: Objetivo) {
+    if (!window.confirm(
+      `Declarar "${o.descricao}" como atingido?\n\n`
+      + 'A série já cobriu todo o caminho entre baseline e meta. Ele sai da conta de '
+      + 'objetivos ativos e passa a contar como alcançado.',
+    )) return;
+    await patchEntidade('objetivos', o.id, { status: 'atingido' });
   }
 
   async function salvarEdicao(id: string, dados: Record<string, unknown>) {
@@ -127,6 +166,30 @@ export function ObjetivosTab({ pf, onIrPara, onAbrirIniciativa }: ObjetivosTabPr
         </div>
       </div>
 
+      {objetivos.length > 0 && (
+        <KpiRow colunas={4}>
+          <Kpi label="Ativos" valor={saude.ativos} acento="brand" />
+          <Kpi
+            label="Atingidos"
+            valor={saude.atingidos}
+            sub="declarados por você"
+            acento="baixo"
+          />
+          <Kpi
+            label="Prontos para atingir"
+            valor={saude.prontosParaAtingir.length}
+            sub="a série cobriu o caminho todo"
+            acento={saude.prontosParaAtingir.length > 0 ? 'medio' : 'null'}
+          />
+          <Kpi
+            label="Sem número"
+            valor={saude.semIndicador + saude.semMedicao}
+            sub={`${saude.semIndicador} sem indicador · ${saude.semMedicao} sem medição`}
+            acento={saude.semIndicador + saude.semMedicao > 0 ? 'alto' : 'null'}
+          />
+        </KpiRow>
+      )}
+
       {visiveis.length === 0 ? (
         <div className="card">
           <EmptyState
@@ -147,6 +210,7 @@ export function ObjetivosTab({ pf, onIrPara, onAbrirIniciativa }: ObjetivosTabPr
             const orfao = !balde && o.status === 'ativo' && ativas.length === 0;
             const pctExecucao = daqui.length === 0 ? 0 : concluidas / daqui.length;
             const progresso = progressoObjetivo(o, medicoes);
+            const ameacas = riscosPorObj.get(o.id) ?? [];
             const sufixo = o.unidade ? ` ${o.unidade}` : '';
             // Casas decimais seguem o próprio número: 8,4% mantém a casa, 145 dias não ganha uma.
             const num = (v: number | null) => formatarNumero(v, v != null && !Number.isInteger(v) ? 1 : 0);
@@ -171,6 +235,18 @@ export function ObjetivosTab({ pf, onIrPara, onAbrirIniciativa }: ObjetivosTabPr
 
                   <div className="actions-row" style={{ marginTop: 'var(--sp-3)' }}>
                     <button className="btn btn-ghost" onClick={() => setEditando(o)}>Editar</button>
+                    {/* O sistema prova que a meta foi alcançada; declarar é
+                        sempre de quem responde pelo objetivo. Nada aqui muda o
+                        status sozinho. */}
+                    {progresso.pct === 1 && o.status === 'ativo' && (
+                      <button
+                        className="btn btn-navy"
+                        onClick={() => { void declararAtingido(o); }}
+                        title="A série já cobriu todo o caminho entre baseline e meta."
+                      >
+                        Declarar atingido
+                      </button>
+                    )}
                   </div>
 
                   {balde && (
@@ -297,6 +373,50 @@ export function ObjetivosTab({ pf, onIrPara, onAbrirIniciativa }: ObjetivosTabPr
                       {daqui.length > 8 && (
                         <div className="lista-linha">
                           <span className="lista-nota">e mais {daqui.length - 8}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Riscos que ameaçam este objetivo. Derivado: chega aqui
+                      pelas iniciativas penduradas, nunca por um campo no
+                      próprio risco. Risco tratado só por mitigação autônoma
+                      não aparece em objetivo nenhum — e é justamente essa a
+                      lacuna que o Painel cobra. */}
+                  <div className="fato-label" style={{ marginTop: 'var(--sp-4)' }}>
+                    {ameacas.length === 0
+                      ? 'Nenhum risco vinculado'
+                      : `${plural(ameacas.length, 'risco ameaça', 'riscos ameaçam')} este objetivo`}
+                  </div>
+                  {ameacas.length === 0 ? (
+                    <div className="bento-sub">
+                      Nenhuma iniciativa daqui trata risco mapeado. Vincular um risco a uma
+                      delas faz ele aparecer nesta lista.
+                    </div>
+                  ) : (
+                    <div className="lista-linhas">
+                      {ameacas.slice(0, 6).map(r => {
+                        const score = computeScore(r);
+                        return (
+                          <div className="lista-linha" key={r.id}>
+                            <button
+                              className="lista-texto link-ini"
+                              style={{ fontSize: 'var(--fs-xs)', fontWeight: 'var(--fw-medium)' }}
+                              onClick={() => onAbrirRisco(r.id)}
+                              title={nomeRisco(r)}
+                            >
+                              {nomeRisco(r)}
+                            </button>
+                            <span className="tier-chip" data-tier={scoreTier(score)}>
+                              <span className="tier-dot" aria-hidden="true" />
+                              {score == null ? 'sem score' : String(score).replace('.', ',')}
+                            </span>
+                          </div>
+                        );
+                      })}
+                      {ameacas.length > 6 && (
+                        <div className="lista-linha">
+                          <span className="lista-nota">e mais {ameacas.length - 6}</span>
                         </div>
                       )}
                     </div>

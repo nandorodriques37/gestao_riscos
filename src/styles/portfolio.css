@@ -120,16 +120,6 @@
   background: var(--c, var(--tier-null));
 }
 
-.stack-seg[data-serie='evitar_perda'] { --c: var(--badge-slate); }
-.stack-seg[data-serie='criar_ganho'] { --c: var(--badge-green); }
-.stack-seg[data-serie='criar_decisao'] { --c: var(--badge-purple); }
-.stack-seg[data-serie='risco'] { --c: var(--risco-accent); }
-.stack-seg[data-serie='oportunidade'] { --c: var(--badge-blue); }
-.stack-seg[data-serie='mitigado'] { --c: var(--tier-baixo); }
-.stack-seg[data-serie='aceito'] { --c: var(--badge-slate); }
-.stack-seg[data-serie='em_tratamento'] { --c: var(--tier-medio); }
-.stack-seg[data-serie='sem_tratamento'] { --c: var(--tier-critico); }
-
 .serie-dot {
   width: 8px;
   height: 8px;
@@ -138,15 +128,70 @@
   background: var(--c, var(--tier-null));
 }
 
+/* A cor da série é declarada UMA vez e vale para o segmento da barra e para o
+   ponto da legenda — eram duas listas idênticas de 9 linhas cada, e a segunda
+   já vinha atrasada em relação à primeira.
+
+   As séries de status novas (objetivo, iniciativa agrupada, trabalho) passaram
+   pelo validador do skill `dataviz` contra a superfície clara, em pares
+   ADJACENTES na ordem em que a barra os empilha. `--badge-amber` ×
+   `--badge-orange` medem ΔE 4.1 em visão normal e 0.1 em deuteranopia — é por
+   isso que a composição da iniciativa agrupa "em execução" e "pausada" em
+   "Ativas" em vez de empilhá-las lado a lado. */
+.stack-seg[data-serie='evitar_perda'],
 .serie-dot[data-serie='evitar_perda'] { --c: var(--badge-slate); }
+.stack-seg[data-serie='criar_ganho'],
 .serie-dot[data-serie='criar_ganho'] { --c: var(--badge-green); }
+.stack-seg[data-serie='criar_decisao'],
 .serie-dot[data-serie='criar_decisao'] { --c: var(--badge-purple); }
+.stack-seg[data-serie='risco'],
 .serie-dot[data-serie='risco'] { --c: var(--risco-accent); }
+.stack-seg[data-serie='oportunidade'],
 .serie-dot[data-serie='oportunidade'] { --c: var(--badge-blue); }
+.stack-seg[data-serie='mitigado'],
 .serie-dot[data-serie='mitigado'] { --c: var(--tier-baixo); }
+.stack-seg[data-serie='aceito'],
 .serie-dot[data-serie='aceito'] { --c: var(--badge-slate); }
+.stack-seg[data-serie='em_tratamento'],
 .serie-dot[data-serie='em_tratamento'] { --c: var(--tier-medio); }
+.stack-seg[data-serie='sem_tratamento'],
 .serie-dot[data-serie='sem_tratamento'] { --c: var(--tier-critico); }
+
+/* Objetivo: ativo → atingido → abandonado. */
+.stack-seg[data-serie='ativo'],
+.serie-dot[data-serie='ativo'] { --c: var(--badge-blue); }
+.stack-seg[data-serie='atingido'],
+.serie-dot[data-serie='atingido'] { --c: var(--badge-green); }
+.stack-seg[data-serie='abandonado'],
+.serie-dot[data-serie='abandonado'] { --c: var(--tier-null); }
+
+/* Iniciativa, agrupada: backlog → ativas → concluídas → canceladas. */
+.stack-seg[data-serie='backlog'],
+.serie-dot[data-serie='backlog'] { --c: var(--badge-slate); }
+.stack-seg[data-serie='ativa'],
+.serie-dot[data-serie='ativa'] { --c: var(--badge-blue); }
+.stack-seg[data-serie='concluida'],
+.serie-dot[data-serie='concluida'] { --c: var(--badge-green); }
+.stack-seg[data-serie='cancelada'],
+.serie-dot[data-serie='cancelada'] { --c: var(--tier-null); }
+
+/* Trabalho: a fazer → em andamento → concluída → cancelada. */
+.stack-seg[data-serie='a_fazer'],
+.serie-dot[data-serie='a_fazer'] { --c: var(--badge-slate); }
+.stack-seg[data-serie='em_andamento'],
+.serie-dot[data-serie='em_andamento'] { --c: var(--badge-amber); }
+
+/* Risco por criticidade. Os hex são regra de negócio e não mudam; a escada
+   semáforo não passa nos limites de daltonismo por matiz, e é por isso que a
+   legenda sempre carrega rótulo + número e a barra tem o vão de --viz-gap. */
+.stack-seg[data-serie='critico'],
+.serie-dot[data-serie='critico'] { --c: var(--tier-critico); }
+.stack-seg[data-serie='alto'],
+.serie-dot[data-serie='alto'] { --c: var(--tier-alto); }
+.stack-seg[data-serie='medio'],
+.serie-dot[data-serie='medio'] { --c: var(--tier-medio); }
+.stack-seg[data-serie='baixo'],
+.serie-dot[data-serie='baixo'] { --c: var(--tier-baixo); }
 
 /* Barra simples de carga, com o traço da capacidade. */
 .carga-track {
@@ -1374,4 +1419,233 @@
   .autor-chip {
     display: none;
   }
+}
+
+/* ============================================================================
+   A cadeia — objetivo → iniciativa → risco → trabalho
+
+   Quatro elos numa linha, na ordem da jornada, ligados por chevrons. Cada um é
+   um botão: leva à seção da própria camada. É a faixa que responde as quatro
+   perguntas que antes estavam espalhadas por quatro abas — e a de tarefas, por
+   nenhuma.
+   ========================================================================= */
+
+.cadeia {
+  display: grid;
+  /* auto nas setas: elas ocupam o que o glifo pede, e os quatro elos dividem o
+     resto por igual. Sem o minmax(0,1fr) o conteúdo mais largo estica a coluna
+     e os elos deixam de ter a mesma largura. */
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: stretch;
+  gap: var(--sp-2);
+  margin-top: var(--sp-4);
+}
+
+.cadeia-elo {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-1);
+  min-width: 0;
+  padding: var(--sp-3);
+  border: 1px solid var(--line-hairline);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  text-align: left;
+  transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+}
+
+.cadeia-elo:hover {
+  background: var(--bg-hover);
+  border-color: var(--line-border);
+}
+
+.cadeia-rotulo {
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-medium);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.cadeia-numeros {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+
+/* O maior número do app. Força o teto do eixo óptico: a 40px o corte Display
+   do Inter fecha o espacejamento e sobe o contraste do traço, que é o que faz
+   um número grande parecer desenhado em vez de ampliado. */
+.cadeia-valor {
+  font-size: var(--fs-display);
+  font-variation-settings: 'opsz' 32;
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--tracking-display);
+  line-height: 1;
+  color: var(--ink-1);
+}
+
+.cadeia-unidade {
+  font-size: var(--fs-xs);
+  color: var(--ink-3);
+  min-width: 0;
+}
+
+/* O segundo número: "quantos eu terminei". Fica junto do primeiro de propósito
+   — é a metade da pergunta que nenhuma tela respondia. */
+.cadeia-feito {
+  font-size: var(--fs-xs);
+  color: var(--ink-2);
+}
+
+.cadeia-feito strong {
+  font-weight: var(--fw-semibold);
+  color: var(--ink-1);
+}
+
+.cadeia-elo .stack-bar {
+  width: 100%;
+  height: 8px;
+  margin-top: var(--sp-2);
+}
+
+.cadeia-elo .lista-linhas {
+  width: 100%;
+}
+
+.cadeia-seta {
+  align-self: center;
+  color: var(--ink-4);
+  font-size: var(--fs-xl);
+  line-height: 1;
+  user-select: none;
+}
+
+/* Abaixo de 1280px a linha de quatro não cabe sem espremer o número grande.
+   Vira 2×2, e as setas somem: a ordem da leitura ainda é a da jornada, e uma
+   seta apontando para a direita no fim da primeira linha mentiria. */
+@media (max-width: 1280px) {
+  .cadeia {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .cadeia-seta {
+    display: none;
+  }
+}
+
+@media (max-width: 620px) {
+  .cadeia {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ============================================================================
+   Lacunas — onde a cadeia quebra
+
+   Uma linha por elo rompido: quantos, o que é, por que importa, e o botão que
+   leva a quem resolve. A faixa colorida à esquerda diz a CAMADA, e nunca
+   sozinha — o rótulo está sempre escrito ao lado.
+   ========================================================================= */
+
+.lacunas {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  margin-top: var(--sp-4);
+}
+
+.lacuna {
+  --c: var(--tier-null);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3);
+  border: 1px solid var(--line-hairline);
+  border-left: 3px solid var(--c);
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+}
+
+.lacuna[data-camada='objetivo'] { --c: var(--badge-blue); }
+.lacuna[data-camada='iniciativa'] { --c: var(--badge-purple); }
+.lacuna[data-camada='risco'] { --c: var(--risco-accent); }
+.lacuna[data-camada='trabalho'] { --c: var(--badge-amber); }
+
+/* O número é o que se lê primeiro: "quantos estão soltos". Tabular porque
+   várias linhas empilhadas formam uma coluna. */
+.lacuna-n {
+  font-size: var(--fs-xl);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--tracking-tighter);
+  color: var(--ink-1);
+  min-width: 2.5ch;
+  text-align: right;
+}
+
+.lacuna-corpo {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.lacuna-titulo {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--ink-1);
+}
+
+.lacuna-ajuda {
+  font-size: var(--fs-xs);
+  color: var(--ink-3);
+  line-height: 1.45;
+}
+
+/* Duas partes com destinos diferentes: os nomes podem cortar, a contagem
+   nunca. Numa linha só, a elipse comia justamente o "e mais 42". */
+.lacuna-exemplos {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  margin-top: var(--sp-1);
+  font-size: var(--fs-xs);
+  min-width: 0;
+}
+
+.lacuna-exemplos-nomes {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink-4);
+}
+
+.lacuna-exemplos-resto {
+  flex: none;
+  color: var(--ink-4);
+  white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  .lacuna {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  /* O botão desce para a linha de baixo, alinhado ao texto e não ao número. */
+  .lacuna > .btn {
+    grid-column: 2;
+    justify-self: start;
+  }
+}
+
+/* Valor de uma linha de legenda. Era um style inline com cor e peso repetido a
+   cada uso — a cor vinha de token, mas a decisão estava espalhada. */
+.lista-valor {
+  color: var(--ink-1);
+  font-weight: var(--fw-semibold);
+  font-size: var(--fs-xs);
 }

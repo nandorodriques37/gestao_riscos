@@ -1,3 +1,10 @@
 /* A fonte é auto-hospedada (sem requisição a CDN em runtime). O reset e a base
-   tipográfica moram em src/styles/base.css, importado por App.css. */
-@import '@fontsource-variable/inter';
+   tipográfica moram em src/styles/base.css, importado por App.css.
+
+   `opsz.css` no lugar de `index.css`: é a MESMA família ('Inter Variable') e o
+   mesmo peso variável 100–900, mais o eixo ÓPTICO. Com ele o desenho da letra
+   muda com o tamanho — títulos e números grandes ganham o corte Display, mais
+   fechado e contrastado; a tabela a 11–13px ganha o corte Text, mais aberto e
+   com espacejamento maior. Antes era um único desenho esticado dos dois lados.
+   Uma linha de import; nenhum arquivo a mais no bundle além dos woff2 do eixo. */
+@import '@fontsource-variable/inter/opsz.css';

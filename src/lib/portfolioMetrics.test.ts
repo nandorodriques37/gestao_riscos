@@ -7,7 +7,10 @@ import {
   estadoTratamento, tratamentoDosRiscos, prontosParaFechar, riscosMitigados,
   riscosAbertos, exposicaoResidual, riscosPorIniciativa,
   usoPorPessoa, progressoObjetivo,
+  saudeObjetivos, saudeIniciativas, saudeRiscos, saudeTrabalho,
+  riscosPorObjetivo, riscosSemObjetivo, cadeiaQuebrada,
   LIMITE_WIP, DIAS_PARA_ZUMBI,
+  type TrabalhoParaSaude,
 } from './portfolioMetrics';
 
 /* ---------- fábricas mínimas ---------- */
@@ -783,5 +786,285 @@ describe('progressoObjetivo', () => {
     ]);
     expect(r.serie).toEqual([]);
     expect(r.atual).toBeNull();
+  });
+});
+
+/* ================================================================== */
+/* Saúde da cadeia                                                     */
+/* ================================================================== */
+
+function trabalho(t: Partial<TrabalhoParaSaude> = {}): TrabalhoParaSaude {
+  return {
+    id: id(), status: 'A fazer', prazo: null, risco_id: null, dono_id: null,
+    triagem: '', ...t,
+  };
+}
+
+describe('saudeObjetivos', () => {
+  it('separa ativos, atingidos e abandonados', () => {
+    const r = saudeObjetivos([
+      objetivo({ status: 'ativo' }),
+      objetivo({ status: 'ativo' }),
+      objetivo({ status: 'atingido' }),
+      objetivo({ status: 'abandonado' }),
+    ], []);
+    expect(r.total).toBe(4);
+    expect(r.ativos).toBe(2);
+    expect(r.atingidos).toBe(1);
+    expect(r.abandonados).toBe(1);
+  });
+
+  it('objetivo que chegou à meta entra em prontosParaAtingir sem virar atingido', () => {
+    const o = objetivo({ status: 'ativo', indicador: 'Ruptura', baseline: 8, meta: 3 });
+    const r = saudeObjetivos([o], [medicao({ objetivo_id: o.id, data: '2026-06-30', valor: 3 })]);
+    expect(r.prontosParaAtingir.map(x => x.id)).toEqual([o.id]);
+    expect(r.atingidos).toBe(0);
+  });
+
+  it('passar da meta também conta como pronto — o caminho não passa de ponta a ponta', () => {
+    const o = objetivo({ status: 'ativo', indicador: 'Ruptura', baseline: 8, meta: 3 });
+    const r = saudeObjetivos([o], [medicao({ objetivo_id: o.id, data: '2026-06-30', valor: 1 })]);
+    expect(r.prontosParaAtingir).toHaveLength(1);
+  });
+
+  it('sem indicador e sem medição são lacunas distintas', () => {
+    const semInd = objetivo({ status: 'ativo', indicador: '' });
+    const semMed = objetivo({ status: 'ativo', indicador: 'Ruptura', baseline: 8, meta: 3 });
+    const r = saudeObjetivos([semInd, semMed], []);
+    expect(r.semIndicador).toBe(1);
+    expect(r.semMedicao).toBe(1);
+  });
+
+  it('só olha os ativos ao cobrar indicador — abandonado não é lacuna', () => {
+    const r = saudeObjetivos([objetivo({ status: 'abandonado', indicador: '' })], []);
+    expect(r.semIndicador).toBe(0);
+  });
+
+  it('lista vazia não quebra', () => {
+    const r = saudeObjetivos([], []);
+    expect(r).toMatchObject({ total: 0, ativos: 0, atingidos: 0, prontosParaAtingir: [] });
+  });
+});
+
+describe('saudeIniciativas', () => {
+  it('conta concluídas e ativas, e ordena porStatus pelo ciclo de vida', () => {
+    const r = saudeIniciativas([
+      iniciativa({ status: 'concluida' }),
+      iniciativa({ status: 'backlog' }),
+      iniciativa({ status: 'concluida' }),
+      iniciativa({ status: 'em_execucao' }),
+    ], [], HOJE);
+    expect(r.total).toBe(4);
+    expect(r.concluidas).toBe(2);
+    expect(r.ativas).toBe(1);
+    expect(r.porStatus.map(s => s.status)).toEqual(['backlog', 'em_execucao', 'concluida']);
+  });
+
+  it('só a ativa sem marco entra em semMarco', () => {
+    const ativa = iniciativa({ status: 'em_execucao' });
+    const comMarco = iniciativa({ status: 'aprovada' });
+    const noBacklog = iniciativa({ status: 'backlog' });
+    const r = saudeIniciativas(
+      [ativa, comMarco, noBacklog],
+      [marco({ iniciativa_id: comMarco.id, data_plano_original: '2026-12-01' })],
+      HOJE,
+    );
+    expect(r.semMarco.map(i => i.id)).toEqual([ativa.id]);
+  });
+
+  it('marco vencido e não entregue atrasa a iniciativa', () => {
+    const i = iniciativa({ status: 'em_execucao' });
+    const r = saudeIniciativas(
+      [i],
+      [marco({ iniciativa_id: i.id, data_plano_original: '2026-01-10', data_plano_atual: '2026-01-10' })],
+      HOJE,
+    );
+    expect(r.atrasadas.map(x => x.id)).toEqual([i.id]);
+  });
+
+  it('marco entregue ou cancelado não atrasa, e o replanejado vale pela data atual', () => {
+    const entregue = iniciativa({ status: 'em_execucao' });
+    const cancelado = iniciativa({ status: 'em_execucao' });
+    const replanejado = iniciativa({ status: 'em_execucao' });
+    const r = saudeIniciativas([entregue, cancelado, replanejado], [
+      marco({ iniciativa_id: entregue.id, data_plano_original: '2026-01-10', status: 'entregue', data_real: '2026-02-01' }),
+      marco({ iniciativa_id: cancelado.id, data_plano_original: '2026-01-10', status: 'cancelado' }),
+      marco({ iniciativa_id: replanejado.id, data_plano_original: '2026-01-10', data_plano_atual: '2026-12-01' }),
+    ], HOJE);
+    expect(r.atrasadas).toEqual([]);
+  });
+});
+
+describe('saudeRiscos', () => {
+  it('distribui por criticidade na ordem crítico → sem score', () => {
+    const r = saudeRiscos([
+      risco({ probab: 5, impact: 4 }),   // 20 crítico
+      risco({ probab: 3, impact: 4 }),   // 12 alto
+      risco({ probab: 2, impact: 3 }),   // 6  médio
+      risco({ probab: 1, impact: 2 }),   // 2  baixo
+      risco({ probab: null, impact: 3 }),// sem score
+    ], [], [], 2026);
+    expect(r.porTier).toEqual([
+      { tier: 'critico', n: 1 }, { tier: 'alto', n: 1 },
+      { tier: 'medio', n: 1 }, { tier: 'baixo', n: 1 }, { tier: 'null', n: 1 },
+    ]);
+    expect(r.total).toBe(5);
+  });
+
+  it('linha em branco não é risco mapeado — mesma régua da aba Registro', () => {
+    const r = saudeRiscos([
+      risco({ risco: 'Ameaça de verdade', probab: 5, impact: 4 }),
+      risco({ risco: '   ' }),
+      risco({ risco: '' }),
+    ], [], [], 2026);
+    expect(r.total).toBe(1);
+    expect(r.semDescricao).toBe(2);
+    // A distribuição soma o mesmo total: a barra não pode discordar do tile.
+    expect(r.porTier.reduce((s, t) => s + t.n, 0)).toBe(1);
+    expect(r.abertos).toBe(1);
+    expect(r.semTratamento).toBe(1);
+  });
+
+  it('conta mitigados do ano, obsoletos e descartados separadamente', () => {
+    const r = saudeRiscos([
+      risco({ situacao: 'mitigado', data_situacao: '2026-03-01' }),
+      risco({ situacao: 'mitigado', data_situacao: '2025-12-01' }),
+      risco({ situacao: 'obsoleto', data_situacao: '2026-03-01' }),
+      risco({ situacao: 'descartado', data_situacao: '2026-03-01' }),
+      risco({}),
+    ], [], [], 2026);
+    expect(r.mitigadosNoAno).toBe(1);
+    expect(r.obsoletos).toBe(1);
+    expect(r.descartados).toBe(1);
+    expect(r.abertos).toBe(1);
+  });
+
+  it('sem tratamento ignora risco já fechado e risco aceito', () => {
+    const aberto = risco({});
+    const aceito = risco({ resposta: 'Aceitar' });
+    const fechado = risco({ situacao: 'mitigado', data_situacao: '2026-01-01' });
+    const r = saudeRiscos([aberto, aceito, fechado], [], [], 2026);
+    expect(r.semTratamento).toBe(1);
+  });
+});
+
+describe('saudeTrabalho', () => {
+  it('conta por status e separa mitigação de tarefa livre', () => {
+    const r = saudeTrabalho([
+      trabalho({ status: 'A fazer', risco_id: 'r1' }),
+      trabalho({ status: 'ANDAMENTO' }),
+      trabalho({ status: 'Concluída', risco_id: 'r2' }),
+      trabalho({ status: 'Cancelada' }),
+    ], '2026-06-15');
+    expect(r.total).toBe(4);
+    expect(r.aFazer).toBe(1);
+    expect(r.emAndamento).toBe(1);
+    expect(r.concluidas).toBe(1);
+    expect(r.canceladas).toBe(1);
+    expect(r.deRisco).toBe(2);
+    expect(r.livres).toBe(2);
+    expect(r.porStatus.map(s => s.status)).toEqual(['A fazer', 'Em andamento', 'Concluída', 'Cancelada']);
+  });
+
+  it('rotina nunca atrasa, e concluída atrasada também não', () => {
+    const r = saudeTrabalho([
+      trabalho({ status: 'A fazer', prazo: '2026-01-01' }),
+      trabalho({ status: 'A fazer', prazo: '2026-01-01', triagem: 'rotina' }),
+      trabalho({ status: 'Concluída', prazo: '2026-01-01' }),
+    ], '2026-06-15');
+    expect(r.atrasadas).toBe(1);
+  });
+
+  it('só o trabalho aberto conta como sem dono', () => {
+    const r = saudeTrabalho([
+      trabalho({ status: 'A fazer', dono_id: null }),
+      trabalho({ status: 'Concluída', dono_id: null }),
+      trabalho({ status: 'A fazer', dono_id: 'p1' }),
+    ], '2026-06-15');
+    expect(r.semDono).toBe(1);
+  });
+
+  it('status fora do vocabulário não some da barra', () => {
+    const r = saudeTrabalho([trabalho({ status: 'Bloqueada' })], '2026-06-15');
+    expect(r.porStatus).toEqual([{ status: 'Bloqueada', n: 1 }]);
+    expect(r.total).toBe(1);
+  });
+});
+
+describe('riscosPorObjetivo e riscosSemObjetivo', () => {
+  it('chega ao risco pelo caminho objetivo ← iniciativa ← ação', () => {
+    const o = objetivo({});
+    const i = iniciativa({ objetivo_id: o.id });
+    const r1 = risco({});
+    const outro = risco({});
+    const acoes = [acao({ risco_id: r1.id, iniciativa_id: i.id })];
+    expect(riscosPorObjetivo(o.id, [i], acoes, [r1, outro]).map(r => r.id)).toEqual([r1.id]);
+  });
+
+  it('ação cancelada não liga risco a objetivo', () => {
+    const o = objetivo({});
+    const i = iniciativa({ objetivo_id: o.id });
+    const r1 = risco({});
+    const acoes = [acao({ risco_id: r1.id, iniciativa_id: i.id, status: 'cancelada' })];
+    expect(riscosPorObjetivo(o.id, [i], acoes, [r1])).toEqual([]);
+    expect(riscosSemObjetivo([r1], acoes, [i]).map(r => r.id)).toEqual([r1.id]);
+  });
+
+  it('mitigação autônoma deixa o risco sem objetivo', () => {
+    const r1 = risco({});
+    const acoes = [acao({ risco_id: r1.id, iniciativa_id: null })];
+    expect(riscosSemObjetivo([r1], acoes, []).map(r => r.id)).toEqual([r1.id]);
+  });
+
+  it('risco aceito e risco já fechado não cobram objetivo', () => {
+    const aceito = risco({ resposta: 'Aceitar' });
+    const fechado = risco({ situacao: 'mitigado', data_situacao: '2026-01-01' });
+    expect(riscosSemObjetivo([aceito, fechado], [], [])).toEqual([]);
+  });
+
+  it('iniciativa sem objetivo não sustenta risco nenhum', () => {
+    const i = iniciativa({ objetivo_id: null });
+    const r1 = risco({});
+    const acoes = [acao({ risco_id: r1.id, iniciativa_id: i.id })];
+    expect(riscosSemObjetivo([r1], acoes, [i]).map(r => r.id)).toEqual([r1.id]);
+  });
+});
+
+describe('cadeiaQuebrada', () => {
+  const vazia = {
+    objetivos: [], iniciativas: [], marcos: [], riscos: [], acoes: [], trabalho: [],
+  };
+
+  it('devolve as oito lacunas mesmo quando tudo está inteiro', () => {
+    const r = cadeiaQuebrada({ ...vazia, hoje: HOJE });
+    expect(r).toHaveLength(8);
+    expect(r.every(l => l.n === 0)).toBe(true);
+  });
+
+  it('acha o elo rompido de cada camada', () => {
+    const o = objetivo({ status: 'ativo' });
+    const orfa = iniciativa({ objetivo_id: null, status: 'em_execucao' });
+    const r1 = risco({});
+    const t = trabalho({ status: 'A fazer', prazo: '2026-01-01', dono_id: null });
+
+    const lacunas = cadeiaQuebrada({
+      objetivos: [o], iniciativas: [orfa], marcos: [], riscos: [r1], acoes: [],
+      trabalho: [t], hoje: HOJE,
+    });
+    const por = (c: string) => lacunas.find(l => l.chave === c) as { n: number; ids: string[] };
+
+    expect(por('objetivo_sem_iniciativa')).toMatchObject({ n: 1, ids: [o.id] });
+    expect(por('iniciativa_sem_objetivo')).toMatchObject({ n: 1, ids: [orfa.id] });
+    expect(por('iniciativa_sem_marco')).toMatchObject({ n: 1, ids: [orfa.id] });
+    expect(por('risco_sem_tratamento')).toMatchObject({ n: 1, ids: [r1.id] });
+    expect(por('risco_sem_objetivo')).toMatchObject({ n: 1, ids: [r1.id] });
+    expect(por('trabalho_sem_dono')).toMatchObject({ n: 1, ids: [t.id] });
+    expect(por('trabalho_atrasado')).toMatchObject({ n: 1, ids: [t.id] });
+  });
+
+  it('trabalho concluído não aparece em lacuna nenhuma', () => {
+    const t = trabalho({ status: 'Concluída', prazo: '2026-01-01', dono_id: null });
+    const lacunas = cadeiaQuebrada({ ...vazia, trabalho: [t], hoje: HOJE });
+    expect(lacunas.every(l => l.n === 0)).toBe(true);
   });
 });

@@ -1,12 +1,12 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import type { RiskRecord, GraphFilter } from '../../types';
 import { buildRows } from '../../lib/rows';
-import { computeScore, round1, type TierKind } from '../../lib/calculations';
+import { computeScore, round1, scoreTier, ROTULO_TIER, type TierKind } from '../../lib/calculations';
 import { buildDonutGradient } from '../../lib/donut';
 import { matchGraphFilter, graphFilterLabel } from './graphFilter';
 import { buildScoreBars, buildResourceStatusBars } from './scoreBars';
 import { FilterBanner } from './FilterBanner';
-import { KpiStrip } from './KpiStrip';
+import { Kpi, KpiRow } from '../common/Kpi';
 import { Heatmap } from './Heatmap';
 import { CriticidadeDonut, type CritLegendItem } from './CriticidadeDonut';
 import { RiskDescriptionTable, type RiskListItem } from './RiskDescriptionTable';
@@ -17,6 +17,12 @@ import { ResourceStackedBars } from './ResourceStackedBars';
 
 interface GraficosTabProps {
   records: RiskRecord[];
+  /**
+   * Barra de título com o alternador de leitura, montada pelo `App`. Esta tela
+   * era uma aba própria e começava direto num filtro, sem título nenhum — hoje
+   * é a leitura "Análise" da seção Riscos e usa o mesmo cabeçalho do Rastro.
+   */
+  cabecalho?: ReactNode;
 }
 
 // Os status reaproveitam as faixas de cor já existentes: cinza para não
@@ -28,14 +34,14 @@ const STATUS_DEFS: { label: string; tier: TierKind }[] = [
   { label: 'Concluído', tier: 'baixo' },
 ];
 
-const CRIT_DEFS: { label: string; tier: TierKind; test: (sc: number) => boolean }[] = [
-  { label: 'Crítico', tier: 'critico', test: sc => sc > 14 },
-  { label: 'Alto', tier: 'alto', test: sc => sc > 9 && sc <= 14 },
-  { label: 'Médio', tier: 'medio', test: sc => sc > 4 && sc <= 9 },
-  { label: 'Baixo', tier: 'baixo', test: sc => sc <= 4 },
-];
+// A faixa sai de `scoreTier` e o nome de `ROTULO_TIER` — os limiares estavam
+// reescritos aqui, uma quarta cópia da mesma regra de negócio.
+const CRIT_DEFS: { label: string; tier: TierKind }[] =
+  (['critico', 'alto', 'medio', 'baixo'] as const).map(tier => ({
+    tier, label: ROTULO_TIER[tier],
+  }));
 
-export function GraficosTab({ records }: GraficosTabProps) {
+export function GraficosTab({ records, cabecalho }: GraficosTabProps) {
   const [graphFilter, setGraphFilterState] = useState<GraphFilter>(null);
 
   function toggleGraphFilter(gf: GraphFilter) {
@@ -96,7 +102,7 @@ export function GraficosTab({ records }: GraficosTabProps) {
 
   const { critLegend, critDonutBg } = useMemo(() => {
     const legend: CritLegendItem[] = CRIT_DEFS.map(d => {
-      const count = scoredVals.filter(d.test).length;
+      const count = scoredVals.filter(sc => scoreTier(sc) === d.tier).length;
       return {
         label: d.label,
         tier: d.tier,
@@ -115,17 +121,23 @@ export function GraficosTab({ records }: GraficosTabProps) {
 
   return (
     <div className="tab-page-lg">
+      {cabecalho}
+
       {graphFilter && (
         <FilterBanner label={graphFilterLabel(graphFilter)} count={riskListCount} onClear={() => setGraphFilterState(null)} />
       )}
 
-      <KpiStrip
-        totalAvaliados={totalAvaliados}
-        totalRiscos={totalRiscos}
-        scoreMedio={scoreMedio}
-        criticosCount={criticosCount}
-        pctConcluido={pctConcluido}
-      />
+      <KpiRow colunas={4}>
+        <Kpi
+          label="Riscos avaliados"
+          valor={totalAvaliados}
+          sub={`de ${totalRiscos}`}
+          acento="brand"
+        />
+        <Kpi label="Score médio (P × I)" valor={scoreMedio} acento="medio" />
+        <Kpi label="Riscos críticos" valor={criticosCount} acento="critico" />
+        <Kpi label="Ações concluídas" valor={`${pctConcluido}%`} acento="baixo" />
+      </KpiRow>
 
       <div className="grid-heat">
         <Heatmap records={gfRecords} onCellClick={(prob, imp) => toggleGraphFilter({ type: 'heat', prob, imp })} />
