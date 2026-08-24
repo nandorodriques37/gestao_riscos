@@ -75,7 +75,9 @@ O visual é governado por **tokens**, não por hex soltos. Fonte da verdade:
 nessa ordem.
 
 - **Nenhum hex literal fora de `tokens.css`.** Nenhum espaçamento fora da escala
-  `--sp-*`; nenhum tamanho de fonte fora de `--fs-*`.
+  `--sp-*`; nenhum tamanho de fonte fora de `--fs-*`. Altura de controle vem de
+  `--control-h`, alvo de toque de `--tap-min`, corpo de campo de `--fs-field` —
+  nunca um `height: 32px` novo.
 - **Cor semântica viaja por atributo, não por `style={{}}`**: `data-tier`
   (criticidade/priorização/GUT), `data-badge` (resposta/status), `data-accent`
   (KPI). As funções `scoreTier`/`priorizTier`/`gutTier`/`barTier` devolvem a
@@ -110,6 +112,40 @@ nessa ordem.
   assim caem em fallback torto.
 - O visualizador de imagem em tela cheia é escuro nos dois temas (`--scrim`,
   `--scrim-ink`): scrim claro lava as cores da imagem.
+
+### Mobile
+- **Três formas de navegação, uma lista de destinos.** `NavRail/secoes.tsx` é a
+  fonte única (ícones, grupos, ordem); `NavRail` (≥1101px), as abas do `TopBar`
+  (761–1100) e `NavBottom` (≤760) leem de lá. As três regras de visibilidade
+  ficam juntas no fim de `styles/rail.css` — separadas, duas formas aparecem ao
+  mesmo tempo numa faixa que ninguém olhou. A barra inferior tem 4 destinos
+  fixos (um por camada da cadeia) + "Mais", que abre a folha com os grupos
+  inteiros, o chip de autor e o botão de tema. Tema e autor moram no `App`,
+  como `useTasks`: dois `useState` dariam duas verdades sobre o mesmo tema.
+- **A adaptação a toque é um bloco só** — `@media (pointer: coarse) and
+  (max-width: 1100px)` em `tokens.css`, que troca três valores. Todo controle já
+  lê o token, então não existe (e não deve nascer) regra de toque por
+  componente. `--tap-min` é PISO, não tamanho: botão de ícone declara
+  `max(<repouso>, var(--tap-min))`, e no desktop o piso é zero.
+- **16px em campo não é gosto:** abaixo disso o Safari do iOS amplia a viewport
+  ao focar e não volta. É o que `--fs-field` resolve.
+- **Tabela vira cartão a ≤760px, nas duas abas** (`RiskCardList`,
+  `TarefaCardList`, ambas em `.risk-card`). Os dois ficam no DOM e o `@media`
+  decide — montar por largura em JS quebraria o modo salvo. O `EmptyState` fica
+  FORA do envelope da tabela, senão some junto com ela.
+- **Tabela leve (`.tabela-simples`, `.marcos-tabela`) empilha** com
+  `data-rotulo` + `::before`, o mesmo idioma de `.rastro-linha`. Não inventar um
+  segundo padrão de tabela empilhada.
+- **Chrome acima do conteúdo é o inimigo:** faixa de KPI deita (rótulo e número
+  na mesma linha, via `:has()` — só o tile sem barra/subtítulo), filtros
+  secundários se dobram atrás de "Filtros" (`common/FiltrosDobraveis`, com selo
+  de quantos recortes estão ativos), subtítulo de página corta em 2 linhas. Sem
+  isso o primeiro cartão da aba Tarefas nascia a 850px.
+- **Iniciativas é lista → detalhe** a ≤760px. A escolha automática da primeira
+  iniciativa é gated por `matchMedia`: sem isso o botão "‹ Todas" vira no-op,
+  porque zerar a seleção redispara o efeito.
+- `viewport-fit=cover` no `index.html` e `env(safe-area-inset-*)` em tudo que é
+  fixo na base (barra, rodapé de modal, folhas, snackbar).
 
 ### Data viz (regras do skill `dataviz`)
 - Vão de 2px de superfície (`--viz-gap`) entre preenchimentos adjacentes: células

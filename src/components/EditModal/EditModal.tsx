@@ -12,6 +12,7 @@ import {
   paraLinhas, linhasDeLegado, diffPlano, type LinhaPlano, type ResultadoSalvar,
 } from '../../lib/planoDeAcao';
 import { AcoesEditor } from './AcoesEditor';
+import { useBloqueioDeRolagem } from '../../hooks/useBloqueioDeRolagem';
 import { Historico } from '../common/Historico';
 
 const FOCUSABLE = 'a[href], button:not([disabled]), input, select, textarea, [tabindex]:not([tabindex="-1"])';
@@ -80,6 +81,10 @@ export function EditModal({
   acoesVinculadas, pessoas, iniciativas,
   onAbrirIniciativa, onPromoverAcao, onSalvarPlano,
 }: EditModalProps) {
+  // No celular o cartão é folha colada na base; sem a trava, chegar ao fim da
+  // rolagem dele passa o gesto para a página de trás.
+  useBloqueioDeRolagem();
+
   // Risco que ainda não teve o plano extraído: as linhas antigas entram como
   // rascunho novo, e só viram registro se alguém salvar. Abrir e fechar sem
   // mexer em nada não grava nada.

@@ -181,12 +181,58 @@
   --header-h: 56px;
   --rail-w: 232px;
   --rail-w-mini: 72px;
+  /* Barra de navegação inferior — só existe abaixo de 760px. */
+  --nav-bottom-h: 56px;
+
+  /* ---------- Controles ----------
+     Altura de botão/campo e alvo mínimo de toque. São a ÚNICA porta de entrada
+     da adaptação a toque: todo controle lê estes tokens, então o bloco de
+     ponteiro grosso lá embaixo adapta o app inteiro sem uma regra por
+     componente. Antes eram ~15 literais de `height: 32px` espalhados por cinco
+     folhas, e no celular todos ficavam abaixo dos 44px de alvo.
+
+     --tap-min é um PISO, não um tamanho: cada botão de ícone declara
+     `max(<tamanho em repouso>, var(--tap-min))`, e no desktop o piso é zero —
+     o desenho manda. Isso é o que deixa o × de 22px na linha da tabela
+     continuar com 22px no mouse e virar 44px no dedo, sem duas regras. */
+  --control-h: 32px;
+  --tap-min: 0px;
+
+  /* Corpo do texto DENTRO de um campo. Separado de --fs-sm porque muda por
+     motivo próprio: abaixo de 16px o Safari do iOS dá zoom na viewport a cada
+     foco e não desfaz depois. Ver o bloco de ponteiro grosso. */
+  --fs-field: var(--fs-sm);
 
   /* ---------- Data viz ---------- */
   /* Vão de superfície entre preenchimentos adjacentes (células do heatmap,
      segmentos empilhados, arcos do donut). Sempre 2px. */
   --viz-gap: 2px;
   --viz-axis: var(--ink-4);
+}
+
+/* ---------- Ponteiro grosso ----------
+   A adaptação a toque inteira mora aqui: três valores, e todo controle que já
+   lê os tokens cresce junto. Nenhum componente é tocado, nenhuma regra é
+   duplicada por breakpoint.
+
+   O recorte é `coarse` E estreito de propósito. `coarse` sozinho pega também
+   notebook com tela sensível, onde a densidade da tabela é deliberada e
+   inflar o controle seria perda pura; a largura amarra a adaptação a quem de
+   fato usa o dedo como ponteiro principal. */
+@media (pointer: coarse) and (max-width: 1100px) {
+  :root {
+    /* 44px é o alvo de toque das diretrizes de iOS e Android, e vale para os
+       dois: um botão de 40px de altura falha o mesmo teste que um ícone de
+       40px, por mais largo que ele seja — a diretriz é sobre a MENOR das duas
+       dimensões, que é onde o polegar erra. */
+    --control-h: 44px;
+    --tap-min: 44px;
+    /* --fs-lg é 16px, e 16px é o piso: abaixo disso o Safari do iOS amplia a
+       viewport ao focar um campo e não volta sozinho — quem digitava numa
+       busca ficava com o app preso em zoom. Resolve para um degrau da escala,
+       não para um literal. */
+    --fs-field: var(--fs-lg);
+  }
 }
 
 /* O botão de tema no header marca o <html>; isso precisa vencer o sistema nos

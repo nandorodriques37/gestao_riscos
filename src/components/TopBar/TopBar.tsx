@@ -1,7 +1,6 @@
-import { useEffect, useState } from 'react';
 import type { Tab } from '../../types';
-import { applyThemePref, readThemePref, type ThemePref } from '../../lib/uiPrefs';
-import { lerAutor, gravarAutor } from '../../lib/autor';
+import type { ThemePref } from '../../lib/uiPrefs';
+import { gruposCom } from '../NavRail/secoes';
 
 interface TopBarProps {
   tab: Tab;
@@ -22,58 +21,31 @@ interface TopBarProps {
    * ao lado do rótulo.
    */
   triagemPendente?: number;
+  /**
+   * Identidade autodeclarada e tema. O estado dos dois SUBIU para o `App`.
+   *
+   * Não por gosto: abaixo de 760px o header perde as abas para a barra
+   * inferior, e o chip de autor e o botão de tema passam a morar na folha
+   * "Mais". Dois componentes com um `useState` cada dariam duas verdades sobre
+   * o mesmo tema — trocar no header não mexeria no que a folha mostra. É o
+   * mesmo argumento que já tirou `useTasks` da aba Tarefas.
+   */
+  autor: string;
+  onPedirNome: () => void;
+  theme: ThemePref;
+  onCycleTheme: () => void;
+  themeLabel: string;
 }
-
-// Rótulos curtos. Os anteriores ("Registro de Riscos e Ações", "Resumo de
-// Priorização", "Gestão de Tarefas") ocupavam metade do header e forçavam
-// quebra de linha já em telas de notebook.
-//
-// A ordem é a mesma do rail, que é a da jornada. Esta lista só aparece abaixo
-// de 1100px, onde o rail sai de cena; as duas precisam concordar.
-const TABS: { id: Tab; label: string }[] = [
-  { id: 'painel', label: 'Painel' },
-  { id: 'objetivos', label: 'Objetivos' },
-  { id: 'iniciativas', label: 'Iniciativas' },
-  { id: 'priorizacao', label: 'Priorização' },
-  { id: 'registro', label: 'Riscos' },
-  { id: 'tarefas', label: 'Tarefas' },
-  { id: 'pessoas', label: 'Pessoas' },
-];
-
-const THEME_CYCLE: ThemePref[] = ['system', 'light', 'dark'];
-const THEME_LABEL: Record<ThemePref, string> = {
-  system: 'Tema: seguindo o sistema',
-  light: 'Tema: claro',
-  dark: 'Tema: escuro',
-};
 
 export function TopBar({
   tab, onChangeTab, sync, mostrarTriagem = false, triagemPendente = 0,
+  autor, onPedirNome, theme, onCycleTheme, themeLabel,
 }: TopBarProps) {
-  const [theme, setTheme] = useState<ThemePref>(() => readThemePref());
-  const [autor, setAutor] = useState(lerAutor);
-
-  /**
-   * Identidade autodeclarada: o nome vai junto de cada gravação e aparece no
-   * histórico. Não autentica ninguém — e o texto do prompt diz isso, para
-   * ninguém confundir a trilha com controle de acesso.
-   */
-  function pedirNome() {
-    const novo = window.prompt(
-      'Seu nome aparece no histórico de quem alterou o quê.\n\n'
-      + 'Isto não é login: qualquer pessoa com acesso ao app pode digitar qualquer nome.',
-      autor,
-    );
-    if (novo === null) return;
-    gravarAutor(novo);
-    setAutor(novo.trim());
-  }
-
-  useEffect(() => { applyThemePref(theme); }, [theme]);
-
-  function cycleTheme() {
-    setTheme(t => THEME_CYCLE[(THEME_CYCLE.indexOf(t) + 1) % THEME_CYCLE.length]);
-  }
+  // Os mesmos destinos do rail e da barra inferior, achatados em uma fita.
+  // Esta lista era escrita à mão aqui, com os rótulos repetidos — e a fita só
+  // aparece entre 761 e 1100px, a faixa que ninguém abre para conferir. Um
+  // destino novo entrava no rail e faltava aqui.
+  const secoes = gruposCom(mostrarTriagem).flatMap(g => g.itens);
 
   return (
     <header className="app-header">
@@ -84,37 +56,31 @@ export function TopBar({
         </div>
 
         <nav className="nav-tabs" aria-label="Seções">
-          {TABS.map(t => (
-            <button
-              key={t.id}
-              className={`nav-tab${tab === t.id ? ' active' : ''}`}
-              aria-current={tab === t.id ? 'page' : undefined}
-              onClick={() => onChangeTab(t.id)}
-            >
-              {t.label}
-            </button>
-          ))}
-          {mostrarTriagem && (
-            <button
-              className={`nav-tab${tab === 'triagem' ? ' active' : ''}`}
-              aria-current={tab === 'triagem' ? 'page' : undefined}
-              onClick={() => onChangeTab('triagem')}
-            >
-              Triagem
-              {triagemPendente > 0 && (
-                <span className="nav-tab-count tabular" aria-label={`${triagemPendente} na fila`}>
-                  {triagemPendente}
-                </span>
-              )}
-            </button>
-          )}
+          {secoes.map(s => {
+            const contador = s.id === 'triagem' && triagemPendente > 0 ? triagemPendente : null;
+            return (
+              <button
+                key={s.id}
+                className={`nav-tab${tab === s.id ? ' active' : ''}`}
+                aria-current={tab === s.id ? 'page' : undefined}
+                onClick={() => onChangeTab(s.id)}
+              >
+                {s.label}
+                {contador != null && (
+                  <span className="nav-tab-count tabular" aria-label={`${contador} na fila`}>
+                    {contador}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </nav>
 
         <div className="header-aside">
           <button
             className="autor-chip"
             data-vazio={autor ? undefined : 'true'}
-            onClick={pedirNome}
+            onClick={onPedirNome}
             title={autor
               ? `As suas alterações são registradas como "${autor}". Clique para trocar.`
               : 'Diga quem é você — sem isso as alterações entram no histórico como "não identificado".'}
@@ -131,9 +97,9 @@ export function TopBar({
           <button
             className="theme-toggle"
             data-pref={theme}
-            onClick={cycleTheme}
-            title={`${THEME_LABEL[theme]} · clique para alternar`}
-            aria-label={THEME_LABEL[theme]}
+            onClick={onCycleTheme}
+            title={`${themeLabel} · clique para alternar`}
+            aria-label={themeLabel}
           />
         </div>
       </div>

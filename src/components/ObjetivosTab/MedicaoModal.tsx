@@ -137,8 +137,8 @@ export function MedicaoModal({ objetivo, medicoes, pf, onClose }: MedicaoModalPr
             {daqui.map(m => (
               <tr key={m.id}>
                 <td className="num">{formatarData(m.data)}</td>
-                <td className="num">{formatarNumero(m.valor, 1)}{unidade}</td>
-                <td>{m.obs || '—'}</td>
+                <td className="num" data-rotulo="Valor">{formatarNumero(m.valor, 1)}{unidade}</td>
+                <td data-rotulo="Observação">{m.obs || '—'}</td>
                 <td>
                   <button className="link-ini" onClick={() => { void apagar(m); }}>Apagar</button>
                 </td>

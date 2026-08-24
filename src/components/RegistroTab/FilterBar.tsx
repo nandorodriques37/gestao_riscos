@@ -1,5 +1,6 @@
 import type { Density, RegistroStatus } from '../../types';
 import { REGISTRO_STATUSES } from '../../types';
+import { FiltrosDobraveis } from '../common/FiltrosDobraveis';
 
 const DENSITY_OPTIONS: { value: Density; label: string; title: string }[] = [
   { value: 'comfortable', label: 'Confortável', title: 'Linhas com mais respiro' },
@@ -32,14 +33,28 @@ export function FilterBar({
   visibleCount, totalCount,
   density, onDensityChange,
 }: FilterBarProps) {
+  // Quantos recortes estão ativos: é o selo do botão "Filtros" no celular, onde
+  // os controles ficam dobrados. Sem ele, um filtro esquecido encurta a lista
+  // sem dizer por quê. A densidade não conta — ela não filtra nada.
+  const ativos = (statusFilter.length > 0 ? 1 : 0)
+    + (areaFilter !== 'Todos' ? 1 : 0)
+    + (categoriaFilter !== 'Todos' ? 1 : 0);
+
   return (
-    <div className="filter-row">
-      <input
-        className="search-input"
-        value={search}
-        onChange={e => onSearchChange(e.target.value)}
-        placeholder="Buscar por risco, ação, área, responsável…"
-      />
+    <FiltrosDobraveis
+      ativos={ativos}
+      busca={
+        <input
+          className="search-input"
+          value={search}
+          onChange={e => onSearchChange(e.target.value)}
+          placeholder="Buscar por risco, ação, área, responsável…"
+        />
+      }
+      contagem={
+        <div className="filter-count">{visibleCount} de {totalCount} registros · clique em uma linha para editar</div>
+      }
+    >
       <div className="filter-pills">
         {/* Seleção múltipla: cada pill alterna; "Todos" (nenhum selecionado) limpa o filtro. */}
         <button
@@ -84,7 +99,6 @@ export function FilterBar({
           </button>
         ))}
       </div>
-      <div className="filter-count">{visibleCount} de {totalCount} registros · clique em uma linha para editar</div>
-    </div>
+    </FiltrosDobraveis>
   );
 }

@@ -293,12 +293,12 @@ export function IniciativaDetalhe({
                         <div className="lista-nota">Replanejado: {m.motivo_replanejamento}</div>
                       )}
                     </td>
-                    <td className={`num${moveu ? ' data-riscada' : ''}`}>
+                    <td className={`num${moveu ? ' data-riscada' : ''}`} data-rotulo="Plano original">
                       {formatarData(m.data_plano_original)}
                     </td>
-                    <td className="num">{formatarData(m.data_plano_atual)}</td>
-                    <td className="num">{formatarData(m.data_real)}</td>
-                    <td>
+                    <td className="num" data-rotulo="Plano atual">{formatarData(m.data_plano_atual)}</td>
+                    <td className="num" data-rotulo="Entrega">{formatarData(m.data_real)}</td>
+                    <td data-rotulo="Status">
                       <span className="badge" data-badge={
                         estado === 'entregue' ? 'green'
                           : estado === 'atrasado' ? 'red'

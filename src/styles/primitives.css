@@ -53,7 +53,7 @@
   align-items: center;
   justify-content: center;
   gap: var(--sp-2);
-  height: 32px;
+  height: var(--control-h);
   padding: 0 var(--sp-3);
   border-radius: var(--r-sm);
   border: 1px solid transparent;
@@ -106,10 +106,16 @@
   background: var(--brand-hover);
 }
 
+/* `wrap` porque um botão a mais não pode empurrar a página inteira: sem ele os
+   três da barra de Riscos somavam 485px numa tela de 390 e alargavam o
+   documento, o que arrasta junto tudo que é fixo — a barra de navegação
+   inferior passava a nascer meio fora da tela. Quem tem espaço nunca quebra,
+   então no desktop nada muda. */
 .actions-row {
   display: flex;
   gap: var(--sp-2);
   align-items: center;
+  flex-wrap: wrap;
 }
 
 .toolbar-row {
@@ -135,11 +141,11 @@
   flex: 1;
   min-width: 220px;
   max-width: 360px;
-  height: 32px;
+  height: var(--control-h);
   padding: 0 var(--sp-3) 0 30px;
   border-radius: var(--r-sm);
   border: 1px solid var(--line-border);
-  font-size: var(--fs-sm);
+  font-size: var(--fs-field);
   background: var(--bg-surface);
   color: var(--ink-1);
   transition: border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
@@ -161,13 +167,17 @@
   box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
+/* Mesmo motivo do `.actions-row`: o grupo de status soma 394px a 390 de tela e
+   alargava o documento. A linha que o contém (`.filter-row`) já quebra; o grupo
+   também precisa, senão ele quebra como bloco e vaza inteiro. */
 .filter-pills {
   display: flex;
   gap: var(--sp-1);
+  flex-wrap: wrap;
 }
 
 .filter-pill {
-  height: 32px;
+  height: var(--control-h);
   padding: 0 var(--sp-3);
   border-radius: var(--r-full);
   border: 1px solid var(--line-border);
@@ -190,11 +200,11 @@
 }
 
 .select-filter {
-  height: 32px;
+  height: var(--control-h);
   padding: 0 28px 0 var(--sp-3);
   border-radius: var(--r-sm);
   border: 1px solid var(--line-border);
-  font-size: var(--fs-xs);
+  font-size: var(--fs-field);
   font-weight: var(--fw-medium);
   color: var(--ink-2);
   background: var(--bg-surface);
@@ -218,7 +228,7 @@
   border: 1px solid var(--line-border);
   border-radius: var(--r-sm);
   padding: 2px;
-  height: 32px;
+  height: var(--control-h);
 }
 
 .density-toggle button,
@@ -249,6 +259,64 @@
   font-size: var(--fs-xs);
   color: var(--ink-4);
   margin-left: auto;
+}
+
+/* ---------- Filtros dobráveis ----------
+   Em tela larga não existem: o botão some e `.filtros-dobra` se dissolve na
+   linha, deixando os controles exatamente onde sempre estiveram. Toda a
+   dobra é a faixa de celular, em responsive.css. */
+
+.filtros-toggle {
+  display: none;
+  align-items: center;
+  gap: var(--sp-2);
+  height: var(--control-h);
+  padding: 0 var(--sp-3);
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line-border);
+  background: var(--bg-surface);
+  color: var(--ink-2);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+}
+
+/* Filtro dobrado que continua filtrando encurta a lista sem dizer por quê —
+   o selo é o que impede isso, e leva o número junto do rótulo, nunca só cor. */
+.filtros-toggle-count {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-full);
+  background: var(--brand);
+  color: var(--brand-ink);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-semibold);
+}
+
+.filtros-toggle-seta {
+  font-size: 9px;
+  color: var(--ink-4);
+}
+
+/* `display: contents` é o que faz o invólucro sumir do layout: em tela larga a
+   linha continua sendo UMA flexbox com os controles como filhos diretos, e
+   nada muda de posição. */
+.filtros-dobra {
+  display: contents;
+}
+
+/* Caixa de seleção nativa. Não tem classe em lugar nenhum — quem a envolve é um
+   <label> com o texto ao lado, e é o texto que quase sempre recebe o toque. Ela
+   mesma, a 13px de desenho padrão, é alvo pequeno demais para o dedo. Fica de
+   fora do jogo de --tap-min porque o piso não serve aqui: 44px de caixa ao lado
+   de uma linha de texto vira um quadrado desproporcional. */
+@media (pointer: coarse) and (max-width: 1100px) {
+  input[type='checkbox'] {
+    width: 20px;
+    height: 20px;
+  }
 }
 
 /* ---------- Badge categórico ----------

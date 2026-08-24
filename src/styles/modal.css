@@ -79,8 +79,8 @@
 .modal-subtitle-conflict { color: var(--tier-alto); }
 
 .modal-close {
-  width: 28px;
-  height: 28px;
+  width: max(28px, var(--tap-min));
+  height: max(28px, var(--tap-min));
   display: grid;
   place-items: center;
   flex: none;
@@ -144,8 +144,8 @@
   border: 1px solid var(--line-border);
   border-radius: var(--r-sm);
   padding: 0 var(--sp-3);
-  height: 32px;
-  font-size: var(--fs-sm);
+  height: var(--control-h);
+  font-size: var(--fs-field);
   color: var(--ink-1);
   background: var(--bg-surface);
   transition: border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
@@ -261,7 +261,7 @@ select.modal-input {
 
 .acoes-add {
   width: 100%;
-  height: 32px;
+  height: var(--control-h);
   border-radius: var(--r-sm);
   border: 1px dashed var(--line-border);
   background: transparent;
@@ -304,7 +304,7 @@ select.modal-input {
   color: var(--danger);
   font-size: var(--fs-sm);
   font-weight: var(--fw-medium);
-  height: 32px;
+  height: var(--control-h);
   padding: 0 var(--sp-2);
   border-radius: var(--r-sm);
   transition: background var(--dur-fast) var(--ease);
@@ -316,7 +316,7 @@ select.modal-input {
 
 .modal-btn-save,
 .modal-btn-done {
-  height: 32px;
+  height: var(--control-h);
   padding: 0 var(--sp-4);
   border-radius: var(--r-sm);
   font-size: var(--fs-sm);
@@ -426,8 +426,8 @@ select.modal-input {
   position: absolute;
   top: var(--sp-1);
   right: var(--sp-1);
-  width: 22px;
-  height: 22px;
+  width: max(22px, var(--tap-min));
+  height: max(22px, var(--tap-min));
   display: grid;
   place-items: center;
   border: 1px solid var(--line-border);
@@ -554,14 +554,14 @@ select.modal-input {
 }
 
 .lightbox-btn {
-  width: 32px;
-  height: 32px;
+  width: max(32px, var(--tap-min));
+  height: max(32px, var(--tap-min));
   font-size: var(--fs-lg);
 }
 
 .lightbox-nav {
-  width: 36px;
-  height: 36px;
+  width: max(36px, var(--tap-min));
+  height: max(36px, var(--tap-min));
   font-size: var(--fs-xl);
 }
 

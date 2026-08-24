@@ -205,8 +205,8 @@
    existe no Inter, e o fallback rendia um caractere estreito e torto. Círculo
    vazio = claro, metade = seguindo o sistema, cheio = escuro. */
 .theme-toggle {
-  width: 32px;
-  height: 32px;
+  width: max(32px, var(--tap-min));
+  height: max(32px, var(--tap-min));
   display: grid;
   place-items: center;
   border-radius: var(--r-sm);
@@ -501,7 +501,7 @@
   border: 1px solid color-mix(in oklab, var(--danger) 32%, transparent);
   color: var(--danger);
   border-radius: var(--r-sm);
-  height: 28px;
+  height: var(--control-h);
   padding: 0 var(--sp-3);
   font-size: var(--fs-xs);
   font-weight: var(--fw-semibold);

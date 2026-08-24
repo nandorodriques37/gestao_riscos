@@ -3,6 +3,7 @@ import type { ModoRisco, RiskRecord, StoredRiskRecord, Tab } from './types';
 import { MODOS_RISCO } from './types';
 import { TopBar } from './components/TopBar/TopBar';
 import { NavRail } from './components/NavRail/NavRail';
+import { NavBottom } from './components/NavBottom/NavBottom';
 import { PainelTab } from './components/PainelTab/PainelTab';
 import { ObjetivosTab } from './components/ObjetivosTab/ObjetivosTab';
 import { IniciativasTab } from './components/IniciativasTab/IniciativasTab';
@@ -25,12 +26,21 @@ import { usePortfolio } from './hooks/usePortfolio';
 import { downloadRecordsCSV } from './lib/csv';
 import {
   readRailExpandido, writeRailExpandido, trocarComTransicao, readEnumPref, writePref,
+  applyThemePref, readThemePref, type ThemePref,
 } from './lib/uiPrefs';
+import { lerAutor, gravarAutor } from './lib/autor';
 import './App.css';
 
 const POLL_INTERVAL = 15000;
 const UNDO_TIMEOUT = 8000;
 const MODO_RISCO_KEY = 'riskMatrix.modoRisco.v1';
+
+const THEME_CYCLE: ThemePref[] = ['system', 'light', 'dark'];
+const THEME_LABEL: Record<ThemePref, string> = {
+  system: 'Tema: seguindo o sistema',
+  light: 'Tema: claro',
+  dark: 'Tema: escuro',
+};
 
 function App() {
   const [tab, setTab] = useState<Tab>('painel');
@@ -49,6 +59,35 @@ function App() {
   const [promovendo, setPromovendo] = useState<AcaoRisco | null>(null);
   const [pendingUndo, setPendingUndo] = useState<Partial<RiskRecord> | null>(null);
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Tema e identidade autodeclarada. Moravam dentro do `TopBar`; subiram porque
+  // abaixo de 760px o header perde as abas para a barra inferior e os dois
+  // passam a aparecer TAMBÉM na folha "Mais". Um `useState` em cada componente
+  // daria duas verdades sobre o mesmo tema.
+  const [theme, setTheme] = useState<ThemePref>(readThemePref);
+  const [autor, setAutor] = useState(lerAutor);
+
+  useEffect(() => { applyThemePref(theme); }, [theme]);
+
+  const cycleTheme = useCallback(() => {
+    setTheme(t => THEME_CYCLE[(THEME_CYCLE.indexOf(t) + 1) % THEME_CYCLE.length]);
+  }, []);
+
+  /**
+   * O nome vai junto de cada gravação e aparece no histórico. Não autentica
+   * ninguém — e o texto do prompt diz isso, para ninguém confundir a trilha com
+   * controle de acesso.
+   */
+  const pedirNome = useCallback(() => {
+    const novo = window.prompt(
+      'Seu nome aparece no histórico de quem alterou o quê.\n\n'
+      + 'Isto não é login: qualquer pessoa com acesso ao app pode digitar qualquer nome.',
+      lerAutor(),
+    );
+    if (novo === null) return;
+    gravarAutor(novo);
+    setAutor(novo.trim());
+  }, []);
 
   const {
     records, loading, error,
@@ -240,6 +279,11 @@ function App() {
         sync={sync}
         mostrarTriagem={mostrarTriagem}
         triagemPendente={triagemPendente}
+        autor={autor}
+        onPedirNome={pedirNome}
+        theme={theme}
+        onCycleTheme={cycleTheme}
+        themeLabel={THEME_LABEL[theme]}
       />
 
       <NavRail
@@ -249,6 +293,20 @@ function App() {
         onToggle={() => setRailExpandido(v => !v)}
         mostrarTriagem={mostrarTriagem}
         triagemPendente={triagemPendente}
+      />
+
+      {/* As três formas de navegação ficam no DOM ao mesmo tempo; quem aparece
+          em cada faixa é decidido em styles/rail.css, num lugar só. */}
+      <NavBottom
+        tab={tab}
+        onChangeTab={irPara}
+        mostrarTriagem={mostrarTriagem}
+        triagemPendente={triagemPendente}
+        autor={autor}
+        onPedirNome={pedirNome}
+        theme={theme}
+        onCycleTheme={cycleTheme}
+        themeLabel={THEME_LABEL[theme]}
       />
 
       <div className="app-conteudo">

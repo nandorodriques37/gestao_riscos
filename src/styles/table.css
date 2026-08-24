@@ -232,8 +232,8 @@
 }
 
 .delete-btn {
-  width: 22px;
-  height: 22px;
+  width: max(22px, var(--tap-min));
+  height: max(22px, var(--tap-min));
   display: grid;
   place-items: center;
   border: none;
@@ -256,8 +256,8 @@
    muda de "Concluir" para "Reabrir". */
 
 .done-btn {
-  width: 22px;
-  height: 22px;
+  width: max(22px, var(--tap-min));
+  height: max(22px, var(--tap-min));
   display: grid;
   place-items: center;
   padding: 0;
@@ -294,9 +294,12 @@
   border-color: color-mix(in oklab, var(--success) 84%, var(--ink-1));
 }
 
-/* ---------- Cartões (telas estreitas) ---------- */
+/* ---------- Cartões (telas estreitas) ----------
+   Um vocabulário só, servindo as duas abas: `.risk-card` é o cartão, e as duas
+   listas (riscos e tarefas) só diferem no que colocam dentro dele. */
 
-.risk-card-list {
+.risk-card-list,
+.tarefa-card-list {
   display: none;
   flex-direction: column;
   gap: var(--sp-2);
@@ -348,8 +351,50 @@
 }
 
 .risk-card-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
   font-size: var(--fs-xs);
   color: var(--ink-3);
+}
+
+/* Cartão de tarefa: mesma casca, mais o acento de faixa de GUT à esquerda —
+   o mesmo que a linha da tabela leva em `.gut-accent`, e pelo mesmo motivo
+   (prioridade escaneável sem ler o chip). A cor vem do data-tier do próprio
+   cartão, então claro e escuro trocam sozinhos. */
+.tarefa-card-list .risk-card {
+  position: relative;
+  padding-left: calc(var(--sp-3) + 3px);
+}
+
+.tarefa-card-list .risk-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  border-radius: var(--r-md) 0 0 var(--r-md);
+  background: var(--c, var(--tier-null));
+}
+
+.tarefa-card-list .risk-card[data-tier='baixo'] { --c: var(--tier-baixo); }
+.tarefa-card-list .risk-card[data-tier='medio'] { --c: var(--tier-medio); }
+.tarefa-card-list .risk-card[data-tier='alto'] { --c: var(--tier-alto); }
+.tarefa-card-list .risk-card[data-tier='critico'] { --c: var(--tier-critico); }
+.tarefa-card-list .risk-card[data-tier='null'] { --c: var(--tier-null); }
+
+/* Concluída: o mesmo risco no título que o card do quadro já usa. */
+.risk-card-risco[data-concluida] {
+  color: var(--ink-3);
+  text-decoration: line-through;
+}
+
+/* O botão de concluir cresce no dedo (--tap-min) e não pode empurrar o tipo
+   para fora da linha. */
+.risk-card-top .done-btn {
+  flex: none;
 }
 
 /* ---------- Tabela de descrição (aba Gráficos) ---------- */

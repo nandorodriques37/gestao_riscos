@@ -98,7 +98,7 @@
 
 .kanban-add-btn {
   width: 100%;
-  height: 32px;
+  height: var(--control-h);
   border-radius: var(--r-sm);
   border: 1px dashed var(--line-border);
   background: transparent;
@@ -235,8 +235,8 @@
 }
 
 .move-menu-trigger {
-  width: 24px;
-  height: 24px;
+  width: max(24px, var(--tap-min));
+  height: max(24px, var(--tap-min));
   display: inline-flex;
   align-items: center;
   justify-content: center;
