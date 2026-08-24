@@ -1,5 +1,6 @@
 import type { Tab } from '../../types';
 import type { ThemePref } from '../../lib/uiPrefs';
+import { gruposCom } from '../NavRail/secoes';
 
 interface TopBarProps {
   tab: Tab;
@@ -36,26 +37,16 @@ interface TopBarProps {
   themeLabel: string;
 }
 
-// Rótulos curtos. Os anteriores ("Registro de Riscos e Ações", "Resumo de
-// Priorização", "Gestão de Tarefas") ocupavam metade do header e forçavam
-// quebra de linha já em telas de notebook.
-//
-// A ordem é a mesma do rail, que é a da jornada. Esta lista só aparece abaixo
-// de 1100px, onde o rail sai de cena; as duas precisam concordar.
-const TABS: { id: Tab; label: string }[] = [
-  { id: 'painel', label: 'Painel' },
-  { id: 'objetivos', label: 'Objetivos' },
-  { id: 'iniciativas', label: 'Iniciativas' },
-  { id: 'priorizacao', label: 'Priorização' },
-  { id: 'registro', label: 'Riscos' },
-  { id: 'tarefas', label: 'Tarefas' },
-  { id: 'pessoas', label: 'Pessoas' },
-];
-
 export function TopBar({
   tab, onChangeTab, sync, mostrarTriagem = false, triagemPendente = 0,
   autor, onPedirNome, theme, onCycleTheme, themeLabel,
 }: TopBarProps) {
+  // Os mesmos destinos do rail e da barra inferior, achatados em uma fita.
+  // Esta lista era escrita à mão aqui, com os rótulos repetidos — e a fita só
+  // aparece entre 761 e 1100px, a faixa que ninguém abre para conferir. Um
+  // destino novo entrava no rail e faltava aqui.
+  const secoes = gruposCom(mostrarTriagem).flatMap(g => g.itens);
+
   return (
     <header className="app-header">
       <div className="app-header-inner">
@@ -65,30 +56,24 @@ export function TopBar({
         </div>
 
         <nav className="nav-tabs" aria-label="Seções">
-          {TABS.map(t => (
-            <button
-              key={t.id}
-              className={`nav-tab${tab === t.id ? ' active' : ''}`}
-              aria-current={tab === t.id ? 'page' : undefined}
-              onClick={() => onChangeTab(t.id)}
-            >
-              {t.label}
-            </button>
-          ))}
-          {mostrarTriagem && (
-            <button
-              className={`nav-tab${tab === 'triagem' ? ' active' : ''}`}
-              aria-current={tab === 'triagem' ? 'page' : undefined}
-              onClick={() => onChangeTab('triagem')}
-            >
-              Triagem
-              {triagemPendente > 0 && (
-                <span className="nav-tab-count tabular" aria-label={`${triagemPendente} na fila`}>
-                  {triagemPendente}
-                </span>
-              )}
-            </button>
-          )}
+          {secoes.map(s => {
+            const contador = s.id === 'triagem' && triagemPendente > 0 ? triagemPendente : null;
+            return (
+              <button
+                key={s.id}
+                className={`nav-tab${tab === s.id ? ' active' : ''}`}
+                aria-current={tab === s.id ? 'page' : undefined}
+                onClick={() => onChangeTab(s.id)}
+              >
+                {s.label}
+                {contador != null && (
+                  <span className="nav-tab-count tabular" aria-label={`${contador} na fila`}>
+                    {contador}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </nav>
 
         <div className="header-aside">

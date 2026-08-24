@@ -90,7 +90,12 @@ export function IniciativasTab({
 
   /** Grupos da lista. A ordem interna é sempre a da priorização — o que decide primeiro fica em cima. */
   const grupos = useMemo(() => {
-    const acc = new Map<string, { titulo: string; nota: string; itens: Iniciativa[] }>();
+    // `chave` viaja junto do grupo porque é ela que identifica: o `titulo` é
+    // rótulo, e rótulo repete. Dois objetivos sem descrição preenchida viram
+    // dois grupos distintos chamados "Sem objetivo", e usar o título como
+    // `key` do React fazia os dois disputarem a mesma identidade — React
+    // avisa, e pode duplicar ou omitir filhos.
+    const acc = new Map<string, { chave: string; titulo: string; nota: string; itens: Iniciativa[] }>();
 
     for (const i of filtradas) {
       let chave: string;
@@ -106,7 +111,7 @@ export function IniciativasTab({
         chave = i.dono_id ?? '';
         titulo = i.dono_id ? pessoaPorId.get(i.dono_id) ?? 'Dono removido' : 'Sem dono';
       }
-      const g = acc.get(chave) ?? { titulo, nota: '', itens: [] };
+      const g = acc.get(chave) ?? { chave, titulo, nota: '', itens: [] };
       g.itens.push(i);
       acc.set(chave, g);
     }
@@ -292,7 +297,7 @@ export function IniciativasTab({
               <div className="bento-sub">Nenhuma iniciativa com esses filtros.</div>
             ) : (
               grupos.map(g => (
-                <div key={g.titulo}>
+                <div key={g.chave}>
                   <div className="fato-label ini-grupo-label">
                     {g.titulo} · {g.nota}
                   </div>

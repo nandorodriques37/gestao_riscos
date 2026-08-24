@@ -44,7 +44,7 @@ export function NavBottom({
 }: NavBottomProps) {
   const [folhaAberta, setFolhaAberta] = useState(false);
   const maisRef = useRef<HTMLButtonElement>(null);
-  const folhaRef = useRef<HTMLDivElement>(null);
+  const folhaRef = useRef<HTMLElement>(null);
 
   const grupos = gruposCom(mostrarTriagem);
   const fixos = DESTINOS_BARRA
@@ -58,16 +58,36 @@ export function NavBottom({
   useBloqueioDeRolagem(folhaAberta);
 
   // Esc fecha e devolve o foco ao gatilho; o primeiro item recebe o foco ao
-  // abrir. Mesma doutrina do ModalShell, sem herdar o cartão dele — a folha não
-  // é um diálogo de formulário, é um menu.
+  // abrir; Tab circula dentro da folha. Mesma doutrina do `ModalShell`, sem
+  // herdar o cartão dele — a folha não é um diálogo de formulário.
+  //
+  // O laço de Tab não é preciosismo: a página atrás continua no DOM (a folha
+  // apenas a cobre), então sem ele o Tab sai da folha e vai passeando por
+  // botões que ninguém está vendo.
   useEffect(() => {
     if (!folhaAberta) return;
-    folhaRef.current?.querySelector<HTMLElement>('button')?.focus();
+    const itens = () => [...(folhaRef.current?.querySelectorAll<HTMLElement>('button') ?? [])];
+    itens()[0]?.focus();
+
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return;
-      e.stopPropagation();
-      setFolhaAberta(false);
-      maisRef.current?.focus();
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        setFolhaAberta(false);
+        maisRef.current?.focus();
+        return;
+      }
+      if (e.key !== 'Tab') return;
+      const lista = itens();
+      if (lista.length === 0) return;
+      const primeiro = lista[0];
+      const ultimo = lista[lista.length - 1];
+      if (e.shiftKey && document.activeElement === primeiro) {
+        e.preventDefault();
+        ultimo.focus();
+      } else if (!e.shiftKey && document.activeElement === ultimo) {
+        e.preventDefault();
+        primeiro.focus();
+      }
     };
     document.addEventListener('keydown', onKey, true);
     return () => document.removeEventListener('keydown', onKey, true);
@@ -105,7 +125,6 @@ export function NavBottom({
           data-ativo={ativoNoMais}
           onClick={() => setFolhaAberta(v => !v)}
           aria-expanded={folhaAberta}
-          aria-haspopup="menu"
         >
           {ICONES.mais}
           <span className="nav-bottom-label">Mais</span>
@@ -120,10 +139,12 @@ export function NavBottom({
 
       {folhaAberta && (
         <div className="nav-sheet-overlay" onClick={() => setFolhaAberta(false)}>
-          <div
+          {/* `nav`, e não `role="menu"`: menu ARIA promete navegação por setas,
+              que isto não implementa nem quer — são links de seção, percorridos
+              com Tab como qualquer navegação. */}
+          <nav
             ref={folhaRef}
             className="nav-sheet"
-            role="menu"
             aria-label="Todas as seções"
             onClick={e => e.stopPropagation()}
           >
@@ -139,7 +160,6 @@ export function NavBottom({
                     <button
                       key={s.id}
                       className="rail-item"
-                      role="menuitem"
                       data-ativo={ativo}
                       aria-current={ativo ? 'page' : undefined}
                       onClick={() => irPara(s.id)}
@@ -170,7 +190,7 @@ export function NavBottom({
                 title={themeLabel}
               />
             </div>
-          </div>
+          </nav>
         </div>
       )}
     </>
