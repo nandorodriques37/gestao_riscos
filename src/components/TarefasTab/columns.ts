@@ -10,13 +10,11 @@ export interface TaskColumnDef {
 export const TASK_COLUMNS: TaskColumnDef[] = [
   { id: 'tipo', label: 'Tipo', width: 100 },
   { id: 'tarefa', label: 'Tarefa', width: 300 },
-  { id: 'detalhes', label: 'Detalhes', width: 240 },
-  { id: 'g', label: 'G', width: 44, sortKey: 'g' },
-  { id: 'u', label: 'U', width: 44, sortKey: 'u' },
-  { id: 't', label: 'T', width: 44, sortKey: 't' },
+  // Detalhes, as notas avulsas G/U/T e o Rank ficam só no modal de edição,
+  // como já era no cartão do celular: o que se escaneia na lista é o chip de
+  // GUT e a prioridade, e as cinco colunas só alongavam o scroll horizontal.
   { id: 'gut', label: 'GUT', width: 84, sortKey: 'gut' },
   { id: 'prioridade', label: 'Prioridade', width: 108 },
-  { id: 'rank', label: 'Rank', width: 56 },
   { id: 'status', label: 'Status', width: 140 },
   // Prazo nasceu com a unificação: a mitigação sempre teve data combinada, a
   // tarefa livre não tinha onde guardar uma.
