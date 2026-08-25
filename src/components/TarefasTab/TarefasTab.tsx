@@ -53,9 +53,6 @@ interface PendingPriorityUndo {
 
 function sortValue(row: EnrichedTaskRow, key: TaskSortKey): number | null {
   if (key === 'gut') return row.gut;
-  if (key === 'g') return row.task.g;
-  if (key === 'u') return row.task.u;
-  if (key === 't') return row.task.t;
   // Data vira número para caber na mesma comparação. Sem prazo continua no fim,
   // como toda ausência aqui — e é o que se quer: o que não tem data combinada
   // não disputa a atenção com o que vence amanhã.

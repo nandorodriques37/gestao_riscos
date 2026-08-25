@@ -178,7 +178,7 @@ export type TaskStatus = 'A fazer' | 'Em andamento' | 'Concluída' | 'Cancelada'
 // tarefa também se cancela. Fica por último — é saída, não etapa.
 export const TASK_STATUSES: readonly TaskStatus[] = ['A fazer', 'Em andamento', 'Concluída', 'Cancelada'];
 
-export type TaskSortKey = 'g' | 'u' | 't' | 'gut' | 'prazo' | null;
+export type TaskSortKey = 'gut' | 'prazo' | null;
 
 /* ==========================================================================
    Portfólio — objetivo → iniciativa → marco, mais riscos e suas ações.

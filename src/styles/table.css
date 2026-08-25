@@ -444,10 +444,10 @@
 
 /* ---------- Tarefas ---------- */
 
-/* Colunas de texto (Tarefa/Detalhes) quebram dentro da largura da
-   coluna em vez de cortar numa linha só. O `td` continua sendo table-cell — o
-   clamp de 2 linhas mora no .clamp-2 interno, porque mudar o display do
-   próprio `td` (para -webkit-box ou flex) quebra o layout da tabela. */
+/* A coluna de texto (Tarefa) quebra dentro da largura da coluna em vez de
+   cortar numa linha só. O `td` continua sendo table-cell — o clamp de 2 linhas
+   mora no .clamp-2 interno, porque mudar o display do próprio `td` (para
+   -webkit-box ou flex) quebra o layout da tabela. */
 .tarefas-table-wrap .risk-table tbody td {
   height: auto;
   min-height: 36px;
@@ -455,18 +455,8 @@
   vertical-align: top;
 }
 
-.tarefas-table-wrap .risk-table td.cell-wrap,
 .tarefas-table-wrap .risk-table td.tarefa-cell {
   white-space: normal;
-}
-
-.tarefas-table-wrap .risk-table td.cell-wrap {
-  color: var(--ink-3);
-}
-
-/* Notas G/U/T em tom discreto — o olho vai primeiro ao chip colorido de GUT. */
-.tarefas-table-wrap .risk-table td.gut-note {
-  color: var(--ink-4);
 }
 
 /* ---------- Tarefas: forma compacta ----------
@@ -563,11 +553,6 @@ tr[data-tier='null'] { --c: var(--tier-null); }
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.gut-note {
-  font-size: var(--fs-xs);
-  color: var(--ink-3);
 }
 
 /* ---------- Guia GUT (popover) ---------- */

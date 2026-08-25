@@ -14,7 +14,7 @@ interface TarefasTableRowProps {
 }
 
 export function TarefasTableRow({ row, onOpen, onToggleConcluida, onDelete }: TarefasTableRowProps) {
-  const { task: t, gut, prioridade, prioridadeHerdada, rank, normSt, idx, vinculo, dono, atrasada } = row;
+  const { task: t, gut, prioridade, prioridadeHerdada, normSt, idx, vinculo, dono, atrasada } = row;
   const concluida = normSt === 'Concluída';
   const titulo = t.tarefa || 'sem título';
 
@@ -42,10 +42,6 @@ export function TarefasTableRow({ row, onOpen, onToggleConcluida, onDelete }: Ta
         <AnexosBadge quantidade={t.anexos?.length ?? 0} />
         {vinculo && <VinculoChip vinculo={vinculo} />}
       </td>
-      <td className="cell-wrap" title={t.detalhes}><span className="clamp-2">{t.detalhes}</span></td>
-      <td className="center gut-note">{t.g ?? '—'}</td>
-      <td className="center gut-note">{t.u ?? '—'}</td>
-      <td className="center gut-note">{t.t ?? '—'}</td>
       <td className="center">
         <span className="tier-chip" data-tier={gutTier(gut)}>
           <span className="tier-dot" />
@@ -64,7 +60,6 @@ export function TarefasTableRow({ row, onOpen, onToggleConcluida, onDelete }: Ta
           {prioridadeHerdada && <span className="tier-chip-herdada" aria-label="herdada do risco">*</span>}
         </span>
       </td>
-      <td className="num">{rank ?? '—'}</td>
       <td className="center">
         <span className="badge" data-badge={taskStatusKind(normSt)}>{normSt}</span>
       </td>
