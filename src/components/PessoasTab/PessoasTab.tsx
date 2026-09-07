@@ -306,7 +306,7 @@ export function PessoasTab({ pf, onIrPara }: PessoasTabProps) {
       </div>
 
       {criando && (
-        <PessoaModal
+        <PessoaModal erro={error}
           onSalvar={dados => createEntidade('pessoas', dados)}
           onClose={() => setCriando(false)}
         />
@@ -316,7 +316,7 @@ export function PessoasTab({ pf, onIrPara }: PessoasTabProps) {
         <PessoaModal
           key={editando.id}
           pessoa={editando}
-          onSalvar={dados => patchEntidade('pessoas', editando.id, dados)}
+          onSalvar={dados => patchEntidade('pessoas', editando.id, dados, editando.version)}
           onExcluir={() => { void excluir(editando); }}
           onClose={() => setEditando(null)}
         />

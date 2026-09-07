@@ -621,7 +621,7 @@ export function riscosPorIniciativa(
   iniciativaId: string, acoes: AcaoRisco[], riscos: RiscoComId[],
 ): RiscoComId[] {
   const ids = new Set(
-    acoes.filter(a => a.iniciativa_id === iniciativaId && a.risco_id).map(a => a.risco_id as string),
+    acoes.filter(a => a.status !== 'cancelada' && a.iniciativa_id === iniciativaId && a.risco_id).map(a => a.risco_id as string),
   );
   return riscos.filter(r => ids.has(r.id));
 }

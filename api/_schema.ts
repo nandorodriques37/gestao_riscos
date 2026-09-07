@@ -17,6 +17,8 @@ import { ensureTasksSchema } from './_tasksDb.js';
 import { ensureVinculosFK, unificarTrabalho } from './_trabalhoDb.js';
 import { unificarDonos } from './_donos.js';
 
+import { ensureOperacoes } from './_operacoes.js';
+
 export async function ensureTudo(sql: Sql, opts: OpcoesSchema = {}): Promise<void> {
   // 1. `risk_records` primeiro: `acoes_risco.risco_id` e `tasks.risco_id` a referenciam.
   await ensureSchema(sql, opts);
@@ -33,4 +35,5 @@ export async function ensureTudo(sql: Sql, opts: OpcoesSchema = {}): Promise<voi
   // 6. Com todo o trabalho na mesma tabela, o dono também vira um só: fichas
   //    repetidas juntadas e responsável em texto convertido em pessoa.
   await unificarDonos(sql);
+  await ensureOperacoes(sql);
 }

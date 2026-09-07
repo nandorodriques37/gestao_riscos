@@ -1,10 +1,11 @@
+import type { Sql } from './_db.js';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { neonSql, ensureSchema, listRecords, updateRecordById, deleteRecordById } from '../_db.js';
+import { neonSql, ensureSchema, listRecords, updateRecordById, deleteRecordById } from './_db.js';
 import {
   ensureAuditoriaSchema, autorDaRequisicao, registrarAlteracao, registrarExclusao,
-} from '../_auditoria.js';
+} from './_auditoria.js';
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: VercelRequest, res: VercelResponse, database?: Sql) {
   try {
     const id = Array.isArray(req.query.id) ? req.query.id[0] : req.query.id;
     if (!id) {
@@ -12,7 +13,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return;
     }
 
-    const sql = neonSql();
+    const sql = database ?? neonSql();
     await ensureSchema(sql);
     await ensureAuditoriaSchema(sql);
     const autor = autorDaRequisicao(req.headers as Record<string, unknown>);

@@ -1,8 +1,9 @@
+import type { Sql } from './_db.js';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { neonSql, ensureTasksSchema } from '../../../_tasksDb.js';
-import { getAttachment, deleteAttachment, contentDisposition, CACHE_CONTROL_IMUTAVEL } from '../../../_attachmentsDb.js';
+import { neonSql, ensureTasksSchema } from './_tasksDb.js';
+import { getAttachment, deleteAttachment, contentDisposition, CACHE_CONTROL_IMUTAVEL } from './_attachmentsDb.js';
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: VercelRequest, res: VercelResponse, database?: Sql) {
   try {
     const taskId = Array.isArray(req.query.id) ? req.query.id[0] : req.query.id;
     const anexoId = Array.isArray(req.query.anexoId) ? req.query.anexoId[0] : req.query.anexoId;
@@ -11,7 +12,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return;
     }
 
-    const sql = neonSql();
+    const sql = database ?? neonSql();
     await ensureTasksSchema(sql);
 
     if (req.method === 'GET') {

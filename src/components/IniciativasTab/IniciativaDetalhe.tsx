@@ -76,7 +76,7 @@ export function IniciativaDetalhe({
   }
 
   async function editarMarco(id: string, dados: Record<string, unknown>) {
-    return pf.patchEntidade('marcos', id, dados);
+    return pf.patchEntidade('marcos', id, dados, marcoEditando?.version);
   }
 
   async function excluirMarco(m: Marco) {
@@ -85,8 +85,8 @@ export function IniciativaDetalhe({
     if (ok) setMarcoEditando(null);
   }
 
-  async function anexarAcao(acaoId: string) {
-    return pf.patchEntidade('acoes-risco', acaoId, { iniciativa_id: iniciativa.id });
+  async function anexarAcao(acaoId: string, version: number) {
+    return pf.patchEntidade('acoes-risco', acaoId, { iniciativa_id: iniciativa.id, triagem: 'iniciativa' }, version);
   }
 
   async function criarAcaoVinculada(riscoId: string, descricao: string) {
@@ -381,7 +381,7 @@ export function IniciativaDetalhe({
         <MarcoModal
           key={marcoEditando?.id ?? 'novo'}
           marco={marcoEditando ?? undefined}
-          iniciativaId={iniciativa.id}
+          iniciativaId={iniciativa.id} erro={pf.error}
           iniciativaNome={iniciativa.nome || 'Iniciativa sem nome'}
           onSalvar={dados => (marcoEditando
             ? editarMarco(marcoEditando.id, dados)
@@ -396,7 +396,7 @@ export function IniciativaDetalhe({
           iniciativaNome={iniciativa.nome || 'Iniciativa sem nome'}
           riscos={riscos}
           acoes={acoes}
-          jaCobertos={jaCobertos}
+          jaCobertos={jaCobertos} error={pf.error}
           onAnexar={anexarAcao}
           onCriar={criarAcaoVinculada}
           onClose={() => setVinculando(false)}

@@ -12,7 +12,9 @@ export type EntidadeUrl = 'pessoas' | 'objetivos' | 'medicoes' | 'iniciativas' |
 export class PortfolioConflictError extends Error {
   atual: unknown;
   constructor(atual: unknown) {
-    super('Este registro foi alterado por outra pessoa enquanto você editava.');
+    const mensagem = atual && typeof atual === 'object' && 'error' in atual && typeof atual.error === 'string'
+      ? atual.error : 'Este registro foi alterado por outra pessoa enquanto você editava.';
+    super(mensagem);
     this.name = 'PortfolioConflictError';
     this.atual = atual;
   }
@@ -109,3 +111,22 @@ export async function mesclarPessoasApi(destino: string, origem: string): Promis
 export async function promoverTriagemApi(): Promise<ResultadoPromocao> {
   return parse(await fetch(`${BASE}/promover-triagem`, { method: 'POST' }));
 }
+
+
+export interface SalvarRiscoPedido {
+  chave: string; riscoId: string; expectedVersion: number; patch: Partial<import('../types').RiskRecord>;
+  base: import('./planoDeAcao').LinhaPlano[]; atual: import('./planoDeAcao').LinhaPlano[];
+}
+export interface RiscoSalvo {
+  record: import('../types').StoredRiskRecord; plano: import('./planoDeAcao').ResultadoSalvar;
+  acoes: import('../types').AcaoRisco[];
+}
+async function operacao<T>(rota: string, dados: unknown): Promise<T> {
+  const res = await fetch(BASE + '/' + rota, { method: 'POST', headers: cabecalhosDeEscrita(), body: JSON.stringify(dados) });
+  if (res.status === 409) throw new PortfolioConflictError(await res.json());
+  return parse(res);
+}
+export const salvarRiscoApi = (pedido: SalvarRiscoPedido) => operacao<RiscoSalvo>('salvar-risco', pedido);
+export const criarIniciativaDaAcaoApi = (pedido: {
+  chave: string; acaoId: string; expectedVersion: number; dados: Record<string, unknown>;
+}) => operacao<import('../types').Iniciativa>('criar-iniciativa', pedido);

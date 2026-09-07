@@ -108,7 +108,7 @@ export function PriorizacaoTab({
           <div className="page-title">Priorização</div>
           <div className="page-subtitle">
             {fonteEfetiva === 'iniciativas'
-              ? 'O que fazer primeiro no portfólio: impacto² ÷ esforço + gravidade, '
+              ? 'O que fazer primeiro no portfólio: impacto ÷ esforço + gravidade, '
                 + 'com a matriz de quadrantes e o ranking'
               : 'Leitura anterior: os mesmos três campos ainda preenchidos no registro de risco'}
           </div>

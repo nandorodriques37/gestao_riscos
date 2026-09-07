@@ -9,13 +9,13 @@
 // mas como RESUMO derivado — é o que a coluna da tabela, a busca, o Gráficos, o
 // CSV e o KPI de completude consomem. `acoes_itens` para de ser escrito e fica
 // como histórico; nada é apagado.
-import type { AcaoRisco, Pessoa, RiskRecord, StatusAcaoRisco } from '../types';
-import { parseAcoes } from './acoes';
+import type { AcaoRisco, Pessoa, RiskRecord, StatusAcaoRisco } from '../types.js';
+import { parseAcoes } from './acoes.js';
 
 // Vive em `nomes.ts` para a API poder usá-la sem arrastar código de tela
 // junto; reexportada aqui para os importadores antigos não mudarem.
-import { chaveDoNome } from './nomes';
-import { resumoDeAcoes } from './resumoAcoes';
+import { chaveDoNome } from './nomes.js';
+import { resumoDeAcoes } from './resumoAcoes.js';
 export { chaveDoNome };
 
 /** Separador do resumo textual gravado em `acoes`. Igual ao de `resumirAcoes`. */
@@ -117,6 +117,7 @@ function campos(l: LinhaPlano, donoId: string | null): Record<string, unknown> {
     dono_id: donoId,
     prazo: l.prazo || null,
     status: l.status,
+    iniciativa_id: l.iniciativa_id,
   };
 }
 
@@ -144,7 +145,8 @@ export function diffPlano(base: LinhaPlano[], atual: LinhaPlano[]): DiffPlano {
     const mudou = antes.descricao !== linha.descricao
       || antes.dono !== linha.dono
       || antes.prazo !== linha.prazo
-      || antes.status !== linha.status;
+      || antes.status !== linha.status
+      || antes.iniciativa_id !== linha.iniciativa_id;
     if (mudou) atualizar.push(linha);
   }
 
@@ -184,8 +186,8 @@ export function linhaAtrasada(l: LinhaPlano, hoje: Date = new Date()): boolean {
 export interface ApiPlano {
   criarPessoa: (nome: string) => Promise<Pessoa>;
   criarAcao: (dados: Record<string, unknown>) => Promise<AcaoRisco>;
-  atualizarAcao: (id: string, patch: Record<string, unknown>) => Promise<AcaoRisco>;
-  removerAcao: (id: string) => Promise<void>;
+  atualizarAcao: (id: string, patch: Record<string, unknown>, version?: number) => Promise<AcaoRisco>;
+  removerAcao: (id: string, version?: number) => Promise<void>;
 }
 
 export interface ResultadoSalvar {
@@ -258,7 +260,7 @@ export async function salvarPlano(opts: {
   // 1. Remoções primeiro: liberam espaço e não dependem de nada.
   for (const linha of diff.remover) {
     try {
-      await api.removerAcao(linha.id);
+      await api.removerAcao(linha.id, linha.version);
       removidas++;
     } catch {
       erros.push(`Não foi possível remover "${linha.descricao.slice(0, 40)}".`);
@@ -270,7 +272,7 @@ export async function salvarPlano(opts: {
   for (const linha of diff.atualizar) {
     try {
       const donoId = await resolverDono(linha.dono);
-      const salva = await api.atualizarAcao(linha.id, campos(linha, donoId));
+      const salva = await api.atualizarAcao(linha.id, campos(linha, donoId), linha.version);
       atualizadas++;
       sobreviventes.set(linha.id, { ...linha, version: salva.version });
     } catch {
@@ -291,7 +293,7 @@ export async function salvarPlano(opts: {
         ...campos(linha, donoId),
         // Nasce classificada: veio de uma decisão explícita no editor, não da
         // fila da migração. Sem isso a aba Triagem voltaria a aparecer.
-        triagem: 'acao',
+        triagem: linha.iniciativa_id ? 'iniciativa' : 'acao',
       });
       criadas++;
       sobreviventes.set(linha.id, { ...linha, id: criada.id, nova: false, version: criada.version });

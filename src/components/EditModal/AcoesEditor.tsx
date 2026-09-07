@@ -1,5 +1,6 @@
-import { useRef } from 'react';
-import type { Iniciativa } from '../../types';
+import { useRef, useState } from 'react';
+import { IniciativaPicker } from '../common/IniciativaPicker';
+import type { Iniciativa, Objetivo, Pessoa } from '../../types';
 import { ROTULO_STATUS_ACAO, ROTULO_STATUS_INICIATIVA } from '../../lib/portfolioLabels';
 import {
   linhaAtrasada, linhaVazia, STATUS_EDITAVEIS, type LinhaPlano,
@@ -12,6 +13,8 @@ interface AcoesEditorProps {
   responsavelListId: string;
   /** Para mostrar dentro de qual iniciativa cada mitigação é executada. */
   iniciativas: Iniciativa[];
+  objetivos: Objetivo[];
+  pessoas: Pessoa[];
   onAbrirIniciativa: (id: string) => void;
   /** Promover uma mitigação autônoma a iniciativa. */
   onPromover: (linha: LinhaPlano) => void;
@@ -28,11 +31,12 @@ interface AcoesEditorProps {
  * modal salvar.
  */
 export function AcoesEditor({
-  linhas, onChange, responsavelListId, iniciativas, onAbrirIniciativa, onPromover,
+  linhas, onChange, responsavelListId, iniciativas, objetivos, pessoas, onAbrirIniciativa, onPromover,
 }: AcoesEditorProps) {
   // Guarda o id da linha recém-criada para focar sua descrição assim que o
   // React a montar (o botão de adicionar fica abaixo da lista).
   const novoIdRef = useRef<string | null>(null);
+  const [vinculando, setVinculando] = useState<string | null>(null);
   const iniciativaPorId = new Map(iniciativas.map(i => [i.id, i]));
 
   function patchLinha(id: string, patch: Partial<LinhaPlano>) {
@@ -141,27 +145,14 @@ export function AcoesEditor({
             {/* Para onde a mitigação foi. É a informação que o plano em texto
                 nunca teve, e a que explica o estado de tratamento do risco. */}
             <div className="acao-destino">
-              {ini ? (
-                <>
-                  <span>dentro de</span>
-                  <button type="button" className="link-ini" onClick={() => onAbrirIniciativa(ini.id)}>
-                    {ini.nome || 'Iniciativa sem nome'}
-                  </button>
-                  <span className="muted">· {ROTULO_STATUS_INICIATIVA[ini.status]}</span>
-                </>
-              ) : linha.nova ? (
-                <span className="muted">
-                  Mitigação nova — salve para poder promovê-la a iniciativa.
-                </span>
-              ) : (
-                <>
-                  <span className="muted">mitigação autônoma</span>
-                  <button type="button" className="link-ini" onClick={() => onPromover(linha)}>
-                    promover a iniciativa
-                  </button>
-                </>
-              )}
+              {ini ? <><span>Dentro de</span><button type="button" className="link-ini" onClick={() => onAbrirIniciativa(ini.id)}>{ini.nome}</button><span>· {ROTULO_STATUS_INICIATIVA[ini.status]}</span></> : <span className="muted">Ação autônoma</span>}
+              {linha.status !== 'cancelada' && <>
+                <button type="button" className="link-ini" onClick={() => setVinculando(vinculando === linha.id ? null : linha.id)}>{ini ? 'Alterar vínculo' : 'Vincular a uma iniciativa'}</button>
+                {!ini && <button type="button" className="link-ini" disabled={!linha.descricao.trim()} onClick={() => onPromover(linha)}>{linha.nova ? 'Salvar ação e criar iniciativa' : 'Criar iniciativa'}</button>}
+              </>}
             </div>
+            {vinculando === linha.id && <IniciativaPicker iniciativas={iniciativas} objetivos={objetivos} pessoas={pessoas}
+              value={linha.iniciativa_id} onChange={id => { patchLinha(linha.id, { iniciativa_id: id }); setVinculando(null); }} />}
           </div>
         );
       })}

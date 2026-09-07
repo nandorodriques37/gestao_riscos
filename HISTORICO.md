@@ -118,13 +118,30 @@ passou a ler o caminho da **URL**, não do parâmetro de rota. O portfólio inte
 é servido por uma rota catch-all só (`api/portfolio/[[...path]].ts`) porque o
 plano Hobby do Vercel limita a 12 funções.
 
-## Estado atual
+### 13. Fluidez e consistência — 07/09/2026 (quatro etapas)
 
-- ~19.800 linhas de TS/TSX entre `src/` e `api/`, com 20 arquivos de teste.
-- 13 pastas de componentes, 3 hooks (`useRecords`, `useTasks`, `usePortfolio`)
-  e 12 arquivos de estilo.
-- CI roda typecheck, lint, testes e build antes de qualquer merge — o Vercel
-  publica o que chega na `main`.
+1. Rascunhos com salvamento explícito, controle de versão, fila por registro e
+   sincronização entre telas. Risco + plano e iniciativa + vínculo passam a
+   operações transacionais e idempotentes. Edições de mitigação pelo quadro
+   também aparecem no histórico do risco.
+2. Vínculo por busca de iniciativa existente ou criação contextual, inclusive
+   pelo detalhe da iniciativa. Seleção na URL, Voltar/Avançar, filtros de sessão
+   e atalhos do Painel para a lista dos itens que originaram a lacuna.
+3. Formulário do risco em Resumo, Tratamento e Histórico; campos secundários de
+   prioridade/retorno da iniciativa recolhíveis; proteção de rascunho e feedback
+   de salvamento nos formulários do portfólio e de tarefas.
+4. Uma entrada `api/index.ts` atende as URLs existentes via rewrite. O roteador
+   é compartilhado com desenvolvimento; as telas do front carregam sob demanda.
+
+## Estado atual desta alteração
+
+- 484 testes em 27 arquivos, incluindo transações, conflitos, anexos, roteador,
+  hooks de sincronização e rascunhos do modal de risco.
+- CI verifica tipos, lint, testes e build nos PRs e nos pushes à `main`.
+- JavaScript principal: cerca de 527 KB → 295 KB minificado; os demais módulos
+  são carregados conforme o destino. Isso não mede o tempo real de abertura.
+- Uma função serverless no código; critérios e limites da validação em
+  [docs/validacao-fluidez.md](docs/validacao-fluidez.md).
 
 ## Padrões que se repetem
 
@@ -136,3 +153,4 @@ Três decisões voltaram em momentos diferentes e hoje estão no `CLAUDE.md`:
   próprio, fora do PATCH com debounce.
 - **Nada que é série temporal vira campo único** — medição é linha, não valor
   sobrescrito.
+

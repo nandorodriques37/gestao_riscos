@@ -1,3 +1,4 @@
+import { useSessionState } from '../../hooks/useSessionState';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { Density, RegistroStatus, RiskRecord, SortDir, SortKey } from '../../types';
 import { REGISTRO_STATUSES } from '../../types';
@@ -14,6 +15,7 @@ const STATUS_FILTER_KEY = 'riskMatrix.statusFilter.v1';
 const COL_WIDTHS_SAVE_DELAY = 300;
 
 interface RegistroTabProps {
+  idsDoRecorte?: Set<string> | null;
   records: RiskRecord[];
   onOpenEdit: (idx: number) => void;
   onDeleteRow: (idx: number) => void;
@@ -39,15 +41,15 @@ function sortValue(row: EnrichedRow, key: SortKey): number | null {
 
 export function RegistroTab({
   records, onOpenEdit, onDeleteRow, onAddRow, onExportCSV,
-  areaOptions, categoriaOptions, modoToggle,
+  areaOptions, categoriaOptions, modoToggle, idsDoRecorte,
 }: RegistroTabProps) {
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useSessionState('riscos.busca', '');
   // Seleção múltipla de status persistida entre sessões; array vazio = todos.
   const [statusFilter, setStatusFilter] = useState<RegistroStatus[]>(() => readStatusFilter(STATUS_FILTER_KEY, REGISTRO_STATUSES));
-  const [areaFilter, setAreaFilter] = useState('Todos');
-  const [categoriaFilter, setCategoriaFilter] = useState('Todos');
-  const [sortKey, setSortKey] = useState<SortKey>(null);
-  const [sortDir, setSortDir] = useState<SortDir>('desc');
+  const [areaFilter, setAreaFilter] = useSessionState('riscos.area', 'Todos');
+  const [categoriaFilter, setCategoriaFilter] = useSessionState('riscos.categoria', 'Todos');
+  const [sortKey, setSortKey] = useSessionState<SortKey>('riscos.ordem', null);
+  const [sortDir, setSortDir] = useSessionState<SortDir>('riscos.direcao', 'desc');
   const [colWidths, setColWidths] = useState(() => readColWidths(COL_WIDTHS_KEY));
   const [density, setDensity] = useState<Density>(() => readDensity(DENSITY_KEY));
 
@@ -79,6 +81,7 @@ export function RegistroTab({
   const visibleRows = useMemo(() => {
     const q = search.toLowerCase().trim();
     let result = rows.filter(row => {
+      if (idsDoRecorte) return idsDoRecorte.has((row.record as RiskRecord & { id: string }).id);
       if (statusFilter.length > 0 && !statusFilter.includes(row.normSt as RegistroStatus)) return false;
       if (areaFilter !== 'Todos' && row.record.area !== areaFilter) return false;
       if (categoriaFilter !== 'Todos' && row.record.categoria !== categoriaFilter) return false;
@@ -99,7 +102,7 @@ export function RegistroTab({
       });
     }
     return result;
-  }, [rows, search, statusFilter, areaFilter, categoriaFilter, sortKey, sortDir]);
+  }, [rows, idsDoRecorte, search, statusFilter, areaFilter, categoriaFilter, sortKey, sortDir]);
 
   function handleSort(key: NonNullable<SortKey>) {
     if (sortKey === key) {

@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useSessionState } from '../../hooks/useSessionState';
+import { useMemo, useRef, useState } from 'react';
 import type { Iniciativa, StoredRiskRecord } from '../../types';
 import type { UsePortfolio } from '../../hooks/usePortfolio';
 import { computePrioriz, priorizTier, round2 } from '../../lib/calculations';
@@ -14,6 +15,9 @@ import { IniciativaDetalhe } from './IniciativaDetalhe';
 import { IniciativaModal } from './IniciativaModal';
 
 interface IniciativasTabProps {
+  novoObjetivoId?: string | null;
+  onNovaIniciativaFechada?: () => void;
+  idsDoRecorte?: Set<string> | null;
   riscos: StoredRiskRecord[];
   pf: UsePortfolio;
   selecionada: string | null;
@@ -29,25 +33,16 @@ const AGRUPAMENTOS: { chave: Agrupamento; label: string }[] = [
   { chave: 'dono', label: 'Por dono' },
 ];
 
-/**
- * Abaixo disto a aba deixa de mostrar índice e detalhe juntos e vira lista →
- * detalhe. Tem de casar com a faixa de celular de `styles/responsive.css` e a
- * regra de `.ini-layout[data-detalhe]` em `styles/portfolio.css` — é o único
- * ponto do componente que precisa saber a largura, e ele precisa porque a
- * escolha automática da primeira iniciativa só faz sentido quando as duas
- * metades cabem na tela ao mesmo tempo.
- */
-const LARGURA_EMPILHADO = 760;
 
 export function IniciativasTab({
-  riscos, pf, selecionada, onSelecionar, onAbrirRisco,
+  riscos, pf, selecionada, onSelecionar, onAbrirRisco, novoObjetivoId, onNovaIniciativaFechada, idsDoRecorte,
 }: IniciativasTabProps) {
   const { portfolio, loading, error, clearError, createEntidade, patchEntidade, deleteEntidade } = pf;
   const { objetivos, iniciativas, marcos, acoes_risco, pessoas } = portfolio;
 
-  const [agrupamento, setAgrupamento] = useState<Agrupamento>('objetivo');
-  const [busca, setBusca] = useState('');
-  const [soAtivas, setSoAtivas] = useState(false);
+  const [agrupamento, setAgrupamento] = useSessionState<Agrupamento>('iniciativas.grupo', 'objetivo');
+  const [busca, setBusca] = useSessionState('iniciativas.busca', '');
+  const [soAtivas, setSoAtivas] = useSessionState('iniciativas.ativas', false);
   const [criando, setCriando] = useState(false);
   const [editando, setEditando] = useState<Iniciativa | null>(null);
   const listaRef = useRef<HTMLDivElement>(null);
@@ -69,7 +64,7 @@ export function IniciativasTab({
   const riscosPorIni = useMemo(() => {
     const m = new Map<string, Set<string>>();
     for (const a of acoes_risco) {
-      if (!a.iniciativa_id || !a.risco_id) continue;
+      if (a.status === 'cancelada' || !a.iniciativa_id || !a.risco_id) continue;
       const s = m.get(a.iniciativa_id) ?? new Set<string>();
       s.add(a.risco_id);
       m.set(a.iniciativa_id, s);
@@ -80,13 +75,14 @@ export function IniciativasTab({
   const filtradas = useMemo(() => {
     const q = busca.toLowerCase().trim();
     return iniciativas.filter(i => {
+      if (idsDoRecorte) return idsDoRecorte.has(i.id);
       if (soAtivas && !iniciativaAtiva(i)) return false;
       if (!q) return true;
       const obj = i.objetivo_id ? objetivoPorId.get(i.objetivo_id)?.descricao ?? '' : '';
       const dono = i.dono_id ? pessoaPorId.get(i.dono_id) ?? '' : '';
       return [i.nome, i.descricao, i.recurso, obj, dono].join(' ').toLowerCase().includes(q);
     });
-  }, [iniciativas, busca, soAtivas, objetivoPorId, pessoaPorId]);
+  }, [iniciativas, idsDoRecorte, busca, soAtivas, objetivoPorId, pessoaPorId]);
 
   /** Grupos da lista. A ordem interna é sempre a da priorização — o que decide primeiro fica em cima. */
   const grupos = useMemo(() => {
@@ -141,23 +137,7 @@ export function IniciativasTab({
 
   const atual = selecionada ? iniciativas.find(i => i.id === selecionada) ?? null : null;
 
-  // Seleciona a primeira ao abrir, e recupera a seleção quando a escolhida some
-  // (excluída em outra aba, ou filtrada para fora da lista).
-  //
-  // NÃO no celular. Lá o layout é lista → detalhe: com seleção, o índice sai de
-  // cena (ver styles/portfolio.css). Escolher sozinho jogaria a pessoa direto
-  // num detalhe que ela não pediu, e — pior — o botão "‹ Todas" viraria um
-  // no-op, porque zerar a seleção dispararia este efeito de volta na hora.
-  //
-  // Em tela larga as duas metades convivem e um detalhe vazio é só espaço
-  // desperdiçado, então lá a escolha automática continua certa.
-  useEffect(() => {
-    if (iniciativas.length === 0) return;
-    if (atual) return;
-    if (window.matchMedia(`(max-width: ${LARGURA_EMPILHADO}px)`).matches) return;
-    const primeira = grupos[0]?.itens[0];
-    if (primeira) onSelecionar(primeira.id);
-  }, [iniciativas.length, atual, grupos, onSelecionar]);
+  // A seleção pertence à URL; voltar para a lista não seleciona outro item.
 
   async function excluir(i: Iniciativa) {
     const presas = acoes_risco.filter(a => a.iniciativa_id === i.id).length;
@@ -392,13 +372,14 @@ export function IniciativasTab({
         </div>
       )}
 
-      {criando && (
+      {(criando || novoObjetivoId) && (
         <IniciativaModal
           objetivos={objetivos}
           pessoas={pessoas}
           qtdMarcos={0}
+          objetivoInicial={novoObjetivoId} erro={error}
           onSalvar={dados => createEntidade('iniciativas', dados)}
-          onClose={() => setCriando(false)}
+          onClose={() => { setCriando(false); onNovaIniciativaFechada?.(); }}
         />
       )}
 
@@ -409,7 +390,7 @@ export function IniciativasTab({
           objetivos={objetivos}
           pessoas={pessoas}
           qtdMarcos={marcosPorIniciativa.get(editando.id) ?? 0}
-          onSalvar={dados => patchEntidade('iniciativas', editando.id, dados)}
+          erro={error} onSalvar={dados => patchEntidade('iniciativas', editando.id, dados, editando.version)}
           onExcluir={() => { void excluir(editando); }}
           onClose={() => setEditando(null)}
         />

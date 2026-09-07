@@ -30,7 +30,7 @@ interface PainelTabProps {
    * "quantas ações eu tenho", porque a aba Tarefas não está montada aqui.
    */
   tarefas: StoredTask[];
-  onIrPara: (tab: Tab) => void;
+  onIrPara: (tab: Tab, recorte?: string) => void;
   onAbrirIniciativa: (id: string) => void;
   onAbrirRisco: (id: string) => void;
 }
@@ -78,7 +78,7 @@ interface EloProps {
   fatias: Fatia[];
   vazio: string;
   destino: Tab;
-  onIrPara: (tab: Tab) => void;
+  onIrPara: (tab: Tab, recorte?: string) => void;
 }
 
 function Elo({ rotulo, valor, unidade, feito, fatias, vazio, destino, onIrPara }: EloProps) {
@@ -210,7 +210,7 @@ export function PainelTab({
 
   /** Para onde a lacuna leva. Risco abre o rastro; o resto, a aba da camada. */
   function irParaLacuna(chave: ChaveLacuna) {
-    onIrPara(LACUNAS[chave].destino);
+    onIrPara(LACUNAS[chave].destino, chave);
   }
 
   /**
@@ -454,12 +454,12 @@ export function PainelTab({
           </div>
         </div>
 
-        {/* ---- Onde a cadeia quebra ---- */}
+        {/* ---- O que precisa de atenção ---- */}
 
         <div className="card" data-span="12">
           <div className="section-header-row">
             <div style={{ maxWidth: '78ch' }}>
-              <div className="section-title">Onde a cadeia quebra</div>
+              <div className="section-title">O que precisa de atenção</div>
               <div className="bento-sub">
                 Todo elo solto num lugar só. Nenhum destes é erro de sistema — são
                 decisões que ninguém tomou ainda, e cada linha leva a quem as toma.
@@ -563,7 +563,7 @@ export function PainelTab({
         </div>
 
         <div className="card" data-span="3">
-          <div className="kpi-label">Maior WIP por dono</div>
+          <div className="kpi-label">Maior Iniciativas em execução por dono</div>
           <div className="bento-valor">{maiorWip ? maiorWip.wip : '0'}</div>
           <div className="bento-sub">
             {maiorWip ? maiorWip.nome : 'Ninguém com iniciativa em execução'}

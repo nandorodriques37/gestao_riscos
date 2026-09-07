@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useDraftGuard } from '../../hooks/useDraftGuard';
+import { useRef, useState } from 'react';
 import type { Objetivo, Pessoa } from '../../types';
 import { HORIZONTES, STATUS_OBJETIVO } from '../../types';
 import { ROTULO_HORIZONTE, ROTULO_STATUS_OBJETIVO } from '../../lib/portfolioLabels';
@@ -12,6 +13,7 @@ interface ObjetivoModalProps {
   onSalvar: (dados: Record<string, unknown>) => Promise<boolean>;
   onExcluir?: () => void;
   onClose: () => void;
+  erro?: string | null;
 }
 
 const NOVO = {
@@ -25,7 +27,7 @@ const NOVO = {
  * vai ao servidor no salvar: objetivo é entidade de poucos itens, editada
  * raramente, e um PATCH por tecla não compra nada.
  */
-export function ObjetivoModal({ objetivo, pessoas, onSalvar, onExcluir, onClose }: ObjetivoModalProps) {
+export function ObjetivoModal({ objetivo, pessoas, onSalvar, onExcluir, onClose, erro }: ObjetivoModalProps) {
   const [d, setD] = useState(() => (objetivo
     ? {
         descricao: objetivo.descricao, horizonte: objetivo.horizonte,
@@ -35,14 +37,22 @@ export function ObjetivoModal({ objetivo, pessoas, onSalvar, onExcluir, onClose 
       }
     : NOVO));
   const [salvando, setSalvando] = useState(false);
+  const initial = useRef(JSON.stringify(d));
+  const busy = useRef(false);
+  const [falha, setFalha] = useState('');
+  const fechar = useDraftGuard(JSON.stringify(d) !== initial.current, salvando, onClose);
 
   const set = <K extends keyof typeof d>(k: K, v: (typeof d)[K]) => setD(p => ({ ...p, [k]: v }));
 
   async function salvar() {
+    if (busy.current) return;
+    busy.current = true; setFalha('');
     setSalvando(true);
-    const ok = await onSalvar({ ...d, prazo: d.prazo || null });
-    setSalvando(false);
-    if (ok) onClose();
+    let ok = false;
+    try { ok = await onSalvar({ ...d, prazo: d.prazo || null });
+    } catch { setFalha('Não foi possível salvar. Seu rascunho foi mantido.'); }
+    finally { busy.current = false; setSalvando(false); }
+    if (ok) onClose(); else setFalha('Não foi possível salvar. Revise os campos e tente novamente.');
   }
 
   const podeSalvar = d.descricao.trim().length > 0 && !salvando;
@@ -51,14 +61,14 @@ export function ObjetivoModal({ objetivo, pessoas, onSalvar, onExcluir, onClose 
     <ModalShell
       titulo={objetivo ? 'Editar objetivo' : 'Novo objetivo'}
       subtitulo="O porquê do portfólio. Poucos e ativos — três a seis dão conta de um ano."
-      onClose={onClose}
+      onClose={fechar} busy={salvando} error={erro || falha}
       rodape={
         <>
           {onExcluir && (
-            <button className="btn modal-btn-delete" onClick={onExcluir}>Excluir</button>
+            <button className="btn modal-btn-delete" disabled={salvando} onClick={onExcluir}>Excluir</button>
           )}
           <div className="modal-footer-actions">
-            <button className="btn btn-ghost" onClick={onClose}>Cancelar</button>
+            <button className="btn btn-ghost" onClick={fechar}>Cancelar</button>
             <button
               className="btn modal-btn-save"
               onClick={() => { void salvar(); }}

@@ -18,6 +18,8 @@ import { MedicaoModal } from './MedicaoModal';
 import { Sparkline } from './Sparkline';
 
 interface ObjetivosTabProps {
+  idsDoRecorte?: Set<string> | null;
+  onCriarIniciativa: (objetivoId: string) => void;
   /** Para o bloco "riscos que ameaçam este objetivo", derivado das iniciativas. */
   riscos: StoredRiskRecord[];
   pf: UsePortfolio;
@@ -36,7 +38,7 @@ const BADGE_STATUS: Record<string, string> = {
 };
 
 export function ObjetivosTab({
-  riscos, pf, onIrPara, onAbrirIniciativa, onAbrirRisco,
+  riscos, pf, onAbrirIniciativa, onAbrirRisco, idsDoRecorte, onCriarIniciativa,
 }: ObjetivosTabProps) {
   const { portfolio, loading, error, clearError, createEntidade, patchEntidade, deleteEntidade } = pf;
   const { objetivos, medicoes, iniciativas, acoes_risco, pessoas } = portfolio;
@@ -61,14 +63,14 @@ export function ObjetivosTab({
   const semObjetivo = useMemo(() => iniciativas.filter(i => !i.objetivo_id), [iniciativas]);
 
   const visiveis = useMemo(() => {
-    const lista = mostrarEncerrados ? objetivos : objetivos.filter(o => o.status !== 'abandonado');
+    const lista = idsDoRecorte ? objetivos.filter(o => idsDoRecorte.has(o.id)) : mostrarEncerrados ? objetivos : objetivos.filter(o => o.status !== 'abandonado');
     // O balde da migração vai para o fim: é caixa de entrada, não direção.
     return [...lista].sort((a, b) => {
       const ba = a.descricao === OBJETIVO_BALDE ? 1 : 0;
       const bb = b.descricao === OBJETIVO_BALDE ? 1 : 0;
       return ba - bb;
     });
-  }, [objetivos, mostrarEncerrados]);
+  }, [objetivos, mostrarEncerrados, idsDoRecorte]);
 
   const encerrados = objetivos.length - objetivos.filter(o => o.status !== 'abandonado').length;
 
@@ -106,9 +108,6 @@ export function ObjetivosTab({
     await patchEntidade('objetivos', o.id, { status: 'atingido' });
   }
 
-  async function salvarEdicao(id: string, dados: Record<string, unknown>) {
-    return patchEntidade('objetivos', id, dados);
-  }
 
   async function excluir(o: Objetivo) {
     const presas = porObjetivo.get(o.id)?.length ?? 0;
@@ -350,7 +349,7 @@ export function ObjetivosTab({
                   {daqui.length === 0 ? (
                     <div className="bento-sub">
                       Nada pendurado aqui ainda.{' '}
-                      <button className="link-ini" onClick={() => onIrPara('iniciativas')}>
+                      <button className="link-ini" onClick={() => onCriarIniciativa(o.id)}>
                         Criar uma iniciativa
                       </button>
                     </div>
@@ -456,7 +455,7 @@ export function ObjetivosTab({
       {criando && (
         <ObjetivoModal
           pessoas={pessoas}
-          onSalvar={salvarNovo}
+          erro={error} onSalvar={salvarNovo}
           onClose={() => setCriando(false)}
         />
       )}
@@ -476,7 +475,7 @@ export function ObjetivosTab({
           key={editando.id}
           objetivo={editando}
           pessoas={pessoas}
-          onSalvar={dados => salvarEdicao(editando.id, dados)}
+          erro={error} onSalvar={dados => patchEntidade('objetivos', editando.id, dados, editando.version)}
           onExcluir={() => { void excluir(editando); }}
           onClose={() => setEditando(null)}
         />

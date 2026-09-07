@@ -1,301 +1,104 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { AcaoRisco, Pessoa, PortfolioBundle } from '../types';
-import {
-  fetchPortfolio, patchEntidadeApi, createEntidadeApi, deleteEntidadeApi,
-  migrarAcoesApi, promoverTriagemApi, mesclarPessoasApi, PortfolioConflictError,
-  type EntidadeUrl, type ResultadoMigracao, type ResultadoPromocao,
-} from '../lib/portfolioApi';
-import { salvarPlano, type LinhaPlano, type ResultadoSalvar } from '../lib/planoDeAcao';
-
-const CACHE_KEY = 'riskMatrix.portfolio.v1';
-
-/** Chave do pacote correspondente a cada entidade da URL. */
+import type { PortfolioBundle } from '../types';
+import { fetchPortfolio, patchEntidadeApi, createEntidadeApi, deleteEntidadeApi,
+  migrarAcoesApi, promoverTriagemApi, mesclarPessoasApi, salvarRiscoApi, criarIniciativaDaAcaoApi,
+  type EntidadeUrl, type SalvarRiscoPedido } from '../lib/portfolioApi';
+import { invalidarDados, observarDados } from '../lib/dataSync';
+const CACHE = 'riskMatrix.portfolio.v1';
 const CAMPO: Record<EntidadeUrl, keyof PortfolioBundle> = {
-  pessoas: 'pessoas',
-  objetivos: 'objetivos',
-  medicoes: 'medicoes',
-  iniciativas: 'iniciativas',
-  marcos: 'marcos',
-  'acoes-risco': 'acoes_risco',
+  pessoas: 'pessoas', objetivos: 'objetivos', medicoes: 'medicoes', iniciativas: 'iniciativas', marcos: 'marcos', 'acoes-risco': 'acoes_risco',
 };
-
-const VAZIO: PortfolioBundle = {
-  pessoas: [], objetivos: [], medicoes: [], iniciativas: [], marcos: [], acoes_risco: [],
-};
-
+const VAZIO: PortfolioBundle = { pessoas: [], objetivos: [], medicoes: [], iniciativas: [], marcos: [], acoes_risco: [] };
+type Entity = PortfolioBundle[keyof PortfolioBundle][number];
 function lerCache(): PortfolioBundle {
-  try {
-    const raw = localStorage.getItem(CACHE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      // Defensivo contra cache gravado por outra versão do app.
-      if (parsed && typeof parsed === 'object') return { ...VAZIO, ...parsed };
-    }
-  } catch {
-    // cache ausente ou corrompido — ignora
-  }
-  return VAZIO;
+  try { return { ...VAZIO, ...JSON.parse(localStorage.getItem(CACHE) ?? '{}') }; } catch { return VAZIO; }
 }
-
-function gravarCache(b: PortfolioBundle): void {
-  try {
-    localStorage.setItem(CACHE_KEY, JSON.stringify(b));
-  } catch {
-    // storage indisponível — segue apenas em memória
-  }
-}
-
-export interface UsePortfolio {
-  portfolio: PortfolioBundle;
-  loading: boolean;
-  error: string | null;
-  refresh: () => Promise<void>;
-  clearError: () => void;
-  /**
-   * Grava um campo e devolve o item atualizado. Otimista: a tela muda na hora
-   * e reverte se o servidor recusar — inclusive nos 400 das regras de
-   * integridade, que são recusas esperadas, não falhas.
-   */
-  patchEntidade: (entidade: EntidadeUrl, id: string, patch: Record<string, unknown>) => Promise<boolean>;
-  /** Grava vários de uma vez e devolve quantos pegaram. Não é otimista. */
-  patchVarios: (
-    entidade: EntidadeUrl,
-    itens: { id: string; patch: Record<string, unknown> }[],
-  ) => Promise<number>;
-  createEntidade: (entidade: EntidadeUrl, data: Record<string, unknown>) => Promise<boolean>;
-  /**
-   * Cria e devolve o item, não só o sucesso. Existe para o caso em que a
-   * próxima chamada precisa do id recém-criado — promover uma ação a iniciativa
-   * é criar a iniciativa e, na sequência, apontar a ação para ela.
-   */
-  criarERetornar: <T extends { id: string }>(
-    entidade: EntidadeUrl, data: Record<string, unknown>,
-  ) => Promise<T | null>;
-  deleteEntidade: (entidade: EntidadeUrl, id: string) => Promise<boolean>;
-  /**
-   * Grava o plano de ação de um risco inteiro: cria, atualiza e remove linhas de
-   * `acoes_risco` conforme o que mudou, e refresca o pacote uma vez só no fim.
-   */
-  salvarPlanoDeAcao: (
-    riscoId: string, base: LinhaPlano[], atual: LinhaPlano[],
-  ) => Promise<ResultadoSalvar | null>;
-  migrarAcoes: () => Promise<ResultadoMigracao | null>;
-  /** Aplica a triagem: as marcadas como iniciativa viram iniciativas. */
-  promoverTriagem: () => Promise<ResultadoPromocao | null>;
-  /** Junta duas fichas da mesma pessoa e devolve quantas linhas mudaram de dono. */
-  mesclarPessoas: (destino: string, origem: string) => Promise<number | null>;
-}
-
-/**
- * Estado do portfólio inteiro num pacote só.
- *
- * Diferente de `useRecords`, aqui não há debounce: as gravações da triagem e
- * das telas de portfólio são confirmações discretas (um clique = uma decisão),
- * não digitação contínua. Um polling só cobre as cinco entidades, e as métricas
- * precisam das cinco juntas de qualquer forma.
- */
-export function usePortfolio(): UsePortfolio {
-  const [portfolio, setPortfolio] = useState<PortfolioBundle>(lerCache);
+export function usePortfolio() {
+  const [portfolio, setPortfolio] = useState(lerCache);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const montado = useRef(true);
-
-  const commit = useCallback((b: PortfolioBundle) => {
-    setPortfolio(b);
-    gravarCache(b);
+  const [saving, setSaving] = useState(false);
+  const current = useRef(portfolio), mounted = useRef(true), writes = useRef(0), revision = useRef(0), sequence = useRef(0);
+  const locks = useRef(new Set<string>()), keys = useRef(new Map<string, string>());
+  const commit = useCallback((data: PortfolioBundle) => {
+    current.current = data;
+    if (mounted.current) setPortfolio(data);
+    try { localStorage.setItem(CACHE, JSON.stringify(data)); } catch { /* cache opcional */ }
   }, []);
-
+  const accept = useCallback((entidade: EntidadeUrl, item: Entity) => {
+    const campo = CAMPO[entidade], list = current.current[campo];
+    const before = list.find(x => x.id === item.id);
+    if (before && before.version > item.version) return;
+    commit({ ...current.current, [campo]: before ? list.map(x => x.id === item.id ? item : x) : [...list, item] });
+  }, [commit]);
   const refresh = useCallback(async () => {
+    if (writes.current) return;
+    const epoch = revision.current, read = ++sequence.current;
     try {
       const data = await fetchPortfolio();
-      if (!montado.current) return;
-      commit(data);
-      setError(null);
-    } catch (err) {
-      if (montado.current) setError(err instanceof Error ? err.message : 'Falha ao carregar o portfólio');
-    }
+      if (mounted.current && !writes.current && epoch === revision.current && read === sequence.current) commit(data);
+    } catch (err) { if (mounted.current) setError(err instanceof Error ? err.message : 'Falha ao atualizar o portfólio.'); }
   }, [commit]);
-
-  const patchEntidade = useCallback(async (entidade: EntidadeUrl, id: string, patch: Record<string, unknown>) => {
-    const campo = CAMPO[entidade];
-    let anterior: PortfolioBundle | null = null;
-
-    setPortfolio(prev => {
-      anterior = prev;
-      const lista = (prev[campo] as { id: string }[]).map(x => (x.id === id ? { ...x, ...patch } : x));
-      const proximo = { ...prev, [campo]: lista } as PortfolioBundle;
-      gravarCache(proximo);
-      return proximo;
-    });
-
+  const mutate = useCallback(async <T,>(fn: () => Promise<T>): Promise<T | null> => {
+    writes.current++; revision.current++; setSaving(true); setError(null);
+    try { return await fn(); }
+    catch (err) { setError(err instanceof Error ? err.message : 'Não foi possível salvar.'); return null; }
+    finally {
+      writes.current--; revision.current++; setSaving(writes.current > 0);
+      invalidarDados('portfolio'); await refresh();
+    }
+  }, [refresh]);
+  const patchEntidade = useCallback(async (entidade: EntidadeUrl, id: string, patch: Record<string, unknown>, expectedVersion?: number) => {
+    const key = entidade + '/' + id;
+    if (locks.current.has(key)) return false;
+    locks.current.add(key);
     try {
-      const atualizado = await patchEntidadeApi<{ id: string }>(entidade, id, patch);
-      if (montado.current) {
-        setPortfolio(prev => {
-          const lista = (prev[campo] as { id: string }[]).map(x => (x.id === id ? atualizado : x));
-          const proximo = { ...prev, [campo]: lista } as PortfolioBundle;
-          gravarCache(proximo);
-          return proximo;
-        });
-        setError(null);
-      }
-      return true;
-    } catch (err) {
-      // Desfaz o otimismo: uma recusa de regra de integridade é resposta
-      // esperada, e deixar a tela mostrando o valor recusado seria mentira.
-      if (montado.current && anterior) commit(anterior);
-      if (montado.current) {
-        setError(err instanceof PortfolioConflictError
-          ? 'Este registro foi alterado por outra pessoa. Os dados foram atualizados.'
-          : err instanceof Error ? err.message : 'Falha ao gravar');
-      }
-      if (err instanceof PortfolioConflictError) await refresh();
-      return false;
-    }
-  }, [commit, refresh]);
-
-  /**
-   * Grava vários itens de uma vez. Não é otimista: uma decisão em massa muda
-   * meia tela, e pintar tudo antes da confirmação faria uma falha parcial
-   * mentir feio. Dispara em paralelo, refresca uma vez e devolve quantos
-   * pegaram.
-   */
-  const patchVarios = useCallback(async (
-    entidade: EntidadeUrl,
-    itens: { id: string; patch: Record<string, unknown> }[],
-  ) => {
-    if (itens.length === 0) return 0;
-    const resultados = await Promise.allSettled(
-      itens.map(({ id, patch }) => patchEntidadeApi(entidade, id, patch)),
-    );
-    const ok = resultados.filter(r => r.status === 'fulfilled').length;
-    await refresh();
-    if (montado.current && ok < itens.length) {
-      setError(`${itens.length - ok} de ${itens.length} não puderam ser gravados. Os demais foram salvos.`);
-    }
+      const version = expectedVersion ?? current.current[CAMPO[entidade]].find(x => x.id === id)?.version;
+      return (await mutate(async () => { const item = await patchEntidadeApi<Entity>(entidade, id, patch, version); accept(entidade, item); return item; })) != null;
+    } finally { locks.current.delete(key); }
+  }, [mutate, accept]);
+  const patchVarios = useCallback(async (entidade: EntidadeUrl, itens: { id: string; patch: Record<string, unknown> }[]) => {
+    const results = await Promise.all(itens.map(({ id, patch }) => patchEntidade(entidade, id, patch)));
+    const ok = results.filter(Boolean).length;
+    if (ok < itens.length) setError((itens.length - ok) + ' registros não foram salvos. Revise os dados atuais.');
     return ok;
-  }, [refresh]);
-
-  const createEntidade = useCallback(async (entidade: EntidadeUrl, data: Record<string, unknown>) => {
-    try {
-      await createEntidadeApi(entidade, data);
-      await refresh();
-      return true;
-    } catch (err) {
-      if (montado.current) setError(err instanceof Error ? err.message : 'Falha ao criar');
-      return false;
-    }
-  }, [refresh]);
-
-  const criarERetornar = useCallback(async <T extends { id: string }>(
-    entidade: EntidadeUrl, data: Record<string, unknown>,
-  ) => {
-    try {
-      const item = await createEntidadeApi<T>(entidade, data);
-      await refresh();
-      return item;
-    } catch (err) {
-      if (montado.current) setError(err instanceof Error ? err.message : 'Falha ao criar');
-      return null;
-    }
-  }, [refresh]);
-
-  const deleteEntidade = useCallback(async (entidade: EntidadeUrl, id: string) => {
-    try {
-      await deleteEntidadeApi(entidade, id);
-      await refresh();
-      return true;
-    } catch (err) {
-      if (montado.current) setError(err instanceof Error ? err.message : 'Falha ao excluir');
-      return false;
-    }
-  }, [refresh]);
-
-  /**
-   * Grava o plano de ação de um risco. Cada linha é uma entidade própria, então
-   * a gravação vira várias chamadas — mas o polling só é refeito no fim, senão
-   * um plano de cinco ações dispararia cinco recargas do pacote inteiro.
-   */
-  const salvarPlanoDeAcao = useCallback(async (
-    riscoId: string, base: LinhaPlano[], atual: LinhaPlano[],
-  ) => {
-    try {
-      const resultado = await salvarPlano({
-        riscoId,
-        base,
-        atual,
-        pessoas: portfolio.pessoas,
-        api: {
-          criarPessoa: nome => createEntidadeApi<Pessoa>('pessoas', { nome, ativo: true }),
-          criarAcao: dados => createEntidadeApi<AcaoRisco>('acoes-risco', dados),
-          atualizarAcao: (id, patch) => patchEntidadeApi<AcaoRisco>('acoes-risco', id, patch),
-          removerAcao: id => deleteEntidadeApi('acoes-risco', id),
-        },
-      });
-      await refresh();
-      if (montado.current) {
-        setError(resultado.erros.length > 0 ? resultado.erros[0] : null);
-      }
-      return resultado;
-    } catch (err) {
-      if (montado.current) setError(err instanceof Error ? err.message : 'Falha ao gravar o plano de ação');
-      return null;
-    }
-  }, [portfolio.pessoas, refresh]);
-
-  const migrarAcoes = useCallback(async () => {
-    try {
-      const resultado = await migrarAcoesApi();
-      await refresh();
-      return resultado;
-    } catch (err) {
-      if (montado.current) setError(err instanceof Error ? err.message : 'Falha ao extrair os planos de ação');
-      return null;
-    }
-  }, [refresh]);
-
-  const promoverTriagem = useCallback(async () => {
-    try {
-      const resultado = await promoverTriagemApi();
-      await refresh();
-      return resultado;
-    } catch (err) {
-      if (montado.current) setError(err instanceof Error ? err.message : 'Falha ao promover as iniciativas');
-      return null;
-    }
-  }, [refresh]);
-
-  const mesclarPessoas = useCallback(async (destino: string, origem: string) => {
-    try {
-      const r = await mesclarPessoasApi(destino, origem);
-      await refresh();
-      return r.movidas;
-    } catch (err) {
-      if (montado.current) setError(err instanceof Error ? err.message : 'Falha ao juntar as fichas');
-      return null;
-    }
-  }, [refresh]);
-
+  }, [patchEntidade]);
+  const criarERetornar = useCallback(async <T extends { id: string }>(entidade: EntidadeUrl, data: Record<string, unknown>) => {
+    const fingerprint = JSON.stringify({ entidade, data });
+    const chave = keys.current.get(fingerprint) ?? crypto.randomUUID();
+    keys.current.set(fingerprint, chave);
+    const result = await mutate(async () => { const item = await createEntidadeApi<T>(entidade, { ...data, __chave: chave }); accept(entidade, item as unknown as Entity); return item; });
+    if (result) keys.current.delete(fingerprint);
+    return result;
+  }, [mutate, accept]);
+  const createEntidade = useCallback(async (entidade: EntidadeUrl, data: Record<string, unknown>) => (await criarERetornar(entidade, data)) != null, [criarERetornar]);
+  const deleteEntidade = useCallback(async (entidade: EntidadeUrl, id: string) => (await mutate(async () => {
+    await deleteEntidadeApi(entidade, id);
+    const campo = CAMPO[entidade];
+    commit({ ...current.current, [campo]: current.current[campo].filter(x => x.id !== id) }); return true;
+  })) === true, [mutate, commit]);
+  const salvarRisco = useCallback((pedido: SalvarRiscoPedido) => mutate(async () => {
+    const result = await salvarRiscoApi(pedido);
+    commit({ ...current.current, acoes_risco: [...current.current.acoes_risco.filter(a => a.risco_id !== pedido.riscoId), ...result.acoes] });
+    return result;
+  }), [mutate, commit]);
+  const criarIniciativaDaAcao = useCallback((pedido: Parameters<typeof criarIniciativaDaAcaoApi>[0]) => mutate(async () => {
+    const result = await criarIniciativaDaAcaoApi(pedido);
+    accept('iniciativas', result);
+    const action = current.current.acoes_risco.find(a => a.id === pedido.acaoId);
+    if (action && action.version === pedido.expectedVersion) accept('acoes-risco', { ...action, iniciativa_id: result.id, triagem: 'iniciativa', version: action.version + 1 });
+    return result;
+  }), [mutate, accept]);
+  const migrarAcoes = useCallback(() => mutate(migrarAcoesApi), [mutate]);
+  const promoverTriagem = useCallback(() => mutate(promoverTriagemApi), [mutate]);
+  const mesclarPessoas = useCallback(async (destino: string, origem: string) => (await mutate(() => mesclarPessoasApi(destino, origem)))?.movidas ?? null, [mutate]);
   const clearError = useCallback(() => setError(null), []);
-
   useEffect(() => {
-    montado.current = true;
-    (async () => {
-      try {
-        const data = await fetchPortfolio();
-        if (montado.current) commit(data);
-      } catch (err) {
-        if (montado.current) setError(err instanceof Error ? err.message : 'Falha ao carregar o portfólio');
-      } finally {
-        if (montado.current) setLoading(false);
-      }
-    })();
-    return () => { montado.current = false; };
-  }, [commit]);
-
-  return {
-    portfolio, loading, error, refresh, clearError,
-    patchEntidade, patchVarios, createEntidade, criarERetornar, deleteEntidade,
-    salvarPlanoDeAcao, migrarAcoes, promoverTriagem, mesclarPessoas,
-  };
+    mounted.current = true; void refresh().finally(() => { if (mounted.current) setLoading(false); });
+    const stop = observarDados(source => { if (source !== 'portfolio') void refresh(); });
+    return () => { mounted.current = false; stop(); };
+  }, [refresh]);
+  return { portfolio, loading, saving, error, refresh, clearError, patchEntidade, patchVarios, createEntidade, criarERetornar,
+    deleteEntidade, salvarRisco, criarIniciativaDaAcao, migrarAcoes, promoverTriagem, mesclarPessoas };
 }
+export type UsePortfolio = ReturnType<typeof usePortfolio>;
