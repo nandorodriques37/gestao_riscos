@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useDraftGuard } from '../../hooks/useDraftGuard';
+import { useRef, useState } from 'react';
 import type { Iniciativa, Objetivo, Pessoa } from '../../types';
 import { CONFIANCAS, FONTES_INICIATIVA, STATUS_INICIATIVA, VETORES } from '../../types';
 import {
@@ -10,6 +11,7 @@ import { CampoTexto, CampoArea, CampoNumero, CampoSelect, CampoRef } from '../co
 
 interface IniciativaModalProps {
   iniciativa?: Iniciativa;
+  objetivoInicial?: string | null;
   objetivos: Objetivo[];
   pessoas: Pessoa[];
   /** Segura a regra 2: a partir de "aprovada" o status exige pelo menos um marco. */
@@ -17,16 +19,17 @@ interface IniciativaModalProps {
   onSalvar: (dados: Record<string, unknown>) => Promise<boolean>;
   onExcluir?: () => void;
   onClose: () => void;
+  erro?: string | null;
 }
 
 /** Status que o servidor recusa sem nenhum marco cadastrado. */
 const EXIGE_MARCO = new Set(['aprovada', 'em_execucao', 'pausada', 'concluida']);
 
 export function IniciativaModal({
-  iniciativa, objetivos, pessoas, qtdMarcos, onSalvar, onExcluir, onClose,
+  iniciativa, objetivos, pessoas, qtdMarcos, objetivoInicial, onSalvar, onExcluir, onClose, erro,
 }: IniciativaModalProps) {
   const [d, setD] = useState(() => ({
-    objetivo_id: iniciativa?.objetivo_id ?? null,
+    objetivo_id: iniciativa?.objetivo_id ?? objetivoInicial ?? null,
     nome: iniciativa?.nome ?? '',
     descricao: iniciativa?.descricao ?? '',
     vetor: iniciativa?.vetor ?? ('' as Iniciativa['vetor']),
@@ -48,6 +51,10 @@ export function IniciativaModal({
     obs: iniciativa?.obs ?? '',
   }));
   const [salvando, setSalvando] = useState(false);
+  const initial = useRef(JSON.stringify(d));
+  const busy = useRef(false);
+  const [falha, setFalha] = useState('');
+  const fechar = useDraftGuard(JSON.stringify(d) !== initial.current, salvando, onClose);
 
   const set = <K extends keyof typeof d>(k: K, v: (typeof d)[K]) => setD(p => ({ ...p, [k]: v }));
 
@@ -55,16 +62,20 @@ export function IniciativaModal({
   const semMarco = EXIGE_MARCO.has(d.status) && qtdMarcos === 0;
 
   async function salvar() {
+    if (busy.current) return;
+    busy.current = true; setFalha('');
     setSalvando(true);
-    const ok = await onSalvar({
+    let ok = false;
+    try { ok = await onSalvar({
       ...d,
       inicio: d.inicio || null,
       fim_plano_original: d.fim_plano_original || null,
       fim_plano_atual: d.fim_plano_atual || null,
       fim_real: d.fim_real || null,
     });
-    setSalvando(false);
-    if (ok) onClose();
+    } catch { setFalha('Não foi possível salvar. Seu rascunho foi mantido.'); }
+    finally { busy.current = false; setSalvando(false); }
+    if (ok) onClose(); else setFalha('Não foi possível salvar. Revise os campos e tente novamente.');
   }
 
   const podeSalvar = d.nome.trim().length > 0 && d.objetivo_id != null && !semMarco && !salvando;
@@ -74,10 +85,10 @@ export function IniciativaModal({
       largo
       titulo={iniciativa ? 'Editar iniciativa' : 'Nova iniciativa'}
       subtitulo="O quê: esforço com início, fim e dono, que move um objetivo."
-      onClose={onClose}
+      onClose={fechar} busy={salvando} error={erro || falha}
       rodape={
         <>
-          {onExcluir && <button className="btn modal-btn-delete" onClick={onExcluir}>Excluir</button>}
+          {onExcluir && <button className="btn modal-btn-delete" disabled={salvando} onClick={onExcluir}>Excluir</button>}
           <div className="modal-footer-actions">
             {prioriz != null && (
               <span className="tier-chip" data-tier={priorizTier(prioriz)}>
@@ -85,7 +96,7 @@ export function IniciativaModal({
                 Priorização {String(round2(prioriz)).replace('.', ',')}
               </span>
             )}
-            <button className="btn btn-ghost" onClick={onClose}>Cancelar</button>
+            <button className="btn btn-ghost" onClick={fechar}>Cancelar</button>
             <button
               className="btn modal-btn-save"
               onClick={() => { void salvar(); }}
@@ -114,7 +125,7 @@ export function IniciativaModal({
           ajuda="Obrigatório. Iniciativa sem objetivo é trabalho sem destino — o servidor recusa."
         />
         <CampoRef
-          label="Dono"
+          label="Responsável"
           valor={d.dono_id}
           onChange={v => set('dono_id', v)}
           opcoes={pessoas.map(p => ({ id: p.id, nome: p.nome }))}
@@ -129,7 +140,7 @@ export function IniciativaModal({
         linhas={2}
       />
 
-      <div className="modal-section-title">Origem e vetor — dois eixos independentes</div>
+      <div className="modal-section-title">Origem, benefício e situação</div>
 
       <div className="form-grid-3">
         <CampoSelect
@@ -142,7 +153,7 @@ export function IniciativaModal({
           ajuda="Por que nasceu. É histórico: não mude para refletir o que ela cobre hoje."
         />
         <CampoSelect
-          label="Vetor"
+          label="Tipo de benefício"
           valor={d.vetor}
           onChange={v => set('vetor', v)}
           opcoes={VETORES}
@@ -167,7 +178,7 @@ export function IniciativaModal({
         </div>
       )}
 
-      <div className="modal-section-title">Priorização</div>
+      <details className="form-details"><summary>Priorização e retorno</summary>
 
       <div className="form-grid-3">
         <CampoNumero
@@ -227,7 +238,7 @@ export function IniciativaModal({
         />
       </div>
 
-      <div className="modal-section-title">Janela</div>
+      </details><details className="form-details" open><summary>Prazos e resultado esperado</summary>
 
       <div className="form-grid-2">
         <CampoTexto label="Início" tipo="date" valor={d.inicio} onChange={v => set('inicio', v)} />
@@ -270,6 +281,7 @@ export function IniciativaModal({
       />
 
       <CampoArea label="Observações" valor={d.obs} onChange={v => set('obs', v)} linhas={2} />
+      </details>
     </ModalShell>
   );
 }

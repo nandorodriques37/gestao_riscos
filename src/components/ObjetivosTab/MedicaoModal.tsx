@@ -1,3 +1,4 @@
+import { useDraftGuard } from '../../hooks/useDraftGuard';
 import { useState } from 'react';
 import type { Medicao, Objetivo } from '../../types';
 import type { UsePortfolio } from '../../hooks/usePortfolio';
@@ -26,6 +27,7 @@ export function MedicaoModal({ objetivo, medicoes, pf, onClose }: MedicaoModalPr
   const [obs, setObs] = useState('');
   const [salvando, setSalvando] = useState(false);
 
+  const fechar = useDraftGuard(valor !== null || !!obs, salvando || pf.saving, onClose);
   const progresso = progressoObjetivo(objetivo, medicoes);
   const serie = [...progresso.serie].reverse();
   const unidade = objetivo.unidade ? ` ${objetivo.unidade}` : '';
@@ -56,10 +58,10 @@ export function MedicaoModal({ objetivo, medicoes, pf, onClose }: MedicaoModalPr
       largo
       titulo={objetivo.indicador || 'Medições do objetivo'}
       subtitulo={objetivo.descricao}
-      onClose={onClose}
+      onClose={fechar} busy={salvando || pf.saving} error={pf.error}
       rodape={
         <div className="modal-footer-actions">
-          <button className="btn btn-ghost" onClick={onClose}>Fechar</button>
+          <button className="btn btn-ghost" onClick={fechar}>Fechar</button>
         </div>
       }
     >

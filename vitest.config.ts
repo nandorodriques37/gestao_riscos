@@ -4,7 +4,7 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   test: {
     environment: 'node',
-    include: ['src/**/*.test.ts', 'api/**/*.test.ts'],
+    include: ['src/**/*.test.{ts,tsx}', 'api/**/*.test.ts'],
 
     // Cada arquivo de teste de API sobe um Postgres embarcado (pglite) no
     // `beforeAll`. Com vários arquivos em paralelo numa máquina ocupada, essa

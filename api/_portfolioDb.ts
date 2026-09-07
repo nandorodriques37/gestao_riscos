@@ -292,6 +292,15 @@ export function validarMedicao(
 export async function validarEntidade(
   sql: Sql, nome: string, dados: Record<string, unknown>, atual: unknown,
 ): Promise<string | null> {
+  if (nome === 'acoes-risco' && dados.iniciativa_id) {
+    const anterior = atual as AcaoRisco | null;
+    if (dados.iniciativa_id !== anterior?.iniciativa_id) {
+      if ((dados.status ?? anterior?.status) === 'cancelada') return 'Reative a ação antes de vinculá-la.';
+      const iniciativa = await iniciativas.byId(sql, String(dados.iniciativa_id));
+      if (!iniciativa) return 'Iniciativa não encontrada.';
+      if (iniciativa.status === 'cancelada' || iniciativa.status === 'concluida') return 'Escolha uma iniciativa que ainda esteja ativa.';
+    }
+  }
   if (nome === 'iniciativas') return validarIniciativa(sql, dados, atual as Iniciativa | null);
   if (nome === 'marcos') return validarMarco(dados, atual as Marco | null);
   if (nome === 'medicoes') return validarMedicao(dados, atual as Medicao | null);

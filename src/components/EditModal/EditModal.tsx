@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type {
-  AcaoRisco, Iniciativa, Pessoa, RiskRecord, SituacaoRisco, StoredRiskRecord,
+  AcaoRisco, Iniciativa, Objetivo, Pessoa, RiskRecord, SituacaoRisco, StoredRiskRecord,
 } from '../../types';
 import { SITUACOES_RISCO } from '../../types';
 import type { SaveStatus } from '../../hooks/useRecords';
@@ -10,18 +10,21 @@ import { estadoTratamento } from '../../lib/portfolioMetrics';
 import { ROTULO_SITUACAO, AJUDA_SITUACAO, formatarDataLonga } from '../../lib/portfolioLabels';
 import { ROTULO_TRATAMENTO, BADGE_TRATAMENTO, AJUDA_TRATAMENTO } from '../../lib/portfolioUi';
 import {
-  paraLinhas, linhasDeLegado, diffPlano, type LinhaPlano, type ResultadoSalvar,
+  paraLinhas, linhasDeLegado, type LinhaPlano,
 } from '../../lib/planoDeAcao';
 import { AcoesEditor } from './AcoesEditor';
 import { useBloqueioDeRolagem } from '../../hooks/useBloqueioDeRolagem';
 import { Historico } from '../common/Historico';
 
-const FOCUSABLE = 'a[href], button:not([disabled]), input, select, textarea, [tabindex]:not([tabindex="-1"])';
+import { useDraftGuard } from '../../hooks/useDraftGuard';
+import type { RiscoSalvo, SalvarRiscoPedido } from '../../lib/portfolioApi';
+
+const FOCUSABLE = 'a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])';
 
 const SAVE_STATUS_TEXT: Record<SaveStatus, string> = {
   saving: 'Salvando…',
   saved: 'Alterações salvas',
-  error: 'Falha ao salvar — tentando novamente…',
+  error: 'Falha ao salvar — tente novamente',
   conflict: 'Alterado por outra pessoa — dados atualizados',
 };
 
@@ -32,7 +35,9 @@ interface EditModalProps {
    */
   record: StoredRiskRecord;
   saveStatus?: SaveStatus;
-  onCommit: (patch: Partial<RiskRecord>) => void;
+  onCommit: (pedido: SalvarRiscoPedido) => Promise<RiscoSalvo | null>;
+  error?: string | null;
+  objetivos: Objetivo[];
   onClose: () => void;
   onDelete: () => void;
   areaOptions: string[];
@@ -55,7 +60,6 @@ interface EditModalProps {
    * Aplica o plano editado. Devolve o que de fato persistiu — é dele que sai o
    * resumo gravado em `acoes`, nunca do que a tela pretendia salvar.
    */
-  onSalvarPlano: (base: LinhaPlano[], atual: LinhaPlano[]) => Promise<ResultadoSalvar | null>;
 }
 
 const RESPOSTA_OPTIONS = ['Mitigar', 'Aceitar', 'Transferir', 'Evitar'];
@@ -77,10 +81,10 @@ function hojeParaCampo(): string {
 }
 
 export function EditModal({
-  record, saveStatus, onCommit, onClose, onDelete,
+  record, saveStatus, onCommit, onClose, onDelete, error, objetivos,
   areaOptions, rotinaOptions, categoriaOptions, recursoOptions, responsavelOptions,
   acoesVinculadas, pessoas, iniciativas,
-  onAbrirIniciativa, onPromoverAcao, onSalvarPlano,
+  onAbrirIniciativa, onPromoverAcao,
 }: EditModalProps) {
   // No celular o cartão é folha colada na base; sem a trava, chegar ao fim da
   // rolagem dele passa o gesto para a página de trás.
@@ -100,6 +104,11 @@ export function EditModal({
   // Rascunho local: digitar altera só este estado (instantâneo, sem re-render
   // global, sem rede). A gravação acontece por ação explícita — ver commit().
   const [draft, setDraft] = useState<RiskRecord>(() => ({ ...record }));
+  const [baseRecord, setBaseRecord] = useState(record);
+  const [aba, setAba] = useState('resumo');
+  const savingRef = useRef(false);
+  const requestRef = useRef({ fingerprint: '', chave: '' });
+  const savedLines = useRef(linhas);
   const [dirty, setDirty] = useState(false);
   const [salvandoPlano, setSalvandoPlano] = useState(false);
   const [errosPlano, setErrosPlano] = useState<string[]>([]);
@@ -120,49 +129,39 @@ export function EditModal({
     setDirty(true);
   }
 
-  /**
-   * Grava o que mudou. A ordem importa e falha segura: as LINHAS do plano vão
-   * primeiro, e só então `acoes` é derivado do que realmente persistiu — assim
-   * o resumo nunca anuncia uma ação que não existe no banco.
-   *
-   * Devolve `true` quando tudo passou.
-   */
   async function commit(): Promise<boolean> {
-    const patch: Partial<RiskRecord> = {};
-    (Object.keys(draft) as (keyof RiskRecord)[]).forEach(key => {
-      if (key === 'acoes' || key === 'acoes_itens') return; // derivado / congelado
-      if (draft[key] !== record[key]) (patch as Record<string, unknown>)[key] = draft[key];
-    });
-
-    const d = diffPlano(baseLinhas, linhas);
-    const planoMudou = d.criar.length > 0 || d.atualizar.length > 0 || d.remover.length > 0;
-
-    let erros: string[] = [];
-    if (planoMudou) {
-      setSalvandoPlano(true);
-      const r = await onSalvarPlano(baseLinhas, linhas);
-      setSalvandoPlano(false);
-      if (r) {
-        setBaseLinhas(r.linhas);
-        setLinhas(r.linhas);
-        erros = r.erros;
-        if (r.resumo !== record.acoes) patch.acoes = r.resumo;
-      } else {
-        erros = ['Não foi possível gravar o plano de ação.'];
-      }
-    }
-    setErrosPlano(erros);
-
-    if (Object.keys(patch).length > 0) onCommit(patch);
-    if (erros.length === 0) setDirty(false);
-    return erros.length === 0;
+    if (savingRef.current) return false;
+    if (!dirty) return true;
+    savingRef.current = true; setSalvandoPlano(true); setErrosPlano([]);
+    try {
+      const patch: Partial<RiskRecord> = {};
+      (Object.keys(draft) as (keyof RiskRecord)[]).forEach(key => {
+        if (key === 'acoes' || key === 'acoes_itens' || !(key in baseRecord)) return;
+        if (draft[key] !== baseRecord[key]) (patch as Record<string, unknown>)[key] = draft[key];
+      });
+      const dados = { riscoId: record.id, expectedVersion: baseRecord.version, patch, base: baseLinhas, atual: linhas };
+      const fingerprint = JSON.stringify(dados);
+      if (requestRef.current.fingerprint !== fingerprint) requestRef.current = { fingerprint, chave: crypto.randomUUID() };
+      const result = await onCommit({ ...dados, chave: requestRef.current.chave });
+      if (!result) { setErrosPlano(['Não foi possível salvar. Seu rascunho foi mantido.']); return false; }
+      setBaseRecord(result.record); setDraft(result.record);
+      setBaseLinhas(result.plano.linhas); setLinhas(result.plano.linhas); savedLines.current = result.plano.linhas;
+      setDirty(false); return true;
+    } catch (err) { setErrosPlano([err instanceof Error ? err.message : 'Não foi possível salvar.']); return false; }
+    finally { savingRef.current = false; setSalvandoPlano(false); }
   }
-
-  async function requestClose() {
-    // Fechar com o rascunho por gravar não pode descartar em silêncio: espera a
-    // gravação e, se algo falhar, mantém o modal aberto com o motivo à vista.
-    if (dirty && !(await commit())) return;
-    onClose();
+  const requestClose = useDraftGuard(dirty, salvandoPlano, onClose);
+  async function abrirIniciativa(id: string) { if (await commit()) onAbrirIniciativa(id); }
+  async function criarIniciativa(linha: LinhaPlano) {
+    const index = linhas.filter(l => !l.nova || l.descricao.trim()).findIndex(l => l.id === linha.id);
+    if (index >= 0 && await commit()) onPromoverAcao(savedLines.current[index]?.id ?? linha.id);
+  }
+  function recarregar() {
+    if (dirty && !window.confirm('Descartar este rascunho e carregar a versão atual?')) return;
+    setBaseRecord(record); setDraft(record);
+    const atuais = paraLinhas(acoesVinculadas, pessoas);
+    setBaseLinhas(atuais); setLinhas(atuais); savedLines.current = atuais;
+    setDirty(false); setErrosPlano([]);
   }
 
   // Foco inicial no primeiro campo e retorno do foco ao elemento anterior ao fechar.
@@ -222,7 +221,17 @@ export function EditModal({
           <button className="modal-close" onClick={() => { void requestClose(); }}>×</button>
         </div>
 
+        <div className="detail-context"><strong>{draft.risco || 'Risco sem descrição'}</strong><span>{draft.responsavel || 'Sem responsável'} · {ROTULO_SITUACAO[draft.situacao ?? ''] || 'Situação não definida'} · Criticidade {score ?? '—'}</span></div>
+        <div className="detail-tabs" role="group" aria-label="Detalhes do risco">
+          {(['resumo', 'tratamento', 'historico'] as const).map(a => <button key={a} type="button" aria-pressed={aba === a} onClick={() => setAba(a)}>
+            {a === 'resumo' ? 'Resumo' : a === 'tratamento' ? 'Tratamento' : 'Histórico'}
+          </button>)}
+        </div>
         <div className="modal-body">
+          {(error || errosPlano.length > 0) && <div className="form-aviso" role="alert">{error || errosPlano.join(' ')}
+            <button type="button" className="btn btn-ghost" disabled={salvandoPlano} onClick={recarregar}>Recarregar versão atual</button>
+          </div>}
+          <fieldset className="modal-fields" disabled={salvandoPlano}>
           <datalist id="dl-area">{areaOptions.map(o => <option key={o} value={o} />)}</datalist>
           <datalist id="dl-rotina">{rotinaOptions.map(o => <option key={o} value={o} />)}</datalist>
           <datalist id="dl-categoria">{categoriaOptions.map(o => <option key={o} value={o} />)}</datalist>
@@ -236,7 +245,7 @@ export function EditModal({
               .map(o => <option key={o} value={o} />)}
           </datalist>
 
-          <div>
+          <div hidden={aba !== 'resumo'}>
             <div className="modal-section-title">Identificação</div>
             <div className="modal-grid-3">
               <div>
@@ -258,7 +267,7 @@ export function EditModal({
             </div>
           </div>
 
-          <div>
+          <div hidden={aba !== 'resumo'}>
             <div className="modal-section-title">Avaliação do Risco Inerente</div>
             <div className="modal-grid-4">
               <div>
@@ -294,7 +303,7 @@ export function EditModal({
             </div>
           </div>
 
-          <div>
+          <div hidden={aba !== 'resumo'}>
             <div className="modal-section-title">Exposição e ciclo de vida</div>
             <div className="modal-grid-3">
               <div>
@@ -352,7 +361,7 @@ export function EditModal({
             </div>
           </div>
 
-          <div>
+          <div hidden={aba !== 'tratamento'}>
             <div className="modal-section-title">Plano de Ação</div>
 
             {/* O estado é derivado das linhas e das iniciativas que as executam.
@@ -381,8 +390,8 @@ export function EditModal({
                   onChange={setPlano}
                   responsavelListId="dl-pessoas"
                   iniciativas={iniciativas}
-                  onAbrirIniciativa={onAbrirIniciativa}
-                  onPromover={l => onPromoverAcao(l.id)}
+                  onAbrirIniciativa={id => { void abrirIniciativa(id); }}
+                  onPromover={l => { void criarIniciativa(l); }} objetivos={objetivos} pessoas={pessoas}
                 />
               </div>
               <div>
@@ -398,7 +407,7 @@ export function EditModal({
             )}
           </div>
 
-          <div>
+          <div hidden={aba !== 'tratamento'}>
             <div className="modal-section-title">Priorização do Esforço</div>
             <div className="modal-grid-4">
               <div>
@@ -435,7 +444,7 @@ export function EditModal({
             </div>
           </div>
 
-          <div>
+          <div hidden={aba !== 'historico'}>
             <div className="modal-section-title">Histórico</div>
             <Historico
               registroId={record.id}
@@ -444,7 +453,7 @@ export function EditModal({
             />
           </div>
 
-          <div>
+          <div hidden={aba !== 'tratamento'}>
             <div className="modal-section-title">Gestão e Acompanhamento</div>
             <div className="modal-grid-3">
               <div>
@@ -467,11 +476,13 @@ export function EditModal({
               <textarea className="modal-textarea" rows={2} value={draft.obs} onChange={e => setField({ obs: e.target.value })} />
             </div>
           </div>
+          </fieldset>
         </div>
 
         <div className="modal-footer">
-          <button className="modal-btn-delete" onClick={onDelete}>Excluir registro</button>
+          <button className="modal-btn-delete" disabled={salvandoPlano} onClick={onDelete}>Excluir registro</button>
           <div className="modal-footer-actions">
+            <button className="btn btn-ghost" onClick={requestClose}>Cancelar</button>
             <button
               className="modal-btn-save"
               onClick={() => { void commit(); }}
@@ -481,10 +492,10 @@ export function EditModal({
             </button>
             <button
               className="modal-btn-done"
-              onClick={() => { void requestClose(); }}
+              onClick={() => { void commit().then(ok => { if (ok) onClose(); }); }}
               disabled={salvandoPlano}
             >
-              Concluído
+              Salvar e fechar
             </button>
           </div>
         </div>

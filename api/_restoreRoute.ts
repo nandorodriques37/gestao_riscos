@@ -1,16 +1,17 @@
+import type { Sql } from './_db.js';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { neonSql, ensureSchema, restoreRecords } from './_db.js';
 import { ensurePortfolioSchema, contarAcoesRisco } from './_portfolioDb.js';
 import { ensureTasksSchema } from './_tasksDb.js';
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: VercelRequest, res: VercelResponse, database?: Sql) {
   try {
     if (req.method !== 'POST') {
       res.setHeader('Allow', 'POST');
       res.status(405).json({ error: 'Método não permitido' });
       return;
     }
-    const sql = neonSql();
+    const sql = database ?? neonSql();
     await ensureSchema(sql);
     // Precisa existir antes da contagem abaixo — num banco novo a tabela ainda
     // não foi criada e o `select` estouraria.

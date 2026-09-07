@@ -1,3 +1,4 @@
+import { useSessionState } from '../../hooks/useSessionState';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Density, Pessoa, StoredRiskRecord, Task, TaskStatus, TaskSortKey } from '../../types';
 import { TASK_STATUSES } from '../../types';
@@ -61,6 +62,9 @@ function sortValue(row: EnrichedTaskRow, key: TaskSortKey): number | null {
 }
 
 interface TarefasTabProps {
+  selecionada: string | null;
+  onSelecionar: (id: string | null) => void;
+  idsDoRecorte?: Set<string> | null;
   /** Para o cartão dizer QUAL risco a mitigação segura, e com que criticidade. */
   records: StoredRiskRecord[];
   /** Iniciativas e pessoas: o vínculo de execução e o dono de verdade. */
@@ -74,19 +78,20 @@ interface TarefasTabProps {
   tarefas: UseTasks;
 }
 
-export function TarefasTab({ records, pf, tarefas }: TarefasTabProps) {
+export function TarefasTab({ records, pf, tarefas, selecionada, onSelecionar, idsDoRecorte }: TarefasTabProps) {
   const {
     tasks, loading, error,
-    hasPendingWrites, saveStatus, updateTaskById, addTask, deleteTaskById,
+    hasPendingWrites, saveStatus, updateTaskById, saveTask, addTask, deleteTaskById,
     addAttachment, removeAttachment,
     refresh, flushPending, clearError,
   } = tarefas;
 
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [search, setSearch] = useState('');
+  const editingId = selecionada;
+  const setEditingId = onSelecionar;
+  const [search, setSearch] = useSessionState('tarefas.busca', '');
   // Seleção múltipla de status persistida entre sessões; array vazio = todos.
   const [statusFilter, setStatusFilter] = useState<TaskStatus[]>(() => readStatusFilter(STATUS_FILTER_KEY, TASK_STATUSES));
-  const [tipoFilter, setTipoFilter] = useState('Todos');
+  const [tipoFilter, setTipoFilter] = useSessionState('tarefas.tipo', 'Todos');
   const [vinculoFilter, setVinculoFilter] = useState<FiltroVinculo>(
     () => readEnumPref(VINCULO_KEY, FILTROS_VINCULO, 'todas'),
   );
@@ -125,7 +130,7 @@ export function TarefasTab({ records, pf, tarefas }: TarefasTabProps) {
   useEffect(() => {
     // Um refresh no meio do arraste reordenaria `tasks` e invalidaria os índices
     // que os cards carregam — por isso o polling espera o drop.
-    const canSync = () => editingId == null && !hasPendingWrites() && !draggingRef.current;
+    const canSync = () => !document.hidden && editingId == null && !hasPendingWrites() && !draggingRef.current;
     const interval = setInterval(() => { if (canSync()) void refresh(); }, POLL_INTERVAL);
     const onFocus = () => { if (canSync()) void refresh(); };
     window.addEventListener('focus', onFocus);
@@ -163,6 +168,7 @@ export function TarefasTab({ records, pf, tarefas }: TarefasTabProps) {
   const visibleRows = useMemo(() => {
     const q = search.toLowerCase().trim();
     let result = rows.filter(row => {
+      if (idsDoRecorte) return idsDoRecorte.has(row.task.id);
       if (statusFilter.length > 0 && !statusFilter.includes(row.normSt as TaskStatus)) return false;
       if (tipoFilter !== 'Todos' && row.task.tipo !== tipoFilter) return false;
       if (vinculoFilter === 'risco' && row.vinculo == null) return false;
@@ -189,7 +195,7 @@ export function TarefasTab({ records, pf, tarefas }: TarefasTabProps) {
       });
     }
     return result;
-  }, [rows, search, statusFilter, tipoFilter, vinculoFilter, sortKey, sortDir]);
+  }, [rows, idsDoRecorte, search, statusFilter, tipoFilter, vinculoFilter, sortKey, sortDir]);
 
   function handleSort(key: NonNullable<TaskSortKey>) {
     if (sortKey === key) {
@@ -317,7 +323,8 @@ export function TarefasTab({ records, pf, tarefas }: TarefasTabProps) {
     const existente = pf.portfolio.pessoas.find(p => chaveDoNome(p.nome) === chave);
     if (existente) return existente.id;
     const nova = await pf.criarERetornar<Pessoa>('pessoas', { nome: limpo, ativo: true });
-    return nova?.id ?? null;
+    if (!nova) throw new Error('Não foi possível cadastrar o responsável. Seu rascunho foi mantido.');
+    return nova.id;
   }
 
   /**
@@ -328,11 +335,10 @@ export function TarefasTab({ records, pf, tarefas }: TarefasTabProps) {
    * gravações na mesma ação, com a mesma versão esperada — a segunda voltava
    * 409 e o dono se perdia calado.
    */
-  async function handleCommitEdit(id: string, patch: Partial<Task>, donoNome?: string) {
+  async function handleCommitEdit(id: string, patch: Partial<Task>, donoNome?: string, version?: number) {
     const completo: Partial<Task> = { ...patch };
     if (donoNome !== undefined) completo.dono_id = await resolverDono(donoNome);
-    updateTaskById(id, completo);
-    void flushPending();
+    return saveTask(id, completo, version);
   }
 
   async function handleDeleteFromModal() {
@@ -458,7 +464,8 @@ export function TarefasTab({ records, pf, tarefas }: TarefasTabProps) {
           taskId={editingTask.id}
           anexos={editingTask.anexos}
           saveStatus={saveStatus[editingTask.id]}
-          onCommit={(patch, donoNome) => { void handleCommitEdit(editingTask.id, patch, donoNome); }}
+          onCommit={(patch, donoNome, version) => handleCommitEdit(editingTask.id, patch, donoNome, version)}
+          version={editingTask.version} error={error || pf.error}
           onClose={handleCloseModal}
           onDelete={handleDeleteFromModal}
           onAddAnexo={file => addAttachment(editingTask.id, file)}

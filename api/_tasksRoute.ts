@@ -1,9 +1,10 @@
+import type { Sql } from './_db.js';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { neonSql, ensureTasksSchema, listTasks, createTask } from './_tasksDb.js';
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: VercelRequest, res: VercelResponse, database?: Sql) {
   try {
-    const sql = neonSql();
+    const sql = database ?? neonSql();
     await ensureTasksSchema(sql);
 
     if (req.method === 'GET') {

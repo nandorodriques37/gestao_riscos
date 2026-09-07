@@ -1,306 +1,42 @@
-import type { Plugin, Connect } from 'vite';
-import type { ServerResponse } from 'node:http';
+import type { Plugin } from 'vite';
+import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { PGlite } from '@electric-sql/pglite';
-import {
-  listRecords, createRecord, updateRecordById, deleteRecordById, restoreRecords,
-  countRecords, seedSize, type Sql,
-} from './api/_db.js';
-import {
-  listTasks, createTask, updateTaskById, deleteTaskById,
-} from './api/_tasksDb.js';
-import {
-  listAttachments, createAttachment, getAttachment, deleteAttachment,
-  contentDisposition, CACHE_CONTROL_IMUTAVEL,
-} from './api/_attachmentsDb.js';
-import {
-  ENTIDADES, ehEntidade, listPortfolio, backup,
-  contarAcoesRisco, validarEntidade,
-} from './api/_portfolioDb.js';
 import { ensureTudo } from './api/_schema.js';
-import { mesclarPessoas } from './api/_donos.js';
-import { migrarAcoes } from './api/_migracaoAcoes.js';
-import { promoverTriagem } from './api/_promocaoTriagem.js';
-import {
-  autorDaRequisicao, listarAuditoria,
-  registrarCriacao, registrarAlteracao, registrarExclusao,
-} from './api/_auditoria.js';
-
-// Backend de DESENVOLVIMENTO apenas: reimplementa as rotas /api usando um
-// Postgres embarcado (pglite) para que `npm run dev` funcione sem o Neon.
-// Em produção, o Vercel serve as funções serverless em `api/*` (Neon).
-// Ativado só em `serve` (dev); não entra no bundle de produção.
-
-let dbPromise: Promise<Sql> | null = null;
-
-function getSql(): Promise<Sql> {
-  if (!dbPromise) {
-    dbPromise = (async () => {
-      const pg = new PGlite(process.env.PGLITE_DIR || '.pglite-dev');
-      const sql: Sql = async (text, params = []) => {
-        const result = await pg.query(text, params as unknown[]);
-        return result.rows as Record<string, unknown>[];
-      };
-      // Exatamente a mesma sequência da produção, semeando os dados de exemplo.
-      await ensureTudo(sql, { semear: true });
-      return sql;
-    })();
-  }
-  return dbPromise;
-}
-
-function readJsonBody(req: Connect.IncomingMessage): Promise<unknown> {
-  return new Promise(resolve => {
-    let raw = '';
-    req.on('data', chunk => { raw += chunk; });
-    req.on('end', () => {
-      if (!raw) return resolve({});
-      try { resolve(JSON.parse(raw)); } catch { resolve({}); }
-    });
-    req.on('error', () => resolve({}));
-  });
-}
-
-function send(res: ServerResponse, status: number, body: unknown) {
-  res.statusCode = status;
-  res.setHeader('Content-Type', 'application/json; charset=utf-8');
-  res.end(JSON.stringify(body));
-}
-
-/** Espelha o que a função serverless devolve ao servir os bytes de um anexo. */
-function sendImage(res: ServerResponse, mime: string, nome: string, dados: string) {
-  const bytes = Buffer.from(dados, 'base64');
-  res.statusCode = 200;
-  res.setHeader('Content-Type', mime);
-  res.setHeader('Content-Length', String(bytes.length));
-  res.setHeader('Cache-Control', CACHE_CONTROL_IMUTAVEL);
-  res.setHeader('Content-Disposition', contentDisposition(nome));
-  res.end(bytes);
-}
-
+import type { Sql } from './api/_db.js';
+import router from './api/_router.js';
 export function devApiPlugin(): Plugin {
   return {
     name: 'dev-api',
-    apply: 'serve',
-    configureServer(server) {
+    async configureServer(server) {
+      const pg = new PGlite('.pglite-dev');
+      const sql: Sql = async (query, params = []) => (await pg.query(query, params as unknown[])).rows as Record<string, unknown>[];
+      sql.transaction = run => pg.transaction(async tx => {
+        const scoped: Sql = async (query, params = []) => (await tx.query(query, params as unknown[])).rows as Record<string, unknown>[];
+        return run(scoped);
+      });
+      await ensureTudo(sql, { semear: true });
+      server.httpServer?.once('close', () => { void pg.close(); });
       server.middlewares.use(async (req, res, next) => {
-        const url = req.url || '';
-        const path = url.split('?')[0];
-        // Só interceptamos as rotas de API (sem extensão). Requisições de módulo
-        // sob /api/ — ex.: /api/_seed.ts, importado pelo front — têm extensão de
-        // arquivo e devem seguir para o Vite servir o módulo, não virar 404.
-        if (!path.startsWith('/api/') || /\.[a-z0-9]+$/i.test(path)) return next();
-
+        if (!/^\/api(?:\/|\?|$)/.test(req.url ?? '')) { next(); return; }
         try {
-          const sql = await getSql();
-          const method = (req.method || 'GET').toUpperCase();
-
-          if (path === '/api/records') {
-            if (method === 'GET') return send(res, 200, await listRecords(sql));
-            if (method === 'POST') {
-              const criado = await createRecord(sql, (await readJsonBody(req)) as Record<string, unknown>);
-              await registrarCriacao(sql, 'risk_records', criado, autorDaRequisicao(req.headers as Record<string, unknown>));
-              return send(res, 201, criado);
-            }
-            return send(res, 405, { error: 'Método não permitido' });
+          const url = new URL(req.url || '/', 'http://local');
+          const chunks: Buffer[] = [];
+          let size = 0;
+          for await (const chunk of req) {
+            const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+            size += buffer.length;
+            if (size > 4_500_000) { res.statusCode = 413; res.end('Requisição grande demais'); return; }
+            chunks.push(buffer);
           }
-
-          const idMatch = path.match(/^\/api\/records\/([^/]+)$/);
-          if (idMatch) {
-            const id = decodeURIComponent(idMatch[1]);
-            if (method === 'PATCH') {
-              const { expectedVersion, ...patch } = (await readJsonBody(req)) as Record<string, unknown> & { expectedVersion?: number };
-              const antes = (await listRecords(sql)).find(r => r.id === id) ?? null;
-              const result = await updateRecordById(sql, id, patch, expectedVersion);
-              if (result.status === 'not_found') return send(res, 404, { error: 'Registro não encontrado' });
-              if (result.status === 'ok' && antes) {
-                await registrarAlteracao(sql, 'risk_records', antes, patch, autorDaRequisicao(req.headers as Record<string, unknown>));
-              }
-              return send(res, result.status === 'conflict' ? 409 : 200, result.record);
-            }
-            if (method === 'DELETE') {
-              const antes = (await listRecords(sql)).find(r => r.id === id) ?? null;
-              const ok = await deleteRecordById(sql, id);
-              if (!ok) return send(res, 404, { error: 'Registro não encontrado' });
-              if (antes) {
-                await registrarExclusao(sql, 'risk_records', antes, autorDaRequisicao(req.headers as Record<string, unknown>));
-              }
-              return send(res, 200, { ok: true });
-            }
-            return send(res, 405, { error: 'Método não permitido' });
-          }
-
-          if (path === '/api/restore') {
-            if (method !== 'POST') return send(res, 405, { error: 'Método não permitido' });
-            // Mesmo guarda da função serverless: restaurar apaga as ações de
-            // risco em cascata.
-            const acoes = await contarAcoesRisco(sql);
-            const force = new URL(url, 'http://localhost').searchParams.get('force') === '1';
-            if (acoes > 0 && !force) {
-              return send(res, 409, {
-                error: `A matriz vai ser substituída, e as ${acoes} mitigações ligadas a ela `
-                  + 'perdem o vínculo — viram tarefas soltas no quadro, sem apontar para risco nenhum. '
-                  + 'Baixe o backup em /api/portfolio/backup e repita com ?force=1 para confirmar.',
-                acoesRisco: acoes,
-              });
-            }
-            return send(res, 200, await restoreRecords(sql));
-          }
-
-          // ---------- Portfólio ----------
-          if (path === '/api/portfolio') {
-            if (method === 'GET') return send(res, 200, await listPortfolio(sql));
-            return send(res, 405, { error: 'Método não permitido' });
-          }
-
-          if (path === '/api/portfolio/backup') {
-            if (method !== 'GET') return send(res, 405, { error: 'Método não permitido' });
-            const anexos = new URL(url, 'http://localhost').searchParams.get('anexos') === '1';
-            return send(res, 200, await backup(sql, anexos));
-          }
-
-          if (path === '/api/portfolio/auditoria') {
-            if (method !== 'GET') return send(res, 405, { error: 'Método não permitido' });
-            const q = new URL(url, 'http://localhost').searchParams;
-            return send(res, 200, await listarAuditoria(sql, {
-              tabela: q.get('tabela') ?? undefined,
-              registroId: q.get('registro_id') ?? undefined,
-              limite: Number(q.get('limite') ?? 50) || 50,
-            }));
-          }
-
-          if (path === '/api/portfolio/migrar-acoes') {
-            if (method !== 'POST') return send(res, 405, { error: 'Método não permitido' });
-            return send(res, 200, await migrarAcoes(sql));
-          }
-
-          if (path === '/api/portfolio/mesclar-pessoas') {
-            if (method !== 'POST') return send(res, 405, { error: 'Método não permitido' });
-            const body = (await readJsonBody(req)) as Record<string, unknown>;
-            const destino = String(body.destino ?? '');
-            const origem = String(body.origem ?? '');
-            if (!destino || !origem) {
-              return send(res, 400, { error: 'Informe as fichas de destino e de origem.' });
-            }
-            const antes = await ENTIDADES.pessoas.byId(sql, origem);
-            const r = await mesclarPessoas(sql, destino, origem);
-            if (antes) {
-              await registrarExclusao(sql, 'pessoas', antes, autorDaRequisicao(req.headers as Record<string, unknown>));
-            }
-            return send(res, 200, r);
-          }
-
-          if (path === '/api/portfolio/promover-triagem') {
-            if (method !== 'POST') return send(res, 405, { error: 'Método não permitido' });
-            return send(res, 200, await promoverTriagem(sql));
-          }
-
-          const portfolioMatch = path.match(/^\/api\/portfolio\/([^/]+)(?:\/([^/]+))?$/);
-          if (portfolioMatch) {
-            const nome = decodeURIComponent(portfolioMatch[1]);
-            if (!ehEntidade(nome)) return send(res, 404, { error: `Entidade "${nome}" não existe.` });
-            const tabela = ENTIDADES[nome];
-            const autor = autorDaRequisicao(req.headers as Record<string, unknown>);
-            const id = portfolioMatch[2] ? decodeURIComponent(portfolioMatch[2]) : null;
-
-            if (!id) {
-              if (method === 'GET') return send(res, 200, await tabela.list(sql));
-              if (method === 'POST') {
-                const body = (await readJsonBody(req)) as Record<string, unknown>;
-                const erro = await validarEntidade(sql, nome, body, null);
-                if (erro) return send(res, 400, { error: erro });
-                const criado = await tabela.create(sql, body);
-                await registrarCriacao(sql, tabela.nome, criado, autor);
-                return send(res, 201, criado);
-              }
-              return send(res, 405, { error: 'Método não permitido' });
-            }
-
-            if (method === 'PATCH') {
-              const { expectedVersion, ...patch } = (await readJsonBody(req)) as Record<string, unknown> & { expectedVersion?: number };
-              const atual = await tabela.byId(sql, id);
-              if (!atual) return send(res, 404, { error: 'Registro não encontrado' });
-              const erro = await validarEntidade(sql, nome, patch, atual);
-              if (erro) return send(res, 400, { error: erro });
-              const result = await tabela.update(sql, id, patch, expectedVersion);
-              if (result.status === 'not_found') return send(res, 404, { error: 'Registro não encontrado' });
-              if (result.status === 'ok') {
-                await registrarAlteracao(sql, tabela.nome, atual, patch, autor);
-              }
-              return send(res, result.status === 'conflict' ? 409 : 200, result.item);
-            }
-            if (method === 'DELETE') {
-              const antes = await tabela.byId(sql, id);
-              const ok = await tabela.remove(sql, id);
-              if (!ok) return send(res, 404, { error: 'Registro não encontrado' });
-              if (antes) await registrarExclusao(sql, tabela.nome, antes, autor);
-              return send(res, 200, { ok: true });
-            }
-            return send(res, 405, { error: 'Método não permitido' });
-          }
-
-          if (path === '/api/tasks') {
-            if (method === 'GET') return send(res, 200, await listTasks(sql));
-            if (method === 'POST') return send(res, 201, await createTask(sql, (await readJsonBody(req)) as Record<string, unknown>));
-            return send(res, 405, { error: 'Método não permitido' });
-          }
-
-          // Anexos vêm antes da rota da tarefa: os padrões são exclusivos, mas
-          // ler do mais específico para o mais genérico evita surpresa.
-          const anexoIdMatch = path.match(/^\/api\/tasks\/([^/]+)\/anexos\/([^/]+)$/);
-          if (anexoIdMatch) {
-            const taskId = decodeURIComponent(anexoIdMatch[1]);
-            const anexoId = decodeURIComponent(anexoIdMatch[2]);
-            if (method === 'GET') {
-              const anexo = await getAttachment(sql, taskId, anexoId);
-              if (!anexo) return send(res, 404, { error: 'Anexo não encontrado' });
-              return sendImage(res, anexo.mime, anexo.nome, anexo.dados);
-            }
-            if (method === 'DELETE') {
-              const ok = await deleteAttachment(sql, taskId, anexoId);
-              return ok ? send(res, 200, { ok: true }) : send(res, 404, { error: 'Anexo não encontrado' });
-            }
-            return send(res, 405, { error: 'Método não permitido' });
-          }
-
-          const anexosMatch = path.match(/^\/api\/tasks\/([^/]+)\/anexos$/);
-          if (anexosMatch) {
-            const taskId = decodeURIComponent(anexosMatch[1]);
-            if (method === 'GET') return send(res, 200, await listAttachments(sql, taskId));
-            if (method === 'POST') {
-              const body = (await readJsonBody(req)) as Record<string, unknown>;
-              const result = await createAttachment(sql, taskId, body);
-              if (result.status === 'not_found') return send(res, 404, { error: 'Tarefa não encontrada' });
-              if (result.status === 'invalid') return send(res, 400, { error: result.message });
-              return send(res, 201, result.anexo);
-            }
-            return send(res, 405, { error: 'Método não permitido' });
-          }
-
-          const taskIdMatch = path.match(/^\/api\/tasks\/([^/]+)$/);
-          if (taskIdMatch) {
-            const id = decodeURIComponent(taskIdMatch[1]);
-            if (method === 'PATCH') {
-              const { expectedVersion, ...patch } = (await readJsonBody(req)) as Record<string, unknown> & { expectedVersion?: number };
-              const result = await updateTaskById(sql, id, patch, expectedVersion);
-              if (result.status === 'not_found') return send(res, 404, { error: 'Tarefa não encontrada' });
-              return send(res, result.status === 'conflict' ? 409 : 200, result.task);
-            }
-            if (method === 'DELETE') {
-              const ok = await deleteTaskById(sql, id);
-              return ok ? send(res, 200, { ok: true }) : send(res, 404, { error: 'Tarefa não encontrada' });
-            }
-            return send(res, 405, { error: 'Método não permitido' });
-          }
-
-          if (path === '/api/health') {
-            return send(res, 200, { ok: true, dbConnected: true, seedSize: seedSize(), recordCount: await countRecords(sql) });
-          }
-
-          return send(res, 404, { error: 'Rota não encontrada' });
-        } catch (err) {
-          console.error('[dev-api]', err);
-          return send(res, 500, { error: err instanceof Error ? err.message : 'Erro interno' });
-        }
+          const body = Buffer.concat(chunks).toString();
+          const request = Object.assign(req, { query: Object.fromEntries(url.searchParams), body: body ? JSON.parse(body) : {} }) as unknown as VercelRequest;
+          const response = Object.assign(res, {
+            status(code: number) { res.statusCode = code; return response; },
+            json(value: unknown) { res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify(value)); return response; },
+            send(value: unknown) { res.end(value); return response; },
+          }) as unknown as VercelResponse;
+          await router(request, response, sql);
+        } catch (err) { res.statusCode = err instanceof SyntaxError ? 400 : 500; res.end(JSON.stringify({ error: 'Falha na API local' })); }
       });
     },
   };

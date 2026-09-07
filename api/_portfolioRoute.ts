@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { neonSql } from './_db.js';
+import { salvarRiscoCompleto, criarIniciativaDaAcao, criarEntidadeUmaVez, ErroOperacao, type SalvarRiscoPedido, type CriarIniciativaPedido } from './_operacoes.js';
+import { neonSql, type Sql } from './_db.js';
 import {
   ENTIDADES, ehEntidade, listPortfolio, backup,
   validarEntidade,
@@ -13,20 +14,8 @@ import {
   registrarCriacao, registrarAlteracao, registrarExclusao,
 } from './_auditoria.js';
 
-// Handler único de todo o portfólio. Cinco entidades × 2 rotas dariam 10
-// funções serverless a mais, e o limite do plano Hobby é 12 — então um handler
-// só atende tudo.
-//
-// Este arquivo NÃO é uma rota: o `_` no nome o mantém fora das funções
-// publicadas. Quem publica são os três arquivos de `api/portfolio/`, que só
-// reexportam o que está aqui — um por profundidade de caminho.
-//
-// A profundidade importa porque catch-all NÃO funciona nas funções avulsas
-// desta Vercel. `[[...path]].ts` e `[...path].ts` casavam no máximo um
-// segmento, e `/api/portfolio/:entidade/:id` — todo PATCH e todo DELETE do
-// portfólio — morria em 404 na borda, sem invocar a função e sem deixar log.
-// Pasta dinâmica funciona (`api/tasks/[id]/anexos.ts` já provava isso), e é o
-// que `[entidade]/[id].ts` usa.
+// Handler compartilhado pelo roteador de produção e pelo Vite.
+// api/index.ts publica a única função; as reescritas preservam os endereços.
 //
 //   GET    /api/portfolio                  → pacote das 5 listas
 //   GET    /api/portfolio/backup           → dump completo (?anexos=1 inclui bytes)
@@ -74,17 +63,26 @@ export function segmentosDaUrl(url: string | undefined): string[] {
   return resto.split('/').filter(Boolean).map(s => decodeURIComponent(s));
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: VercelRequest, res: VercelResponse, database?: Sql) {
   try {
+    const sql = database ?? neonSql();
     const partes = segmentosDaUrl(req.url);
     const method = (req.method || 'GET').toUpperCase();
 
-    const sql = neonSql();
-    // Sequência completa (inclusive a cópia única das mitigações para `tasks`).
+      // Sequência completa (inclusive a cópia única das mitigações para `tasks`).
     // Roda no caminho de leitura porque a projeção que serve `acoes-risco` lê
     // de lá — sem a cópia, a fila da Triagem e o Rastro apareceriam vazios em
     // vez de errados.
     await ensureTudo(sql);
+    if (partes.length === 1 && ['salvar-risco', 'criar-iniciativa'].includes(partes[0])) {
+      if (method !== 'POST') { res.setHeader('Allow', 'POST'); res.status(405).json({ error: 'Método não permitido' }); return; }
+      const body = parseBody(req);
+      const autor = autorDaRequisicao(req.headers as Record<string, unknown>);
+      const result = partes[0] === 'salvar-risco'
+        ? await salvarRiscoCompleto(sql, body as unknown as SalvarRiscoPedido, autor)
+        : await criarIniciativaDaAcao(sql, body as unknown as CriarIniciativaPedido, autor);
+      res.status(200).json(result); return;
+    }
 
     // GET /api/portfolio
     if (partes.length === 0) {
@@ -196,7 +194,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           res.status(400).json({ error: erro });
           return;
         }
-        const criado = await tabela.create(sql, body);
+        const { __chave, ...campos } = body;
+        if (typeof __chave === 'string') { res.status(201).json(await criarEntidadeUmaVez(sql, nome, campos, __chave, autor)); return; }
+        const criado = await tabela.create(sql, campos);
         await registrarCriacao(sql, tabela.nome, criado, autor);
         res.status(201).json(criado);
         return;
@@ -208,7 +208,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // /api/portfolio/:entidade/:id
     if (partes.length === 2) {
-      const id = decodeURIComponent(partes[1]);
+      const id = partes[1];
 
       if (method === 'PATCH') {
         const { expectedVersion, ...patch } = parseBody(req) as { expectedVersion?: number };
@@ -259,6 +259,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     res.status(404).json({ error: 'Rota não encontrada' });
   } catch (err) {
+    if (err instanceof ErroOperacao) { res.status(err.status).json({ error: err.message }); return; }
     const fk = mensagemFK(err);
     if (fk) {
       res.status(409).json({ error: fk });

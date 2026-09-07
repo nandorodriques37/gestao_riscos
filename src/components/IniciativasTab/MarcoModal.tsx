@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useDraftGuard } from '../../hooks/useDraftGuard';
+import { useRef, useState } from 'react';
 import type { Marco } from '../../types';
 import { STATUS_MARCO } from '../../types';
 import { ROTULO_STATUS_MARCO, formatarDataLonga } from '../../lib/portfolioLabels';
@@ -13,10 +14,11 @@ interface MarcoModalProps {
   onSalvar: (dados: Record<string, unknown>) => Promise<boolean>;
   onExcluir?: () => void;
   onClose: () => void;
+  erro?: string | null;
 }
 
 export function MarcoModal({
-  marco, iniciativaId, iniciativaNome, onSalvar, onExcluir, onClose,
+  marco, iniciativaId, iniciativaNome, onSalvar, onExcluir, onClose, erro,
 }: MarcoModalProps) {
   const [d, setD] = useState(() => ({
     nome: marco?.nome ?? '',
@@ -29,6 +31,10 @@ export function MarcoModal({
     motivo_replanejamento: '',
   }));
   const [salvando, setSalvando] = useState(false);
+  const initial = useRef(JSON.stringify(d));
+  const busy = useRef(false);
+  const [falha, setFalha] = useState('');
+  const fechar = useDraftGuard(JSON.stringify(d) !== initial.current, salvando, onClose);
 
   const set = <K extends keyof typeof d>(k: K, v: (typeof d)[K]) => setD(p => ({ ...p, [k]: v }));
 
@@ -42,6 +48,8 @@ export function MarcoModal({
   const faltaMotivo = replanejando && d.motivo_replanejamento.trim().length === 0;
 
   async function salvar() {
+    if (busy.current) return;
+    busy.current = true; setFalha('');
     setSalvando(true);
     const dados: Record<string, unknown> = {
       iniciativa_id: iniciativaId,
@@ -57,9 +65,11 @@ export function MarcoModal({
     if (!originalTravada) dados.data_plano_original = d.data_plano_original || null;
     if (replanejando) dados.motivo_replanejamento = d.motivo_replanejamento;
 
-    const ok = await onSalvar(dados);
-    setSalvando(false);
-    if (ok) onClose();
+    let ok = false;
+    try { ok = await onSalvar(dados);
+    } catch { setFalha('Não foi possível salvar. Seu rascunho foi mantido.'); }
+    finally { busy.current = false; setSalvando(false); }
+    if (ok) onClose(); else setFalha('Não foi possível salvar. Revise os campos e tente novamente.');
   }
 
   const podeSalvar = d.nome.trim().length > 0 && !faltaMotivo && !salvando;
@@ -68,12 +78,12 @@ export function MarcoModal({
     <ModalShell
       titulo={marco ? 'Editar marco' : 'Novo marco'}
       subtitulo={iniciativaNome}
-      onClose={onClose}
+      onClose={fechar} busy={salvando} error={erro || falha}
       rodape={
         <>
-          {onExcluir && <button className="btn modal-btn-delete" onClick={onExcluir}>Excluir</button>}
+          {onExcluir && <button className="btn modal-btn-delete" disabled={salvando} onClick={onExcluir}>Excluir</button>}
           <div className="modal-footer-actions">
-            <button className="btn btn-ghost" onClick={onClose}>Cancelar</button>
+            <button className="btn btn-ghost" onClick={fechar}>Cancelar</button>
             <button
               className="btn modal-btn-save"
               onClick={() => { void salvar(); }}

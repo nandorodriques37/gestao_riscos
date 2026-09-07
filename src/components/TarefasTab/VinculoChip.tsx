@@ -1,3 +1,4 @@
+import { routeHash } from '../../lib/navigation';
 import type { VinculoDaLinha } from '../../lib/taskRows';
 
 interface VinculoChipProps {
@@ -26,14 +27,14 @@ export function VinculoChip({ vinculo, compacto = false }: VinculoChipProps) {
   return (
     <span className="vinculo-chip" data-tier={vinculo.tier} title={titulo}>
       <span className="vinculo-chip-marca" aria-hidden="true" />
-      <span className="vinculo-chip-rotulo">
+      <a className="vinculo-chip-rotulo" href={routeHash({ tab: 'registro', risco: vinculo.riscoId })} onClick={e => e.stopPropagation()}>
         {vinculo.rotina ? 'Rotina' : 'Risco'}
-      </span>
+      </a>
       {!compacto && nome && <span className="vinculo-chip-nome">{nome}</span>}
       {vinculo.iniciativa && (
-        <span className="vinculo-chip-ini" title={`Iniciativa: ${vinculo.iniciativa}`}>
+        <a className="vinculo-chip-ini" href={routeHash({ tab: 'iniciativas', iniciativa: vinculo.iniciativaId })} onClick={e => e.stopPropagation()} title={`Iniciativa: ${vinculo.iniciativa}`}>
           ▲ {compacto ? '' : vinculo.iniciativa}
-        </span>
+        </a>
       )}
     </span>
   );

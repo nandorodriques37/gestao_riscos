@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useDraftGuard } from '../../hooks/useDraftGuard';
+import { useRef, useState } from 'react';
 import type { Pessoa } from '../../types';
 import { ModalShell } from '../common/ModalShell';
 import { CampoTexto, CampoNumero } from '../common/Campo';
@@ -9,9 +10,10 @@ interface PessoaModalProps {
   onSalvar: (dados: Record<string, unknown>) => Promise<boolean>;
   onExcluir?: () => void;
   onClose: () => void;
+  erro?: string | null;
 }
 
-export function PessoaModal({ pessoa, onSalvar, onExcluir, onClose }: PessoaModalProps) {
+export function PessoaModal({ pessoa, onSalvar, onExcluir, onClose, erro }: PessoaModalProps) {
   const [d, setD] = useState(() => ({
     nome: pessoa?.nome ?? '',
     papel: pessoa?.papel ?? '',
@@ -20,26 +22,34 @@ export function PessoaModal({ pessoa, onSalvar, onExcluir, onClose }: PessoaModa
     ativo: pessoa?.ativo ?? true,
   }));
   const [salvando, setSalvando] = useState(false);
+  const initial = useRef(JSON.stringify(d));
+  const busy = useRef(false);
+  const [falha, setFalha] = useState('');
+  const fechar = useDraftGuard(JSON.stringify(d) !== initial.current, salvando, onClose);
 
   const set = <K extends keyof typeof d>(k: K, v: (typeof d)[K]) => setD(p => ({ ...p, [k]: v }));
 
   async function salvar() {
+    if (busy.current) return;
+    busy.current = true; setFalha('');
     setSalvando(true);
-    const ok = await onSalvar({ ...d, nome: d.nome.trim() });
-    setSalvando(false);
-    if (ok) onClose();
+    let ok = false;
+    try { ok = await onSalvar({ ...d, nome: d.nome.trim() });
+    } catch { setFalha('Não foi possível salvar. Seu rascunho foi mantido.'); }
+    finally { busy.current = false; setSalvando(false); }
+    if (ok) onClose(); else setFalha('Não foi possível salvar. Revise os campos e tente novamente.');
   }
 
   return (
     <ModalShell
       titulo={pessoa ? 'Editar pessoa' : 'Nova pessoa'}
       subtitulo="Quem executa. É daqui que saem o dono do objetivo, da iniciativa e da ação."
-      onClose={onClose}
+      onClose={fechar} busy={salvando} error={erro || falha}
       rodape={
         <>
-          {onExcluir && <button className="btn modal-btn-delete" onClick={onExcluir}>Excluir</button>}
+          {onExcluir && <button className="btn modal-btn-delete" disabled={salvando} onClick={onExcluir}>Excluir</button>}
           <div className="modal-footer-actions">
-            <button className="btn btn-ghost" onClick={onClose}>Cancelar</button>
+            <button className="btn btn-ghost" onClick={fechar}>Cancelar</button>
             <button
               className="btn modal-btn-save"
               onClick={() => { void salvar(); }}

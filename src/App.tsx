@@ -1,24 +1,25 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ModoRisco, RiskRecord, StoredRiskRecord, Tab } from './types';
 import { MODOS_RISCO } from './types';
 import { TopBar } from './components/TopBar/TopBar';
 import { NavRail } from './components/NavRail/NavRail';
 import { NavBottom } from './components/NavBottom/NavBottom';
-import { PainelTab } from './components/PainelTab/PainelTab';
-import { ObjetivosTab } from './components/ObjetivosTab/ObjetivosTab';
-import { IniciativasTab } from './components/IniciativasTab/IniciativasTab';
-import { RegistroTab } from './components/RegistroTab/RegistroTab';
-import { RastroTab } from './components/RastroTab/RastroTab';
-import { GraficosTab } from './components/GraficosTab/GraficosTab';
-import { PriorizacaoTab } from './components/PriorizacaoTab/PriorizacaoTab';
-import { TarefasTab } from './components/TarefasTab/TarefasTab';
-import { PessoasTab } from './components/PessoasTab/PessoasTab';
-import { TriagemTab } from './components/TriagemTab/TriagemTab';
+const PainelTab = lazy(() => import('./components/PainelTab/PainelTab').then(m => ({ default: m.PainelTab })));
+const ObjetivosTab = lazy(() => import('./components/ObjetivosTab/ObjetivosTab').then(m => ({ default: m.ObjetivosTab })));
+const IniciativasTab = lazy(() => import('./components/IniciativasTab/IniciativasTab').then(m => ({ default: m.IniciativasTab })));
+const RegistroTab = lazy(() => import('./components/RegistroTab/RegistroTab').then(m => ({ default: m.RegistroTab })));
+const RastroTab = lazy(() => import('./components/RastroTab/RastroTab').then(m => ({ default: m.RastroTab })));
+const GraficosTab = lazy(() => import('./components/GraficosTab/GraficosTab').then(m => ({ default: m.GraficosTab })));
+const PriorizacaoTab = lazy(() => import('./components/PriorizacaoTab/PriorizacaoTab').then(m => ({ default: m.PriorizacaoTab })));
+const TarefasTab = lazy(() => import('./components/TarefasTab/TarefasTab').then(m => ({ default: m.TarefasTab })));
+const PessoasTab = lazy(() => import('./components/PessoasTab/PessoasTab').then(m => ({ default: m.PessoasTab })));
+const TriagemTab = lazy(() => import('./components/TriagemTab/TriagemTab').then(m => ({ default: m.TriagemTab })));
 import { EditModal } from './components/EditModal/EditModal';
 import { ModoRiscoToggle } from './components/common/ModoRiscoToggle';
 import { PromoverAcaoModal } from './components/RegistroTab/PromoverAcaoModal';
-import { prontosParaFechar } from './lib/portfolioMetrics';
-import type { AcaoRisco } from './types';
+import { prontosParaFechar, cadeiaQuebrada } from './lib/portfolioMetrics';
+import { useAppNavigation } from './hooks/useAppNavigation';
+import { canNavigate, readRoute } from './lib/navigation';
 import { AREAS, ROTINAS, CATEGORIAS, RECURSOS, RESPONSAVEIS } from './data/RiskData';
 import { useRecords } from './hooks/useRecords';
 import { useTasks } from './hooks/useTasks';
@@ -43,9 +44,13 @@ const THEME_LABEL: Record<ThemePref, string> = {
 };
 
 function App() {
-  const [tab, setTab] = useState<Tab>('painel');
+  const { route, navigate } = useAppNavigation();
+  const tab = route.tab;
+  const editingId = route.risco;
+  const iniciativaSel = route.iniciativa;
+  const setEditingId = (id: string | null) => navigate({ ...route, risco: id });
+  const setIniciativaSel = (id: string | null) => navigate({ ...route, iniciativa: id });
   const [railExpandido, setRailExpandido] = useState(readRailExpandido);
-  const [editingId, setEditingId] = useState<string | null>(null);
   // As três leituras do registro de risco. Não é destino de menu — e é
   // persistida como as outras preferências de aba: quem trabalha no rastro ou
   // na análise não quer voltar para a tabela a cada recarga.
@@ -53,10 +58,9 @@ function App() {
     () => readEnumPref(MODO_RISCO_KEY, MODOS_RISCO, 'tabela'),
   );
   // Vive no App para o Painel e os Objetivos conseguirem abrir uma iniciativa.
-  const [iniciativaSel, setIniciativaSel] = useState<string | null>(null);
   // Promoção de uma mitigação a iniciativa. Fica aqui, e não dentro do
   // EditModal, porque dois diálogos empilhados brigariam pelo foco.
-  const [promovendo, setPromovendo] = useState<AcaoRisco | null>(null);
+  const [promovendoId, setPromovendoId] = useState<string | null>(null);
   const [pendingUndo, setPendingUndo] = useState<Partial<RiskRecord> | null>(null);
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -91,18 +95,24 @@ function App() {
 
   const {
     records, loading, error,
-    hasPendingWrites, saveStatus, updateRecordById, addRecord, deleteRecordById,
-    refresh, flushPending, clearError,
+    hasPendingWrites, saveStatus, saveRecord, acceptRecord, addRecord, deleteRecordById,
+    refresh, clearError,
   } = useRecords();
 
   // Fica no App porque decide se a aba Triagem aparece — e porque duas
   // instâncias do mesmo estado dariam duas verdades sobre a mesma fila.
   const pf = usePortfolio();
+  const promovendo = pf.portfolio.acoes_risco.find(a => a.id === promovendoId) ?? null;
 
   // Mesmo argumento: o quadro era dono de `useTasks`, e por isso o Painel não
   // conseguia contar tarefa nenhuma — a aba Tarefas não está montada quando o
   // Painel está. Uma instância só, aqui, e as duas telas leem a mesma lista.
   const tarefas = useTasks();
+  const idsDoRecorte = useMemo(() => {
+    if (!route.recorte) return null;
+    const lacunas = cadeiaQuebrada({ ...pf.portfolio, riscos: records, acoes: pf.portfolio.acoes_risco, trabalho: tarefas.tasks });
+    return new Set(lacunas.find(l => l.chave === route.recorte)?.ids ?? []);
+  }, [route.recorte, records, pf.portfolio, tarefas.tasks]);
   const triagemPendente = pf.portfolio.acoes_risco.filter(a => !a.triagem).length;
   // Promoção pendente também segura a aba: sem isso ela sumiria assim que a
   // fila esvaziasse, e o botão de promover ficaria inalcançável.
@@ -123,21 +133,13 @@ function App() {
   useEffect(() => { writePref(MODO_RISCO_KEY, modoRisco); }, [modoRisco]);
 
   /** Troca de seção com cross-fade onde o navegador suportar. */
-  const irPara = useCallback((destino: Tab) => {
-    trocarComTransicao(() => setTab(destino));
-  }, []);
-
-  /** Abre uma iniciativa vinda de outra tela (Painel, Objetivos, Rastro). */
-  const abrirIniciativa = useCallback((id: string) => {
-    setIniciativaSel(id);
-    irPara('iniciativas');
-  }, [irPara]);
-
-  /** Abre o modal de um risco vindo de outra tela. */
-  const abrirRisco = useCallback((id: string) => {
-    irPara('registro');
-    setEditingId(id);
-  }, [irPara]);
+  const irPara = useCallback((destino: Tab, recorte?: string) => {
+    if (!canNavigate()) return;
+    if (destino === 'registro' && recorte) setModoRisco('tabela');
+    trocarComTransicao(() => navigate({ ...readRoute(''), tab: destino, recorte: recorte ?? null }));
+  }, [navigate]);
+  const abrirIniciativa = useCallback((id: string) => navigate({ ...readRoute(''), tab: 'iniciativas', iniciativa: id }), [navigate]);
+  const abrirRisco = useCallback((id: string) => navigate({ ...route, risco: id }), [navigate, route]);
 
   // Riscos com tratamento entregue esperando confirmação. Fica no App porque
   // alimenta o contador do alternador de modo, que aparece nas duas leituras.
@@ -178,17 +180,19 @@ function App() {
   const tarefasRefresh = tarefas.refresh;
   const tarefasPendentes = tarefas.hasPendingWrites;
   const foraDoQuadro = tab !== 'tarefas';
+  const portfolioRefresh = pf.refresh;
   useEffect(() => {
-    const canSync = () => editingId == null && !hasPendingWrites();
+    const canSync = () => !document.hidden && !hasPendingWrites();
     const sync = () => {
       if (!canSync()) return;
       void refresh();
+      void portfolioRefresh();
       if (foraDoQuadro && !tarefasPendentes()) void tarefasRefresh();
     };
     const interval = setInterval(sync, POLL_INTERVAL);
     window.addEventListener('focus', sync);
     return () => { clearInterval(interval); window.removeEventListener('focus', sync); };
-  }, [editingId, hasPendingWrites, refresh, foraDoQuadro, tarefasRefresh, tarefasPendentes]);
+  }, [hasPendingWrites, refresh, portfolioRefresh, foraDoQuadro, tarefasRefresh, tarefasPendentes]);
 
   function handleOpenEdit(idx: number) {
     const rec = records[idx];
@@ -220,8 +224,7 @@ function App() {
   // Grava o rascunho do modal imediatamente: estaciona o patch e força o flush
   // num único PATCH, reutilizando saveStatus/conflito/retry do hook.
   function handleCommitEdit(id: string, patch: Partial<RiskRecord>) {
-    updateRecordById(id, patch);
-    void flushPending();
+    return saveRecord(id, patch);
   }
 
   async function handleDeleteFromModal() {
@@ -261,11 +264,11 @@ function App() {
   // no modal; aqui interessa só se o time está vendo dados sincronizados.
   const sync = (() => {
     if (tab === 'tarefas') return undefined;
-    const statuses = Object.values(saveStatus);
-    if (error || statuses.includes('error') || statuses.includes('conflict')) {
+    const statuses = [...Object.values(saveStatus), ...Object.values(tarefas.saveStatus)];
+    if (error || pf.error || tarefas.error || statuses.includes('error') || statuses.includes('conflict')) {
       return { state: 'error' as const, label: 'Falha ao sincronizar' };
     }
-    if (loading || statuses.includes('saving')) {
+    if (loading || tarefas.loading || pf.loading || pf.saving || statuses.includes('saving')) {
       return { state: 'saving' as const, label: 'Salvando…' };
     }
     return { state: 'idle' as const, label: 'Sincronizado' };
@@ -310,6 +313,7 @@ function App() {
       />
 
       <div className="app-conteudo">
+      {route.recorte && <div className="context-banner" role="status"><span>Itens que precisam de atenção: {idsDoRecorte?.size ?? 0}</span><button className="btn btn-ghost" onClick={() => navigate({ ...route, recorte: null }, true)}>Limpar recorte</button></div>}
       {tab !== 'tarefas' && error && (
         <div className="error-banner">
           <span>{error}</span>
@@ -328,7 +332,7 @@ function App() {
           </div>
         </div>
       ) : (
-        <>
+        <Suspense fallback={<div className="app-loading" role="status">Carregando seção…</div>}>
           {tab === 'painel' && (
             <PainelTab
               records={records}
@@ -341,7 +345,7 @@ function App() {
           )}
 
           {tab === 'objetivos' && (
-            <ObjetivosTab
+            <ObjetivosTab idsDoRecorte={idsDoRecorte} onCriarIniciativa={objetivo => navigate({ ...readRoute(''), tab: 'iniciativas', objetivo })}
               riscos={records}
               pf={pf}
               onIrPara={irPara}
@@ -355,13 +359,14 @@ function App() {
               riscos={records}
               pf={pf}
               selecionada={iniciativaSel}
-              onSelecionar={setIniciativaSel}
+              onSelecionar={setIniciativaSel} idsDoRecorte={idsDoRecorte} novoObjetivoId={route.objetivo}
+              onNovaIniciativaFechada={() => navigate({ ...route, objetivo: null }, true)}
               onAbrirRisco={abrirRisco}
             />
           )}
 
           {tab === 'registro' && modoRisco === 'tabela' && (
-            <RegistroTab
+            <RegistroTab idsDoRecorte={idsDoRecorte}
               records={records}
               onOpenEdit={handleOpenEdit}
               onDeleteRow={handleDeleteRow}
@@ -382,7 +387,7 @@ function App() {
               onAtualizarRisco={handleCommitEdit}
               onAbrirRisco={abrirRisco}
               onAbrirIniciativa={abrirIniciativa}
-              onPromoverAcao={setPromovendo}
+              onPromoverAcao={acao => setPromovendoId(acao.id)}
               onIrPara={irPara}
               cabecalho={cabecalhoRisco(
                 'Rastro de mitigação',
@@ -413,21 +418,22 @@ function App() {
             />
           )}
 
-          {tab === 'tarefas' && <TarefasTab records={records} pf={pf} tarefas={tarefas} />}
+          {tab === 'tarefas' && <TarefasTab records={records} pf={pf} tarefas={tarefas} idsDoRecorte={idsDoRecorte} selecionada={route.tarefa} onSelecionar={id => navigate({ ...route, tarefa: id })} />}
 
           {tab === 'pessoas' && <PessoasTab pf={pf} onIrPara={irPara} />}
 
           {tab === 'triagem' && <TriagemTab records={records} pf={pf} />}
-        </>
+        </Suspense>
       )}
       </div>
 
-      {editingRecord && (
+      {editingRecord && !promovendoId && (
         <EditModal
           key={editingRecord.id}
           record={editingRecord}
           saveStatus={saveStatus[editingRecord.id]}
-          onCommit={patch => handleCommitEdit(editingRecord.id, patch)}
+          onCommit={async pedido => { const salvo = await pf.salvarRisco(pedido); if (salvo) acceptRecord(salvo.record); return salvo; }}
+          error={pf.error} objetivos={pf.portfolio.objetivos}
           onClose={handleCloseModal}
           onDelete={handleDeleteFromModal}
           areaOptions={AREAS}
@@ -438,14 +444,8 @@ function App() {
           acoesVinculadas={pf.portfolio.acoes_risco.filter(a => a.risco_id === editingRecord.id)}
           pessoas={pf.portfolio.pessoas}
           iniciativas={pf.portfolio.iniciativas}
-          onAbrirIniciativa={id => { setEditingId(null); abrirIniciativa(id); }}
-          onPromoverAcao={id => {
-            const acao = pf.portfolio.acoes_risco.find(a => a.id === id);
-            if (!acao) return;
-            setEditingId(null);
-            setPromovendo(acao);
-          }}
-          onSalvarPlano={(base, atual) => pf.salvarPlanoDeAcao(editingRecord.id, base, atual)}
+          onAbrirIniciativa={abrirIniciativa}
+          onPromoverAcao={setPromovendoId}
         />
       )}
 
@@ -455,8 +455,8 @@ function App() {
           risco={records.find(r => r.id === promovendo.risco_id) ?? null}
           objetivos={pf.portfolio.objetivos}
           pf={pf}
-          onClose={() => setPromovendo(null)}
-          onPromovida={id => { setPromovendo(null); abrirIniciativa(id); }}
+          onClose={() => setPromovendoId(null)}
+          onPromovida={id => { setPromovendoId(null); abrirIniciativa(id); }}
         />
       )}
 

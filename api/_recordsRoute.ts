@@ -1,10 +1,11 @@
+import type { Sql } from './_db.js';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { neonSql, ensureSchema, listRecords, createRecord } from './_db.js';
 import { ensureAuditoriaSchema, autorDaRequisicao, registrarCriacao } from './_auditoria.js';
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: VercelRequest, res: VercelResponse, database?: Sql) {
   try {
-    const sql = neonSql();
+    const sql = database ?? neonSql();
     await ensureSchema(sql);
     await ensureAuditoriaSchema(sql);
 

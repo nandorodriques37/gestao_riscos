@@ -7,12 +7,14 @@ import { computeGUT, gutTier, prioridadeLabel } from '../../lib/taskCalculations
 import { AnexosEditor } from './AnexosEditor';
 import { useBloqueioDeRolagem } from '../../hooks/useBloqueioDeRolagem';
 
-const FOCUSABLE = 'a[href], button:not([disabled]), input, select, textarea, [tabindex]:not([tabindex="-1"])';
+import { useDraftGuard } from '../../hooks/useDraftGuard';
+
+const FOCUSABLE = 'a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])';
 
 const SAVE_STATUS_TEXT: Record<TaskSaveStatus, string> = {
   saving: 'Salvando…',
   saved: 'Alterações salvas',
-  error: 'Falha ao salvar — tentando novamente…',
+  error: 'Falha ao salvar — tente novamente',
   conflict: 'Alterado por outra pessoa — dados atualizados',
 };
 
@@ -20,6 +22,8 @@ interface TarefaEditModalProps {
   task: Task;
   /** Id da tarefa no banco — os anexos são gravados por endpoint próprio. */
   taskId: string;
+  version: number;
+  error?: string | null;
   anexos: TaskAttachment[];
   saveStatus?: TaskSaveStatus;
   /**
@@ -28,7 +32,7 @@ interface TarefaEditModalProps {
    * e o segundo volta 409 — o dono se perdia calado ao salvar campo e
    * responsável de uma vez.
    */
-  onCommit: (patch: Partial<Task>, donoNome?: string) => void;
+  onCommit: (patch: Partial<Task>, donoNome?: string, version?: number) => Promise<boolean>;
   onClose: () => void;
   onDelete: () => void;
   onAddAnexo: (file: File) => Promise<void>;
@@ -54,7 +58,7 @@ function numOrNull(value: string): number | null {
 }
 
 export function TarefaEditModal({
-  task, taskId, anexos, saveStatus, onCommit, onClose, onDelete,
+  task, taskId, version, error, anexos, saveStatus, onCommit, onClose, onDelete,
   onAddAnexo, onRemoveAnexo, tipoOptions, responsavelOptions,
   vinculo = null, dono = '',
 }: TarefaEditModalProps) {
@@ -66,6 +70,12 @@ export function TarefaEditModal({
   // global, sem rede). A gravação acontece por ação explícita — ver commit().
   const [draft, setDraft] = useState<Task>(task);
   const [donoNome, setDonoNome] = useState(dono);
+  const [baseTask, setBaseTask] = useState(task);
+  const [baseDono, setBaseDono] = useState(dono);
+  const [baseVersion, setBaseVersion] = useState(version);
+  const [salvando, setSalvando] = useState(false);
+  const busy = useRef(false);
+  const [falha, setFalha] = useState('');
   const [dirty, setDirty] = useState(false);
   const gut = computeGUT(draft);
   const prioridade = prioridadeLabel(gut);
@@ -76,23 +86,27 @@ export function TarefaEditModal({
     setDirty(true);
   }
 
-  // Grava apenas os campos que mudaram em relação à tarefa salva.
-  function commit() {
-    const patch: Partial<Task> = {};
-    (Object.keys(draft) as (keyof Task)[]).forEach(key => {
-      // `dono_id` sai do nome digitado, não do rascunho — ver `onCommitDono`.
-      if (key === 'dono_id') return;
-      if (draft[key] !== task[key]) (patch as Record<string, unknown>)[key] = draft[key];
-    });
-    const mudouDono = donoNome.trim() !== dono.trim();
-    if (Object.keys(patch).length === 0 && !mudouDono) return;
-    onCommit(patch, mudouDono ? donoNome.trim() : undefined);
-    setDirty(false);
+  async function commit(): Promise<boolean> {
+    if (busy.current) return false;
+    if (!dirty) return true;
+    busy.current = true; setSalvando(true); setFalha('');
+    try {
+      const patch: Partial<Task> = {};
+      (Object.keys(draft) as (keyof Task)[]).forEach(key => {
+        if (key === 'dono_id') return;
+        if (draft[key] !== baseTask[key]) (patch as Record<string, unknown>)[key] = draft[key];
+      });
+      const mudouDono = donoNome.trim() !== baseDono.trim();
+      const ok = await onCommit(patch, mudouDono ? donoNome.trim() : undefined, baseVersion);
+      if (!ok) { setFalha('Não foi possível salvar. Seu rascunho foi mantido.'); return false; }
+      setBaseTask(draft); setBaseDono(donoNome); setBaseVersion(v => v + 1); setDirty(false); return true;
+    } catch (err) { setFalha(err instanceof Error ? err.message : 'Falha ao salvar.'); return false; }
+    finally { busy.current = false; setSalvando(false); }
   }
-
-  function requestClose() {
-    if (dirty) commit();
-    onClose();
+  const requestClose = useDraftGuard(dirty, salvando, onClose);
+  function recarregar() {
+    if (dirty && !window.confirm('Descartar este rascunho e carregar a versão atual?')) return;
+    setDraft(task); setBaseTask(task); setDonoNome(dono); setBaseDono(dono); setBaseVersion(version); setDirty(false); setFalha('');
   }
 
   useEffect(() => {
@@ -152,6 +166,8 @@ export function TarefaEditModal({
         </div>
 
         <div className="modal-body">
+          {(error || falha) && <div className="form-aviso" role="alert">{error || falha}<button className="btn btn-ghost" onClick={recarregar} disabled={salvando}>Recarregar versão atual</button></div>}
+          <fieldset className="modal-fields" disabled={salvando}>
           <datalist id="dl-tipo">{tipoOptions.map(o => <option key={o} value={o} />)}</datalist>
           <datalist id="dl-responsavel-tarefa">{responsavelOptions.map(o => <option key={o} value={o} />)}</datalist>
 
@@ -278,13 +294,15 @@ export function TarefaEditModal({
               <textarea className="modal-textarea" rows={2} value={draft.obs} onChange={e => setField({ obs: e.target.value })} />
             </div>
           </div>
+          </fieldset>
         </div>
 
         <div className="modal-footer">
-          <button className="modal-btn-delete" onClick={onDelete}>Excluir tarefa</button>
+          <button className="modal-btn-delete" disabled={salvando} onClick={onDelete}>Excluir tarefa</button>
           <div className="modal-footer-actions">
-            <button className="modal-btn-save" onClick={commit} disabled={!dirty}>Salvar</button>
-            <button className="modal-btn-done" onClick={requestClose}>Concluído</button>
+            <button className="btn btn-ghost" onClick={requestClose}>Cancelar</button>
+            <button className="modal-btn-save" onClick={() => { void commit(); }} disabled={!dirty || salvando}>{salvando ? 'Salvando…' : 'Salvar'}</button>
+            <button className="modal-btn-done" disabled={salvando} onClick={() => { void commit().then(ok => { if (ok) onClose(); }); }}>Salvar e fechar</button>
           </div>
         </div>
       </div>

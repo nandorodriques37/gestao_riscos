@@ -2,7 +2,7 @@ import { useEffect, useRef, type ReactNode, type KeyboardEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { useBloqueioDeRolagem } from '../../hooks/useBloqueioDeRolagem';
 
-const FOCUSABLE = 'a[href], button:not([disabled]), input, select, textarea, [tabindex]:not([tabindex="-1"])';
+const FOCUSABLE = 'a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])';
 
 interface ModalShellProps {
   titulo: string;
@@ -13,6 +13,8 @@ interface ModalShellProps {
   rodape?: ReactNode;
   /** Mais largo para formulários de duas colunas. */
   largo?: boolean;
+  busy?: boolean;
+  error?: string | null;
 }
 
 /**
@@ -24,7 +26,7 @@ interface ModalShellProps {
  * tem regras próprias de rascunho e commit, e reescrevê-lo agora seria risco
  * sem retorno. Esta casca serve os formulários novos do portfólio.
  */
-export function ModalShell({ titulo, subtitulo, onClose, children, rodape, largo }: ModalShellProps) {
+export function ModalShell({ titulo, subtitulo, onClose, children, rodape, largo, busy = false, error }: ModalShellProps) {
   const cardRef = useRef<HTMLDivElement>(null);
 
   // No celular o cartão é uma folha colada na base; sem a trava, chegar ao fim
@@ -80,7 +82,7 @@ export function ModalShell({ titulo, subtitulo, onClose, children, rodape, largo
           <button className="modal-close" onClick={onClose} aria-label="Fechar">×</button>
         </div>
 
-        <div className="modal-body">{children}</div>
+        <div className="modal-body">{error && <div className="form-aviso" role="alert">{error}</div>}<fieldset className="modal-fields" disabled={busy}>{children}</fieldset></div>
 
         {rodape && <div className="modal-footer">{rodape}</div>}
       </div>

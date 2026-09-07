@@ -1,13 +1,16 @@
 // Camada de acesso a dados compartilhada pela API serverless (Vercel Functions,
 // via Neon) e pelo middleware de desenvolvimento (pglite). Toda a lógica SQL
 // fica aqui, parametrizada por um executor `Sql` para ser testável e portável.
-import { neon } from '@neondatabase/serverless';
+import { neon, Pool, neonConfig } from '@neondatabase/serverless';
+import WebSocket from 'ws';
 import { INITIAL_RECORDS } from './_seed.js';
 import { toDateISO } from './_table.js';
 import type { AcaoItem, RiskRecord, SituacaoRisco } from '../src/types.js';
 
 /** Executor SQL mínimo: recebe texto parametrizado ($1, $2, …) e retorna as linhas. */
-export type Sql = (text: string, params?: unknown[]) => Promise<Record<string, unknown>[]>;
+export type Sql = ((text: string, params?: unknown[]) => Promise<Record<string, unknown>[]>) & {
+  transaction?: <T>(run: (sql: Sql) => Promise<T>) => Promise<T>;
+};
 
 export interface StoredRiskRecord extends RiskRecord {
   id: string;
@@ -45,7 +48,25 @@ export function neonSql(): Sql {
   const url = process.env.DATABASE_URL || process.env.POSTGRES_URL;
   if (!url) throw new Error('DATABASE_URL não configurada — conecte um banco Neon no Vercel.');
   const sql = neon(url);
-  return (text, params = []) => sql.query(text, params) as Promise<Record<string, unknown>[]>;
+  const executar: Sql = (text, params = []) => sql.query(text, params) as Promise<Record<string, unknown>[]>;
+  executar.transaction = async run => {
+    neonConfig.webSocketConstructor = WebSocket;
+    const pool = new Pool({ connectionString: url });
+    try {
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+        const tx: Sql = async (text, params = []) => (await client.query(text, params)).rows;
+        const result = await run(tx);
+        await client.query('COMMIT');
+        return result;
+      } catch (err) {
+        await client.query('ROLLBACK');
+        throw err;
+      } finally { client.release(); }
+    } finally { await pool.end(); }
+  };
+  return executar;
 }
 
 function toNumberOrNull(v: unknown): number | null {

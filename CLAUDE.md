@@ -24,9 +24,11 @@ Os `.dc.html` são **referência de design, não código de produção**. Recrie
 
 ## Stack
 - **React + TypeScript** (a lógica do protótipo mapeia quase 1:1). Componentes: `TopBar`, `RegistroTab`, `GraficosTab`, `PriorizacaoTab`, `TarefasTab`, `EditModal`.
-- **Backend:** dados centralizados em Postgres (Neon) via funções serverless em `api/`. Toda a lógica SQL fica em `api/_db.ts` (executor `Sql` injetável). O front consome a API (`src/lib/api.ts` + hook `src/hooks/useRecords.ts`) com atualização otimista, *debounce* de escrita e polling. `localStorage` (`riskMatrix.cache.v1`) é só cache/fallback.
+- **Backend:** dados centralizados em Postgres (Neon), com executor `Sql` injetável em `api/_db.ts`. A entrada serverless única é `api/index.ts`; `vercel.json` encaminha `/api/:path*` a ela e `api/_router.ts` despacha pelos caminhos públicos. O servidor local usa o mesmo roteador. Os módulos auxiliares começam com `_` para não gerar funções avulsas. Consultas simples usam HTTP; operações compostas usam `Sql.transaction` com `Pool` e WebSocket, com commit ou rollback na mesma conexão.
+- **Salvamento e sincronização:** os formulários usam rascunho e confirmação explícita, preservam a versão da abertura e mantêm o texto em caso de erro. `useStoredCollection` concentra cache, leituras protegidas contra respostas antigas e a fila de debounce por registro das edições rápidas. `usePortfolio` confirma cada alteração antes de atualizar a coleção. `dataSync` invalida riscos, tarefas e portfólio entre si. Cache local nunca equivale a confirmação do servidor.
+- **Operações compostas:** `api/_operacoes.ts` salva risco + plano e cria iniciativa + vínculo em transações idempotentes, com chave e assinatura em `operacoes_app`. A mesma chave só pode repetir o mesmo pedido; a resposta confirmada é reutilizada. A validação das versões e a auditoria fazem parte da transação. Uma falha não pode confirmar só metade do formulário.
 - **Anexos de imagem (tarefas):** tabela própria `task_attachments` (`api/_attachmentsDb.ts`), nunca coluna em `tasks` — a aba faz polling e os bytes não podem viajar no `GET /api/tasks`, que carrega só o metadado (`anexos`). Os bytes saem por `GET /api/tasks/:id/anexos/:anexoId`, com cache imutável, e vão direto no `src` de um `<img>`. O cliente reduz a imagem antes de subir (`src/lib/imageAttachments.ts`: teto de 1600px e 3 MB, re-encode em WebP); o servidor revalida formato e tamanho. Anexo **não** é campo de `Task`: entra e sai por endpoint próprio, fora do PATCH com debounce.
-- **Portfólio (objetivo → iniciativa → marco):** seis entidades (`pessoas`, `objetivos`, `medicoes`, `iniciativas`, `marcos`, `acoes_risco`) sobre a fábrica genérica `api/_table.ts`, atendidas por um handler único (`api/_portfolioRoute.ts`) e **um arquivo de rota por profundidade de caminho** — `index.ts`, `[entidade].ts`, `[entidade]/[id].ts` — porque catch-all (`[...path]`, `[[...path]]`) **não casa dois segmentos** nas funções avulsas da Vercel: todo PATCH e DELETE do portfólio morria em 404 na borda, sem invocar função e sem log. O plano Hobby limita a 12 funções, e o projeto está nas 12. O front carrega todas de uma vez (`GET /api/portfolio`) pelo hook `src/hooks/usePortfolio.ts`; as métricas são funções puras em `src/lib/portfolioMetrics.ts`. Regra de integridade nova entra em **`validarEntidade`** (`api/_portfolioDb.ts`) — é o despacho único que a rota de produção e `vite-plugin-dev-api.ts` chamam; cadeia de `if` própria em cada lado já fez uma regra valer só em metade dos ambientes.
+- **Portfólio (objetivo → iniciativa → marco):** seis entidades (`pessoas`, `objetivos`, `medicoes`, `iniciativas`, `marcos`, `acoes_risco`) sobre a fábrica genérica `api/_table.ts`, atendidas por `api/_portfolioRoute.ts` através do roteador único. Não recriar uma entrada de função por profundidade: os antigos PATCH/DELETE que falhavam na borda agora mantêm a URL pública via rewrite, sem catch-all de arquivos. O front lê o pacote por `GET /api/portfolio` e `usePortfolio`; as métricas são funções puras em `src/lib/portfolioMetrics.ts`. Regra de integridade nova entra em **`validarEntidade`** (`api/_portfolioDb.ts`), compartilhada pelos dois ambientes.
 - **Marco tem três campos de texto, e eles não se substituem:**
   `criterio_aceite` (como se verifica a entrega), `motivo_replanejamento` (por
   que a data mudou — o servidor **exige** ao mover `data_plano_atual` de uma
@@ -76,9 +78,8 @@ prioriz = impacto2 / esforco + gravidade // null se esforco ausente/0 ou faltar 
 
 ## Convenções visuais
 O visual é governado por **tokens**, não por hex soltos. Fonte da verdade:
-`src/styles/tokens.css`. Os demais arquivos de `src/styles/` (`base`, `primitives`,
-`layout`, `table`, `charts`, `modal`, `responsive`) são importados por `App.css`
-nessa ordem.
+`src/styles/tokens.css`. Os demais arquivos de `src/styles/` são importados por `App.css`; `fluidez.css` complementa os formulários e
+vínculos após as regras existentes.
 
 - **Nenhum hex literal fora de `tokens.css`.** Nenhum espaçamento fora da escala
   `--sp-*`; nenhum tamanho de fonte fora de `--fs-*`. Altura de controle vem de
@@ -129,6 +130,19 @@ nessa ordem.
   a tela inteira e empurra o rodapé para fora.
 - O visualizador de imagem em tela cheia é escuro nos dois temas (`--scrim`,
   `--scrim-ink`): scrim claro lava as cores da imagem.
+
+### Navegação e formulários
+- `navigation.ts` e `useAppNavigation` mantêm destino e seleção na URL, com
+  Voltar/Avançar do navegador. `useDraftGuard` protege rascunhos ao fechar,
+  trocar de destino ou sair da página. Não salvar implicitamente ao fechar.
+- `useSessionState` preserva busca, filtros e ordenação das listas principais
+  na sessão. Os atalhos do Painel levam os IDs da lacuna ao destino e oferecem
+  limpeza explícita do recorte.
+- Vínculo risco–iniciativa sempre passa pela ação. O seletor busca nome e
+  objetivo, exclui novos vínculos com iniciativas encerradas e permite ler
+  vínculos históricos. Ações canceladas não contam como cobertura ativa.
+- O modal do risco separa Resumo, Tratamento e Histórico. Prioridade e retorno
+  da iniciativa ficam em seção recolhível. Os campos e fórmulas continuam os mesmos.
 
 ### Mobile
 - **Três formas de navegação, uma lista de destinos.** `NavRail/secoes.tsx` é a
@@ -181,3 +195,4 @@ Toda a UI e cópia em **português (Brasil)**.
 ## Ao fazer alterações
 - Mudanças pequenas: alterar só o que foi pedido; não redesenhar o que não foi solicitado.
 - Manter os cálculos de `score`/`prioriz` e as faixas de cor idênticos, salvo instrução explícita.
+
