@@ -1,13 +1,15 @@
 import { useSessionState } from '../../hooks/useSessionState';
-import { useMemo, useRef, useState } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { Iniciativa, StoredRiskRecord } from '../../types';
 import type { UsePortfolio } from '../../hooks/usePortfolio';
 import { computePrioriz, priorizTier, round2 } from '../../lib/calculations';
 import { portfolioPorOrigem, iniciativaAtiva, saudeIniciativas } from '../../lib/portfolioMetrics';
 import {
   ROTULO_FONTE, ROTULO_STATUS_INICIATIVA, BADGE_STATUS_INICIATIVA,
-  formatarMoeda, plural,
+  formatarMoeda, formatarData, plural,
 } from '../../lib/portfolioLabels';
+import { proximoMarco, dataPlanoMarco } from './iniciativasUi';
+import './iniciativas.css';
 import { OBJETIVO_BALDE } from '../../lib/portfolioUi';
 import { EmptyState } from '../common/EmptyState';
 import { Kpi, KpiRow } from '../common/Kpi';
@@ -30,7 +32,7 @@ type Agrupamento = 'objetivo' | 'origem' | 'dono';
 const AGRUPAMENTOS: { chave: Agrupamento; label: string }[] = [
   { chave: 'objetivo', label: 'Por objetivo' },
   { chave: 'origem', label: 'Por origem' },
-  { chave: 'dono', label: 'Por dono' },
+  { chave: 'dono', label: 'Por responsável' },
 ];
 
 
@@ -42,15 +44,39 @@ export function IniciativasTab({
 
   const [agrupamento, setAgrupamento] = useSessionState<Agrupamento>('iniciativas.grupo', 'objetivo');
   const [busca, setBusca] = useSessionState('iniciativas.busca', '');
-  const [soAtivas, setSoAtivas] = useSessionState('iniciativas.ativas', false);
+  const [situacao, setSituacao] = useSessionState('iniciativas.situacao', 'todas');
+  const [objetivoFiltro, setObjetivoFiltro] = useSessionState('iniciativas.objetivo', '');
+  const [donoFiltro, setDonoFiltro] = useSessionState('iniciativas.dono', '');
+  const [ordem, setOrdem] = useSessionState('iniciativas.ordem', 'prioridade');
+  const [recolhidos, setRecolhidos] = useSessionState<string[]>('iniciativas.recolhidos', []);
+  const [posicao, setPosicao] = useSessionState('iniciativas.posicao', 0);
+  const ultimoAberto = useRef<string | null>(null);
+  const tituloRef = useRef<HTMLHeadingElement>(null);
+  useLayoutEffect(() => {
+    if (selecionada) {
+      ultimoAberto.current = selecionada;
+      window.scrollTo({ top: 0 });
+      tituloRef.current?.focus({ preventScroll: true });
+    } else {
+      window.scrollTo({ top: posicao });
+      if (ultimoAberto.current) {
+        document.getElementById(`iniciativa-${ultimoAberto.current}`)?.focus({ preventScroll: true });
+      }
+    }
+  }, [selecionada, loading, posicao]);
+  function abrir(id: string) { setPosicao(window.scrollY); onSelecionar(id); }
+  function limparFiltros() { setBusca(''); setSituacao('todas'); setObjetivoFiltro(''); setDonoFiltro(''); }
   const [criando, setCriando] = useState(false);
   const [editando, setEditando] = useState<Iniciativa | null>(null);
-  const listaRef = useRef<HTMLDivElement>(null);
+
 
   const objetivoPorId = useMemo(() => new Map(objetivos.map(o => [o.id, o])), [objetivos]);
   const pessoaPorId = useMemo(() => new Map(pessoas.map(p => [p.id, p.nome])), [pessoas]);
   const origem = useMemo(() => portfolioPorOrigem(iniciativas), [iniciativas]);
   const saude = useMemo(() => saudeIniciativas(iniciativas, marcos), [iniciativas, marcos]);
+
+  const atencao = useMemo(() => new Set([...saude.semMarco, ...saude.atrasadas].map(i => i.id)), [saude]);
+  const proximos = useMemo(() => new Map(iniciativas.map(i => [i.id, proximoMarco(marcos, i.id)])), [iniciativas, marcos]);
 
   const marcosPorIniciativa = useMemo(() => {
     const m = new Map<string, number>();
@@ -75,14 +101,18 @@ export function IniciativasTab({
   const filtradas = useMemo(() => {
     const q = busca.toLowerCase().trim();
     return iniciativas.filter(i => {
-      if (idsDoRecorte) return idsDoRecorte.has(i.id);
-      if (soAtivas && !iniciativaAtiva(i)) return false;
+      if (idsDoRecorte && !idsDoRecorte.has(i.id)) return false;
+      if (situacao === 'ativas' && !iniciativaAtiva(i)) return false;
+      if (situacao === 'atencao' && !atencao.has(i.id)) return false;
+      if (situacao !== 'todas' && situacao !== 'ativas' && situacao !== 'atencao' && i.status !== situacao) return false;
+      if (objetivoFiltro && i.objetivo_id !== objetivoFiltro) return false;
+      if (donoFiltro === 'sem' ? !!i.dono_id : donoFiltro && i.dono_id !== donoFiltro) return false;
       if (!q) return true;
       const obj = i.objetivo_id ? objetivoPorId.get(i.objetivo_id)?.descricao ?? '' : '';
       const dono = i.dono_id ? pessoaPorId.get(i.dono_id) ?? '' : '';
       return [i.nome, i.descricao, i.recurso, obj, dono].join(' ').toLowerCase().includes(q);
     });
-  }, [iniciativas, idsDoRecorte, busca, soAtivas, objetivoPorId, pessoaPorId]);
+  }, [iniciativas, idsDoRecorte, busca, situacao, objetivoFiltro, donoFiltro, atencao, objetivoPorId, pessoaPorId]);
 
   /** Grupos da lista. A ordem interna é sempre a da priorização — o que decide primeiro fica em cima. */
   const grupos = useMemo(() => {
@@ -99,7 +129,7 @@ export function IniciativasTab({
       if (agrupamento === 'objetivo') {
         chave = i.objetivo_id ?? '';
         const o = i.objetivo_id ? objetivoPorId.get(i.objetivo_id) : undefined;
-        titulo = o?.descricao || 'Sem objetivo';
+        titulo = !o?.descricao || o.descricao === OBJETIVO_BALDE ? 'Sem objetivo vinculado' : o.descricao;
       } else if (agrupamento === 'origem') {
         chave = i.fonte;
         titulo = ROTULO_FONTE[i.fonte];
@@ -115,6 +145,12 @@ export function IniciativasTab({
     const lista = [...acc.values()];
     for (const g of lista) {
       g.itens.sort((a, b) => {
+        if (ordem === 'nome') return a.nome.localeCompare(b.nome, 'pt-BR');
+        if (ordem === 'prazo') {
+          const da = dataPlanoMarco(proximos.get(a.id)) || '9999';
+          const db = dataPlanoMarco(proximos.get(b.id)) || '9999';
+          if (da !== db) return da.localeCompare(db);
+        }
         const pa = computePrioriz(a);
         const pb = computePrioriz(b);
         if (pa == null && pb == null) return a.nome.localeCompare(b.nome, 'pt-BR');
@@ -128,12 +164,12 @@ export function IniciativasTab({
 
     // Balde da migração por último; no resto, o grupo mais cheio primeiro.
     return lista.sort((a, b) => {
-      const ba = a.titulo === OBJETIVO_BALDE ? 1 : 0;
-      const bb = b.titulo === OBJETIVO_BALDE ? 1 : 0;
+      const ba = a.titulo === 'Sem objetivo vinculado' ? 1 : 0;
+      const bb = b.titulo === 'Sem objetivo vinculado' ? 1 : 0;
       if (ba !== bb) return ba - bb;
       return b.itens.length - a.itens.length;
     });
-  }, [filtradas, agrupamento, objetivoPorId, pessoaPorId]);
+  }, [filtradas, agrupamento, objetivoPorId, pessoaPorId, ordem, proximos]);
 
   const atual = selecionada ? iniciativas.find(i => i.id === selecionada) ?? null : null;
 
@@ -151,7 +187,7 @@ export function IniciativasTab({
 
   if (loading && iniciativas.length === 0) {
     return (
-      <div className="tab-page-lg">
+      <div className="tab-page-lg iniciativas-page">
         <div className="app-loading" role="status" aria-label="Carregando iniciativas…">
           <div className="skeleton-table">
             {Array.from({ length: 5 }).map((_, i) => <div key={i} className="skeleton-row" />)}
@@ -162,7 +198,7 @@ export function IniciativasTab({
   }
 
   return (
-    <div className="tab-page-lg">
+    <div className="tab-page-lg iniciativas-page">
       {error && (
         <div className="error-banner">
           <span>{error}</span>
@@ -170,7 +206,7 @@ export function IniciativasTab({
         </div>
       )}
 
-      <div className="page-bar">
+      <div className="page-bar" hidden={!!selecionada}>
         <div>
           <div className="page-title">Iniciativas</div>
           <div className="page-subtitle">
@@ -192,37 +228,37 @@ export function IniciativasTab({
         </div>
       </div>
 
-      {iniciativas.length > 0 && (
-        <KpiRow>
-          <Kpi label="No portfólio" valor={saude.total} acento="brand" />
-          <Kpi label="Concluídas" valor={saude.concluidas} acento="baixo" />
-          <Kpi
-            label="Ativas"
-            valor={saude.ativas}
-            sub="aprovada, em execução ou pausada"
-            acento="alto"
-          />
-          <Kpi
-            label="Sem marco"
-            valor={saude.semMarco.length}
-            sub="ativas, sem entrega verificável"
-            acento={saude.semMarco.length > 0 ? 'medio' : 'null'}
-          />
-          <Kpi
-            label="Com marco vencido"
-            valor={saude.atrasadas.length}
-            acento={saude.atrasadas.length > 0 ? 'critico' : 'null'}
-          />
+      {!selecionada && iniciativas.length > 0 && (
+        <KpiRow colunas={4}>
+          <Kpi label="No portfólio" valor={saude.total} onClick={() => setSituacao('todas')} ativo={situacao === 'todas'} />
+          <Kpi label="Ativas" valor={saude.ativas} sub="Aprovadas, em execução ou pausadas" acento="brand" onClick={() => setSituacao('ativas')} ativo={situacao === 'ativas'} />
+          <Kpi label="Precisam de atenção" valor={atencao.size} sub="Ativas sem marco ou com marco vencido" acento="alto" onClick={() => setSituacao('atencao')} ativo={situacao === 'atencao'} />
+          <Kpi label="Concluídas" valor={saude.concluidas} acento="baixo" onClick={() => setSituacao('concluida')} ativo={situacao === 'concluida'} />
         </KpiRow>
       )}
 
-      {iniciativas.length === 0 ? (
+      {selecionada && (
+        <div className="ini-page-detail">
+          <div className="ini-back-bar">
+            <button className="btn btn-ghost" onClick={() => onSelecionar(null)}>← Voltar ao portfólio</button>
+            <h1 ref={tituloRef} tabIndex={-1}>Detalhe da iniciativa</h1>
+          </div>
+          {atual ? <IniciativaDetalhe
+            key={atual.id} iniciativa={atual}
+            objetivo={atual.objetivo_id ? objetivoPorId.get(atual.objetivo_id) ?? null : null}
+            pessoas={pessoas} marcos={marcos} acoes={acoes_risco} riscos={riscos} pf={pf}
+            onEditar={() => setEditando(atual)} onAbrirRisco={onAbrirRisco}
+          /> : <div className="card"><EmptyState message="Iniciativa não encontrada" hint="Ela pode ter sido removida. Volte ao portfólio para consultar as iniciativas disponíveis." /></div>}
+        </div>
+      )}
+
+      {!selecionada && (iniciativas.length === 0 ? (
         <div className="card">
           <EmptyState
             icon="◇"
             message="Nenhuma iniciativa no portfólio"
             hint={objetivos.length === 0
-              ? 'Cadastre um objetivo primeiro: toda iniciativa pendura em um, e o servidor recusa as que não penduram.'
+              ? 'Cadastre um objetivo para vincular sua primeira iniciativa.'
               : 'Crie a primeira, ou extraia as que já existem dentro dos planos de ação pela Triagem.'}
             action={objetivos.length > 0
               ? { label: '+ Nova iniciativa', onClick: () => setCriando(true) }
@@ -230,147 +266,49 @@ export function IniciativasTab({
           />
         </div>
       ) : (
-        // `data-detalhe` diz ao CSS que há uma iniciativa aberta. No celular
-        // (≤760px) é o que faz o índice sair de cena e o detalhe ocupar a tela
-        // — lista → detalhe, sem rolagem dentro de rolagem. Acima disso os dois
-        // convivem e o atributo não muda nada.
-        <div className="ini-layout" data-detalhe={atual ? 'true' : undefined}>
-          <div className="card card-col ini-lista" ref={listaRef}>
-            <div className="ini-lista-topo">
-              <span className="ini-lista-titulo">Lista de iniciativas</span>
-              <span className="ini-lista-conta">
-                {filtradas.length === iniciativas.length
-                  ? plural(iniciativas.length, 'iniciativa', 'iniciativas')
-                  : `${filtradas.length} de ${iniciativas.length}`}
-              </span>
+        <section className="ini-portfolio" aria-label="Portfólio de iniciativas">
+          <div className="card ini-toolbar">
+            <input className="search-input" aria-label="Buscar iniciativas" placeholder="Buscar por iniciativa, objetivo ou responsável…" value={busca} onChange={e => setBusca(e.target.value)} />
+            <div className="ini-filters">
+              <label>Objetivo<select value={objetivoFiltro} onChange={e => setObjetivoFiltro(e.target.value)}><option value="">Todos os objetivos</option>{objetivos.map(o => <option key={o.id} value={o.id}>{o.descricao === OBJETIVO_BALDE ? 'Sem objetivo vinculado' : o.descricao || 'Sem descrição'}</option>)}</select></label>
+              <label>Responsável<select value={donoFiltro} onChange={e => setDonoFiltro(e.target.value)}><option value="">Todos os responsáveis</option><option value="sem">Sem responsável</option>{pessoas.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}</select></label>
+              <label>Situação<select value={situacao} onChange={e => setSituacao(e.target.value)}><option value="todas">Todas as situações</option><option value="ativas">Ativas</option><option value="atencao">Precisam de atenção</option>{Object.entries(ROTULO_STATUS_INICIATIVA).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></label>
+              <label>Ordenar por<select value={ordem} onChange={e => setOrdem(e.target.value)}><option value="prioridade">Maior prioridade</option><option value="prazo">Próximo prazo</option><option value="nome">Nome</option></select></label>
             </div>
-
-            <input
-              className="search-input"
-              placeholder="Buscar iniciativa…"
-              value={busca}
-              onChange={e => setBusca(e.target.value)}
-            />
-
-            <div className="filter-pills">
-              {AGRUPAMENTOS.map(a => (
-                <button
-                  key={a.chave}
-                  className={`filter-pill${agrupamento === a.chave ? ' active' : ''}`}
-                  onClick={() => setAgrupamento(a.chave)}
-                >
-                  {a.label}
-                </button>
-              ))}
+            <div className="ini-list-controls">
+              <div className="filter-pills" aria-label="Agrupar iniciativas">{AGRUPAMENTOS.map(a => <button key={a.chave} className={`filter-pill${agrupamento === a.chave ? ' active' : ''}`} aria-pressed={agrupamento === a.chave} onClick={() => setAgrupamento(a.chave)}>{a.label}</button>)}</div>
+              <span role="status">{filtradas.length} de {iniciativas.length} iniciativas</span>
+              <button className="btn btn-ghost" onClick={limparFiltros}>Limpar filtros</button>
             </div>
-
-            <label className="ini-meta" style={{ marginTop: 0, cursor: 'pointer' }}>
-              <input
-                type="checkbox"
-                checked={soAtivas}
-                onChange={e => setSoAtivas(e.target.checked)}
-              />
-              Só as ativas
-            </label>
-
-            {grupos.length === 0 ? (
-              <div className="bento-sub">Nenhuma iniciativa com esses filtros.</div>
-            ) : (
-              grupos.map(g => (
-                <div key={g.chave}>
-                  <div className="fato-label ini-grupo-label">
-                    {g.titulo} · {g.nota}
-                  </div>
-                  {g.itens.map(i => {
-                    const p = computePrioriz(i);
-                    const cobertos = riscosPorIni.get(i.id)?.size ?? 0;
-                    return (
-                      <button
-                        key={i.id}
-                        className="ini-linha"
-                        data-ativa={i.id === selecionada}
-                        onClick={() => onSelecionar(i.id)}
-                      >
-                        <span style={{ flex: 1, minWidth: 0 }}>
-                          <span className="ini-nome">{i.nome || 'Iniciativa sem nome'}</span>
-                          <span className="ini-meta">
-                            <span className="badge" data-badge={BADGE_STATUS_INICIATIVA[i.status]}>
-                              {ROTULO_STATUS_INICIATIVA[i.status]}
-                            </span>
-                            {marcosPorIniciativa.get(i.id) ? (
-                              <span>{plural(marcosPorIniciativa.get(i.id) ?? 0, 'marco', 'marcos')}</span>
-                            ) : (
-                              <span>sem marco</span>
-                            )}
-                            {cobertos > 0 && <span>· cobre {cobertos}</span>}
-                          </span>
-                        </span>
-                        {p != null && (
-                          <span className="tier-chip" data-tier={priorizTier(p)}>
-                            <span className="tier-dot" aria-hidden="true" />
-                            {String(round2(p)).replace('.', ',')}
-                          </span>
-                        )}
-                        <span className="ini-chevron" aria-hidden="true">›</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              ))
-            )}
           </div>
-
-          {atual ? (
-            <div className="ini-detalhe">
-              {/* Cabeçalho do detalhe: onde a lista acaba e uma iniciativa só começa.
-                  Empilhado, é ele que ainda diz de quem é o que está na tela. */}
-              <div className="ini-detalhe-topo">
-                <span className="ini-detalhe-marca" aria-hidden="true" />
-                <span className="ini-detalhe-kicker">Detalhe</span>
-                <span className="ini-detalhe-nome">{atual.nome || 'Iniciativa sem nome'}</span>
-                {/* Dois botões porque são duas ações diferentes, não duas
-                    aparências da mesma: entre 761 e 1280px a lista está na
-                    tela e o botão leva o olho até ela; a ≤760px ela não está
-                    montada em cena, e voltar é desfazer a seleção. Qual dos
-                    dois aparece é decidido no CSS, como o resto das faixas. */}
-                <button
-                  className="btn btn-ghost ini-voltar"
-                  onClick={() => listaRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' })}
-                >
-                  ↑ Lista
-                </button>
-                <button
-                  className="btn btn-ghost ini-voltar-lista"
-                  onClick={() => onSelecionar(null)}
-                >
-                  ‹ Todas
-                </button>
-              </div>
-
-              <IniciativaDetalhe
-                key={atual.id}
-                iniciativa={atual}
-                objetivo={atual.objetivo_id ? objetivoPorId.get(atual.objetivo_id) ?? null : null}
-                pessoas={pessoas}
-                marcos={marcos}
-                acoes={acoes_risco}
-                riscos={riscos}
-                pf={pf}
-                onEditar={() => setEditando(atual)}
-                onAbrirRisco={onAbrirRisco}
-              />
-            </div>
-          ) : (
-            <div className="card ini-detalhe-vazio">
-              <EmptyState
-                icon="›"
-                message="Escolha uma iniciativa na lista"
-                hint="O detalhe traz a trilha de marcos, a origem e os riscos que ela cobre hoje."
-              />
-            </div>
-          )}
-        </div>
-      )}
+          {grupos.length === 0 ? <div className="card"><EmptyState message="Nenhuma iniciativa com esses filtros" action={{ label: 'Limpar filtros', onClick: limparFiltros }} /></div> : grupos.map(g => {
+            const chave = `${agrupamento}:${g.chave}`;
+            const fechado = recolhidos.includes(chave);
+            return <section className="card ini-portfolio-group" key={chave}>
+              <button className="ini-group-toggle" aria-expanded={!fechado} onClick={() => setRecolhidos(fechado ? recolhidos.filter(k => k !== chave) : [...recolhidos, chave])}>
+                <span aria-hidden="true">{fechado ? '›' : '⌄'}</span><h2>{g.titulo}</h2><span>{plural(g.itens.length, 'iniciativa', 'iniciativas')}</span>
+              </button>
+              {!fechado && <>
+                <div className="ini-portfolio-columns" aria-hidden="true"><span>Iniciativa / objetivo</span><span>Responsável</span><span>Situação</span><span>Próximo marco</span><span>Prioridade</span><span /></div>
+                {g.itens.map(i => {
+                  const p = computePrioriz(i);
+                  const marco = proximos.get(i.id);
+                  const cobertos = riscosPorIni.get(i.id)?.size ?? 0;
+                  const obj = i.objetivo_id ? objetivoPorId.get(i.objetivo_id)?.descricao : null;
+                  return <div className="ini-portfolio-row" key={i.id}>
+                    <div className="ini-row-title"><button id={`iniciativa-${i.id}`} className="ini-open" onClick={() => abrir(i.id)}>{i.nome || 'Iniciativa sem nome'}</button><span>{obj && obj !== OBJETIVO_BALDE ? obj : 'Sem objetivo vinculado'}</span><small>{ROTULO_FONTE[i.fonte]} · {plural(cobertos, 'risco vinculado', 'riscos vinculados')}</small>{(!obj || obj === OBJETIVO_BALDE) && <button className="link-ini ini-assign" onClick={() => setEditando(i)}>Vincular objetivo</button>}</div>
+                    <div className="ini-row-cell" data-label="Responsável">{i.dono_id ? pessoaPorId.get(i.dono_id) ?? 'Responsável removido' : 'Sem responsável'}</div>
+                    <div className="ini-row-cell" data-label="Situação"><span className="badge" data-badge={BADGE_STATUS_INICIATIVA[i.status]}>{ROTULO_STATUS_INICIATIVA[i.status]}</span></div>
+                    <div className="ini-row-cell" data-label="Próximo marco"><span>{marco?.nome || (marcosPorIniciativa.get(i.id) ? 'Sem marco pendente' : 'Sem marco definido')}</span>{marco && <small>{formatarData(dataPlanoMarco(marco))}</small>}{atencao.has(i.id) && <span className="badge" data-badge="amber">{saude.atrasadas.some(a => a.id === i.id) ? 'Marco vencido' : 'Sem marco'}</span>}</div>
+                    <div className="ini-row-cell" data-label="Prioridade" title="Impacto ÷ esforço + gravidade. Quanto maior, maior a prioridade.">{p == null ? 'Não avaliada' : <span className="tier-chip" data-tier={priorizTier(p)}>{String(round2(p)).replace('.', ',')}</span>}</div>
+                    <button className="ini-row-arrow" aria-label={`Abrir ${i.nome || 'iniciativa sem nome'}`} onClick={() => abrir(i.id)}>↗</button>
+                  </div>;
+                })}
+              </>}
+            </section>;
+          })}
+        </section>
+      ))}
 
       {(criando || novoObjetivoId) && (
         <IniciativaModal
