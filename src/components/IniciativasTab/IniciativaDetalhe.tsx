@@ -15,6 +15,8 @@ import { estadoDoMarco } from '../../lib/marcos';
 import { TrilhaMarcos, LegendaTrilha } from './TrilhaMarcos';
 import { MarcoModal } from './MarcoModal';
 import { VincularRiscoModal } from './VincularRiscoModal';
+import { proximoMarco, dataPlanoMarco } from './iniciativasUi';
+import { OBJETIVO_BALDE } from '../../lib/portfolioUi';
 import { Historico } from '../common/Historico';
 
 interface IniciativaDetalheProps {
@@ -34,6 +36,7 @@ export function IniciativaDetalhe({
 }: IniciativaDetalheProps) {
   const [marcoEditando, setMarcoEditando] = useState<Marco | null>(null);
   const [criandoMarco, setCriandoMarco] = useState(false);
+  const [secao, setSecao] = useState('visao');
   const [vinculando, setVinculando] = useState(false);
 
   const hoje = useMemo(() => new Date(), []);
@@ -63,6 +66,7 @@ export function IniciativaDetalhe({
 
   const prazo = useMemo(() => marcosNoPrazo(meusMarcos, hoje), [meusMarcos, hoje]);
   const slip = useMemo(() => slipMedio(meusMarcos), [meusMarcos]);
+  const proximo = proximoMarco(meusMarcos, iniciativa.id);
   const prioriz = computePrioriz(iniciativa);
   const pessoaPorId = useMemo(() => new Map(pessoas.map(p => [p.id, p.nome])), [pessoas]);
 
@@ -116,9 +120,9 @@ export function IniciativaDetalhe({
               <span className="badge" data-badge={BADGE_STATUS_INICIATIVA[iniciativa.status]}>
                 {ROTULO_STATUS_INICIATIVA[iniciativa.status]}
               </span>
-              <span>{objetivo?.descricao ?? 'Sem objetivo'}</span>
+              <span>{objetivo?.descricao && objetivo.descricao !== OBJETIVO_BALDE ? objetivo.descricao : 'Sem objetivo vinculado'}</span>
               <span>·</span>
-              <span>{iniciativa.dono_id ? pessoaPorId.get(iniciativa.dono_id) ?? 'Dono removido' : 'Sem dono'}</span>
+              <span>{iniciativa.dono_id ? pessoaPorId.get(iniciativa.dono_id) ?? 'Responsável removido' : 'Sem responsável'}</span>
               {iniciativa.recurso && <><span>·</span><span>{iniciativa.recurso}</span></>}
             </div>
             <div className="ini-hero-titulo">{iniciativa.nome || 'Iniciativa sem nome'}</div>
@@ -134,7 +138,7 @@ export function IniciativaDetalhe({
 
         <div className="stat-grid" style={{ marginTop: 'var(--sp-4)' }}>
           <div className="stat" data-tier={priorizTier(prioriz)} data-destaque={prioriz != null}>
-            <div className="stat-label">Priorização</div>
+            <div className="stat-label" title="Impacto ÷ esforço + gravidade. Quanto maior, maior a prioridade.">Priorização</div>
             <div className="stat-valor tabular">
               {prioriz == null ? '—' : String(round2(prioriz)).replace('.', ',')}
             </div>
@@ -154,9 +158,15 @@ export function IniciativaDetalhe({
           <div className="stat">
             <div className="stat-label">Marcos no prazo</div>
             <div className="stat-valor tabular">
-              {prazo.pct == null ? '—' : formatarPct(prazo.pct)}
+              {meusMarcos.length === 0 ? 'Sem marcos' : prazo.pct == null ? 'Sem base de cálculo' : formatarPct(prazo.pct)}
             </div>
           </div>
+        </div>
+
+        <div className="ini-next">
+          <div><div className="fato-label">Próxima entrega</div><strong>{proximo?.nome || (meusMarcos.length ? 'Sem marco pendente' : 'Sem marco cadastrado')}</strong>
+          {proximo && <small>{formatarData(dataPlanoMarco(proximo))}{estadoDoMarco(proximo, hojeStr) === 'atrasado' ? ' · Vencido' : ''}</small>}</div>
+          <button className="btn btn-ghost" onClick={() => proximo ? setSecao('marcos') : setCriandoMarco(true)}>{proximo ? 'Ver marcos' : '+ Cadastrar marco'}</button>
         </div>
 
         {iniciativa.impacto_rs != null && iniciativa.confianca_impacto && (
@@ -166,17 +176,19 @@ export function IniciativaDetalhe({
         )}
       </div>
 
-      {/* ---- Origem × cobertura: dois fatos, nunca um derivado do outro ---- */}
+      <nav className="ini-detail-nav" aria-label="Seções da iniciativa">
+        {[['visao', 'Visão geral'], ['marcos', 'Marcos e ações'], ['historico', 'Histórico']].map(([id, label]) => <button key={id} aria-pressed={secao === id} onClick={() => setSecao(id)}>{label}</button>)}
+      </nav>
 
-      <div className="card">
+      <div className="card" hidden={secao !== 'visao'}>
         <div className="section-header-row">
           <div>
             <div className="section-title">Origem e cobertura</div>
             <div className="bento-sub">
               {cobreSemSerDeRisco
                 ? `Nasceu de ${ROTULO_FONTE[iniciativa.fonte].toLowerCase()} · cobre ${plural(riscosCobertos.length, 'risco', 'riscos')}. `
-                  + 'Uma coisa não vira a outra: a origem é histórico e não muda.'
-                : 'Por que ela nasceu, e quais riscos ela trata hoje. São perguntas diferentes.'}
+                  + 'Origem preservada no histórico.'
+                : 'Contexto de criação e riscos vinculados.'}
             </div>
           </div>
           <button className="btn btn-outline-navy" onClick={() => setVinculando(true)}>
@@ -193,7 +205,7 @@ export function IniciativaDetalhe({
                 {ROTULO_FONTE[iniciativa.fonte]}
               </span>
             </div>
-            <div className="bento-sub">Um valor, histórico. Não muda com o tempo.</div>
+
           </div>
           <div className="fato">
             <div className="fato-label">Vetor</div>
@@ -203,7 +215,7 @@ export function IniciativaDetalhe({
                 {ROTULO_VETOR[iniciativa.vetor]}
               </span>
             </div>
-            <div className="bento-sub">O que faz com o valor. Independe da origem.</div>
+
           </div>
         </div>
 
@@ -241,15 +253,13 @@ export function IniciativaDetalhe({
         )}
       </div>
 
-      {/* ---- Trilha de marcos ---- */}
-
-      <div className="card">
+      <div className="card" hidden={secao !== 'marcos'}>
         <div className="section-header-row">
           <div>
             <div className="section-title">Marcos</div>
             <div className="bento-sub">
               {meusMarcos.length === 0
-                ? 'Sem marco, o status não passa de backlog — é a regra que impede iniciativa aprovada sem entrega verificável.'
+                ? 'Cadastre uma entrega verificável para acompanhar a execução.'
                 : slip.replanejados > 0
                   ? `${plural(slip.replanejados, 'marco replanejado', 'marcos replanejados')} · +${formatarNumero(slip.diasMedioDosReplanejados, 0)} dias em média contra o plano original.`
                   : 'Nenhuma data escorregou desde o plano original.'}
@@ -322,7 +332,7 @@ export function IniciativaDetalhe({
       {/* ---- Ações vinculadas ---- */}
 
       {minhasAcoes.length > 0 && (
-        <div className="card">
+        <div className="card" hidden={secao !== 'marcos'}>
           <div className="section-title">Mitigações executadas aqui dentro</div>
           <div className="bento-sub">
             Cada uma sai de um registro de risco. Enquanto esta iniciativa não concluir, o
@@ -362,9 +372,7 @@ export function IniciativaDetalhe({
         </div>
       )}
 
-      {/* ---- Histórico ---- */}
-
-      <div className="card">
+      <div className="card" hidden={secao !== 'historico'}>
         <div className="section-title">Histórico</div>
         <div className="bento-sub">
           Quem mudou status, dono, objetivo, prazo ou impacto — e quando. Marcos e
