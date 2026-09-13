@@ -117,6 +117,17 @@ vínculos após as regras existentes.
 - Sem ícones externos: glifos Unicode (↓ + × ▲ ▼ ‹ ›) ou desenho em CSS/SVG inline
   (ver `AnexosBadge`). Sem emojis. Cuidado: o Inter **não** tem ☀ ☾ ◐ — glifos
   assim caem em fallback torto.
+- **`flex-basis` é base, não teto.** A coluna do Kanban é
+  `flex: 0 0 var(--kanban-col-w)` **mais `min-width: 0`**. Sem o piso zerado, o
+  `min-width: auto` do flex eleva a largura usada ao min-content do conteúdo, e
+  qualquer texto `nowrap` do usuário — o chip de tipo, o nome da iniciativa no
+  chip de vínculo — esticava a coluna de 288px para 600px, empurrando as outras
+  quatro para fora da tela. Com o piso zerado quem cede é o texto, com
+  reticências. Vale para todo item de flex-row que contém texto livre.
+- A largura da coluna é **um token só** (`--kanban-col-w`), porque três lugares
+  precisam da mesma medida: a coluna, a cópia levantada no arraste e a
+  redefinição de 82vw do celular. Eram dois literais (288px e 272px) e já
+  divergiam.
 - **Camada fixa não tolera `transform` em contêiner de página.** `transform`,
   `filter`, `contain` ou `will-change` num ancestral — mesmo identidade, mesmo
   residual de `animation-fill-mode: both` — tornam o elemento o bloco recipiente

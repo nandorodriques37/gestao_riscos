@@ -23,7 +23,13 @@
 /* ---------- Coluna ---------- */
 
 .kanban-column {
-  flex: 0 0 288px;
+  flex: 0 0 var(--kanban-col-w);
+  /* O `min-width: auto` do flex eleva a largura usada ao min-content do conteúdo:
+     `flex-basis` é base, não teto. Bastava um tipo de tarefa longo ou o nome de
+     uma iniciativa no chip de vínculo — ambos `nowrap` — para a coluna passar de
+     288px a 600px e empurrar as outras quatro para fora da tela. Zerar o piso faz
+     `flex-basis` valer de verdade; quem cede é o texto, com reticências. */
+  min-width: 0;
   display: flex;
   flex-direction: column;
   max-height: max(260px, calc(100dvh - var(--kanban-offset)));
@@ -165,7 +171,10 @@
 
 /* Cópia levantada: leve rotação e sombra, o único momento em que o card flutua. */
 .kanban-card-overlay {
-  width: 272px;
+  /* O card dentro da coluna mede a largura dela menos as duas bordas (2px) e o
+     padding lateral do corpo (2 × --sp-2). A cópia levantada refaz a mesma conta
+     em vez de repetir o número — senão ela deixa de acompanhar o 82vw do celular. */
+  width: calc(var(--kanban-col-w) - 2px - 2 * var(--sp-2));
   cursor: grabbing;
   transform: rotate(3deg);
   box-shadow: var(--elev-2);
@@ -177,6 +186,22 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--sp-2);
+  min-width: 0;
+}
+
+/* Os dois são `nowrap` e juntos eram o maior piso de largura do card. Com a
+   coluna travada, o tipo é quem cede — o status é curto e de vocabulário
+   fechado, o tipo é texto livre do usuário. */
+.kanban-card-top .type-tag {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+  line-height: 18px;
+}
+
+.kanban-card-top .badge {
+  flex: none;
 }
 
 .kanban-card-sem-tipo {
@@ -185,6 +210,10 @@
 }
 
 .kanban-card-title {
+  min-width: 0;
+  /* `-webkit-line-clamp` corta linha, não palavra: um código ou URL sem espaço
+     atravessaria a borda do card. */
+  overflow-wrap: anywhere;
   font-size: var(--fs-sm);
   font-weight: var(--fw-medium);
   line-height: 1.35;
@@ -364,8 +393,13 @@
   white-space: nowrap;
 }
 
+/* Sem truncagem, o nome da iniciativa era `flex: none` e virava piso de largura
+   do card — e daí da coluna inteira. Cede como o nome do risco ao lado. */
 .vinculo-chip-ini {
-  flex: none;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: var(--ink-4);
 }
 

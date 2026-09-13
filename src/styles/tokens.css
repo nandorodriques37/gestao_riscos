@@ -183,6 +183,12 @@
   --rail-w-mini: 72px;
   /* Barra de navegação inferior — só existe abaixo de 760px. */
   --nav-bottom-h: 56px;
+  /* Largura da coluna do Kanban. É token porque três lugares precisam da MESMA
+     medida — a coluna, a cópia levantada no arraste e a redefinição do celular.
+     Enquanto eram literais (288px e 272px), o card levantado nascia mais estreito
+     que o buraco que deixava, e a coluna de 82vw do celular não levava o overlay
+     junto. */
+  --kanban-col-w: 288px;
 
   /* ---------- Controles ----------
      Altura de botão/campo e alvo mínimo de toque. São a ÚNICA porta de entrada
