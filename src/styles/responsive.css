@@ -182,8 +182,11 @@
      Sem teto de altura: a faixa de KPIs empilhada já empurra o quadro para perto
      do fim da tela, e prender a coluna sobraria uma janela de dois cards. Aqui a
      página rola, como em qualquer lista no celular. */
+  :root {
+    --kanban-col-w: 82vw;
+  }
+
   .kanban-column {
-    flex-basis: 82vw;
     max-height: none;
   }
 

@@ -17,7 +17,13 @@ export function devApiPlugin(): Plugin {
       await ensureTudo(sql, { semear: true });
       server.httpServer?.once('close', () => { void pg.close(); });
       server.middlewares.use(async (req, res, next) => {
-        if (!/^\/api(?:\/|\?|$)/.test(req.url ?? '')) { next(); return; }
+        // `src/data/RiskData.ts` reexporta `api/_seed.ts`, então o navegador pede
+        // esse módulo em `/api/_seed.ts` — a mesma raiz das rotas. Sem esta guarda a
+        // API responde 404 ao import, o grafo de módulos quebra e o app não monta.
+        // Rota pública nunca tem extensão de arquivo; módulo sempre tem.
+        const caminho = (req.url ?? '').split('?')[0];
+        const eModulo = /\.(?:[cm]?[jt]sx?|css|json|svg|png|jpe?g|webp|woff2?)$/.test(caminho);
+        if (eModulo || !/^\/api(?:\/|\?|$)/.test(req.url ?? '')) { next(); return; }
         try {
           const url = new URL(req.url || '/', 'http://local');
           const chunks: Buffer[] = [];
