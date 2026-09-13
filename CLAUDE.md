@@ -128,6 +128,14 @@ vínculos após as regras existentes.
   precisam da mesma medida: a coluna, a cópia levantada no arraste e a
   redefinição de 82vw do celular. Eram dois literais (288px e 272px) e já
   divergiam.
+- **A coluna do quadro tem piso de quatro cards** (`--kanban-col-h`, derivado de
+  `--kanban-card-h`), e cresce além disso quando a viewport permite. O piso
+  anterior, 260px, era herança de quando a aba tinha menos cromo acima: com sete
+  KPIs e a barra de filtros, `100dvh - --kanban-offset` sobra ~160px numa janela
+  baixa, e a coluna mostrava um card e meio. Quatro cards passam da altura da
+  tela nessas janelas — quem rola é a página, como já acontecia no celular.
+  `--kanban-card-h` é o card REPRESENTATIVO (medido: 136px a 212px, conforme
+  linhas de título e chip de vínculo); não travar a altura do card com ele.
 - **Camada fixa não tolera `transform` em contêiner de página.** `transform`,
   `filter`, `contain` ou `will-change` num ancestral — mesmo identidade, mesmo
   residual de `animation-fill-mode: both` — tornam o elemento o bloco recipiente

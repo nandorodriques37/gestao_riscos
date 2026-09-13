@@ -32,7 +32,10 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  max-height: max(260px, calc(100dvh - var(--kanban-offset)));
+  /* Piso de quatro cards; sobrando viewport, a coluna cresce e mostra mais.
+     Numa janela baixa a coluna passa da altura da tela e é a PÁGINA que rola até
+     o rodapé — o mesmo acordo que o celular já fazia. */
+  max-height: max(var(--kanban-col-h), calc(100dvh - var(--kanban-offset)));
   background: var(--bg-sunken);
   border: 1px solid var(--line-hairline);
   border-radius: var(--r-md);

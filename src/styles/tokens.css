@@ -189,6 +189,17 @@
      que o buraco que deixava, e a coluna de 82vw do celular não levava o overlay
      junto. */
   --kanban-col-w: 288px;
+  /* Altura de um card do quadro. Medida no Chromium: 136px (tarefa livre, título
+     de uma linha) a 212px (mitigação com chip de vínculo, título de três linhas),
+     média 174. Um card não tem altura fixa, então este é o card representativo —
+     serve para dimensionar a coluna, não para travar o card. */
+  --kanban-card-h: 176px;
+  /* Piso da coluna: quatro cards à vista. Antes era 260px, que numa janela baixa
+     sobrava pouco mais de um card e meio e tornava o quadro inútil.
+     A conta é o corpo (4 cards + 3 vãos) mais o cromo da coluna: cabeçalho 40px,
+     padding de baixo do rodapé e do corpo (8 + 8) e o botão "+ Adicionar tarefa",
+     que lê --control-h e cresce no toque. */
+  --kanban-col-h: calc(4 * var(--kanban-card-h) + 3 * var(--sp-2) + var(--control-h) + 56px);
 
   /* ---------- Controles ----------
      Altura de botão/campo e alvo mínimo de toque. São a ÚNICA porta de entrada
