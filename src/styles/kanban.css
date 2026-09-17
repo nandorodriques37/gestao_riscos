@@ -32,10 +32,11 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  /* Piso de quatro cards; sobrando viewport, a coluna cresce e mostra mais.
-     Numa janela baixa a coluna passa da altura da tela e é a PÁGINA que rola até
-     o rodapé — o mesmo acordo que o celular já fazia. */
-  max-height: max(var(--kanban-col-h), calc(100dvh - var(--kanban-offset)));
+  /* Todas as colunas têm a mesma janela de cinco cards. Listas maiores rolam no
+     corpo; listas menores preservam a altura do quadro e não desalinhham as
+     colunas vizinhas. */
+  height: var(--kanban-col-h);
+  max-height: var(--kanban-col-h);
   background: var(--bg-sunken);
   border: 1px solid var(--line-hairline);
   border-radius: var(--r-md);
@@ -129,6 +130,8 @@
 
 .kanban-card {
   position: relative;
+  flex: 0 0 auto;
+  min-height: var(--kanban-card-h);
   display: flex;
   flex-direction: column;
   gap: var(--sp-2);
@@ -221,6 +224,13 @@
   font-weight: var(--fw-medium);
   line-height: 1.35;
   color: var(--ink-1);
+}
+
+/* Duas linhas mantêm a leitura do título sem fazer um único card alterar a
+   janela de cinco itens da coluna. O texto completo continua no editor. */
+.kanban-card-title .clamp-3 {
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 
 .kanban-card-badges {
