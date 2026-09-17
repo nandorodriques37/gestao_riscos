@@ -16,10 +16,15 @@ interface StatusDonutProps {
 }
 
 export function StatusDonut({ totalAcoesComStatus, statusLegend, donutBg, activeLabel, onLegendClick }: StatusDonutProps) {
+  const dominant = statusLegend.reduce((best, item) => (item.count > best.count ? item : best), statusLegend[0]);
+  const insight = totalAcoesComStatus
+    ? `${dominant.pct}% das ações estão ${dominant.label.toLowerCase()}`
+    : 'Ainda não há ações com status para acompanhar';
+
   return (
     <div className="card">
-      <div className="section-title">Status das Ações</div>
-      <div className="section-subtitle">Distribuição das {totalAcoesComStatus} ações registradas</div>
+      <div className="section-title">{insight}</div>
+      <div className="section-subtitle">{totalAcoesComStatus} ações registradas · selecione um status para filtrar</div>
       <div className="legend-status-row">
         <div className="donut" style={{ width: 160, height: 160, background: donutBg }}>
           <div className="donut-center" style={{ width: 132, height: 132 }}>

@@ -11,10 +11,20 @@ const IMPACT_ROWS = [5, 4, 3, 2, 1];
 const PROB_COLS = [1, 2, 3, 4, 5];
 
 export function Heatmap({ records, onCellClick }: HeatmapProps) {
+  const cells = IMPACT_ROWS.flatMap(imp => PROB_COLS.map(prob => ({
+    prob,
+    imp,
+    count: records.filter(r => r.probab === prob && r.impact === imp).length,
+  })));
+  const concentration = cells.reduce((best, cell) => (cell.count > best.count ? cell : best), cells[0]);
+  const insight = concentration.count
+    ? `Maior concentração: P${concentration.prob} × I${concentration.imp} · ${concentration.count} ${concentration.count === 1 ? 'risco' : 'riscos'}`
+    : 'Ainda não há riscos avaliados para formar o mapa';
+
   return (
     <div className="card card-col">
-      <div className="section-title">Mapa de Calor · Probabilidade × Impacto</div>
-      <div className="section-subtitle">Número de riscos em cada célula do grid 5×5 — cor pela criticidade (P × I)</div>
+      <div className="section-title">{insight}</div>
+      <div className="section-subtitle">Probabilidade × impacto · selecione uma célula para examinar os riscos</div>
       <div className="heatmap-row">
         <div className="heatmap-yaxis-label"><span>IMPACTO →</span></div>
         <div className="heatmap-ylabels">
@@ -23,8 +33,7 @@ export function Heatmap({ records, onCellClick }: HeatmapProps) {
         </div>
         <div className="heatmap-grid-wrap">
           <div className="heatmap-grid" role="group" aria-label="Mapa de calor de probabilidade por impacto, grade 5 por 5">
-            {IMPACT_ROWS.flatMap(imp => PROB_COLS.map(prob => {
-              const count = records.filter(r => r.probab === prob && r.impact === imp).length;
+            {cells.map(({ imp, prob, count }) => {
               const clickable = count > 0;
               const label = `Probabilidade ${prob} · Impacto ${imp} · score ${prob * imp} — ${count} ${count === 1 ? 'risco' : 'riscos'}` + (clickable ? ' · clique para filtrar' : '');
               return (
@@ -46,7 +55,7 @@ export function Heatmap({ records, onCellClick }: HeatmapProps) {
                   {count}
                 </div>
               );
-            }))}
+            })}
           </div>
           <div className="heatmap-xlabels">
             {PROB_COLS.map(p => <div key={p} className="heatmap-xlabel">{p}</div>)}

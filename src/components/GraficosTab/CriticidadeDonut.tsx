@@ -16,10 +16,15 @@ interface CriticidadeDonutProps {
 }
 
 export function CriticidadeDonut({ totalAvaliados, critLegend, donutBg, activeLabel, onLegendClick }: CriticidadeDonutProps) {
+  const dominant = critLegend.reduce((best, item) => (item.count > best.count ? item : best), critLegend[0]);
+  const insight = totalAvaliados
+    ? `${dominant.pct}% dos riscos avaliados estão em nível ${dominant.label.toLowerCase()}`
+    : 'Ainda não há criticidade calculada';
+
   return (
     <div className="card card-col">
-      <div className="section-title">Distribuição por Criticidade</div>
-      <div className="section-subtitle">{totalAvaliados} riscos avaliados por nível de score inerente</div>
+      <div className="section-title">{insight}</div>
+      <div className="section-subtitle">{totalAvaliados} riscos avaliados · selecione um nível para filtrar</div>
       <div className="donut-row" style={{ flex: 1 }}>
         {/* Anel de 14px: 150 de diâmetro externo, 122 de furo. O anel de 29px
             anterior tinha mais tinta que dados. */}
