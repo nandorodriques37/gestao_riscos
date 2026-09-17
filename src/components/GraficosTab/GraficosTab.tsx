@@ -154,12 +154,12 @@ export function GraficosTab({ records, cabecalho }: GraficosTabProps) {
 
       <div className="grid-2">
         <div className="card">
-          <div className="section-title">Risco por Categoria</div>
+          <div className="section-title">{categoryBars[0] ? `${categoryBars[0].name} concentra a exposição por categoria` : 'Sem exposição calculada por categoria'}</div>
           <div className="section-subtitle">Score inerente total (probabilidade × impacto) por categoria — barras coloridas pela criticidade</div>
           <ScoreBarList bars={categoryBars} onClick={name => toggleGraphFilter({ type: 'categoria', value: name })} />
         </div>
         <div className="card">
-          <div className="section-title">Risco por Área</div>
+          <div className="section-title">{areaBars[0] ? `${areaBars[0].name} concentra a exposição por área` : 'Sem exposição calculada por área'}</div>
           <div className="section-subtitle">Score inerente total (probabilidade × impacto) por área — barras coloridas pela criticidade</div>
           <ScoreBarList bars={areaBars} onClick={name => toggleGraphFilter({ type: 'area', value: name })} />
         </div>
@@ -168,7 +168,7 @@ export function GraficosTab({ records, cabecalho }: GraficosTabProps) {
       <div className="card">
         <div className="section-header-row">
           <div>
-            <div className="section-title">Risco por Rotina</div>
+            <div className="section-title">{rotinaBars[0] ? `${rotinaBars[0].name} concentra a exposição por rotina` : 'Sem exposição calculada por rotina'}</div>
             <div className="section-subtitle">Score inerente total (probabilidade × impacto) por rotina — barras coloridas pela criticidade</div>
           </div>
           <TierColorLegend />

@@ -6,12 +6,16 @@ interface ResourceStackedBarsProps {
 }
 
 export function ResourceStackedBars({ bars, onClick }: ResourceStackedBarsProps) {
+  const topResource = bars[0];
+
   return (
     <div className="card">
       <div className="section-header-row">
         <div>
-          <div className="section-title">Ações por Recurso · Andamento</div>
-          <div className="section-subtitle">Carga de ações por recurso, segmentada pelo status de execução</div>
+          <div className="section-title">
+            {topResource ? `${topResource.name} concentra a maior carga de ações` : 'Ainda não há carga atribuída a recursos'}
+          </div>
+          <div className="section-subtitle">Carga por recurso, segmentada pelo status de execução</div>
         </div>
         <div className="color-legend-row">
           <div className="color-legend-item"><span className="color-legend-swatch" data-tier="null" />Não iniciado</div>

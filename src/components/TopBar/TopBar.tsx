@@ -46,13 +46,30 @@ export function TopBar({
   // aparece entre 761 e 1100px, a faixa que ninguém abre para conferir. Um
   // destino novo entrava no rail e faltava aqui.
   const secoes = gruposCom(mostrarTriagem).flatMap(g => g.itens);
+  const atual = secoes.find(s => s.id === tab);
 
   return (
     <header className="app-header">
       <div className="app-header-inner">
         <div className="brand">
-          <div className="brand-mark" aria-hidden="true">RM</div>
-          <div className="brand-name">Matriz de Risco</div>
+          <div className="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 64 32" fill="none">
+              <path d="M10 16h12m8 0h10m8 0h6" />
+              <circle cx="6" cy="16" r="4" />
+              <circle cx="26" cy="16" r="4" />
+              <circle className="brand-mark-risk" cx="44" cy="16" r="4" />
+              <circle cx="58" cy="16" r="4" />
+            </svg>
+          </div>
+          <div className="brand-copy">
+            <div className="brand-name">Matriz de Risco</div>
+            <div className="brand-signature">Rede de Decisão</div>
+          </div>
+        </div>
+
+        <div className="header-route" aria-label={`Seção atual: ${atual?.label ?? ''}`}>
+          <span>Ambiente de gestão</span>
+          <strong>{atual?.label}</strong>
         </div>
 
         <nav className="nav-tabs" aria-label="Seções">

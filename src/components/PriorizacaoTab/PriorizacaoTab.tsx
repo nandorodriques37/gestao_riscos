@@ -150,7 +150,7 @@ export function PriorizacaoTab({
         </span>
       </div>
 
-      <div className="card">
+      <div className="card priority-workspace">
         <div className="section-header-row">
           <div>
             <div className="section-title">Matriz Esforço × Impacto</div>

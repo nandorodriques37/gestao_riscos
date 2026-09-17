@@ -275,7 +275,7 @@ function App() {
   })();
 
   return (
-    <div className="app-shell">
+    <div className="app-shell" data-tab={tab}>
       <TopBar
         tab={tab}
         onChangeTab={irPara}

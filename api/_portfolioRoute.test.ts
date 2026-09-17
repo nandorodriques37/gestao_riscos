@@ -46,5 +46,5 @@ describe('segmentosDaUrl', () => {
 it('mantém somente api/index.ts como função publicável', () => {
   const entries = (dir: string): string[] => readdirSync(dir, { withFileTypes: true }).flatMap(e =>
     e.isDirectory() ? entries(join(dir, e.name)) : !e.name.startsWith('_') && !e.name.startsWith('.') && !e.name.endsWith('.d.ts') ? [join(dir, e.name)] : []);
-  expect(entries('api')).toEqual(['api/index.ts']);
+  expect(entries('api').map(path => path.replaceAll('\\', '/'))).toEqual(['api/index.ts']);
 });

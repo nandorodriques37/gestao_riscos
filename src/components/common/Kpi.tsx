@@ -47,7 +47,7 @@ interface KpiProps {
 export function Kpi({
   label, valor, sub, acento = 'brand', progresso, alerta, onClick, ativo, largo, title,
 }: KpiProps) {
-  const classe = largo ? 'kpi-card wide' : 'kpi-card';
+  const classe = largo ? 'metric-item kpi-card wide' : 'metric-item kpi-card';
   const corpo = (
     <div className="kpi-body">
       <div className="kpi-label">{label}</div>
@@ -119,7 +119,7 @@ interface KpiRowProps {
 /** Faixa de KPIs. Uma grade só, para as abas pararem de inventar a sua. */
 export function KpiRow({ children, colunas }: KpiRowProps) {
   return (
-    <div className="kpi-strip" data-colunas={colunas}>
+    <div className="metric-strip kpi-strip" data-colunas={colunas}>
       {children}
     </div>
   );

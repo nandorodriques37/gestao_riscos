@@ -16,8 +16,8 @@ interface RiskDescriptionTableProps {
 export function RiskDescriptionTable({ riskList, count }: RiskDescriptionTableProps) {
   return (
     <div className="card">
-      <div className="section-title">Descrição dos Riscos</div>
-      <div className="section-subtitle">{count} risco(s) — clique em qualquer gráfico desta aba para filtrar esta lista e todos os indicadores</div>
+      <div className="section-title">Os riscos de maior exposição aparecem primeiro</div>
+      <div className="section-subtitle">{count} risco(s) no recorte atual · os gráficos acima filtram esta lista e os indicadores</div>
       <div className="desc-table-wrap">
         <table className="desc-table">
           <thead>
