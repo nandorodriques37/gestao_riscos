@@ -11,7 +11,7 @@
   position: relative;
   background: var(--bg-surface);
   border: 1px solid var(--line-border);
-  border-radius: var(--r-lg);
+  border-radius: var(--r-card);
   overflow: auto;
   max-height: 64vh;
 }
@@ -308,7 +308,7 @@
 .risk-card {
   background: var(--bg-surface);
   border: 1px solid var(--line-border);
-  border-radius: var(--r-md);
+  border-radius: var(--r-card);
   padding: var(--sp-3);
   display: flex;
   flex-direction: column;
@@ -375,7 +375,7 @@
   top: 0;
   bottom: 0;
   width: 3px;
-  border-radius: var(--r-md) 0 0 var(--r-md);
+  border-radius: var(--r-card) 0 0 var(--r-card);
   background: var(--c, var(--tier-null));
 }
 
@@ -401,7 +401,7 @@
 
 .desc-table-wrap {
   border: 1px solid var(--line-border);
-  border-radius: var(--r-md);
+  border-radius: var(--r-card);
   overflow: auto;
   max-height: 380px;
 }
@@ -570,7 +570,7 @@ tr[data-tier='null'] { --c: var(--tier-null); }
   max-width: calc(100vw - var(--sp-6));
   background: var(--bg-surface);
   border: 1px solid var(--line-border);
-  border-radius: var(--r-md);
+  border-radius: var(--r-float);
   box-shadow: var(--elev-2);
   padding: var(--sp-4);
 }

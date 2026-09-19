@@ -222,6 +222,10 @@
   --r-control: var(--r-xs);
   --r-card: var(--r-md);
   --r-row: 0px;
+  /* O que FLUTUA (modal, gaveta, popover, folha, snackbar) leva o degrau
+     maior: é o único caso em que o raio precisa separar a peça do que está
+     embaixo dela, e não só arredondar um canto. */
+  --r-float: var(--r-lg);
 
   /* ---------- Tipografia ----------
      IBM Plex Sans Variable (eixo de peso) para interface e prosa; IBM Plex

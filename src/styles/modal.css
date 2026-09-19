@@ -25,7 +25,7 @@
   flex-direction: column;
   background: var(--bg-surface);
   border: 1px solid var(--line-border);
-  border-radius: var(--r-lg);
+  border-radius: var(--r-float);
   box-shadow: var(--elev-3);
   overflow: hidden;
 }
@@ -90,7 +90,7 @@
   border: none;
   background: transparent;
   color: var(--ink-3);
-  border-radius: var(--r-sm);
+  border-radius: var(--r-control);
   font-size: var(--fs-lg);
   line-height: 1;
   transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
@@ -145,7 +145,7 @@
 .modal-textarea {
   width: 100%;
   border: 1px solid var(--line-border);
-  border-radius: var(--r-sm);
+  border-radius: var(--r-control);
   padding: 0 var(--sp-3);
   height: var(--control-h);
   font-size: var(--fs-field);
@@ -199,7 +199,7 @@ select.modal-input {
   gap: var(--sp-3);
   padding: var(--sp-3);
   border: 1px solid var(--line-hairline);
-  border-radius: var(--r-sm);
+  border-radius: var(--r-card);
 }
 
 .acao-card-head {
@@ -265,7 +265,7 @@ select.modal-input {
 .acoes-add {
   width: 100%;
   height: var(--control-h);
-  border-radius: var(--r-sm);
+  border-radius: var(--r-control);
   border: 1px dashed var(--line-border);
   background: transparent;
   color: var(--ink-3);
@@ -309,7 +309,7 @@ select.modal-input {
   font-weight: var(--fw-medium);
   height: var(--control-h);
   padding: 0 var(--sp-2);
-  border-radius: var(--r-sm);
+  border-radius: var(--r-control);
   transition: background var(--dur-fast) var(--ease);
 }
 
@@ -321,7 +321,7 @@ select.modal-input {
 .modal-btn-done {
   height: var(--control-h);
   padding: 0 var(--sp-4);
-  border-radius: var(--r-sm);
+  border-radius: var(--r-control);
   font-size: var(--fs-sm);
   font-weight: var(--fw-semibold);
   transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
@@ -367,7 +367,7 @@ select.modal-input {
   flex-direction: column;
   gap: var(--sp-3);
   border: 1px solid transparent;
-  border-radius: var(--r-sm);
+  border-radius: var(--r-card);
   transition: border-color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
 }
 
@@ -403,7 +403,7 @@ select.modal-input {
   aspect-ratio: 1;
   padding: 0;
   border: 1px solid var(--line-border);
-  border-radius: var(--r-sm);
+  border-radius: var(--r-card);
   background: var(--bg-sunken);
   overflow: hidden;
   cursor: zoom-in;
@@ -611,7 +611,7 @@ select.modal-input {
   padding: var(--sp-2) var(--sp-3);
   border: 1px solid var(--line-hairline);
   border-left: 3px solid var(--tier-null);
-  border-radius: var(--r-md);
+  border-radius: var(--r-card);
   background: var(--bg-sunken);
   font-size: var(--fs-xs);
   color: var(--ink-2);

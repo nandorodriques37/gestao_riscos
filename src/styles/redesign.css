@@ -41,21 +41,6 @@ textarea {
   font: inherit;
 }
 
-.tabular,
-.tier-chip,
-.ranked-item-eig,
-.heat-cell,
-.risk-score,
-.task-date,
-.ini-date,
-.objetivo-progress-value,
-.metric-item .kpi-value,
-.kpi-value {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.025em;
-}
-
 ::selection {
   color: var(--ink-on-brand-core);
   background: var(--brand-core);
@@ -100,7 +85,7 @@ textarea {
   flex: 0 0 38px;
   place-items: center;
   overflow: hidden;
-  border-radius: var(--r-sm);
+  border-radius: var(--r-control);
   background: var(--brand-mark-bg);
   box-shadow: none;
 }
@@ -283,7 +268,7 @@ textarea {
 }
 
 .rail-item[data-ativo='true']::before {
-  background: var(--brand-red);
+  background: var(--brand);
 }
 
 .rail-item svg,
@@ -325,7 +310,7 @@ textarea {
 }
 
 .nav-item.active::before {
-  background: var(--brand-red);
+  background: var(--brand);
 }
 
 .nav-item svg {
@@ -388,7 +373,7 @@ textarea {
 }
 
 .nav-bottom-item[data-ativo='true']::before {
-  background: var(--brand-red);
+  background: var(--brand);
 }
 
 .bottom-nav-item.active {
@@ -403,7 +388,7 @@ textarea {
   left: 20%;
   height: 2px;
   border-radius: 2px 2px 0 0;
-  background: var(--brand-red);
+  background: var(--brand);
   content: '';
 }
 
@@ -451,7 +436,7 @@ textarea {
   left: 0;
   width: 3px;
   border-radius: 1px;
-  background: var(--brand-red);
+  background: var(--brand);
   content: '';
 }
 
@@ -485,22 +470,11 @@ textarea {
   left: 0;
   width: 3px;
   border-radius: 1px;
-  background: var(--brand-red);
+  background: var(--brand);
   content: '';
 }
 
 /* ── Primitives ─────────────────────────────────────────────────────────── */
-
-.card {
-  border: 1px solid var(--line);
-  border-radius: var(--r-md);
-  background: var(--surface);
-  box-shadow: none;
-}
-
-.card:hover {
-  box-shadow: none;
-}
 
 .btn {
   min-height: var(--control-h);
@@ -571,7 +545,7 @@ textarea,
 .search-input,
 .select-filter {
   border-color: var(--line-strong);
-  border-radius: var(--r-sm);
+  border-radius: var(--r-control);
   background: var(--surface);
   box-shadow: none;
 }
@@ -594,7 +568,7 @@ textarea:focus,
   gap: 0;
   overflow: hidden;
   border: 1px solid var(--line);
-  border-radius: var(--r-md);
+  border-radius: var(--r-card);
   background: var(--surface);
 }
 
@@ -634,22 +608,6 @@ textarea:focus,
   transform: none;
 }
 
-.kpi-label {
-  color: var(--ink-muted);
-  font-size: var(--fs-3xs);
-  font-weight: 700;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-}
-
-.kpi-value {
-  margin-top: 6px;
-  color: var(--ink);
-  font-size: clamp(22px, 2vw, 30px);
-  font-weight: 500;
-  line-height: 1;
-}
-
 /* ── Context / command bars ────────────────────────────────────────────── */
 
 .filter-row,
@@ -667,7 +625,7 @@ textarea:focus,
   min-height: 48px;
   padding: 7px 8px;
   border: 1px solid var(--line);
-  border-radius: var(--r-md);
+  border-radius: var(--r-card);
   background: var(--surface);
   box-shadow: none;
   backdrop-filter: none;
@@ -692,7 +650,7 @@ textarea:focus,
   min-height: 220px;
   padding: 36px 24px;
   border: 1px dashed var(--line-strong);
-  border-radius: var(--r-md);
+  border-radius: var(--r-card);
   background: color-mix(in srgb, var(--surface) 64%, transparent);
 }
 
@@ -758,7 +716,7 @@ textarea:focus,
   gap: 0;
   overflow: hidden;
   border: 1px solid var(--line);
-  border-radius: var(--r-lg);
+  border-radius: var(--r-card);
   background: var(--surface);
 }
 
@@ -823,7 +781,7 @@ textarea:focus,
 .grid-heat > .card,
 .chart-card {
   border-top: 2px solid var(--line-strong);
-  border-radius: var(--r-md);
+  border-radius: var(--r-card);
 }
 
 .bento > .card:first-child {
@@ -848,7 +806,7 @@ textarea:focus,
 .objetivo-card.card,
 .ini-portfolio-group.card {
   overflow: hidden;
-  border-radius: var(--r-md);
+  border-radius: var(--r-card);
   border-left: 3px solid var(--brand);
   background: var(--surface);
   box-shadow: none;
@@ -913,7 +871,7 @@ textarea:focus,
   overflow: auto;
   border: 1px solid var(--line);
   border-top: 2px solid var(--brand);
-  border-radius: var(--r-md);
+  border-radius: var(--r-card);
   background: var(--surface);
   box-shadow: none;
 }
@@ -971,7 +929,7 @@ tbody tr:hover td {
 .risk-mobile-card {
   border: 1px solid var(--line);
   border-left: 3px solid var(--row-accent, var(--brand));
-  border-radius: var(--r-md);
+  border-radius: var(--r-card);
   background: var(--surface);
   box-shadow: none;
 }
@@ -1016,7 +974,7 @@ tbody tr:hover td {
   align-self: start;
   overflow: hidden;
   border: 1px solid var(--line);
-  border-radius: var(--r-md);
+  border-radius: var(--r-card);
   background: var(--surface);
 }
 
@@ -1048,7 +1006,7 @@ tbody tr:hover td {
   max-height: min(650px, calc(100dvh - var(--header-h) - 116px));
   overflow: hidden;
   border: 1px solid var(--line);
-  border-radius: var(--r-md);
+  border-radius: var(--r-card);
   background: var(--surface);
 }
 
@@ -1089,7 +1047,7 @@ tbody tr:hover td {
 
 .rastro-balde.card,
 .rastro-item.card {
-  border-radius: var(--r-md);
+  border-radius: var(--r-card);
   border-left: 3px solid var(--brand);
   box-shadow: none;
 }
@@ -1115,7 +1073,7 @@ tbody tr:hover td {
 .rastro-acao {
   position: relative;
   border: 1px solid var(--line);
-  border-radius: var(--r-sm);
+  border-radius: var(--r-card);
   background: var(--surface);
   box-shadow: none;
 }
@@ -1153,7 +1111,7 @@ tbody tr:hover td {
   gap: 0;
   overflow: hidden;
   border: 1px solid var(--line);
-  border-radius: var(--r-md);
+  border-radius: var(--r-card);
   background: var(--surface);
   box-shadow: none;
 }
@@ -1185,9 +1143,9 @@ tbody tr:hover td {
   z-index: 12;
   bottom: 12px;
   border: 1px solid var(--line-strong);
-  border-radius: var(--r-md);
+  border-radius: var(--r-card);
   background: var(--surface);
-  box-shadow: var(--elev-2);
+  box-shadow: var(--elev-1);
 }
 
 [data-tab='triagem'] .filter-pills {
@@ -1196,7 +1154,7 @@ tbody tr:hover td {
   top: calc(var(--header-h) + 8px);
   padding: 8px;
   border: 1px solid var(--line);
-  border-radius: var(--r-md);
+  border-radius: var(--r-card);
   background: var(--surface);
 }
 
@@ -1208,7 +1166,7 @@ tbody tr:hover td {
 
 .kanban-column {
   border: 1px solid var(--line);
-  border-radius: var(--r-md);
+  border-radius: var(--r-card);
   background: color-mix(in srgb, var(--surface-raised) 72%, var(--bg));
   box-shadow: none;
 }
@@ -1222,7 +1180,7 @@ tbody tr:hover td {
   position: relative;
   overflow: hidden;
   border: 1px solid var(--line);
-  border-radius: var(--r-sm);
+  border-radius: var(--r-card);
   background: var(--surface);
   box-shadow: none;
 }
@@ -1304,7 +1262,7 @@ tbody tr:hover td {
   max-height: calc(100dvh - 32px);
   margin: auto;
   border: 1px solid var(--line-strong);
-  border-radius: var(--r-lg);
+  border-radius: var(--r-float);
   animation-name: dialog-enter;
 }
 

@@ -10,9 +10,12 @@
 
 .card {
   background: var(--bg-surface);
-  border: 1px solid var(--line-border);
-  border-radius: var(--r-lg);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
   padding: var(--sp-5);
+  /* Cartão em repouso é hairline puro — e continua sendo no hover. Sombra é
+     para o que flutua acima da página, e um cartão parado não flutua. */
+  box-shadow: none;
 }
 
 .card-col {
@@ -55,7 +58,7 @@
   gap: var(--sp-2);
   height: var(--control-h);
   padding: 0 var(--sp-3);
-  border-radius: var(--r-sm);
+  border-radius: var(--r-control);
   border: 1px solid transparent;
   font-size: var(--fs-sm);
   font-weight: var(--fw-medium);
@@ -143,7 +146,7 @@
   max-width: 360px;
   height: var(--control-h);
   padding: 0 var(--sp-3) 0 30px;
-  border-radius: var(--r-sm);
+  border-radius: var(--r-control);
   border: 1px solid var(--line-border);
   font-size: var(--fs-field);
   background: var(--bg-surface);
@@ -202,7 +205,7 @@
 .select-filter {
   height: var(--control-h);
   padding: 0 28px 0 var(--sp-3);
-  border-radius: var(--r-sm);
+  border-radius: var(--r-control);
   border: 1px solid var(--line-border);
   font-size: var(--fs-field);
   font-weight: var(--fw-medium);
@@ -226,7 +229,7 @@
   gap: 2px;
   background: var(--bg-sunken);
   border: 1px solid var(--line-border);
-  border-radius: var(--r-sm);
+  border-radius: var(--r-control);
   padding: 2px;
   height: var(--control-h);
 }
@@ -252,7 +255,10 @@
 .view-toggle button.active {
   background: var(--bg-surface);
   color: var(--ink-1);
-  box-shadow: var(--elev-1);
+  /* O segmento ativo não flutua: ele se distingue pela superfície e pela
+     tinta, e o filete só desenha a borda dele. Sombra aqui era o único
+     controle do app com elevação em repouso. */
+  box-shadow: inset 0 0 0 1px var(--line-border);
 }
 
 .filter-count {
@@ -272,7 +278,7 @@
   gap: var(--sp-2);
   height: var(--control-h);
   padding: 0 var(--sp-3);
-  border-radius: var(--r-sm);
+  border-radius: var(--r-control);
   border: 1px solid var(--line-border);
   background: var(--bg-surface);
   color: var(--ink-2);
@@ -405,7 +411,7 @@
   gap: var(--sp-2);
   height: 36px;
   padding: 0 var(--sp-3);
-  border-radius: var(--r-sm);
+  border-radius: var(--r-control);
   font-size: var(--fs-md);
   font-weight: var(--fw-semibold);
   color: var(--c);

@@ -42,12 +42,49 @@ body {
   font-synthesis: none;
 }
 
-/* Figuras tabulares só onde precisam alinhar verticalmente — colunas de tabela
-   e rótulos de eixo. Números soltos (KPI, centro do donut) ficam proporcionais,
-   que é como um número grande deve ser desenhado. */
-table,
-.tabular {
+/* ---------- Cifra ----------
+   Todo número que informa — score, GUT, prazo, percentual, valor, contagem,
+   o número grande do KPI e o do centro do donut — sai em Plex Mono. Não é
+   ornamento: em tabela densa o número proporcional não alinha, e um painel
+   que alinha número lê como instrumento, não como template. Mono já é
+   tabular por construção; o `tabular-nums` fica para o caso de a fonte cair
+   no fallback do sistema.
+
+   A lista é de CLASSE DE CIFRA, não de tudo que contém dígito: `.lista-nota`
+   às vezes traz prosa, `.acao-prazo` é o contêiner de um campo de data e
+   `.marco-num` são glifos — ficam de fora, e onde carregam número recebem
+   `.tabular` no próprio elemento. Cabeçalho de coluna numérica (`th.num`)
+   alinha à direita mas não é cifra. */
+table {
   font-variant-numeric: tabular-nums;
+}
+
+.tabular,
+td.num,
+.tier-chip,
+.kpi-value,
+.donut-center-value,
+.bento-valor,
+.stat-valor,
+.fato-valor,
+.cadeia-valor,
+.lacuna-n,
+.heat-cell,
+.risk-score,
+.bar-score,
+.legend-pct,
+.legend-status-pct,
+.ranked-item-num,
+.ranked-item-eig,
+.task-date,
+.ini-date,
+.prazo-cell,
+.prazo-atraso,
+.objetivo-progress-value,
+.lista-valor {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--tracking-tighter);
 }
 
 button,

@@ -97,7 +97,7 @@
   height: 36px;
   padding: 0 var(--sp-3);
   border: none;
-  border-radius: var(--r-sm);
+  border-radius: var(--r-control);
   background: none;
   font-size: var(--fs-sm);
   font-weight: var(--fw-medium);
@@ -330,7 +330,7 @@
   padding-bottom: max(var(--sp-4), env(safe-area-inset-bottom));
   background: var(--bg-surface);
   border-top: 1px solid var(--line-border);
-  border-radius: var(--r-lg) var(--r-lg) 0 0;
+  border-radius: var(--r-float) var(--r-float) 0 0;
   box-shadow: var(--elev-3);
 }
 

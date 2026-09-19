@@ -447,7 +447,7 @@
   padding: var(--sp-3);
   padding-left: var(--sp-4);
   border: 1px solid transparent;
-  border-radius: var(--r-md);
+  border-radius: var(--r-card);
   background: none;
   text-align: left;
   transition:
@@ -669,7 +669,7 @@
 .fato {
   background: var(--surface-2);
   border: 1px solid var(--line-hairline);
-  border-radius: var(--r-md);
+  border-radius: var(--r-card);
   padding: var(--sp-2) var(--sp-3);
 }
 
@@ -699,7 +699,7 @@
 .stat {
   background: var(--surface-2);
   border: 1px solid var(--line-hairline);
-  border-radius: var(--r-md);
+  border-radius: var(--r-card);
   padding: var(--sp-2) var(--sp-3);
 }
 
@@ -864,7 +864,7 @@
   height: 104px;
   margin-top: var(--sp-4);
   border: 1px dashed var(--line-border);
-  border-radius: var(--r-md);
+  border-radius: var(--r-card);
   font-size: var(--fs-xs);
   color: var(--ink-4);
   text-align: center;
@@ -920,7 +920,7 @@
   overflow-x: auto;
   background: var(--surface-1);
   border: 1px solid var(--line-border);
-  border-radius: var(--r-lg);
+  border-radius: var(--r-card);
   padding: 0 var(--sp-5) var(--sp-4);
 }
 
@@ -1029,7 +1029,7 @@
     gap: var(--sp-1);
     padding: var(--sp-3);
     border: 1px solid var(--line-hairline);
-    border-radius: var(--r-md);
+    border-radius: var(--r-card);
     background: var(--surface-2);
   }
 
@@ -1096,7 +1096,7 @@
 .mitigacao-card {
   background: var(--surface-2);
   border: 1px solid var(--line-hairline);
-  border-radius: var(--r-md);
+  border-radius: var(--r-card);
   padding: var(--sp-3);
 }
 
@@ -1150,7 +1150,7 @@
 .rastro-item {
   background: var(--surface-1);
   border: 1px solid var(--line-border);
-  border-radius: var(--r-md);
+  border-radius: var(--r-card);
   padding: var(--sp-3);
   display: flex;
   flex-direction: column;
@@ -1314,7 +1314,7 @@
 .form-aviso {
   margin-top: var(--sp-3);
   padding: var(--sp-2) var(--sp-3);
-  border-radius: var(--r-md);
+  border-radius: var(--r-card);
   background: color-mix(in oklab, var(--tier-alto) 10%, var(--surface-1));
   border: 1px solid color-mix(in oklab, var(--tier-alto) 26%, transparent);
   font-size: var(--fs-xs);
@@ -1547,10 +1547,13 @@
 }
 
 /* Sem nome, o chip chama atenção: as gravações estão indo para o histórico
-   como "não identificado", e isso é justamente o que ele existe para evitar. */
+   como "não identificado", e isso é justamente o que ele existe para evitar.
+   É o papel de ATENÇÃO da etiqueta — algo pendente da pessoa —, não o laranja
+   de risco alto nem o coral da marca: coral só aparece onde há ameaça, atraso
+   ou perda, e um nome por preencher não é nenhuma das três. */
 .autor-chip[data-vazio='true'] {
-  border-color: color-mix(in oklab, var(--tier-alto) 40%, transparent);
-  color: var(--tier-alto);
+  border-color: color-mix(in oklab, var(--badge-atencao) 40%, transparent);
+  color: var(--badge-atencao);
 }
 
 @media (max-width: 900px) {
@@ -1587,7 +1590,7 @@
   min-width: 0;
   padding: var(--sp-3);
   border: 1px solid var(--line-hairline);
-  border-radius: var(--r-md);
+  border-radius: var(--r-card);
   background: var(--surface-2);
   text-align: left;
   transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
@@ -1703,7 +1706,7 @@
   padding: var(--sp-3);
   border: 1px solid var(--line-hairline);
   border-left: 3px solid var(--c);
-  border-radius: var(--r-sm);
+  border-radius: var(--r-card);
   background: var(--surface-2);
 }
 

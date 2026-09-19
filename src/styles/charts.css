@@ -397,7 +397,7 @@
   flex-wrap: wrap;
   background: var(--bg-selected);
   border: 1px solid color-mix(in oklab, var(--brand) 25%, transparent);
-  border-radius: var(--r-md);
+  border-radius: var(--r-card);
   padding: var(--sp-2) var(--sp-3);
   font-size: var(--fs-sm);
 }
@@ -483,7 +483,7 @@
   position: relative;
   aspect-ratio: 1 / 0.85;
   border: 1px solid var(--line-border);
-  border-radius: var(--r-md);
+  border-radius: var(--r-card);
   overflow: hidden;
   background: var(--bg-surface);
 }
@@ -627,7 +627,7 @@
    sobrava um vão morto embaixo do painel em telas largas. */
 .ranked-list-panel {
   border: 1px solid var(--line-border);
-  border-radius: var(--r-md);
+  border-radius: var(--r-card);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -751,7 +751,7 @@
 
 .priority-group {
   border: 1px solid var(--line-border);
-  border-radius: var(--r-md);
+  border-radius: var(--r-card);
   overflow: hidden;
 }
 

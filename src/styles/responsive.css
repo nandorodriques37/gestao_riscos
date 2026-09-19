@@ -264,7 +264,7 @@
   .modal-card {
     max-width: none;
     max-height: 94dvh;
-    border-radius: var(--r-lg) var(--r-lg) 0 0;
+    border-radius: var(--r-float) var(--r-float) 0 0;
     border-bottom: none;
   }
 
@@ -312,7 +312,7 @@
     max-width: none;
     max-height: 80dvh;
     overflow-y: auto;
-    border-radius: var(--r-lg) var(--r-lg) 0 0;
+    border-radius: var(--r-float) var(--r-float) 0 0;
     box-shadow: var(--elev-3);
     padding-bottom: max(var(--sp-4), env(safe-area-inset-bottom));
     /* Acima da barra de navegação, que também é fixa na base. */

@@ -39,7 +39,7 @@
   max-height: var(--kanban-col-h);
   background: var(--bg-sunken);
   border: 1px solid var(--line-hairline);
-  border-radius: var(--r-md);
+  border-radius: var(--r-card);
 }
 
 .kanban-column-header {
@@ -115,7 +115,7 @@
 .kanban-add-btn {
   width: 100%;
   height: var(--control-h);
-  border-radius: var(--r-sm);
+  border-radius: var(--r-control);
   border: 1px dashed var(--line-border);
   background: transparent;
   color: var(--ink-3);
@@ -145,7 +145,7 @@
   padding-left: calc(var(--sp-3) + 2px);
   background: var(--bg-surface);
   border: 1px solid var(--line-border);
-  border-radius: var(--r-md);
+  border-radius: var(--r-card);
   cursor: pointer;
   text-align: left;
   transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
@@ -318,7 +318,7 @@
   padding: var(--sp-2);
   background: var(--bg-surface);
   border: 1px solid var(--line-border);
-  border-radius: var(--r-md);
+  border-radius: var(--r-float);
   box-shadow: var(--elev-2);
   cursor: default;
 }

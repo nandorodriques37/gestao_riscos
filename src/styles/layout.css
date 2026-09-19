@@ -65,7 +65,7 @@
 .brand-mark {
   width: 26px;
   height: 26px;
-  border-radius: var(--r-sm);
+  border-radius: var(--r-control);
   background: var(--brand);
   color: var(--brand-ink);
   display: grid;
@@ -209,7 +209,7 @@
   height: max(var(--control-h), var(--tap-min));
   display: grid;
   place-items: center;
-  border-radius: var(--r-sm);
+  border-radius: var(--r-control);
   border: 1px solid var(--line-border);
   background: var(--bg-surface);
   color: var(--ink-3);
@@ -347,7 +347,7 @@
   position: relative;
   background: var(--bg-surface);
   border: 1px solid var(--line-border);
-  border-radius: var(--r-lg);
+  border-radius: var(--r-card);
   padding: var(--sp-3) var(--sp-4);
   overflow: hidden;
 }
@@ -375,21 +375,23 @@
 }
 
 .kpi-label {
-  font-size: var(--fs-2xs);
+  font-size: var(--fs-3xs);
   color: var(--ink-3);
-  font-weight: var(--fw-medium);
-  letter-spacing: 0.02em;
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.07em;
   text-transform: uppercase;
 }
 
-/* Número grande em figuras proporcionais — tabular só onde precisa alinhar
-   em coluna. */
+/* O número do KPI é cifra como qualquer outra e sai em mono (ver a regra de
+   cifra em base.css). O corpo escala com a viewport entre dois degraus da
+   escala; abaixo de 760px a folha responsiva fixa o degrau menor — e agora
+   vale, porque a camada final deixou de atropelá-la. */
 .kpi-value {
-  font-size: var(--fs-num);
-  font-weight: var(--fw-bold);
+  font-size: clamp(var(--fs-xl), 2vw, var(--fs-num-lg));
+  font-weight: var(--fw-medium);
   letter-spacing: var(--tracking-tighter);
-  line-height: 1.1;
-  margin-top: var(--sp-1);
+  line-height: 1;
+  margin-top: var(--sp-2);
   color: var(--ink-1);
 }
 
@@ -443,7 +445,7 @@
 
 .skeleton-kpi {
   height: 78px;
-  border-radius: var(--r-lg);
+  border-radius: var(--r-card);
   border: 1px solid var(--line-border);
   background: var(--bg-surface);
   position: relative;
@@ -453,7 +455,7 @@
 .skeleton-table {
   background: var(--bg-surface);
   border: 1px solid var(--line-border);
-  border-radius: var(--r-lg);
+  border-radius: var(--r-card);
   padding: var(--sp-2) 0;
 }
 
@@ -500,7 +502,7 @@
   padding: var(--sp-3) var(--sp-4);
   background: var(--danger-soft);
   border: 1px solid color-mix(in oklab, var(--danger) 28%, transparent);
-  border-radius: var(--r-md);
+  border-radius: var(--r-card);
   color: var(--danger);
   font-size: var(--fs-sm);
   font-weight: var(--fw-medium);
@@ -514,7 +516,7 @@
   background: var(--bg-surface);
   border: 1px solid color-mix(in oklab, var(--danger) 32%, transparent);
   color: var(--danger);
-  border-radius: var(--r-sm);
+  border-radius: var(--r-control);
   height: var(--control-h);
   padding: 0 var(--sp-3);
   font-size: var(--fs-xs);
@@ -543,8 +545,8 @@
   background: var(--ink-1);
   color: var(--bg-surface);
   padding: var(--sp-2) var(--sp-2) var(--sp-2) var(--sp-4);
-  border-radius: var(--r-md);
-  box-shadow: var(--elev-3);
+  border-radius: var(--r-float);
+  box-shadow: var(--elev-2);
   font-size: var(--fs-sm);
   z-index: 50;
 }
