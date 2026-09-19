@@ -87,10 +87,16 @@
 }
 
 /* O anel importa mais que o fundo: sobre --bg-sunken a diferença de superfície
-   sozinha é sutil demais para dizer "é aqui que vai cair". */
+   sozinha é sutil demais para dizer "é aqui que vai cair".
+
+   Ele NÃO lê --focus-ring, apesar de parecer o mesmo desenho: aquilo é foco de
+   teclado e virou sólido de propósito, e este corpo não tem padding em cima —
+   um anel opaco cairia em cima da borda do primeiro card durante o arraste, que
+   é exatamente quando o card precisa continuar legível. Aqui o traço tinge, não
+   cobre. */
 .kanban-column-body[data-over] {
   background: var(--bg-selected);
-  box-shadow: inset 0 0 0 2px var(--focus-ring);
+  box-shadow: inset 0 0 0 var(--focus-w) color-mix(in oklab, var(--focus) 42%, transparent);
 }
 
 .kanban-column-empty {

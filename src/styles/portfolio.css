@@ -132,26 +132,27 @@
    ponto da legenda — eram duas listas idênticas de 9 linhas cada, e a segunda
    já vinha atrasada em relação à primeira.
 
-   As séries de status novas (objetivo, iniciativa agrupada, trabalho) passaram
-   pelo validador do skill `dataviz` contra a superfície clara, em pares
-   ADJACENTES na ordem em que a barra os empilha. `--badge-amber` ×
-   `--badge-orange` medem ΔE 4.1 em visão normal e 0.1 em deuteranopia — é por
-   isso que a composição da iniciativa agrupa "em execução" e "pausada" em
-   "Ativas" em vez de empilhá-las lado a lado. */
+   Cada série lê o token do PAPEL que cumpre — neutro para categoria, ok para
+   o que fechou, atenção para o que está em curso, coral para perda — em vez de
+   um pastel próprio. Era assim que se chegava a sete etiquetas na mesma faixa
+   de saturação, indistinguíveis entre si: `--badge-amber` × `--badge-orange`
+   mediam ΔE 4.1 em visão normal e 0.1 em deuteranopia. É também por isso que a
+   composição da iniciativa agrupa "em execução" e "pausada" em "Ativas" em vez
+   de empilhá-las lado a lado. */
 .stack-seg[data-serie='evitar_perda'],
-.serie-dot[data-serie='evitar_perda'] { --c: var(--badge-slate); }
+.serie-dot[data-serie='evitar_perda'] { --c: var(--brand-red); }
 .stack-seg[data-serie='criar_ganho'],
-.serie-dot[data-serie='criar_ganho'] { --c: var(--badge-green); }
+.serie-dot[data-serie='criar_ganho'] { --c: var(--badge-ok); }
 .stack-seg[data-serie='criar_decisao'],
-.serie-dot[data-serie='criar_decisao'] { --c: var(--badge-purple); }
+.serie-dot[data-serie='criar_decisao'] { --c: var(--brand); }
 .stack-seg[data-serie='risco'],
 .serie-dot[data-serie='risco'] { --c: var(--risco-accent); }
 .stack-seg[data-serie='oportunidade'],
-.serie-dot[data-serie='oportunidade'] { --c: var(--badge-blue); }
+.serie-dot[data-serie='oportunidade'] { --c: var(--brand); }
 .stack-seg[data-serie='mitigado'],
 .serie-dot[data-serie='mitigado'] { --c: var(--tier-baixo); }
 .stack-seg[data-serie='aceito'],
-.serie-dot[data-serie='aceito'] { --c: var(--badge-slate); }
+.serie-dot[data-serie='aceito'] { --c: var(--badge-neutro); }
 .stack-seg[data-serie='em_tratamento'],
 .serie-dot[data-serie='em_tratamento'] { --c: var(--tier-medio); }
 .stack-seg[data-serie='sem_tratamento'],
@@ -159,27 +160,27 @@
 
 /* Objetivo: ativo → atingido → abandonado. */
 .stack-seg[data-serie='ativo'],
-.serie-dot[data-serie='ativo'] { --c: var(--badge-blue); }
+.serie-dot[data-serie='ativo'] { --c: var(--camada-objetivo); }
 .stack-seg[data-serie='atingido'],
-.serie-dot[data-serie='atingido'] { --c: var(--badge-green); }
+.serie-dot[data-serie='atingido'] { --c: var(--badge-ok); }
 .stack-seg[data-serie='abandonado'],
 .serie-dot[data-serie='abandonado'] { --c: var(--tier-null); }
 
 /* Iniciativa, agrupada: backlog → ativas → concluídas → canceladas. */
 .stack-seg[data-serie='backlog'],
-.serie-dot[data-serie='backlog'] { --c: var(--badge-slate); }
+.serie-dot[data-serie='backlog'] { --c: var(--badge-neutro); }
 .stack-seg[data-serie='ativa'],
-.serie-dot[data-serie='ativa'] { --c: var(--badge-blue); }
+.serie-dot[data-serie='ativa'] { --c: var(--camada-iniciativa); }
 .stack-seg[data-serie='concluida'],
-.serie-dot[data-serie='concluida'] { --c: var(--badge-green); }
+.serie-dot[data-serie='concluida'] { --c: var(--badge-ok); }
 .stack-seg[data-serie='cancelada'],
 .serie-dot[data-serie='cancelada'] { --c: var(--tier-null); }
 
 /* Trabalho: a fazer → em andamento → concluída → cancelada. */
 .stack-seg[data-serie='a_fazer'],
-.serie-dot[data-serie='a_fazer'] { --c: var(--badge-slate); }
+.serie-dot[data-serie='a_fazer'] { --c: var(--badge-neutro); }
 .stack-seg[data-serie='em_andamento'],
-.serie-dot[data-serie='em_andamento'] { --c: var(--badge-amber); }
+.serie-dot[data-serie='em_andamento'] { --c: var(--badge-atencao); }
 
 /* Risco por criticidade. Os hex são regra de negócio e não mudam; a escada
    semáforo não passa nos limites de daltonismo por matiz, e é por isso que a
@@ -892,7 +893,7 @@
   border-radius: var(--r-full);
   display: grid;
   place-items: center;
-  font-size: 10px;
+  font-size: var(--fs-3xs);
   font-weight: var(--fw-bold);
   font-variant-numeric: tabular-nums;
   flex: none;
@@ -1343,7 +1344,7 @@
   .app-shell,
   .app-conteudo {
     display: block;
-    background: #FFFFFF;
+    background: var(--print-paper);
   }
 
   .tab-page-lg,
@@ -1366,7 +1367,7 @@
   }
 
   .card {
-    border: 1px solid #999999;
+    border: 1px solid var(--print-line);
     padding: 10px 12px;
     /* Um tile partido no meio de duas páginas não se lê. */
     break-inside: avoid;
@@ -1377,7 +1378,7 @@
   }
 
   .page-title {
-    font-size: 20px;
+    font-size: var(--fs-xl);
   }
 
   /* Fundos de série somem em impressão P&B; forçar a cor mantém a legenda
@@ -1612,12 +1613,11 @@
   flex-wrap: wrap;
 }
 
-/* O maior número do app. Força o teto do eixo óptico: a 40px o corte Display
-   do Inter fecha o espacejamento e sobe o contraste do traço, que é o que faz
-   um número grande parecer desenhado em vez de ampliado. */
+/* O maior número do app. A Plex Variable auto-hospedada traz o eixo de PESO,
+   não o óptico — pedir 'opsz' aqui era descrever uma fonte que não está
+   carregada. Quem fecha o espacejamento é o tracking de display. */
 .cadeia-valor {
   font-size: var(--fs-display);
-  font-variation-settings: 'opsz' 32;
   font-weight: var(--fw-bold);
   letter-spacing: var(--tracking-display);
   line-height: 1;
@@ -1707,10 +1707,10 @@
   background: var(--surface-2);
 }
 
-.lacuna[data-camada='objetivo'] { --c: var(--badge-blue); }
-.lacuna[data-camada='iniciativa'] { --c: var(--badge-purple); }
+.lacuna[data-camada='objetivo'] { --c: var(--camada-objetivo); }
+.lacuna[data-camada='iniciativa'] { --c: var(--camada-iniciativa); }
 .lacuna[data-camada='risco'] { --c: var(--risco-accent); }
-.lacuna[data-camada='trabalho'] { --c: var(--badge-amber); }
+.lacuna[data-camada='trabalho'] { --c: var(--camada-trabalho); }
 
 /* O número é o que se lê primeiro: "quantos estão soltos". Tabular porque
    várias linhas empilhadas formam uma coluna. */

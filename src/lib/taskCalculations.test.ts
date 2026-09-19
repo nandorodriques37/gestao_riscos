@@ -89,9 +89,9 @@ describe('normTaskStatus', () => {
 
 describe('taskStatusKind', () => {
   it('mapeia o status normalizado', () => {
-    expect(taskStatusKind('Em andamento')).toBe('amber');
-    expect(taskStatusKind('Concluída')).toBe('green');
-    expect(taskStatusKind('A fazer')).toBe('slate');
+    expect(taskStatusKind('Em andamento')).toBe('atencao');
+    expect(taskStatusKind('Concluída')).toBe('ok');
+    expect(taskStatusKind('A fazer')).toBe('neutro');
   });
 });
 

@@ -43,9 +43,9 @@ export function normTaskStatus(status: string | null | undefined): string {
 }
 
 export function taskStatusKind(norm: string): BadgeKind {
-  if (norm === 'Em andamento') return 'amber';
-  if (norm === 'Concluída') return 'green';
-  return 'slate';
+  if (norm === 'Em andamento') return 'atencao';
+  if (norm === 'Concluída') return 'ok';
+  return 'neutro';
 }
 
 /**

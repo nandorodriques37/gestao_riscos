@@ -158,7 +158,7 @@
 }
 
 .donut-center-label {
-  font-size: 10px;
+  font-size: var(--fs-3xs);
   color: var(--ink-4);
   font-weight: var(--fw-medium);
   letter-spacing: 0.06em;
@@ -552,7 +552,7 @@
 }
 
 .quadrant-pill-sub {
-  font-size: 10px;
+  font-size: var(--fs-3xs);
   font-weight: var(--fw-regular);
   letter-spacing: 0;
   color: var(--ink-4);
@@ -617,7 +617,7 @@
 }
 
 .matrix-axis-hint-edge {
-  font-size: 10px;
+  font-size: var(--fs-3xs);
   color: var(--ink-4);
 }
 

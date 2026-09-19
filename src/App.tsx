@@ -36,7 +36,9 @@ const POLL_INTERVAL = 15000;
 const UNDO_TIMEOUT = 8000;
 const MODO_RISCO_KEY = 'riskMatrix.modoRisco.v1';
 
-const THEME_CYCLE: ThemePref[] = ['system', 'light', 'dark'];
+// Claro é o padrão, então o primeiro toque tem que levar a algum lugar:
+// a ordem sai de onde o usuário está, não de um alfabeto.
+const THEME_CYCLE: ThemePref[] = ['light', 'dark', 'system'];
 const THEME_LABEL: Record<ThemePref, string> = {
   system: 'Tema: seguindo o sistema',
   light: 'Tema: claro',

@@ -202,11 +202,11 @@
 }
 
 /* Ícone desenhado em CSS, não por glifo: nenhum dos símbolos de sol/lua/meia-lua
-   existe no Inter, e o fallback rendia um caractere estreito e torto. Círculo
+   existe na Plex, e o fallback rendia um caractere estreito e torto. Círculo
    vazio = claro, metade = seguindo o sistema, cheio = escuro. */
 .theme-toggle {
-  width: max(32px, var(--tap-min));
-  height: max(32px, var(--tap-min));
+  width: max(var(--control-h), var(--tap-min));
+  height: max(var(--control-h), var(--tap-min));
   display: grid;
   place-items: center;
   border-radius: var(--r-sm);

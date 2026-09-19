@@ -176,7 +176,7 @@ select.modal-input {
 .modal-input:focus,
 .modal-textarea:focus {
   border-color: var(--focus);
-  box-shadow: 0 0 0 3px var(--focus-ring);
+  box-shadow: 0 0 0 var(--focus-w) var(--focus-ring);
 }
 
 /* ---------- Plano de ação ----------
@@ -557,8 +557,8 @@ select.modal-input {
 }
 
 .lightbox-btn {
-  width: max(32px, var(--tap-min));
-  height: max(32px, var(--tap-min));
+  width: max(var(--control-h), var(--tap-min));
+  height: max(var(--control-h), var(--tap-min));
   font-size: var(--fs-lg);
 }
 

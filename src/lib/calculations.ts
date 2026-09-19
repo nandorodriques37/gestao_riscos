@@ -100,20 +100,32 @@ export function barTier(ratio: number): TierKind {
   return 'baixo';
 }
 
-export type BadgeKind = 'slate' | 'blue' | 'green' | 'amber' | 'red' | 'purple' | 'orange';
+/**
+ * Papel de uma etiqueta — não a cor dela.
+ *
+ * Eram sete nomes de cor ('slate', 'blue', 'purple'…), e nome de cor num tipo
+ * é o que produz sete pastéis na mesma faixa de saturação sem hierarquia
+ * nenhuma: quem escreve não precisa justificar por que aquele estado é roxo.
+ * São quatro papéis, e só três recebem croma — `neutro` é texto sobre
+ * hairline. Quem resolve a cor é o CSS, por `data-badge`.
+ */
+export type BadgeKind = 'neutro' | 'atencao' | 'ok' | 'risco';
 
+/**
+ * Resposta ao risco. "Mitigar" é a resposta padrão e aparece em quase toda
+ * linha — pintá-la repetia o mesmo pill dez vezes seguidas sem acrescentar
+ * informação nenhuma. Croma fica para a exceção: evitar é ameaça, e as outras
+ * duas apenas nomeiam uma escolha.
+ */
 export function respostaKind(v: string): BadgeKind {
-  if (v === 'Mitigar') return 'blue';
-  if (v === 'Aceitar') return 'slate';
-  if (v === 'Transferir') return 'purple';
-  if (v === 'Evitar') return 'red';
-  return 'slate';
+  if (v === 'Evitar') return 'risco';
+  return 'neutro';
 }
 
 export function statusKind(norm: string): BadgeKind {
-  if (norm === 'Em andamento') return 'amber';
-  if (norm === 'Concluído') return 'green';
-  return 'slate';
+  if (norm === 'Em andamento') return 'atencao';
+  if (norm === 'Concluído') return 'ok';
+  return 'neutro';
 }
 
 /** Campos considerados no cálculo de completude (KPI da aba Registro). */

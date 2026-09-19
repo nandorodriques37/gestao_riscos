@@ -102,32 +102,45 @@ export const AJUDA_SITUACAO: Record<SituacaoRisco, string> = {
 /* Cores categóricas                                                   */
 /* ------------------------------------------------------------------ */
 
-/** Status de iniciativa: cor categórica, e sempre acompanhada do rótulo. */
+/**
+ * Status de iniciativa. Só o que informa ESTADO recebe croma: em execução e
+ * pausada são as duas situações em que alguém pode precisar agir, concluída é
+ * o fim feliz, e o resto apenas nomeia um lugar no ciclo de vida.
+ *
+ * Pausada e em execução usavam dois âmbares distintos que mediam ΔE 4.1 em
+ * visão normal e 0.1 em deuteranopia — ou seja, eram a mesma cor para parte
+ * dos leitores. Compartilhar o papel é mais honesto que fingir a distinção.
+ */
 export const BADGE_STATUS_INICIATIVA: Record<StatusIniciativa, BadgeKind> = {
-  '': 'slate',
-  backlog: 'slate',
-  aprovada: 'blue',
-  em_execucao: 'amber',
-  pausada: 'orange',
-  concluida: 'green',
-  cancelada: 'slate',
+  '': 'neutro',
+  backlog: 'neutro',
+  aprovada: 'neutro',
+  em_execucao: 'atencao',
+  pausada: 'atencao',
+  concluida: 'ok',
+  cancelada: 'neutro',
 };
 
 export const BADGE_STATUS_ACAO: Record<StatusAcaoRisco, BadgeKind> = {
-  '': 'slate',
-  aberta: 'slate',
-  em_andamento: 'amber',
-  concluida: 'green',
-  cancelada: 'slate',
+  '': 'neutro',
+  aberta: 'neutro',
+  em_andamento: 'atencao',
+  concluida: 'ok',
+  cancelada: 'neutro',
 };
 
+/**
+ * Situação do risco. Hipótese e validado são degraus de maturidade do
+ * cadastro, não estados de alarme — descrevem o que se sabe, não o que ameaça.
+ * Só "mitigado" informa desfecho.
+ */
 export const BADGE_SITUACAO: Record<SituacaoRisco, BadgeKind> = {
-  '': 'slate',
-  hipotese: 'purple',
-  validado: 'blue',
-  mitigado: 'green',
-  obsoleto: 'slate',
-  descartado: 'slate',
+  '': 'neutro',
+  hipotese: 'neutro',
+  validado: 'neutro',
+  mitigado: 'ok',
+  obsoleto: 'neutro',
+  descartado: 'neutro',
 };
 
 /* ------------------------------------------------------------------ */

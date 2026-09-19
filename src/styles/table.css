@@ -40,7 +40,7 @@
   text-align: left;
   white-space: nowrap;
   padding: 0 var(--sp-3);
-  height: 34px;
+  height: var(--control-h);
   border-bottom: 1px solid var(--line-border);
   top: 0;
   z-index: 4;
@@ -49,7 +49,7 @@
 /* Faixa de grupo: era uma barra navy de 24px, virou uma linha discreta. */
 .risk-table .group-row th {
   height: 26px;
-  font-size: 10px;
+  font-size: var(--fs-3xs);
   font-weight: var(--fw-medium);
   color: var(--ink-4);
   background: var(--bg-sunken);
@@ -268,7 +268,7 @@
   transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
 }
 
-/* Check desenhado em CSS: o Inter não tem ✓ e o fallback sai torto. */
+/* Check desenhado em CSS: a Plex não tem ✓ e o fallback sai torto. */
 .done-check {
   width: 9px;
   height: 5px;
@@ -425,7 +425,7 @@
   letter-spacing: 0.02em;
   text-transform: uppercase;
   text-align: left;
-  height: 32px;
+  height: var(--control-h);
   padding: 0 var(--sp-3);
   border-bottom: 1px solid var(--line-border);
   white-space: nowrap;
@@ -542,7 +542,7 @@ tr[data-tier='null'] { --c: var(--tier-null); }
   display: grid;
   place-items: center;
   flex: none;
-  font-size: 10px;
+  font-size: var(--fs-3xs);
   font-weight: var(--fw-semibold);
   color: var(--ink-2);
   background: var(--bg-sunken);

@@ -229,12 +229,13 @@ export function PainelTab({
   /**
    * Composição da iniciativa em QUATRO grupos, não nos seis status do enum.
    *
-   * Não é simplificação estética: "em execução" e "pausada" usam `--badge-amber`
-   * e `--badge-orange`, que medem ΔE 4.1 mesmo em visão normal (e 0.1 em
-   * deuteranopia). Como badge cada um carrega o próprio rótulo e a diferença
-   * não importa; como segmentos VIZINHOS de uma barra, seriam a mesma cor. A
-   * leitura que o Painel quer é a forma do progresso — o detalhe por status
-   * está na aba Iniciativas, onde cada um vem com o nome escrito.
+   * Não é simplificação estética: "em execução" e "pausada" dividem hoje o
+   * mesmo papel de etiqueta (`atencao`) porque os dois âmbares que as separavam
+   * mediam ΔE 4.1 em visão normal e 0.1 em deuteranopia — eram a mesma cor para
+   * parte dos leitores. Como badge cada uma carrega o próprio rótulo e a
+   * diferença não importa; como segmentos VIZINHOS de uma barra, não haveria
+   * diferença nenhuma. A leitura que o Painel quer é a forma do progresso — o
+   * detalhe por status está na aba Iniciativas, onde cada um vem escrito.
    */
   const fatiasIniciativa = useMemo<Fatia[]>(() => {
     const n = (...st: string[]) => saudeIni.porStatus

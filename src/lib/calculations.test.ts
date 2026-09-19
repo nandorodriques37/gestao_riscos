@@ -178,18 +178,21 @@ describe('tierColor (razão sobre o maior do grupo)', () => {
 });
 
 describe('badges de resposta e status', () => {
-  it('respostaKind mapeia cada resposta', () => {
-    expect(respostaKind('Mitigar')).toBe('blue');
-    expect(respostaKind('Aceitar')).toBe('slate');
-    expect(respostaKind('Transferir')).toBe('purple');
-    expect(respostaKind('Evitar')).toBe('red');
-    expect(respostaKind('')).toBe('slate');
+  it('só pinta a resposta que é exceção', () => {
+    // "Mitigar" é a resposta da maioria absoluta das linhas: pintá-la repete o
+    // mesmo pill tela abaixo sem informar nada. Evitar é o único que anuncia
+    // ameaça; o resto apenas nomeia a escolha.
+    expect(respostaKind('Evitar')).toBe('risco');
+    expect(respostaKind('Mitigar')).toBe('neutro');
+    expect(respostaKind('Aceitar')).toBe('neutro');
+    expect(respostaKind('Transferir')).toBe('neutro');
+    expect(respostaKind('')).toBe('neutro');
   });
 
   it('statusKind mapeia o status normalizado', () => {
-    expect(statusKind('Em andamento')).toBe('amber');
-    expect(statusKind('Concluído')).toBe('green');
-    expect(statusKind('Não iniciado')).toBe('slate');
+    expect(statusKind('Em andamento')).toBe('atencao');
+    expect(statusKind('Concluído')).toBe('ok');
+    expect(statusKind('Não iniciado')).toBe('neutro');
   });
 });
 

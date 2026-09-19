@@ -30,10 +30,10 @@ export const ROTULO_TRATAMENTO: Record<EstadoTratamento, string> = {
  * que "em tratamento" —, e sempre acompanhada do rótulo.
  */
 export const BADGE_TRATAMENTO: Record<EstadoTratamento, BadgeKind> = {
-  sem_tratamento: 'red',
-  aceito: 'slate',
-  em_tratamento: 'amber',
-  tratamento_concluido: 'green',
+  sem_tratamento: 'risco',
+  aceito: 'neutro',
+  em_tratamento: 'atencao',
+  tratamento_concluido: 'ok',
 };
 
 /** Explica de onde o estado saiu — é derivado, e derivação não explicada vira desconfiança. */

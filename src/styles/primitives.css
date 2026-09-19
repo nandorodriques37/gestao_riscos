@@ -164,7 +164,7 @@
 
 .search-input:focus {
   border-color: var(--focus);
-  box-shadow: 0 0 0 3px var(--focus-ring);
+  box-shadow: 0 0 0 var(--focus-w) var(--focus-ring);
 }
 
 /* Mesmo motivo do `.actions-row`: o grupo de status soma 394px a 390 de tela e
@@ -296,7 +296,7 @@
 }
 
 .filtros-toggle-seta {
-  font-size: 9px;
+  font-size: var(--fs-3xs);
   color: var(--ink-4);
 }
 
@@ -319,11 +319,18 @@
   }
 }
 
-/* ---------- Badge categórico ----------
-   Fundo derivado da própria tinta, então claro e escuro saem de uma regra só. */
+/* ---------- Etiqueta ----------
+   Fundo derivado da própria tinta, então claro e escuro saem de uma regra só.
+
+   São QUATRO papéis, não sete cores. O padrão — `neutro` — não recebe croma
+   nenhum: é texto sobre hairline. Etiqueta que só nomeia uma categoria (a
+   origem, o vetor, a resposta padrão, o status inicial) não tem por que
+   disputar atenção com a que diz que algo está em risco, e enquanto todas
+   tinham preenchimento colorido nenhuma tinha hierarquia. Croma aqui é
+   privilégio de quem informa estado: em curso, concluído, ameaçado. */
 
 .badge {
-  --c: var(--badge-slate);
+  --c: var(--badge-neutro);
   display: inline-flex;
   align-items: center;
   height: 20px;
@@ -337,13 +344,18 @@
   border: 1px solid color-mix(in oklab, var(--c) 22%, transparent);
 }
 
-.badge[data-badge='slate'] { --c: var(--badge-slate); }
-.badge[data-badge='blue'] { --c: var(--badge-blue); }
-.badge[data-badge='green'] { --c: var(--badge-green); }
-.badge[data-badge='amber'] { --c: var(--badge-amber); }
-.badge[data-badge='red'] { --c: var(--badge-red); }
-.badge[data-badge='purple'] { --c: var(--badge-purple); }
-.badge[data-badge='orange'] { --c: var(--badge-orange); }
+.badge[data-badge='atencao'] { --c: var(--badge-atencao); }
+.badge[data-badge='ok'] { --c: var(--badge-ok); }
+.badge[data-badge='risco'] { --c: var(--badge-risco); }
+
+/* O neutro perde o preenchimento — é o que o separa dos outros três à
+   distância, antes de qualquer leitura. */
+.badge[data-badge='neutro'],
+.badge:not([data-badge]) {
+  color: var(--ink-2);
+  background: transparent;
+  border-color: var(--line-border);
+}
 
 /* ---------- Chip de criticidade / priorização ----------
    Identidade nunca por cor sozinha: o ponto acompanha sempre o valor. */

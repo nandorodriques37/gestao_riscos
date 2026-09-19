@@ -124,7 +124,7 @@ export function AcoesEditor({
                     value={linha.prazo}
                     onChange={e => patchLinha(linha.id, { prazo: e.target.value })}
                   />
-                  {atrasada && <span className="badge" data-badge="red">Atrasado</span>}
+                  {atrasada && <span className="badge" data-badge="risco">Atrasado</span>}
                 </div>
               </div>
               <div>
