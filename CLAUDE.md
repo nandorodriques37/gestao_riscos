@@ -8,11 +8,15 @@ App web de página única para **direção e execução**, organizado pela cadei
 grupos: Direção (Painel, Objetivos, Iniciativas, Priorização), Risco (Riscos) e
 Execução (Tarefas, Pessoas), mais a Triagem temporária da migração.
 
-O **Painel** abre respondendo quatro perguntas, uma por camada — quantos existem
-e quantos terminaram — e logo abaixo mostra **onde a cadeia quebra**: todo elo
-solto (objetivo sem iniciativa, iniciativa sem marco, risco sem tratamento,
-risco que não sustenta objetivo, trabalho sem dono ou atrasado) numa lista só,
-com o botão que leva a quem resolve.
+O **Painel** abre com uma faixa de cinco números sob o título (valor em jogo,
+marcos no prazo, quem está mais carregado, iniciativas paradas, exposição ainda
+aberta), depois mostra **onde a cadeia quebra** — todo elo solto (objetivo sem
+iniciativa, iniciativa sem marco, risco sem tratamento, risco que não sustenta
+objetivo, trabalho sem dono ou atrasado) numa lista só, com o botão que leva a
+quem resolve — e só então **a cadeia, de ponta a ponta**, como um fluxo
+(`SankeyCadeia`): quatro colunas, faixas entre vizinhas e, em coral, o toco de
+cada ponta solta, com o mesmo número da lista de atenção. A atenção vem antes
+dos contadores de propósito: contador é contexto, elo partido é decisão.
 
 ## Fonte da verdade do design
 - `design_handoff_matriz_risco/README.md` — especificação completa (modelo de dados, fórmulas, telas, tokens, interações, estado). **Leia antes de implementar qualquer coisa.**
@@ -46,14 +50,18 @@ Os `.dc.html` são **referência de design, não código de produção**. Recrie
   deixa (mitigação autônoma não sustenta objetivo nenhum) é mostrado como
   lacuna, em `riscosSemObjetivo`, e não tapado com um campo.
 - **Saúde da cadeia:** `saudeObjetivos`, `saudeIniciativas`, `saudeRiscos`,
-  `saudeTrabalho` e `cadeiaQuebrada` (`src/lib/portfolioMetrics.ts`), funções
-  puras como o resto do arquivo. Elas NÃO conhecem rótulo, cor nem aba:
+  `saudeTrabalho`, `cadeiaQuebrada` e `fluxoDaCadeia` (`src/lib/portfolioMetrics.ts`),
+  funções puras como o resto do arquivo. Elas NÃO conhecem rótulo, cor nem aba:
   `cadeiaQuebrada` devolve `{ chave, n, ids }` e quem traduz para texto e
-  destino é `LACUNAS` (`src/lib/portfolioUi.ts`). Régua de status e de faixa vem
+  destino é `LACUNAS` (`src/lib/portfolioUi.ts`). `fluxoDaCadeia` é o que o
+  Sankey desenha e **reusa** `cadeiaQuebrada` para as pontas soltas — um elo
+  partido no desenho é a mesma lacuna da lista, com o mesmo número; o
+  componente `SankeyCadeia` não calcula nada. Régua de status e de faixa vem
   de `normTaskStatus`/`scoreTier` — nunca reimplementada.
 - **Uma régua por pergunta:** "quantos riscos eu mapeei" conta linhas COM
-  descrição, no Painel, no Registro e na Análise. Linha em branco é como se
-  adiciona uma, não é risco. O nome das faixas sai de `ROTULO_TIER`
+  descrição, no Painel, no Registro, na Análise e nas lacunas de risco de
+  `cadeiaQuebrada`. Linha em branco é como se adiciona uma, não é risco — e
+  a lista de atenção não cobra tratamento dela. O nome das faixas sai de `ROTULO_TIER`
   (`calculations.ts`) — havia quatro cópias de "Crítico/Alto/Médio/Baixo".
 - **`useTasks` mora no `App`**, como `usePortfolio`: o Painel precisa contar
   tarefa e a aba Tarefas não está montada quando ele está. O quadro recebe o
@@ -81,6 +89,82 @@ O visual é governado por **tokens**, não por hex soltos. Fonte da verdade:
 `src/styles/tokens.css`. Os demais arquivos de `src/styles/` são importados por `App.css`; `fluidez.css` complementa os formulários e
 vínculos após as regras existentes.
 
+### Identidade "Registro" (redesign de 09/2026)
+A tese: o app é um **registro de governança** — guarda decisões, cobra donos e
+mede promessa contra entrega — e deve parecer um documento técnico vivo, não um
+painel de telemetria. Consequências, todas em `tokens.css`:
+
+- **Papel, não tela preta.** O tema **claro é o padrão**, e é decisão medida:
+  a cor oficial da marca, `#0000BE`, rende 12,0:1 sobre o papel quente
+  `#FBFAF8` e 1,6:1 sobre um canvas navy. O padrão é declarado no CSS
+  (`:root { color-scheme: light }`), não no JS, para o primeiro frame já pintar
+  claro. Os **três** estados do tema são marcados no `<html>`
+  (`data-theme="light|dark|system"`), 'system' inclusive — regra presa a
+  `[data-theme='dark']` fica muda para quem segue um sistema escuro, então
+  refinamento de tema vira token `light-dark()`, nunca seletor de atributo.
+  Neutros são **quentes** (pedra), no claro e no escuro; o escuro é grafite
+  neutro, nunca navy.
+- **Cor é semáforo, nunca decoração.** Azul da marca (`--brand`) é estrutura:
+  navegação, link, foco, estado ativo, marcador do item ativo e barra do título.
+  **Coral (`--brand-red`) só onde significa ameaça, atraso ou perda** — o nó de
+  risco do glifo, o elo "Riscos", `.rastro-risco`, a série "evitar perda", o
+  toco de elo partido no Sankey. Nunca como destaque. Texto corrido de ameaça
+  em fundo claro usa `--coral-texto` (`#D3102C`, 5,2:1); `#FF2342` reprova AA
+  abaixo de 18px e fica para preenchimento, ícone e cifra grande. Verde só onde
+  algo foi concluído ou está dentro do limite.
+- **Etiqueta tem quatro papéis, não sete cores:** `BadgeKind = 'neutro' |
+  'atencao' | 'ok' | 'risco'`. Só três recebem croma; `neutro` é texto sobre
+  hairline. Categoria (origem, vetor, resposta padrão, status inicial, situação
+  do risco) é neutra; croma é para estado. Os três com cor reaproveitam os
+  degraus de criticidade de propósito (atenção = médio, ok = baixo, risco =
+  crítico): um segundo verde a poucos ΔE do primeiro seria o problema que o
+  redesign veio desfazer. "Mitigar" nem vira etiqueta — repetia o mesmo pill
+  tela abaixo; só a exceção (evitar, aceitar, transferir) é etiqueta
+  (`RegistroTab/Resposta.tsx`). As quatro camadas da cadeia têm família
+  própria, `--camada-objetivo/-iniciativa/-risco/-trabalho`, usada pela lista
+  de lacunas e pelo Sankey.
+- **Raio diz o papel:** `--r-control` (4px) em botão, campo e chip;
+  `--r-card` (8px) em cartão e envelope; `--r-row` (0) em linha de tabela;
+  `--r-float` (12px) no que flutua — modal, gaveta, popover, folha, snackbar.
+  Quando tudo tinha o mesmo arredondamento médio, tudo virava cartão.
+- **Toda cifra sai em Plex Mono** por uma regra só em `base.css` (score, GUT,
+  prazo, percentual, valor, contagem, o número grande do KPI e o do centro do
+  donut). A lista é de CLASSE DE CIFRA, não de tudo que tem dígito:
+  `.lista-nota` às vezes é prosa, `.acao-prazo` é o contêiner de um campo de
+  data, `.marco-num` são glifos. Isso substituiu a doutrina de "número grande
+  em figuras proporcionais": mono já é tabular por construção.
+- **Anel de foco sólido**, 2px com vão de 2px (`--focus-w`, `--focus-offset`),
+  em todo interativo. O anterior era alpha de 24–32%, invisível sobre papel.
+- **Texto ≤13px nunca abaixo de `--ink-3`** (5,5:1 no claro, 6,8–7,6:1 no
+  escuro). `--ink-4` é o degrau reservado a ≥14px e ao que é decorativo.
+- **Vocabulário de vazio, duas formas só** (`.nao-preenchido` em
+  `primitives.css`): travessão para o campo que não se aplica; "Não preenchido"
+  — itálico, sempre clicável, leva ao campo — para o que se aplica e falta
+  preencher. Se preencher muda uma decisão, é link; se não muda, é travessão.
+  Nunca `R$ 0` nem `0%` onde a causa é campo em branco: o tile mostra estado
+  vazio com o botão de quem preenche (`<Kpi vazio>`), e o objetivo sem meta ou
+  sem medição mostra trilha tracejada, não barra em 0%.
+- **Estado vazio** é "o que é + por que está vazio + o que fazer", com o glifo
+  da rede de decisão (`EmptyState` não aceita ícone — a prop existia e ninguém
+  renderizava). Famílias de verbo: **Abrir …** navega e recorta; **Declarar …**
+  é quando o sistema já provou o fato e falta a pessoa assumi-lo.
+- **Confirmação destrutiva nunca é `window.confirm`.** `useConfirmacao()`
+  (`common/Confirmacao.tsx`, sobre o `ModalShell` compacto) diz a consequência
+  em números ("Os 5 marcos vão junto") e nomeia os dois botões — o verbo, e
+  "Manter". Vale para excluir risco, iniciativa, objetivo, pessoa, tarefa,
+  mitigação e medição, e para juntar fichas e declarar atingido.
+- **Paleta de comando** (`common/PaletaComando.tsx`, Ctrl/⌘+K): o listener mora
+  no `App`, indexa os destinos de `NavRail/secoes.tsx` e os registros das
+  camadas, e **não abre enquanto há outro `[role="dialog"]`** — o foco preso do
+  modal brigaria com ela. `/` foca a busca da aba Iniciativas.
+- **`redesign.css` é a última folha e vai sumindo por etapas.** Ela vence
+  qualquer camada anterior pela ordem, e 33 classes dela também existem em
+  `portfolio.css` ou `responsive.css`; mover um bloco para a folha "dona" de
+  uma vez inverteria quem ganha, às vezes só numa largura de tela. Cada mudança
+  que toca um componente leva o bloco dele para a folha canônica e funde as
+  propriedades na regra que já existe (foi assim com `.card`, `.kpi-*`, a
+  faixa de KPI e a cifra). **Nunca nasce uma segunda camada final sobre ela.**
+
 - **Nenhum hex literal fora de `tokens.css`.** Nenhum espaçamento fora da escala
   `--sp-*`; nenhum tamanho de fonte fora de `--fs-*`. Altura de controle vem de
   `--control-h`, alvo de toque de `--tap-min`, corpo de campo de `--fs-field` —
@@ -95,25 +179,34 @@ vínculos após as regras existentes.
   (botão no header, persistido em `riskMatrix.theme.v1`).
 - **Elevação significa "flutua acima"**: cartão em repouso é hairline puro, sem
   sombra. `--elev-1` sticky/hover · `--elev-2` popover · `--elev-3` modal.
-- Marca navy `--brand`; header claro com abas sublinhadas; conteúdo limitado a
-  `--container` (1600px).
+- Marca no azul oficial `--brand` (`#0000BE` no claro; no escuro a rampa desce
+  para `#7280FF` porque o núcleo não sustenta fundo escuro); header claro com
+  abas sublinhadas; conteúdo limitado a `--container` (1600px). O glifo da marca
+  é a rede de decisão própria do produto, com o nó de risco em coral — não o
+  logo da Pague Menos, e o wordmark nunca é recriado em fonte.
 - Coluna "Riscos": acento no rótulo do header e faixa vertical de 2px — não mais
   fundo rosa em toda célula.
-- Tipografia: **Inter Variable com eixo óptico**, auto-hospedada. O import é
-  `@fontsource-variable/inter/opsz.css`, NÃO o `index.css` do pacote — mesma
-  família e mesmo peso variável, mais o eixo `opsz`. Com
-  `font-optical-sizing: auto` (em `base.css`), o título a 24px recebe o corte
-  Display e a tabela a 11px o corte Text, sem uma regra por componente; só o
-  número da cadeia força o teto (`font-variation-settings: 'opsz' 32`).
+- Tipografia: **IBM Plex Sans Variable** (eixo de peso, `@fontsource-variable/ibm-plex-sans/wght.css`)
+  para interface e prosa, **IBM Plex Mono** para cifra, auto-hospedadas. Sem
+  serif e sem eixo óptico — pedir `opsz` numa fonte carregada só com `wght` era
+  descrever uma fonte que não está aqui. A família fica no `<html>`, não só no
+  `<body>`: sem isso o elemento-raiz caía em serif de sistema. As `font-feature-settings`
+  ficam numa declaração só no `body` (a propriedade não acumula; um `:root`
+  pedindo `ss01` e um `body` pedindo `cv05` deixavam só o `cv05` valendo).
   `font-synthesis: none`, porque peso sintético suja o traço ao lado do real.
-  `tabular-nums` só em coluna de tabela e eixo; número grande (KPI, centro do
-  donut) usa figuras proporcionais.
+  Nenhum tamanho de fonte fora de `--fs-*`; o degrau `--fs-3xs` (10px) existe
+  só para micro-rótulo em caixa alta com tracking aberto, nunca para prosa.
 - **Um primitivo por papel**: `common/Kpi.tsx` (`<Kpi>` / `<KpiRow>`) é o ÚNICO
   tile de indicador, e `common/Composicao.tsx` a única barra empilhada. Havia
   três componentes de KPI quase idênticos e dois seletores CSS com as mesmas
   regras (`.kpi-card` e `.kpi-tile`) — o resultado eram tamanhos de número
-  diferentes para o mesmo papel, dependendo da aba. Cabeçalho é sempre
-  `.page-bar` + `.page-title`, e toda aba tem um.
+  diferentes para o mesmo papel, dependendo da aba. O Painel também usa o
+  `<Kpi>` (tinha cinco tiles à mão). A faixa é `<KpiRow colunas={3|4|5}>` ou
+  auto-ajuste; a camada final forçava quatro colunas em toda faixa e empurrava
+  o quinto KPI para uma segunda linha com um buraco ao lado. A barra empilhada
+  tem 28px (`--viz-bar-h`) e escreve o valor dentro do segmento que tem
+  largura para ele; a legenda continua, porque é ela que identifica. Cabeçalho
+  é sempre `.page-bar` + `.page-title`, e toda aba tem um.
 - Sem ícones externos: glifos Unicode (↓ + × ▲ ▼ ‹ ›) ou desenho em CSS/SVG inline
   (ver `AnexosBadge`). Sem emojis. Cuidado: o Inter **não** tem ☀ ☾ ◐ — glifos
   assim caem em fallback torto.
@@ -179,6 +272,16 @@ vínculos após as regras existentes.
   `max(<repouso>, var(--tap-min))`, e no desktop o piso é zero.
 - **16px em campo não é gosto:** abaixo disso o Safari do iOS amplia a viewport
   ao focar e não volta. É o que `--fs-field` resolve.
+- **Tabela de riscos: o nome vem primeiro e é a coluna congelada**, em até duas
+  linhas (`.risco-nome`), com a taxonomia (área, rotina, categoria) em largura
+  mínima e ajustável. A completude é uma régua sob o título (`.qualidade-bar`)
+  com os campos mais vazios e o botão que recorta a lista só ao que falta
+  preencher — não um quinto KPI. Iniciativas não virou tabela (a tela tem
+  teste próprio): as linhas adensaram, quatro **visões salvas** (Minhas, Em
+  risco, Sem dono, Este trimestre), `/` foca a busca, os selects dobram atrás
+  de "Filtros", cada linha tem o stepper de marcos e a prioridade é `6,5 /10`
+  sem pill — prioridade não é severidade. Tarefas tem quatro KPIs. Em Pessoas
+  a linha inteira abre a ficha.
 - **Tabela vira cartão a ≤760px, nas duas abas** (`RiskCardList`,
   `TarefaCardList`, ambas em `.risk-card`). Os dois ficam no DOM e o `@media`
   decide — montar por largura em JS quebraria o modo salvo. O `EmptyState` fica
@@ -207,6 +310,15 @@ vínculos após as regras existentes.
   semáforo verde→amarelo→laranja→vermelho não passa nos limites de daltonismo
   por matiz (médio `#B8901F` × alto `#D97706` medem ΔE 1.1 em deuteranopia).
 - Célula vazia do heatmap mostra o `0`, não texto transparente.
+- O **Sankey da cadeia** (`PainelTab/SankeyCadeia.tsx`) é SVG inline sem lib.
+  A altura de cada coluna cresce com a **raiz quadrada** do total — três
+  objetivos e sessenta tarefas na mesma tela é a forma normal do domínio, e em
+  escala linear os objetivos viravam um fio de 10px; as partes dentro de uma
+  coluna continuam proporcionais e todo número está escrito. Abaixo de 760px
+  o desenho some e a fileira de elos (`.cadeia`) volta, por CSS — os dois ficam
+  no DOM. Na Priorização, as seis primeiras bolhas levam o nome escrito
+  embaixo (com supressão da que cairia sobre outro rótulo), hover cruzado com
+  a lista, rótulos de quadrante no canto em `--ink-3`, eixos com 1 e 5.
 
 ## Idioma
 Toda a UI e cópia em **português (Brasil)**.
