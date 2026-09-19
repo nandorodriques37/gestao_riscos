@@ -1,15 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import type { Task } from '../types';
 import {
-  computeGUT, gutColor, prioridadeLabel, normTaskStatus, taskStatusKind,
+  computeGUT, gutTier, prioridadeLabel, normTaskStatus, taskStatusKind,
   computeTaskRanks, computeAvaliacao,
 } from './taskCalculations';
-
-const VERDE = '#15803D';
-const AMARELO = '#B8901F';
-const LARANJA = '#D97706';
-const VERMELHO = '#DC2626';
-const CINZA = '#94A3B8';
 
 function task(partial: Partial<Task> = {}): Task {
   return {
@@ -34,33 +28,33 @@ describe('computeGUT = g × u × t', () => {
   });
 });
 
-describe('gutColor / prioridadeLabel (faixas da Matriz GUT)', () => {
-  it('null → cinza / null', () => {
-    expect(gutColor(null)).toBe(CINZA);
+describe('gutTier / prioridadeLabel (faixas da Matriz GUT)', () => {
+  it('null → sem faixa / null', () => {
+    expect(gutTier(null)).toBe('null');
     expect(prioridadeLabel(null)).toBeNull();
   });
 
-  it('≥ 100 → Crítica (vermelho)', () => {
-    expect(gutColor(100)).toBe(VERMELHO);
-    expect(gutColor(125)).toBe(VERMELHO);
+  it('≥ 100 → crítico / Crítica', () => {
+    expect(gutTier(100)).toBe('critico');
+    expect(gutTier(125)).toBe('critico');
     expect(prioridadeLabel(100)).toBe('Crítica');
   });
 
-  it('60–99 → Alta (laranja)', () => {
-    expect(gutColor(60)).toBe(LARANJA);
-    expect(gutColor(99)).toBe(LARANJA);
+  it('60–99 → alto / Alta', () => {
+    expect(gutTier(60)).toBe('alto');
+    expect(gutTier(99)).toBe('alto');
     expect(prioridadeLabel(80)).toBe('Alta');
   });
 
-  it('30–59 → Média (amarelo)', () => {
-    expect(gutColor(30)).toBe(AMARELO);
-    expect(gutColor(59)).toBe(AMARELO);
+  it('30–59 → médio / Média', () => {
+    expect(gutTier(30)).toBe('medio');
+    expect(gutTier(59)).toBe('medio');
     expect(prioridadeLabel(45)).toBe('Média');
   });
 
-  it('< 30 → Baixa (verde)', () => {
-    expect(gutColor(29)).toBe(VERDE);
-    expect(gutColor(1)).toBe(VERDE);
+  it('< 30 → baixo / Baixa', () => {
+    expect(gutTier(29)).toBe('baixo');
+    expect(gutTier(1)).toBe('baixo');
     expect(prioridadeLabel(10)).toBe('Baixa');
   });
 });
