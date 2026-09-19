@@ -325,6 +325,29 @@
   }
 }
 
+/* ---------- Vocabulário de vazio ----------
+   Duas formas, e só duas. O travessão, em --ink-4, para o campo que NÃO se
+   aplica ao registro. "Não preenchido", em --ink-3, itálico e sempre
+   clicável (leva ao campo), para o que se aplica e falta alguém preencher.
+   A régua: se preencher muda uma decisão, é "Não preenchido" e é link; se
+   não muda, é travessão. Antes conviviam "Não avaliada", "sem teto", "Sem
+   score" e "—" para dizer a mesma coisa. */
+.nao-preenchido {
+  font: inherit;
+  font-style: italic;
+  color: var(--ink-3);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.nao-preenchido:hover {
+  color: var(--brand);
+  text-decoration: underline;
+}
+
 /* ---------- Etiqueta ----------
    Fundo derivado da própria tinta, então claro e escuro saem de uma regra só.
 

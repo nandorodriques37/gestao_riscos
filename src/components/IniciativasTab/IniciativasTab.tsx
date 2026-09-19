@@ -1,9 +1,12 @@
 import { useSessionState } from '../../hooks/useSessionState';
-import { useLayoutEffect, useMemo, useRef, useState } from 'react';
-import type { Iniciativa, StoredRiskRecord } from '../../types';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import type { Iniciativa, Marco, StoredRiskRecord } from '../../types';
 import type { UsePortfolio } from '../../hooks/usePortfolio';
-import { computePrioriz, priorizTier, round2 } from '../../lib/calculations';
-import { portfolioPorOrigem, iniciativaAtiva, saudeIniciativas } from '../../lib/portfolioMetrics';
+import { computePrioriz, round2 } from '../../lib/calculations';
+import { portfolioPorOrigem, iniciativaAtiva, saudeIniciativas, hojeISO } from '../../lib/portfolioMetrics';
+import { estadoDoMarco } from '../../lib/marcos';
+import { lerAutor } from '../../lib/autor';
+import { chaveDoNome } from '../../lib/nomes';
 import {
   ROTULO_FONTE, ROTULO_STATUS_INICIATIVA, BADGE_STATUS_INICIATIVA,
   formatarMoeda, formatarData, plural,
@@ -35,6 +38,30 @@ const AGRUPAMENTOS: { chave: Agrupamento; label: string }[] = [
   { chave: 'dono', label: 'Por responsável' },
 ];
 
+/**
+ * Visões salvas: os quatro recortes que alguém faz toda semana, a um clique.
+ * Os selects de objetivo, responsável e situação continuam existindo, mas
+ * dobrados atrás de "Filtros" — a barra com busca, quatro selects, três
+ * alternadores e "Limpar" sempre à vista era a coisa mais pesada da tela.
+ */
+type Visao = '' | 'minhas' | 'em_risco' | 'sem_dono' | 'trimestre';
+const VISOES: { chave: Exclude<Visao, ''>; label: string; title: string }[] = [
+  { chave: 'minhas', label: 'Minhas', title: 'As iniciativas de que você é responsável' },
+  { chave: 'em_risco', label: 'Em risco', title: 'Ativas sem marco, ou com marco vencido' },
+  { chave: 'sem_dono', label: 'Sem dono', title: 'Ninguém responde por elas' },
+  { chave: 'trimestre', label: 'Este trimestre', title: 'Com fim planejado dentro do trimestre corrente' },
+];
+
+/** Primeiro e último dia do trimestre da data, no formato das datas do app. */
+function trimestreDe(iso: string): { ini: string; fim: string } {
+  const ano = iso.slice(0, 4);
+  const mes = Number(iso.slice(5, 7));
+  const primeiro = Math.floor((mes - 1) / 3) * 3 + 1;
+  const pad = (n: number) => String(n).padStart(2, '0');
+  // '31' serve de teto inclusivo mesmo nos meses de 30 dias — é comparação de texto.
+  return { ini: `${ano}-${pad(primeiro)}-01`, fim: `${ano}-${pad(primeiro + 2)}-31` };
+}
+
 
 export function IniciativasTab({
   riscos, pf, selecionada, onSelecionar, onAbrirRisco, novoObjetivoId, onNovaIniciativaFechada, idsDoRecorte,
@@ -50,8 +77,26 @@ export function IniciativasTab({
   const [ordem, setOrdem] = useSessionState('iniciativas.ordem', 'prioridade');
   const [recolhidos, setRecolhidos] = useSessionState<string[]>('iniciativas.recolhidos', []);
   const [posicao, setPosicao] = useSessionState('iniciativas.posicao', 0);
+  const [visao, setVisao] = useSessionState<Visao>('iniciativas.visao', '');
+  const [filtrosAbertos, setFiltrosAbertos] = useSessionState('iniciativas.filtros', false);
   const ultimoAberto = useRef<string | null>(null);
   const tituloRef = useRef<HTMLHeadingElement>(null);
+  const buscaRef = useRef<HTMLInputElement>(null);
+
+  // "/" leva à busca, como em qualquer lista que se usa todo dia. Só quando a
+  // lista está montada e o foco não está num campo — ali a barra é texto.
+  useEffect(() => {
+    if (selecionada) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key !== '/' || e.metaKey || e.ctrlKey || e.altKey) return;
+      const alvo = e.target as HTMLElement | null;
+      if (alvo && (['INPUT', 'TEXTAREA', 'SELECT'].includes(alvo.tagName) || alvo.isContentEditable)) return;
+      e.preventDefault();
+      buscaRef.current?.focus();
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [selecionada]);
   useLayoutEffect(() => {
     if (selecionada) {
       ultimoAberto.current = selecionada;
@@ -65,7 +110,7 @@ export function IniciativasTab({
     }
   }, [selecionada, loading, posicao]);
   function abrir(id: string) { setPosicao(window.scrollY); onSelecionar(id); }
-  function limparFiltros() { setBusca(''); setSituacao('todas'); setObjetivoFiltro(''); setDonoFiltro(''); }
+  function limparFiltros() { setBusca(''); setSituacao('todas'); setObjetivoFiltro(''); setDonoFiltro(''); setVisao(''); }
   const [criando, setCriando] = useState(false);
   const [editando, setEditando] = useState<Iniciativa | null>(null);
 
@@ -78,14 +123,27 @@ export function IniciativasTab({
   const atencao = useMemo(() => new Set([...saude.semMarco, ...saude.atrasadas].map(i => i.id)), [saude]);
   const proximos = useMemo(() => new Map(iniciativas.map(i => [i.id, proximoMarco(marcos, i.id)])), [iniciativas, marcos]);
 
-  const marcosPorIniciativa = useMemo(() => {
-    const m = new Map<string, number>();
+  /** Marcos de cada iniciativa, na ordem do plano — é o que o stepper desenha. */
+  const marcosDe = useMemo(() => {
+    const m = new Map<string, Marco[]>();
     for (const x of marcos) {
       if (!x.iniciativa_id) continue;
-      m.set(x.iniciativa_id, (m.get(x.iniciativa_id) ?? 0) + 1);
+      const lista = m.get(x.iniciativa_id) ?? [];
+      lista.push(x);
+      m.set(x.iniciativa_id, lista);
+    }
+    for (const lista of m.values()) {
+      lista.sort((a, b) => (dataPlanoMarco(a) ?? '9999').localeCompare(dataPlanoMarco(b) ?? '9999'));
     }
     return m;
   }, [marcos]);
+  const hojeStr = hojeISO();
+  const trimestre = trimestreDe(hojeStr);
+  // "Minhas" casa o nome do cabeçalho com uma pessoa pela mesma chave que a
+  // mesclagem de fichas usa — sem acento e sem caixa.
+  const autorChave = chaveDoNome(lerAutor());
+  const minhaPessoa = autorChave ? pessoas.find(p => chaveDoNome(p.nome) === autorChave)?.id ?? null : null;
+  const ativosAvancados = (objetivoFiltro ? 1 : 0) + (donoFiltro ? 1 : 0) + (situacao !== 'todas' ? 1 : 0);
 
   const riscosPorIni = useMemo(() => {
     const m = new Map<string, Set<string>>();
@@ -102,6 +160,13 @@ export function IniciativasTab({
     const q = busca.toLowerCase().trim();
     return iniciativas.filter(i => {
       if (idsDoRecorte && !idsDoRecorte.has(i.id)) return false;
+      if (visao === 'minhas' && i.dono_id !== minhaPessoa) return false;
+      if (visao === 'em_risco' && !atencao.has(i.id)) return false;
+      if (visao === 'sem_dono' && i.dono_id) return false;
+      if (visao === 'trimestre') {
+        const fim = i.fim_plano_atual ?? i.fim_plano_original;
+        if (!fim || fim < trimestre.ini || fim > trimestre.fim) return false;
+      }
       if (situacao === 'ativas' && !iniciativaAtiva(i)) return false;
       if (situacao === 'atencao' && !atencao.has(i.id)) return false;
       if (situacao !== 'todas' && situacao !== 'ativas' && situacao !== 'atencao' && i.status !== situacao) return false;
@@ -112,7 +177,7 @@ export function IniciativasTab({
       const dono = i.dono_id ? pessoaPorId.get(i.dono_id) ?? '' : '';
       return [i.nome, i.descricao, i.recurso, obj, dono].join(' ').toLowerCase().includes(q);
     });
-  }, [iniciativas, idsDoRecorte, busca, situacao, objetivoFiltro, donoFiltro, atencao, objetivoPorId, pessoaPorId]);
+  }, [iniciativas, idsDoRecorte, busca, situacao, objetivoFiltro, donoFiltro, atencao, objetivoPorId, pessoaPorId, visao, minhaPessoa, trimestre.ini, trimestre.fim]);
 
   /** Grupos da lista. A ordem interna é sempre a da priorização — o que decide primeiro fica em cima. */
   const grupos = useMemo(() => {
@@ -268,15 +333,39 @@ export function IniciativasTab({
       ) : (
         <section className="ini-portfolio" aria-label="Portfólio de iniciativas">
           <div className="card ini-toolbar">
-            <input className="search-input" aria-label="Buscar iniciativas" placeholder="Buscar por iniciativa, objetivo ou responsável…" value={busca} onChange={e => setBusca(e.target.value)} />
-            <div className="ini-filters">
-              <label>Objetivo<select value={objetivoFiltro} onChange={e => setObjetivoFiltro(e.target.value)}><option value="">Todos os objetivos</option>{objetivos.map(o => <option key={o.id} value={o.id}>{o.descricao === OBJETIVO_BALDE ? 'Sem objetivo vinculado' : o.descricao || 'Sem descrição'}</option>)}</select></label>
-              <label>Responsável<select value={donoFiltro} onChange={e => setDonoFiltro(e.target.value)}><option value="">Todos os responsáveis</option><option value="sem">Sem responsável</option>{pessoas.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}</select></label>
-              <label>Situação<select value={situacao} onChange={e => setSituacao(e.target.value)}><option value="todas">Todas as situações</option><option value="ativas">Ativas</option><option value="atencao">Precisam de atenção</option>{Object.entries(ROTULO_STATUS_INICIATIVA).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></label>
-              <label>Ordenar por<select value={ordem} onChange={e => setOrdem(e.target.value)}><option value="prioridade">Maior prioridade</option><option value="prazo">Próximo prazo</option><option value="nome">Nome</option></select></label>
+            <div className="ini-visoes" role="group" aria-label="Visões salvas">
+              {VISOES.map(v => {
+                const semAutor = v.chave === 'minhas' && !minhaPessoa;
+                return (
+                  <button
+                    key={v.chave}
+                    className={`filter-pill${visao === v.chave ? ' active' : ''}`}
+                    aria-pressed={visao === v.chave}
+                    disabled={semAutor}
+                    title={semAutor ? 'Diga quem é você no cabeçalho para ver as suas.' : v.title}
+                    onClick={() => setVisao(visao === v.chave ? '' : v.chave)}
+                  >
+                    {v.label}
+                  </button>
+                );
+              })}
             </div>
+            <div className="ini-busca-linha">
+              <input ref={buscaRef} className="search-input" aria-label="Buscar iniciativas" placeholder="Buscar por iniciativa, objetivo ou responsável…  ( / )" value={busca} onChange={e => setBusca(e.target.value)} />
+              <button className="btn btn-ghost" aria-expanded={filtrosAbertos} onClick={() => setFiltrosAbertos(!filtrosAbertos)}>
+                Filtros{ativosAvancados > 0 ? ` · ${ativosAvancados}` : ''} <span aria-hidden="true">{filtrosAbertos ? '▲' : '▼'}</span>
+              </button>
+            </div>
+            {filtrosAbertos && (
+              <div className="ini-filters">
+                <label>Objetivo<select value={objetivoFiltro} onChange={e => setObjetivoFiltro(e.target.value)}><option value="">Todos os objetivos</option>{objetivos.map(o => <option key={o.id} value={o.id}>{o.descricao === OBJETIVO_BALDE ? 'Sem objetivo vinculado' : o.descricao || 'Sem descrição'}</option>)}</select></label>
+                <label>Responsável<select value={donoFiltro} onChange={e => setDonoFiltro(e.target.value)}><option value="">Todos os responsáveis</option><option value="sem">Sem responsável</option>{pessoas.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}</select></label>
+                <label>Situação<select value={situacao} onChange={e => setSituacao(e.target.value)}><option value="todas">Todas as situações</option><option value="ativas">Ativas</option><option value="atencao">Precisam de atenção</option>{Object.entries(ROTULO_STATUS_INICIATIVA).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></label>
+              </div>
+            )}
             <div className="ini-list-controls">
               <div className="filter-pills" aria-label="Agrupar iniciativas">{AGRUPAMENTOS.map(a => <button key={a.chave} className={`filter-pill${agrupamento === a.chave ? ' active' : ''}`} aria-pressed={agrupamento === a.chave} onClick={() => setAgrupamento(a.chave)}>{a.label}</button>)}</div>
+              <label className="ini-ordem">Ordenar por<select value={ordem} onChange={e => setOrdem(e.target.value)}><option value="prioridade">Maior prioridade</option><option value="prazo">Próximo prazo</option><option value="nome">Nome</option></select></label>
               <span role="status">{filtradas.length} de {iniciativas.length} iniciativas</span>
               <button className="btn btn-ghost" onClick={limparFiltros}>Limpar filtros</button>
             </div>
@@ -293,14 +382,33 @@ export function IniciativasTab({
                 {g.itens.map(i => {
                   const p = computePrioriz(i);
                   const marco = proximos.get(i.id);
+                  const lista = (marcosDe.get(i.id) ?? []).filter(m => m.status !== 'cancelado');
+                  const entregues = lista.filter(m => m.status === 'entregue').length;
                   const cobertos = riscosPorIni.get(i.id)?.size ?? 0;
                   const obj = i.objetivo_id ? objetivoPorId.get(i.objetivo_id)?.descricao : null;
                   return <div className="ini-portfolio-row" key={i.id}>
                     <div className="ini-row-title"><button id={`iniciativa-${i.id}`} className="ini-open" onClick={() => abrir(i.id)}>{i.nome || 'Iniciativa sem nome'}</button><span>{obj && obj !== OBJETIVO_BALDE ? obj : 'Sem objetivo vinculado'}</span><small>{ROTULO_FONTE[i.fonte]} · {plural(cobertos, 'risco vinculado', 'riscos vinculados')}</small>{(!obj || obj === OBJETIVO_BALDE) && <button className="link-ini ini-assign" onClick={() => setEditando(i)}>Vincular objetivo</button>}</div>
                     <div className="ini-row-cell" data-label="Responsável">{i.dono_id ? pessoaPorId.get(i.dono_id) ?? 'Responsável removido' : 'Sem responsável'}</div>
                     <div className="ini-row-cell" data-label="Situação"><span className="badge" data-badge={BADGE_STATUS_INICIATIVA[i.status]}>{ROTULO_STATUS_INICIATIVA[i.status]}</span></div>
-                    <div className="ini-row-cell" data-label="Próximo marco"><span>{marco?.nome || (marcosPorIniciativa.get(i.id) ? 'Sem marco pendente' : 'Sem marco definido')}</span>{marco && <small>{formatarData(dataPlanoMarco(marco))}</small>}{atencao.has(i.id) && <span className="badge" data-badge="atencao">{saude.atrasadas.some(a => a.id === i.id) ? 'Marco vencido' : 'Sem marco'}</span>}</div>
-                    <div className="ini-row-cell" data-label="Prioridade" title="Impacto ÷ esforço + gravidade. Quanto maior, maior a prioridade.">{p == null ? 'Não avaliada' : <span className="tier-chip" data-tier={priorizTier(p)}>{String(round2(p)).replace('.', ',')}</span>}</div>
+                    <div className="ini-row-cell" data-label="Próximo marco">
+                      {/* O stepper diz quantos marcos já passaram; o nome ao lado diz
+                          qual é o próximo. Cor nunca sozinha: o title carrega a conta. */}
+                      {lista.length > 0 && (
+                        <span className="marco-stepper" title={`${entregues} de ${lista.length} marcos entregues`} aria-label={`${entregues} de ${lista.length} marcos entregues`}>
+                          {lista.map(m => <span key={m.id} className="stepper-dot" data-estado={estadoDoMarco(m, hojeStr)} />)}
+                        </span>
+                      )}
+                      <span>{marco?.nome || (lista.length > 0 ? 'Sem marco pendente' : 'Sem marco definido')}</span>
+                      {marco && <small>{formatarData(dataPlanoMarco(marco))}</small>}
+                      {atencao.has(i.id) && <span className="badge" data-badge="atencao">{saude.atrasadas.some(a => a.id === i.id) ? 'Marco vencido' : 'Sem marco'}</span>}
+                    </div>
+                    <div className="ini-row-cell" data-label="Prioridade" title="Impacto ÷ esforço + gravidade, de 1,2 a 10. Quanto maior, maior a prioridade.">
+                      {/* Sem pill colorido: prioridade não é severidade, e o número sem
+                          referência de escala ("6,25") não dizia se era muito ou pouco. */}
+                      {p == null
+                        ? <button className="nao-preenchido" onClick={() => setEditando(i)}>Não preenchido</button>
+                        : <span className="prio"><span className="prio-num tabular">{String(round2(p)).replace('.', ',')}</span><span className="prio-escala">/10</span></span>}
+                    </div>
                     <button className="ini-row-arrow" aria-label={`Abrir ${i.nome || 'iniciativa sem nome'}`} onClick={() => abrir(i.id)}>↗</button>
                   </div>;
                 })}
@@ -327,7 +435,7 @@ export function IniciativasTab({
           iniciativa={editando}
           objetivos={objetivos}
           pessoas={pessoas}
-          qtdMarcos={marcosPorIniciativa.get(editando.id) ?? 0}
+          qtdMarcos={marcosDe.get(editando.id)?.length ?? 0}
           erro={error} onSalvar={dados => patchEntidade('iniciativas', editando.id, dados, editando.version)}
           onExcluir={() => { void excluir(editando); }}
           onClose={() => setEditando(null)}

@@ -1,6 +1,7 @@
 import type { EnrichedRow } from '../../lib/rows';
-import { round1, round2, scoreTier, priorizTier, respostaKind, statusKind } from '../../lib/calculations';
+import { round1, round2, scoreTier, priorizTier, statusKind } from '../../lib/calculations';
 import { onActivateKey } from '../../lib/a11y';
+import { Resposta } from './Resposta';
 
 interface RiskTableRowProps {
   row: EnrichedRow;
@@ -19,14 +20,16 @@ export function RiskTableRow({ row, onOpen, onDelete }: RiskTableRowProps) {
       role="button"
       aria-label={`Editar risco: ${r.risco || 'sem descrição'}`}
     >
-      <td className="sticky-col-left" title={r.area}>{r.area}</td>
+      {/* Mesma ordem de COLUMNS: o nome primeiro e congelado, em até duas
+          linhas; a taxonomia depois. */}
+      <td className="sticky-col-left risco-cell" title={r.risco}>
+        <span className="risco-nome">{r.risco}</span>
+      </td>
+      <td title={r.area}>{r.area}</td>
       <td data-priority="low" title={r.rotina}>{r.rotina}</td>
       <td title={r.categoria}>{r.categoria}</td>
-      <td className="risco-cell" title={r.risco}>{r.risco}</td>
       <td className="center">
-        <span className="badge" data-badge={respostaKind(r.resposta)}>
-          {r.resposta || '—'}
-        </span>
+        <Resposta valor={r.resposta} />
       </td>
       <td className="num">{r.probab ?? '—'}</td>
       <td className="num">{r.impact ?? '—'}</td>

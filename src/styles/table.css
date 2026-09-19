@@ -95,14 +95,35 @@
   background: color-mix(in oklab, var(--risco-accent) 55%, transparent);
 }
 
-/* Só a célula do corpo precisa de `relative` para ancorar a faixa. No <th> o
-   `position: sticky` já cria o bloco de contenção — declarar `relative` ali
-   derrubaria o sticky e jogaria o cabeçalho para dentro do corpo. */
+/* A célula do nome é a coluna congelada, e o `position: sticky` dela (vindo de
+   `.sticky-col-left`) já cria o bloco de contenção da faixa — declarar
+   `relative` aqui derrubaria o sticky. Duas linhas, não uma: o nome do risco é
+   texto livre longo e era a coluna mais truncada da tabela, enquanto área e
+   categoria levavam largura fixa. */
 .risk-table td.risco-cell {
-  position: relative;
   color: var(--ink-1);
   font-weight: var(--fw-medium);
   padding-left: var(--sp-4);
+  padding-block: var(--sp-1);
+  white-space: normal;
+  line-height: 1.35;
+}
+
+.risco-nome {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.density-compact .risco-nome {
+  -webkit-line-clamp: 1;
+}
+
+/* Resposta em texto simples: só a exceção vira etiqueta (ver Resposta.tsx). */
+.resposta-texto {
+  font-size: var(--fs-xs);
+  color: var(--ink-3);
 }
 
 .risk-table thead th.th-red {

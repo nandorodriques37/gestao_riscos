@@ -490,6 +490,56 @@
   color: var(--ink-3);
 }
 
+/* ---------- Barra de qualidade do cadastro ----------
+   A melhor métrica do Registro estava enterrada como quinto KPI. Vira uma
+   régua fina sob o título: quanto está preenchido, quais campos estão mais
+   vazios e o botão que recorta a lista só ao que falta. */
+.qualidade-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+  padding: var(--sp-2) var(--sp-4);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: var(--bg-surface);
+  font-size: var(--fs-xs);
+  color: var(--ink-3);
+}
+
+.qualidade-rotulo {
+  font-size: var(--fs-3xs);
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.qualidade-track {
+  flex: 1 1 160px;
+  min-width: 80px;
+  height: 6px;
+  border-radius: var(--r-full);
+  background: var(--bg-sunken);
+  overflow: hidden;
+}
+
+.qualidade-fill {
+  display: block;
+  height: 100%;
+  border-radius: var(--r-full);
+  background: var(--brand);
+}
+
+.qualidade-valor {
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+  color: var(--ink-1);
+}
+
+.qualidade-bar .btn {
+  margin-left: auto;
+}
+
 /* ---------- Skeleton ---------- */
 
 .app-loading {

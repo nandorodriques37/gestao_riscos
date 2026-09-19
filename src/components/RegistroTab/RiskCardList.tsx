@@ -1,6 +1,7 @@
 import type { EnrichedRow } from '../../lib/rows';
-import { round1, round2, scoreTier, priorizTier, respostaKind, statusKind } from '../../lib/calculations';
+import { round1, round2, scoreTier, priorizTier, statusKind } from '../../lib/calculations';
 import { onActivateKey } from '../../lib/a11y';
+import { Resposta } from './Resposta';
 
 interface RiskCardListProps {
   rows: EnrichedRow[];
@@ -41,9 +42,7 @@ export function RiskCardList({ rows, onOpen, onDelete }: RiskCardListProps) {
             </div>
             <div className="risk-card-risco">{r.risco || '(sem descrição)'}</div>
             <div className="risk-card-badges">
-              <span className="badge" data-badge={respostaKind(r.resposta)}>
-                {r.resposta || '—'}
-              </span>
+              <Resposta valor={r.resposta} />
               <span className="tier-chip" data-tier={scoreTier(score)}>
                 <span className="tier-dot" />
                 {score != null ? round1(score) : '—'}

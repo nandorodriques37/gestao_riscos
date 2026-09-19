@@ -390,12 +390,17 @@ export function TarefasTab({ records, pf, tarefas, selecionada, onSelecionar, id
             </div>
           </div>
 
-          <KpiRow>
-            <Kpi label="Tarefas e ações" valor={total} acento="brand" />
-            <Kpi label="A fazer" valor={aFazer} acento="null" />
-            <Kpi label="Em andamento" valor={emAndamento} acento="alto" />
+          {/* Quatro números, não sete: "abertas" carrega a fazer, em andamento
+              e concluídas na linha de baixo, e ninguém rola duas fileiras de
+              KPI antes de ver uma tarefa. */}
+          <KpiRow colunas={4}>
+            <Kpi
+              label="Abertas"
+              valor={aFazer + emAndamento}
+              sub={`${aFazer} a fazer · ${emAndamento} em andamento · ${concluidas} concluídas de ${total}`}
+              acento="brand"
+            />
             <Kpi label="Atrasadas" valor={atrasadas} acento={atrasadas > 0 ? 'critico' : 'baixo'} />
-            <Kpi label="Concluídas" valor={concluidas} acento="baixo" />
             <Kpi label="GUT crítico" valor={criticas} acento="critico" />
             <Kpi
               label="Avaliadas (GUT)"

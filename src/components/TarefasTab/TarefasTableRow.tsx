@@ -43,7 +43,12 @@ export function TarefasTableRow({ row, onOpen, onToggleConcluida, onDelete }: Ta
         {vinculo && <VinculoChip vinculo={vinculo} />}
       </td>
       <td className="center">
-        <span className="tier-chip" data-tier={gutTier(gut)}>
+        {/* O tooltip mostra a conta: um "126" solto não diz de onde veio. */}
+        <span
+          className="tier-chip"
+          data-tier={gutTier(gut)}
+          title={gut != null ? `G ${t.g} × U ${t.u} × T ${t.t} = ${gut}` : 'Sem nota GUT'}
+        >
           <span className="tier-dot" />
           {gut ?? '—'}
         </span>

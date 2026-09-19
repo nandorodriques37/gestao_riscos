@@ -1346,6 +1346,27 @@
   white-space: nowrap;
 }
 
+.form-aviso-com-acao {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+
+.form-aviso-com-acao .btn {
+  margin-left: auto;
+}
+
+/* Linha que abre a ficha: o "Editar" ao fim da linha continua, mas a linha
+   inteira já leva lá. */
+.tabela-simples tbody tr[role='button'] {
+  cursor: pointer;
+}
+
+.tabela-simples tbody tr[role='button']:hover td {
+  background: var(--bg-hover);
+}
+
 .form-aviso {
   margin-top: var(--sp-3);
   padding: var(--sp-2) var(--sp-3);

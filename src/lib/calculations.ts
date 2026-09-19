@@ -114,11 +114,13 @@ export type BadgeKind = 'neutro' | 'atencao' | 'ok' | 'risco';
 /**
  * Resposta ao risco. "Mitigar" é a resposta padrão e aparece em quase toda
  * linha — pintá-la repetia o mesmo pill dez vezes seguidas sem acrescentar
- * informação nenhuma. Croma fica para a exceção: evitar é ameaça, e as outras
- * duas apenas nomeiam uma escolha.
+ * informação nenhuma, e por isso nem vira etiqueta (ver `Resposta.tsx`).
+ * A exceção é o que merece o olho: evitar é ameaça; aceitar e transferir são
+ * escolhas que alguém precisa sustentar, e ficam em atenção.
  */
 export function respostaKind(v: string): BadgeKind {
   if (v === 'Evitar') return 'risco';
+  if (v === 'Aceitar' || v === 'Transferir') return 'atencao';
   return 'neutro';
 }
 

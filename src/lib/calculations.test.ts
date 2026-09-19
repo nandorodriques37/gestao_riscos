@@ -183,9 +183,9 @@ describe('badges de resposta e status', () => {
     // mesmo pill tela abaixo sem informar nada. Evitar é o único que anuncia
     // ameaça; o resto apenas nomeia a escolha.
     expect(respostaKind('Evitar')).toBe('risco');
+    expect(respostaKind('Aceitar')).toBe('atencao');
+    expect(respostaKind('Transferir')).toBe('atencao');
     expect(respostaKind('Mitigar')).toBe('neutro');
-    expect(respostaKind('Aceitar')).toBe('neutro');
-    expect(respostaKind('Transferir')).toBe('neutro');
     expect(respostaKind('')).toBe('neutro');
   });
 

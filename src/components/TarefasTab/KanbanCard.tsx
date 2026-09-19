@@ -43,7 +43,11 @@ export function KanbanCardFace({
 
       <div className="kanban-card-badges">
         {/* O número acompanha a cor: a faixa nunca é identificada só pela matiz. */}
-        <span className="tier-chip" data-tier={gutTier(gut)}>
+        <span
+          className="tier-chip"
+          data-tier={gutTier(gut)}
+          title={gut != null ? `G ${t.g} × U ${t.u} × T ${t.t} = ${gut}` : 'Sem nota GUT'}
+        >
           <span className="tier-dot" />
           GUT {gut ?? '—'}
         </span>

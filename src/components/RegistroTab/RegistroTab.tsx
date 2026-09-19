@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { Density, RegistroStatus, RiskRecord, SortDir, SortKey } from '../../types';
 import { REGISTRO_STATUSES } from '../../types';
 import { buildRows, type EnrichedRow } from '../../lib/rows';
-import { computeCompletude } from '../../lib/calculations';
+import { computeCompletude, COMPLETUDE_FIELDS } from '../../lib/calculations';
 import { readColWidths, readDensity, readStatusFilter, writeDensity, writePref } from '../../lib/uiPrefs';
 import { Kpi, KpiRow } from '../common/Kpi';
 import { FilterBar } from './FilterBar';
@@ -13,6 +13,18 @@ const COL_WIDTHS_KEY = 'riskMatrix.colWidths.v1';
 const DENSITY_KEY = 'riskMatrix.density.v1';
 const STATUS_FILTER_KEY = 'riskMatrix.statusFilter.v1';
 const COL_WIDTHS_SAVE_DELAY = 300;
+
+/** Nome de cada campo da completude, como a barra de qualidade o cita. */
+const ROTULO_CAMPO: Record<string, string> = {
+  risco: 'descrição', probab: 'probabilidade', impact: 'impacto', acoes: 'ações',
+  esforco: 'esforço', impacto2: 'impacto da ação', gravidade: 'gravidade',
+  recurso: 'recurso', responsavel: 'responsável', status: 'status',
+};
+
+function campoVazio(r: RiskRecord, f: keyof RiskRecord): boolean {
+  const v = r[f];
+  return v == null || v === '';
+}
 
 interface RegistroTabProps {
   idsDoRecorte?: Set<string> | null;
@@ -50,6 +62,8 @@ export function RegistroTab({
   const [categoriaFilter, setCategoriaFilter] = useSessionState('riscos.categoria', 'Todos');
   const [sortKey, setSortKey] = useSessionState<SortKey>('riscos.ordem', null);
   const [sortDir, setSortDir] = useSessionState<SortDir>('riscos.direcao', 'desc');
+  // Recorte "só o que falta preencher": vem da barra de qualidade do cadastro.
+  const [soIncompletos, setSoIncompletos] = useSessionState('riscos.incompletos', false);
   const [colWidths, setColWidths] = useState(() => readColWidths(COL_WIDTHS_KEY));
   const [density, setDensity] = useState<Density>(() => readDensity(DENSITY_KEY));
 
@@ -77,11 +91,21 @@ export function RegistroTab({
   const totalConcluido = useMemo(() => rows.filter(r => r.normSt === 'Concluído').length, [rows]);
   const totalCritico = useMemo(() => rows.filter(r => r.prioriz != null && r.prioriz >= 6).length, [rows]);
   const completude = useMemo(() => computeCompletude(records), [records]);
+  /** Campos mais vazios, do pior para o melhor — é o que a barra de qualidade cita. */
+  const camposVazios = useMemo(() => COMPLETUDE_FIELDS
+    .map(f => ({ campo: f, n: records.filter(r => campoVazio(r, f)).length }))
+    .filter(x => x.n > 0)
+    .sort((a, b) => b.n - a.n), [records]);
+  const nIncompletos = useMemo(
+    () => rows.filter(row => COMPLETUDE_FIELDS.some(f => campoVazio(row.record, f))).length,
+    [rows],
+  );
 
   const visibleRows = useMemo(() => {
     const q = search.toLowerCase().trim();
     let result = rows.filter(row => {
       if (idsDoRecorte) return idsDoRecorte.has((row.record as RiskRecord & { id: string }).id);
+      if (soIncompletos && !COMPLETUDE_FIELDS.some(f => campoVazio(row.record, f))) return false;
       if (statusFilter.length > 0 && !statusFilter.includes(row.normSt as RegistroStatus)) return false;
       if (areaFilter !== 'Todos' && row.record.area !== areaFilter) return false;
       if (categoriaFilter !== 'Todos' && row.record.categoria !== categoriaFilter) return false;
@@ -102,7 +126,7 @@ export function RegistroTab({
       });
     }
     return result;
-  }, [rows, idsDoRecorte, search, statusFilter, areaFilter, categoriaFilter, sortKey, sortDir]);
+  }, [rows, idsDoRecorte, soIncompletos, search, statusFilter, areaFilter, categoriaFilter, sortKey, sortDir]);
 
   function handleSort(key: NonNullable<SortKey>) {
     if (sortKey === key) {
@@ -136,6 +160,7 @@ export function RegistroTab({
             setStatusFilter([]);
             setAreaFilter('Todos');
             setCategoriaFilter('Todos');
+            setSoIncompletos(false);
           },
         }
       : undefined;
@@ -157,19 +182,38 @@ export function RegistroTab({
         </div>
       </div>
 
-      <KpiRow>
+      {/* A melhor métrica da tela estava enterrada como quinto KPI. Vira uma
+          régua sob o título, com os campos mais vazios e o botão que abre só
+          o que falta preencher — preencher aqui muda decisão lá na Priorização. */}
+      {rows.length > 0 && (
+        <div className="qualidade-bar" role="group" aria-label="Qualidade do cadastro">
+          <span className="qualidade-rotulo">Cadastro preenchido</span>
+          <span className="qualidade-track" aria-hidden="true">
+            <span className="qualidade-fill" style={{ width: `${completude}%` }} />
+          </span>
+          <span className="qualidade-valor tabular">{completude}%</span>
+          {camposVazios.length > 0 && (
+            <span className="qualidade-nota">
+              mais vazios: {camposVazios.slice(0, 3).map(c => `${ROTULO_CAMPO[c.campo] ?? c.campo} (${c.n})`).join(' · ')}
+            </span>
+          )}
+          {nIncompletos > 0 && (
+            <button
+              className="btn btn-ghost"
+              aria-pressed={soIncompletos}
+              onClick={() => setSoIncompletos(!soIncompletos)}
+            >
+              {soIncompletos ? 'Mostrar todos' : `Abrir os incompletos · ${nIncompletos}`}
+            </button>
+          )}
+        </div>
+      )}
+
+      <KpiRow colunas={4}>
         <Kpi label="Riscos mapeados" valor={totalRiscos} acento="brand" />
         <Kpi label="Em andamento" valor={totalEmAndamento} acento="alto" />
         <Kpi label="Concluídas" valor={totalConcluido} acento="baixo" />
         <Kpi label="Priorização crítica" valor={totalCritico} acento="critico" />
-        <Kpi
-          label="Cadastro preenchido"
-          valor={`${completude}%`}
-          sub={<>campos preenchidos</>}
-          progresso={completude / 100}
-          acento="brand"
-          largo
-        />
       </KpiRow>
 
       <FilterBar

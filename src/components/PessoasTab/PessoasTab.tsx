@@ -7,6 +7,7 @@ import {
 import { chaveDoNome } from '../../lib/planoDeAcao';
 import { formatarNumero, plural } from '../../lib/portfolioLabels';
 import { EmptyState } from '../common/EmptyState';
+import { onActivateKey } from '../../lib/a11y';
 import { PessoaModal } from './PessoaModal';
 import { fetchTasks } from '../../lib/tasksApi';
 
@@ -80,6 +81,7 @@ export function PessoasTab({ pf, onIrPara }: PessoasTabProps) {
 
   const inativos = pessoas.length - pessoas.filter(p => p.ativo).length;
   const semCapacidade = pessoas.filter(p => p.ativo && p.dias_projeto_mes == null).length;
+  const primeiraSemTeto = pessoas.find(p => p.ativo && p.dias_projeto_mes == null) ?? null;
 
   async function excluir(p: Pessoa) {
     const u = uso.find(x => x.pessoa.id === p.id);
@@ -206,10 +208,17 @@ export function PessoasTab({ pf, onIrPara }: PessoasTabProps) {
       )}
 
       {semCapacidade > 0 && (
-        <div className="form-aviso" style={{ marginTop: 0, marginBottom: 'var(--sp-3)' }}>
-          {plural(semCapacidade, 'pessoa ativa está', 'pessoas ativas estão')} sem capacidade de
-          projeto declarada. Sem esse teto, o Painel mostra a carga delas mas não tem régua para
-          acusar sobrecarga.
+        <div className="form-aviso form-aviso-com-acao" style={{ marginTop: 0, marginBottom: 'var(--sp-3)' }}>
+          <span>
+            {plural(semCapacidade, 'pessoa ativa está', 'pessoas ativas estão')} sem capacidade de
+            projeto declarada. Sem esse teto, o Painel mostra a carga delas mas não tem régua para
+            acusar sobrecarga de forma auditável.
+          </span>
+          {primeiraSemTeto && (
+            <button className="btn btn-ghost" onClick={() => setEditando(primeiraSemTeto)}>
+              Declarar capacidade
+            </button>
+          )}
         </div>
       )}
 
@@ -245,7 +254,15 @@ export function PessoasTab({ pf, onIrPara }: PessoasTabProps) {
                 const teto = p.dias_projeto_mes;
                 const escala = Math.max(c?.diasNoPeriodo ?? 0, teto ?? 0) || 1;
                 return (
-                  <tr key={p.id} data-inativo={!p.ativo || undefined}>
+                  <tr
+                    key={p.id}
+                    data-inativo={!p.ativo || undefined}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`Editar ${p.nome}`}
+                    onClick={() => setEditando(p)}
+                    onKeyDown={onActivateKey(() => setEditando(p))}
+                  >
                     <td>
                       <div className="pessoa-nome">{p.nome}</div>
                       <div className="lista-nota">
@@ -282,9 +299,9 @@ export function PessoasTab({ pf, onIrPara }: PessoasTabProps) {
                           </span>
                         </div>
                       ) : (
-                        <span className="lista-nota">
-                          {teto != null ? `teto ${teto} d` : 'sem teto'}
-                        </span>
+                        teto != null
+                          ? <span className="lista-nota">teto {teto} d</span>
+                          : <button className="nao-preenchido" onClick={e => { e.stopPropagation(); setEditando(p); }}>Não preenchido</button>
                       )}
                     </td>
                     <td>
