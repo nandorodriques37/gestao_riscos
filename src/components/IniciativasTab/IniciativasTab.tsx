@@ -16,6 +16,7 @@ import './iniciativas.css';
 import { OBJETIVO_BALDE } from '../../lib/portfolioUi';
 import { EmptyState } from '../common/EmptyState';
 import { Kpi, KpiRow } from '../common/Kpi';
+import { useConfirmacao } from '../common/Confirmacao';
 import { IniciativaDetalhe } from './IniciativaDetalhe';
 import { IniciativaModal } from './IniciativaModal';
 
@@ -113,6 +114,7 @@ export function IniciativasTab({
   function limparFiltros() { setBusca(''); setSituacao('todas'); setObjetivoFiltro(''); setDonoFiltro(''); setVisao(''); }
   const [criando, setCriando] = useState(false);
   const [editando, setEditando] = useState<Iniciativa | null>(null);
+  const [confirmar, dialogoConfirmacao] = useConfirmacao();
 
 
   const objetivoPorId = useMemo(() => new Map(objetivos.map(o => [o.id, o])), [objetivos]);
@@ -242,10 +244,15 @@ export function IniciativasTab({
 
   async function excluir(i: Iniciativa) {
     const presas = acoes_risco.filter(a => a.iniciativa_id === i.id).length;
-    const aviso = presas > 0
-      ? `Excluir "${i.nome}"? As ${plural(presas, 'ação vinculada volta', 'ações vinculadas voltam')} a ser mitigações autônomas dos riscos de origem, e os marcos são apagados.`
-      : `Excluir "${i.nome}"? Os marcos dela são apagados junto.`;
-    if (!window.confirm(aviso)) return;
+    const nMarcos = marcosDe.get(i.id)?.length ?? 0;
+    const partes = ['Ela some do portfólio.'];
+    partes.push(nMarcos > 0 ? `${plural(nMarcos, 'O marco vai', 'Os ' + nMarcos + ' marcos vão')} junto.` : 'Não tem marco cadastrado.');
+    if (presas > 0) partes.push(`${plural(presas, 'A ação de risco vinculada volta', 'As ' + presas + ' ações de risco vinculadas voltam')} a ser mitigação autônoma — o risco continua tratado, mas sem sustentar objetivo.`);
+    if (!(await confirmar({
+      titulo: `Excluir "${i.nome || 'iniciativa sem nome'}"?`,
+      consequencia: partes.join(' '),
+      rotuloConfirmar: 'Excluir iniciativa',
+    }))) return;
     const ok = await deleteEntidade('iniciativas', i.id);
     if (ok) { setEditando(null); onSelecionar(null); }
   }
@@ -320,7 +327,6 @@ export function IniciativasTab({
       {!selecionada && (iniciativas.length === 0 ? (
         <div className="card">
           <EmptyState
-            icon="◇"
             message="Nenhuma iniciativa no portfólio"
             hint={objetivos.length === 0
               ? 'Cadastre um objetivo para vincular sua primeira iniciativa.'
@@ -417,6 +423,8 @@ export function IniciativasTab({
           })}
         </section>
       ))}
+
+      {dialogoConfirmacao}
 
       {(criando || novoObjetivoId) && (
         <IniciativaModal

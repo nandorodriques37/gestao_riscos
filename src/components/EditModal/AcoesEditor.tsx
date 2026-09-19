@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { IniciativaPicker } from '../common/IniciativaPicker';
+import { useConfirmacao } from '../common/Confirmacao';
 import type { Iniciativa, Objetivo, Pessoa } from '../../types';
 import { ROTULO_STATUS_ACAO, ROTULO_STATUS_INICIATIVA } from '../../lib/portfolioLabels';
 import {
@@ -37,6 +38,7 @@ export function AcoesEditor({
   // React a montar (o botão de adicionar fica abaixo da lista).
   const novoIdRef = useRef<string | null>(null);
   const [vinculando, setVinculando] = useState<string | null>(null);
+  const [confirmar, dialogoConfirmacao] = useConfirmacao();
   const iniciativaPorId = new Map(iniciativas.map(i => [i.id, i]));
 
   function patchLinha(id: string, patch: Partial<LinhaPlano>) {
@@ -48,14 +50,15 @@ export function AcoesEditor({
    * sem cobrir aquele risco — e em silêncio, se ninguém avisar. Avisa, mas não
    * bloqueia: travar prenderia o usuário a uma linha errada.
    */
-  function removeLinha(linha: LinhaPlano) {
+  async function removeLinha(linha: LinhaPlano) {
     const ini = linha.iniciativa_id ? iniciativaPorId.get(linha.iniciativa_id) : undefined;
-    if (ini && !window.confirm(
-      `Esta mitigação é executada dentro de "${ini.nome || 'iniciativa sem nome'}".\n\n`
-      + 'Removendo-a, a iniciativa deixa de cobrir este risco — e o risco volta a contar '
-      + 'como sem tratamento, se não sobrar nenhuma outra ação.\n\n'
-      + 'Se a ideia é só marcar que ela foi abandonada, use o status "Cancelada" no lugar.',
-    )) return;
+    if (ini && !(await confirmar({
+      titulo: `Remover a mitigação de "${ini.nome || 'iniciativa sem nome'}"?`,
+      consequencia: 'A iniciativa deixa de cobrir este risco — e o risco volta a contar como sem '
+        + 'tratamento, se não sobrar nenhuma outra ação. Se a ideia é só marcar que ela foi '
+        + 'abandonada, use o status "Cancelada" no lugar.',
+      rotuloConfirmar: 'Remover mitigação',
+    }))) return;
     onChange(linhas.filter(l => l.id !== linha.id));
   }
 
@@ -86,7 +89,7 @@ export function AcoesEditor({
                 className="delete-btn"
                 aria-label={`Remover ação ${i + 1}`}
                 title="Remover ação"
-                onClick={() => removeLinha(linha)}
+                onClick={() => { void removeLinha(linha); }}
               >
                 ×
               </button>
@@ -162,6 +165,7 @@ export function AcoesEditor({
       )}
 
       <button type="button" className="acoes-add" onClick={addLinha}>+ Adicionar ação</button>
+      {dialogoConfirmacao}
     </div>
   );
 }

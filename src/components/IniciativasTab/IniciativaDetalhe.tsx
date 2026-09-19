@@ -14,6 +14,7 @@ import {
 import { estadoDoMarco } from '../../lib/marcos';
 import { TrilhaMarcos, LegendaTrilha } from './TrilhaMarcos';
 import { MarcoModal } from './MarcoModal';
+import { EmptyState } from '../common/EmptyState';
 import { VincularRiscoModal } from './VincularRiscoModal';
 import { proximoMarco, dataPlanoMarco } from './iniciativasUi';
 import { OBJETIVO_BALDE } from '../../lib/portfolioUi';
@@ -268,6 +269,13 @@ export function IniciativaDetalhe({
         </div>
 
         <TrilhaMarcos marcos={meusMarcos} hoje={hoje} />
+        {meusMarcos.length === 0 && (
+          <EmptyState
+            message="Sem marco, não há entrega verificável."
+            hint='A partir de "Aprovada" o status exige pelo menos um. Marco é entregável, não atividade.'
+            action={{ label: 'Cadastrar marco', onClick: () => setCriandoMarco(true) }}
+          />
+        )}
         {meusMarcos.length > 0 && <LegendaTrilha />}
 
         {meusMarcos.length > 0 && (

@@ -1,7 +1,11 @@
+/**
+ * Estado vazio: o que é, por que está vazio e o que fazer. O glifo é sempre a
+ * rede de decisão da marca — havia uma prop `icon` que oito chamadas passavam
+ * e ninguém renderizava.
+ */
 interface EmptyStateProps {
   message: string;
   hint?: string;
-  icon?: string;
   action?: { label: string; onClick: () => void };
 }
 

@@ -13,6 +13,7 @@ import {
 import { OBJETIVO_BALDE } from '../../lib/portfolioUi';
 import { EmptyState } from '../common/EmptyState';
 import { Kpi, KpiRow } from '../common/Kpi';
+import { useConfirmacao } from '../common/Confirmacao';
 import { ObjetivoModal } from './ObjetivoModal';
 import { MedicaoModal } from './MedicaoModal';
 import { Sparkline } from './Sparkline';
@@ -46,6 +47,7 @@ export function ObjetivosTab({
   const [medindo, setMedindo] = useState<Objetivo | null>(null);
   const [criando, setCriando] = useState(false);
   const [mostrarEncerrados, setMostrarEncerrados] = useState(false);
+  const [confirmar, dialogoConfirmacao] = useConfirmacao();
 
   const pessoaPorId = useMemo(() => new Map(pessoas.map(p => [p.id, p.nome])), [pessoas]);
 
@@ -100,11 +102,14 @@ export function ObjetivosTab({
    * meta; quem responde pelo resultado é quem clica.
    */
   async function declararAtingido(o: Objetivo) {
-    if (!window.confirm(
-      `Declarar "${o.descricao}" como atingido?\n\n`
-      + 'A série já cobriu todo o caminho entre baseline e meta. Ele sai da conta de '
-      + 'objetivos ativos e passa a contar como alcançado.',
-    )) return;
+    if (!(await confirmar({
+      titulo: `Declarar "${o.descricao}" como atingido?`,
+      consequencia: 'A série já cobriu todo o caminho entre baseline e meta. Ele sai da conta de '
+        + 'objetivos ativos e passa a contar como alcançado — e quem declara responde por isso.',
+      rotuloConfirmar: 'Declarar atingido',
+      rotuloManter: 'Ainda não',
+      perigo: false,
+    }))) return;
     await patchEntidade('objetivos', o.id, { status: 'atingido' });
   }
 
@@ -118,7 +123,14 @@ export function ObjetivosTab({
       );
       return;
     }
-    if (!window.confirm(`Excluir o objetivo "${o.descricao}"?`)) return;
+    const nMedicoes = medicoes.filter(m => m.objetivo_id === o.id).length;
+    if (!(await confirmar({
+      titulo: `Excluir o objetivo "${o.descricao}"?`,
+      consequencia: nMedicoes > 0
+        ? `Ele some do portfólio. ${plural(nMedicoes, 'A medição registrada vai', 'As ' + nMedicoes + ' medições registradas vão')} junto — a tendência se perde.`
+        : 'Ele some do portfólio. Não tem medição registrada.',
+      rotuloConfirmar: 'Excluir objetivo',
+    }))) return;
     const ok = await deleteEntidade('objetivos', o.id);
     if (ok) setEditando(null);
   }
@@ -143,6 +155,8 @@ export function ObjetivosTab({
           <button className="error-banner-dismiss" onClick={clearError} aria-label="Fechar aviso">×</button>
         </div>
       )}
+
+      {dialogoConfirmacao}
 
       <div className="page-bar">
         <div>
@@ -192,7 +206,6 @@ export function ObjetivosTab({
       {visiveis.length === 0 ? (
         <div className="card">
           <EmptyState
-            icon="◇"
             message="Nenhum objetivo cadastrado"
             hint="O objetivo é o porquê: o resultado de negócio que as iniciativas movem. Poucos e ativos — três a seis dão conta de um ano."
             action={{ label: '+ Novo objetivo', onClick: () => setCriando(true) }}
@@ -377,10 +390,13 @@ export function ObjetivosTab({
                   </div>
                   {daqui.length === 0 ? (
                     <div className="bento-sub">
-                      Nada pendurado aqui ainda.{' '}
-                      <button className="link-ini" onClick={() => onCriarIniciativa(o.id)}>
-                        Criar uma iniciativa
-                      </button>
+                      <strong>Nenhuma iniciativa sustenta este objetivo.</strong> Enquanto não
+                      houver, ele é intenção — não plano.
+                      <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
+                        <button className="btn btn-ghost" onClick={() => onCriarIniciativa(o.id)}>
+                          Criar iniciativa
+                        </button>
+                      </div>
                     </div>
                   ) : (
                     <div className="lista-linhas">

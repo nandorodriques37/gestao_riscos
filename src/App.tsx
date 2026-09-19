@@ -17,6 +17,10 @@ const TriagemTab = lazy(() => import('./components/TriagemTab/TriagemTab').then(
 import { EditModal } from './components/EditModal/EditModal';
 import { ModoRiscoToggle } from './components/common/ModoRiscoToggle';
 import { PromoverAcaoModal } from './components/RegistroTab/PromoverAcaoModal';
+import { PaletaComando, type ItemPaleta } from './components/common/PaletaComando';
+import { useConfirmacao } from './components/common/Confirmacao';
+import { gruposCom } from './components/NavRail/secoes';
+import { nomeRisco, plural } from './lib/portfolioLabels';
 import { prontosParaFechar, cadeiaQuebrada } from './lib/portfolioMetrics';
 import { useAppNavigation } from './hooks/useAppNavigation';
 import { canNavigate, readRoute } from './lib/navigation';
@@ -72,6 +76,10 @@ function App() {
   // daria duas verdades sobre o mesmo tema.
   const [theme, setTheme] = useState<ThemePref>(readThemePref);
   const [autor, setAutor] = useState(lerAutor);
+  const [paletaAberta, setPaletaAberta] = useState(false);
+  // Diálogo de confirmação das exclusões de risco: consequência em números e
+  // botões com nome, no lugar do window.confirm de "Tem certeza?".
+  const [confirmar, dialogoConfirmacao] = useConfirmacao();
 
   useEffect(() => { applyThemePref(theme); }, [theme]);
 
@@ -143,6 +151,54 @@ function App() {
   const abrirIniciativa = useCallback((id: string) => navigate({ ...readRoute(''), tab: 'iniciativas', iniciativa: id }), [navigate]);
   const abrirRisco = useCallback((id: string) => navigate({ ...route, risco: id }), [navigate, route]);
 
+  // Ctrl/⌘+K abre a paleta — menos quando já há um diálogo aberto, que tem o
+  // foco preso e ficaria brigando com ela pelo teclado.
+  useEffect(() => {
+    function onKey(e: globalThis.KeyboardEvent) {
+      if (!(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== 'k') return;
+      if (!paletaAberta && document.querySelector('[role="dialog"]')) return;
+      e.preventDefault();
+      setPaletaAberta(v => !v);
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [paletaAberta]);
+
+  /** O que a paleta indexa: os registros das camadas, com o mínimo para reconhecer. */
+  const itensPaleta = useMemo<ItemPaleta[]>(() => {
+    const objetivoPorId = new Map(pf.portfolio.objetivos.map(o => [o.id, o.descricao]));
+    return [
+      ...pf.portfolio.objetivos.map(o => ({ tipo: 'objetivo' as const, id: o.id, rotulo: o.descricao || 'Objetivo sem descrição' })),
+      ...pf.portfolio.iniciativas.map(i => ({
+        tipo: 'iniciativa' as const, id: i.id, rotulo: i.nome || 'Iniciativa sem nome',
+        sub: i.objetivo_id ? objetivoPorId.get(i.objetivo_id) : undefined,
+      })),
+      ...records.filter(r => r.risco.trim()).map(r => ({ tipo: 'risco' as const, id: r.id, rotulo: nomeRisco(r), sub: r.area || undefined })),
+      ...tarefas.tasks.map(t => ({ tipo: 'tarefa' as const, id: t.id, rotulo: t.tarefa || 'Tarefa sem título', sub: t.tipo || undefined })),
+      ...pf.portfolio.pessoas.map(p => ({ tipo: 'pessoa' as const, id: p.id, rotulo: p.nome, sub: p.papel || undefined })),
+    ];
+  }, [pf.portfolio.objetivos, pf.portfolio.iniciativas, pf.portfolio.pessoas, records, tarefas.tasks]);
+
+  const abrirDaPaleta = useCallback((item: ItemPaleta) => {
+    if (item.tipo === 'risco') abrirRisco(item.id);
+    else if (item.tipo === 'iniciativa') abrirIniciativa(item.id);
+    else if (item.tipo === 'tarefa') navigate({ ...readRoute(''), tab: 'tarefas', tarefa: item.id });
+    else if (item.tipo === 'objetivo') irPara('objetivos');
+    else irPara('pessoas');
+  }, [abrirRisco, abrirIniciativa, navigate, irPara]);
+
+  /** Excluir um risco desvincula as mitigações — não as apaga. O diálogo diz quantas. */
+  function pedidoExcluirRisco(rec: StoredRiskRecord) {
+    const mitigacoes = tarefas.tasks.filter(t => t.risco_id === rec.id).length;
+    return {
+      titulo: `Excluir o risco "${nomeRisco(rec)}"?`,
+      consequencia: mitigacoes > 0
+        ? `Ele some do registro. ${plural(mitigacoes, 'A mitigação vinculada fica', 'As ' + mitigacoes + ' mitigações vinculadas ficam')} sem risco — não são apagadas. Dá para desfazer por alguns segundos.`
+        : 'Ele some do registro. Nenhuma mitigação depende dele. Dá para desfazer por alguns segundos.',
+      rotuloConfirmar: 'Excluir risco',
+    };
+  }
+
   // Riscos com tratamento entregue esperando confirmação. Fica no App porque
   // alimenta o contador do alternador de modo, que aparece nas duas leituras.
   const prontos = useMemo(
@@ -204,7 +260,7 @@ function App() {
   async function handleDeleteRow(idx: number) {
     const rec = records[idx];
     if (!rec) return;
-    if (!window.confirm('Tem certeza que deseja excluir este registro?')) return;
+    if (!(await confirmar(pedidoExcluirRisco(rec)))) return;
     if (editingId === rec.id) setEditingId(null);
     const ok = await deleteRecordById(rec.id);
     if (ok) scheduleUndo(rec);
@@ -231,9 +287,9 @@ function App() {
 
   async function handleDeleteFromModal() {
     if (!editingId) return;
-    if (!window.confirm('Tem certeza que deseja excluir este registro?')) return;
     const id = editingId;
     const rec = records.find(r => r.id === id);
+    if (!rec || !(await confirmar(pedidoExcluirRisco(rec)))) return;
     setEditingId(null);
     const ok = await deleteRecordById(id);
     if (ok && rec) scheduleUndo(rec);
@@ -289,6 +345,7 @@ function App() {
         theme={theme}
         onCycleTheme={cycleTheme}
         themeLabel={THEME_LABEL[theme]}
+        onAbrirPaleta={() => setPaletaAberta(true)}
       />
 
       <NavRail
@@ -461,6 +518,16 @@ function App() {
           onPromovida={id => { setPromovendoId(null); abrirIniciativa(id); }}
         />
       )}
+
+      <PaletaComando
+        aberta={paletaAberta}
+        onFechar={() => setPaletaAberta(false)}
+        grupos={gruposCom(mostrarTriagem)}
+        itens={itensPaleta}
+        onIrPara={irPara}
+        onAbrir={abrirDaPaleta}
+      />
+      {dialogoConfirmacao}
 
       {pendingUndo && (
         <div className="undo-snackbar" role="status" aria-live="polite">

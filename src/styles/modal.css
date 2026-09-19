@@ -644,3 +644,140 @@ select.modal-input {
   font-size: var(--fs-2xs);
   color: var(--ink-4);
 }
+
+/* ============================================================================
+   Diálogo de confirmação e paleta de comando
+   ========================================================================= */
+
+.confirmacao-texto {
+  margin: 0;
+  font-size: var(--fs-sm);
+  line-height: 1.55;
+  color: var(--ink-2);
+}
+
+.paleta-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 12dvh var(--sp-4) var(--sp-4);
+  background: var(--bg-overlay);
+}
+
+.paleta {
+  width: min(640px, 100%);
+  max-height: 76dvh;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line-border);
+  border-radius: var(--r-float);
+  background: var(--bg-surface);
+  box-shadow: var(--elev-3);
+  overflow: hidden;
+}
+
+.paleta-campo {
+  width: 100%;
+  min-height: calc(var(--control-h) + var(--sp-3));
+  padding: var(--sp-3) var(--sp-4);
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink-1);
+  font-size: var(--fs-lg);
+  outline: none;
+}
+
+.paleta-campo::placeholder {
+  color: var(--ink-4);
+}
+
+.paleta-lista {
+  margin: 0;
+  padding: var(--sp-2);
+  list-style: none;
+  overflow-y: auto;
+}
+
+.paleta-grupo {
+  padding: var(--sp-2) var(--sp-3) var(--sp-1);
+  font-size: var(--fs-3xs);
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.paleta-item {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-3);
+  min-height: var(--control-h);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-control);
+  font-size: var(--fs-sm);
+  color: var(--ink-1);
+  cursor: pointer;
+}
+
+.paleta-item[data-ativo] {
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+
+.paleta-rotulo {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.paleta-sub {
+  margin-left: auto;
+  flex: none;
+  max-width: 40%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--fs-2xs);
+  color: var(--ink-3);
+}
+
+.paleta-vazio {
+  padding: var(--sp-4) var(--sp-3);
+  font-size: var(--fs-sm);
+  color: var(--ink-3);
+}
+
+.paleta-dica {
+  display: flex;
+  gap: var(--sp-4);
+  padding: var(--sp-2) var(--sp-4);
+  border-top: 1px solid var(--line);
+  font-size: var(--fs-2xs);
+  color: var(--ink-3);
+}
+
+.paleta-dica kbd,
+.header-paleta kbd {
+  display: inline-block;
+  min-width: 18px;
+  padding: 0 var(--sp-1);
+  margin-right: 2px;
+  border: 1px solid var(--line-border);
+  border-bottom-width: 2px;
+  border-radius: var(--r-xs);
+  font-family: var(--font-mono);
+  font-size: var(--fs-3xs);
+  line-height: 1.6;
+  text-align: center;
+  color: var(--ink-2);
+  background: var(--bg-sunken);
+}
+
+.header-paleta kbd {
+  margin: 0 0 0 var(--sp-1);
+}

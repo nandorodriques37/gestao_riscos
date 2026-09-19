@@ -13,6 +13,8 @@ interface ModalShellProps {
   rodape?: ReactNode;
   /** Mais largo para formulários de duas colunas. */
   largo?: boolean;
+  /** Diálogo curto e centrado (confirmação), em vez da gaveta lateral. */
+  compacto?: boolean;
   busy?: boolean;
   error?: string | null;
 }
@@ -26,7 +28,7 @@ interface ModalShellProps {
  * tem regras próprias de rascunho e commit, e reescrevê-lo agora seria risco
  * sem retorno. Esta casca serve os formulários novos do portfólio.
  */
-export function ModalShell({ titulo, subtitulo, onClose, children, rodape, largo, busy = false, error }: ModalShellProps) {
+export function ModalShell({ titulo, subtitulo, onClose, children, rodape, largo, compacto, busy = false, error }: ModalShellProps) {
   const cardRef = useRef<HTMLDivElement>(null);
 
   // No celular o cartão é uma folha colada na base; sem a trava, chegar ao fim
@@ -68,6 +70,7 @@ export function ModalShell({ titulo, subtitulo, onClose, children, rodape, largo
         ref={cardRef}
         className="modal-card"
         data-largo={largo || undefined}
+        data-compact={compacto ? 'true' : undefined}
         role="dialog"
         aria-modal="true"
         aria-label={titulo}

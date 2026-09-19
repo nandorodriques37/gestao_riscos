@@ -8,6 +8,7 @@ import { chaveDoNome } from '../../lib/planoDeAcao';
 import { formatarNumero, plural } from '../../lib/portfolioLabels';
 import { EmptyState } from '../common/EmptyState';
 import { onActivateKey } from '../../lib/a11y';
+import { useConfirmacao } from '../common/Confirmacao';
 import { PessoaModal } from './PessoaModal';
 import { fetchTasks } from '../../lib/tasksApi';
 
@@ -82,19 +83,21 @@ export function PessoasTab({ pf, onIrPara }: PessoasTabProps) {
   const inativos = pessoas.length - pessoas.filter(p => p.ativo).length;
   const semCapacidade = pessoas.filter(p => p.ativo && p.dias_projeto_mes == null).length;
   const primeiraSemTeto = pessoas.find(p => p.ativo && p.dias_projeto_mes == null) ?? null;
+  const [confirmar, dialogoConfirmacao] = useConfirmacao();
 
   async function excluir(p: Pessoa) {
     const u = uso.find(x => x.pessoa.id === p.id);
-    if (u && u.total > 0) {
-      if (!window.confirm(
-        `${p.nome} é dona de ${plural(u.total, 'item', 'itens')} `
-        + `(${u.objetivos} objetivos, ${u.iniciativas} iniciativas, ${u.trabalho} tarefas e ações).\n\n`
-        + 'Excluir não apaga esses itens — deixa todos sem dono, e não há como saber depois '
-        + 'quem era.\n\nSe a pessoa apenas saiu do time, marque como inativa: o histórico fica de pé.',
-      )) return;
-    } else if (!window.confirm(`Excluir ${p.nome}?`)) {
-      return;
-    }
+    const consequencia = u && u.total > 0
+      ? `${p.nome} é dona de ${plural(u.total, 'item', 'itens')} (${u.objetivos} objetivos, `
+        + `${u.iniciativas} iniciativas, ${u.trabalho} tarefas e ações). Excluir não apaga esses itens — `
+        + 'deixa todos sem dono, e não há como saber depois quem era. Se a pessoa apenas saiu do '
+        + 'time, marque como inativa: o histórico fica de pé.'
+      : 'A ficha some da lista. Nenhum objetivo, iniciativa ou tarefa depende dela.';
+    if (!(await confirmar({
+      titulo: `Excluir ${p.nome}?`,
+      consequencia,
+      rotuloConfirmar: 'Excluir pessoa',
+    }))) return;
     const ok = await deleteEntidade('pessoas', p.id);
     if (ok) setEditando(null);
   }
@@ -106,11 +109,13 @@ export function PessoasTab({ pf, onIrPara }: PessoasTabProps) {
    * esta função existe para desfazer.
    */
   async function mesclar(destino: Pessoa, origem: Pessoa) {
-    if (!window.confirm(
-      `Juntar "${origem.nome}" em "${destino.nome}"?\n\n`
-      + `Tudo que hoje é de ${origem.nome} passa a ser de ${destino.nome}, e a ficha `
-      + 'duplicada é excluída. Não dá para desfazer pela tela.',
-    )) return;
+    if (!(await confirmar({
+      titulo: `Juntar "${origem.nome}" em "${destino.nome}"?`,
+      consequencia: `Tudo que hoje é de ${origem.nome} passa a ser de ${destino.nome}, e a ficha `
+        + 'duplicada é excluída. Não dá para desfazer pela tela.',
+      rotuloConfirmar: 'Juntar fichas',
+      perigo: false,
+    }))) return;
 
     setMesclando(true);
     // Quem repõe as FKs é o servidor. Esta função já fez isso aqui, item a
@@ -225,7 +230,6 @@ export function PessoasTab({ pf, onIrPara }: PessoasTabProps) {
       {visiveis.length === 0 ? (
         <div className="card">
           <EmptyState
-            icon="◇"
             message="Ninguém cadastrado ainda"
             hint="Pessoas aparecem sozinhas quando você digita um responsável no plano de ação de um risco — ou você cadastra aqui, com papel, área e capacidade."
             action={{ label: '+ Nova pessoa', onClick: () => setCriando(true) }}
@@ -321,6 +325,8 @@ export function PessoasTab({ pf, onIrPara }: PessoasTabProps) {
         <button className="link-ini" onClick={() => onIrPara('iniciativas')}>preencha lá</button>{' '}
         e a conta aparece aqui.
       </div>
+
+      {dialogoConfirmacao}
 
       {criando && (
         <PessoaModal erro={error}

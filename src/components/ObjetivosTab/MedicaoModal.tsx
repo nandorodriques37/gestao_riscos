@@ -5,6 +5,7 @@ import type { UsePortfolio } from '../../hooks/usePortfolio';
 import { progressoObjetivo, hojeISO } from '../../lib/portfolioMetrics';
 import { formatarData, formatarNumero } from '../../lib/portfolioLabels';
 import { ModalShell } from '../common/ModalShell';
+import { useConfirmacao } from '../common/Confirmacao';
 import { CampoTexto, CampoNumero } from '../common/Campo';
 
 interface MedicaoModalProps {
@@ -46,14 +47,19 @@ export function MedicaoModal({ objetivo, medicoes, pf, onClose }: MedicaoModalPr
     if (ok) { setValor(null); setObs(''); }
   }
 
+  const [confirmar, dialogoConfirmacao] = useConfirmacao();
+
   async function apagar(m: Medicao) {
-    if (!window.confirm(
-      `Apagar a leitura de ${formatarData(m.data)}? A tendência é recalculada sem ela.`,
-    )) return;
+    if (!(await confirmar({
+      titulo: `Apagar a leitura de ${formatarData(m.data)}?`,
+      consequencia: 'A leitura some da série e a tendência é recalculada sem ela.',
+      rotuloConfirmar: 'Apagar leitura',
+    }))) return;
     await pf.deleteEntidade('medicoes', m.id);
   }
 
   return (
+    <>
     <ModalShell
       largo
       titulo={objetivo.indicador || 'Medições do objetivo'}
@@ -150,5 +156,7 @@ export function MedicaoModal({ objetivo, medicoes, pf, onClose }: MedicaoModalPr
         </table>
       )}
     </ModalShell>
+    {dialogoConfirmacao}
+    </>
   );
 }

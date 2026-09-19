@@ -225,7 +225,6 @@ export function TriagemTab({ records, pf }: TriagemTabProps) {
       {portfolio.acoes_risco.length === 0 ? (
         <div className="card">
           <EmptyState
-            icon="↓"
             message="Os planos de ação ainda estão dentro dos registros de risco"
             hint="A extração só insere linhas novas: os campos Ações e Resultado Esperado de cada risco ficam exatamente como estão."
             action={{
@@ -354,7 +353,6 @@ export function TriagemTab({ records, pf }: TriagemTabProps) {
           {listaVisivel.length === 0 ? (
             <div className="card" ref={listaRef}>
               <EmptyState
-                icon="✓"
                 message={naFila
                   ? 'Fila vazia — tudo classificado'
                   : filtro === 'decididas' ? 'Nada classificado ainda'

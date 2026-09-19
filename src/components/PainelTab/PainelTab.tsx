@@ -365,7 +365,6 @@ export function PainelTab({
         </div>
         <div className="card">
           <EmptyState
-            icon="◇"
             message="Nenhum objetivo e nenhuma iniciativa cadastrados"
             hint="O painel lê objetivos, iniciativas e marcos. Comece cadastrando um objetivo — ou extraia os planos de ação dos riscos pela Triagem."
             action={{ label: 'Ir para Objetivos', onClick: () => onIrPara('objetivos') }}
@@ -692,10 +691,25 @@ export function PainelTab({
             Dias-pessoa que caem neste mês, contra o teto declarado de cada um.
           </div>
           {carga.length === 0 ? (
-            <div className="bento-sub" style={{ marginTop: 'var(--sp-3)' }}>
-              Nenhuma iniciativa ativa com esforço e janela preenchidos. Sem isso, não dá
-              para acusar sobrecarga de forma auditável.
-            </div>
+            // Duas causas, duas mensagens: sem teto declarado a régua não existe;
+            // sem esforço e janela nas iniciativas não há o que medir contra ela.
+            pessoas.every(p => p.dias_projeto_mes == null) ? (
+              <div className="bento-sub" style={{ marginTop: 'var(--sp-3)' }}>
+                <strong>Ninguém tem capacidade declarada.</strong> Sem teto não dá para acusar
+                sobrecarga de forma auditável.
+                <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
+                  <button className="btn btn-ghost" onClick={() => onIrPara('pessoas')}>Declarar capacidade</button>
+                </div>
+              </div>
+            ) : (
+              <div className="bento-sub" style={{ marginTop: 'var(--sp-3)' }}>
+                <strong>Nenhuma iniciativa ativa tem esforço e janela.</strong> A carga é o esforço
+                espalhado pela janela — sem os dois, não há conta.
+                <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
+                  <button className="btn btn-ghost" onClick={() => onIrPara('iniciativas')}>Abrir as iniciativas</button>
+                </div>
+              </div>
+            )
           ) : (
             <div className="lista-linhas">
               {carga.slice(0, 6).map(c => {

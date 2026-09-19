@@ -325,6 +325,18 @@
   }
 }
 
+/* Ação que destrói: só dentro de um diálogo de confirmação, ao lado de
+   "Manter". Fora dele o vermelho continua reservado a ameaça e atraso. */
+.btn-danger {
+  border-color: var(--danger);
+  background: var(--danger);
+  color: var(--brand-ink);
+}
+
+.btn-danger:hover {
+  filter: brightness(0.92);
+}
+
 /* ---------- Vocabulário de vazio ----------
    Duas formas, e só duas. O travessão, em --ink-4, para o campo que NÃO se
    aplica ao registro. "Não preenchido", em --ink-3, itálico e sempre

@@ -140,7 +140,6 @@ export function RastroTab({
       {migracaoNaoRodou && (
         <div className="card" style={{ marginBottom: 'var(--sp-4)' }}>
           <EmptyState
-            icon="↓"
             message="Os planos de ação ainda não foram extraídos"
             hint="Sem as ações em linha própria, o rastro não tem o que seguir: todo risco aparece como sem tratamento. A extração não altera nenhum registro."
             action={{ label: 'Ir para a Triagem', onClick: () => onIrPara('triagem') }}
@@ -220,7 +219,6 @@ export function RastroTab({
       <div className="card">
         {visiveis.length === 0 ? (
           <EmptyState
-            icon="⌕"
             message="Nenhum risco com esse recorte"
             hint="Troque o filtro de estado ou limpe a busca."
           />
