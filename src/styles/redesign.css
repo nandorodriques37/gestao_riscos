@@ -176,189 +176,12 @@ textarea {
 
 /* ── Navigation ─────────────────────────────────────────────────────────── */
 
-.nav-rail {
-  top: var(--header-h);
-  width: var(--rail-w);
-  border-right: 1px solid var(--line);
-  background: color-mix(in srgb, var(--surface) 70%, var(--bg));
-  box-shadow: none;
-  backdrop-filter: none;
-}
-
-.nav-rail.collapsed {
-  width: var(--rail-w-mini);
-}
-
-.nav-rail-inner {
-  padding: 15px 10px 12px;
-}
-
-.nav-group-label {
-  margin: 15px 10px 6px;
-  color: var(--ink-subtle);
-  font-size: var(--fs-3xs);
-  font-weight: 700;
-  letter-spacing: 0.11em;
-}
-
-.rail-nav {
-  padding: 15px 10px 12px;
-  gap: 18px;
-}
-
-.rail-group {
-  gap: 2px;
-}
-
-.rail-group-label {
-  margin: 0 10px 5px;
-  padding: 0;
-  color: var(--ink-subtle);
-  font-size: var(--fs-3xs);
-  font-weight: 700;
-  letter-spacing: 0.11em;
-}
-
-.nav-item {
-  position: relative;
-  min-height: 36px;
-  padding: 7px 10px;
-  border: 0;
-  border-radius: 4px;
-  color: var(--ink-muted);
-  font-size: var(--fs-xs);
-  font-weight: 540;
-}
-
-.rail-item,
-.rail-toggle {
-  position: relative;
-  min-height: 36px;
-  padding: 7px 10px;
-  border: 0;
-  border-radius: 4px;
-  color: var(--ink-muted);
-  font-size: var(--fs-xs);
-  font-weight: 540;
-}
-
-.rail-item::before {
-  position: absolute;
-  top: 7px;
-  bottom: 7px;
-  left: -10px;
-  width: 2px;
-  border-radius: 0 2px 2px 0;
-  background: transparent;
-  content: '';
-}
-
-@media (hover: hover) {
-  .rail-item:hover,
-  .rail-toggle:hover {
-    background: color-mix(in srgb, var(--brand) 4%, transparent);
-    color: var(--ink);
-  }
-}
-
-.rail-item[data-ativo='true'] {
-  background: transparent;
-  color: var(--brand);
-  font-weight: 700;
-}
-
-.rail-item[data-ativo='true']::before {
-  background: var(--brand);
-}
-
-.rail-item svg,
-.rail-toggle svg {
-  width: 20px;
-  height: 20px;
-  stroke-width: 1.8;
-}
-
-.rail-foot {
-  padding: 10px;
-  border-top-color: var(--line);
-}
-
-.rail-toggle {
-  border-radius: 0;
-}
-
-.nav-item::before {
-  position: absolute;
-  top: 7px;
-  bottom: 7px;
-  left: -10px;
-  width: 2px;
-  border-radius: 0 2px 2px 0;
-  background: transparent;
-  content: '';
-}
-
-.nav-item:hover {
-  background: color-mix(in srgb, var(--brand) 4%, transparent);
-  color: var(--ink);
-}
-
-.nav-item.active {
-  background: transparent;
-  color: var(--brand);
-  font-weight: 700;
-}
-
-.nav-item.active::before {
-  background: var(--brand);
-}
-
-.nav-item svg {
-  width: 20px;
-  height: 20px;
-  stroke-width: 1.8;
-}
-
-.nav-rail.collapsed .nav-item {
-  justify-content: center;
-  padding-inline: 0;
-}
-
-.nav-rail.collapsed .nav-item::before {
-  left: -10px;
-}
-
-.nav-collapse-btn {
-  height: var(--control-h);
-  border: 0;
-  border-top: 1px solid var(--line);
-  border-radius: 0;
-  color: var(--ink-muted);
-  background: transparent;
-}
-
-.bottom-nav {
-  min-height: calc(var(--nav-bottom-h) + env(safe-area-inset-bottom));
-  border-top: 1px solid var(--line);
-  background: color-mix(in srgb, var(--surface) 97%, var(--bg));
-  box-shadow: none;
-  backdrop-filter: none;
-}
-
 .nav-bottom {
   min-height: calc(var(--nav-bottom-h) + env(safe-area-inset-bottom));
   border-top: 1px solid var(--line);
   background: color-mix(in srgb, var(--surface) 97%, var(--bg));
   box-shadow: none;
   backdrop-filter: none;
-}
-
-.bottom-nav-item {
-  position: relative;
-  min-width: 48px;
-  min-height: 44px;
-  color: var(--ink-muted);
-  font-size: var(--fs-3xs);
 }
 
 .nav-bottom-item {
@@ -376,33 +199,7 @@ textarea {
   background: var(--brand);
 }
 
-.bottom-nav-item.active {
-  color: var(--brand);
-  background: transparent;
-}
-
-.bottom-nav-item.active::after {
-  position: absolute;
-  right: 20%;
-  bottom: -1px;
-  left: 20%;
-  height: 2px;
-  border-radius: 2px 2px 0 0;
-  background: var(--brand);
-  content: '';
-}
-
 /* ── Page hierarchy ─────────────────────────────────────────────────────── */
-
-.app-main {
-  margin-left: var(--rail-w);
-  transition: margin-left var(--dur-slow) var(--ease);
-}
-
-.nav-rail.collapsed ~ .app-main,
-.app-main.rail-collapsed {
-  margin-left: var(--rail-w-mini);
-}
 
 .tab-page {
   width: 100%;
@@ -1301,12 +1098,6 @@ tbody tr:hover td {
 @media (max-width: 760px) {
   .app-shell {
     background: var(--bg);
-  }
-
-  .app-main,
-  .nav-rail.collapsed ~ .app-main,
-  .app-main.rail-collapsed {
-    margin-left: 0;
   }
 
   .brand {

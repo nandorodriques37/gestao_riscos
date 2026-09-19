@@ -163,7 +163,7 @@ painel de telemetria. Consequências, todas em `tokens.css`:
   uma vez inverteria quem ganha, às vezes só numa largura de tela. Cada mudança
   que toca um componente leva o bloco dele para a folha canônica e funde as
   propriedades na regra que já existe (foi assim com `.card`, `.kpi-*`, a
-  faixa de KPI e a cifra). **Nunca nasce uma segunda camada final sobre ela.**
+  faixa de KPI, a cifra e o rail). **Nunca nasce uma segunda camada final sobre ela.**
 
 - **Nenhum hex literal fora de `tokens.css`.** Nenhum espaçamento fora da escala
   `--sp-*`; nenhum tamanho de fonte fora de `--fs-*`. Altura de controle vem de
