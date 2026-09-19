@@ -311,9 +311,7 @@ export function IniciativaDetalhe({
                     <td className="num" data-rotulo="Entrega">{formatarData(m.data_real)}</td>
                     <td data-rotulo="Status">
                       <span className="badge" data-badge={
-                        estado === 'entregue' ? 'green'
-                          : estado === 'atrasado' ? 'red'
-                            : estado === 'cancelado' ? 'slate' : 'blue'
+                        estado === 'entregue' ? 'ok' : estado === 'atrasado' ? 'risco' : 'neutro'
                       }>
                         {estado === 'atrasado' ? 'Vencido' : ROTULO_STATUS_MARCO[m.status]}
                       </span>

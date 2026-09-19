@@ -163,7 +163,7 @@ export function RegistroTab({
         <Kpi label="Concluídas" valor={totalConcluido} acento="baixo" />
         <Kpi label="Priorização crítica" valor={totalCritico} acento="critico" />
         <Kpi
-          label="Completude"
+          label="Cadastro preenchido"
           valor={`${completude}%`}
           sub={<>campos preenchidos</>}
           progresso={completude / 100}

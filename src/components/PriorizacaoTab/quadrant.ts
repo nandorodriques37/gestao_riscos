@@ -15,16 +15,21 @@ export interface QuadrantDef {
   subtitle: string;
 }
 
+/*
+ * O quadrante diz o VEREDITO, não a próxima ação: "não compensa" (baixo
+ * impacto por muito esforço) é o que a matriz concluiu; "reavaliar" era um
+ * pedido. E é a única string da interface que estava em inglês.
+ */
 export const QUADRANT_DEFS: QuadrantDef[] = [
-  { key: 'qw', title: 'QUICK WINS', subtitle: 'alto impacto · baixo esforço' },
+  { key: 'qw', title: 'GANHO RÁPIDO', subtitle: 'alto impacto · baixo esforço' },
   { key: 'ga', title: 'GRANDES APOSTAS', subtitle: 'alto impacto · alto esforço' },
   { key: 'bp', title: 'BAIXA PRIORIDADE', subtitle: 'baixo impacto · baixo esforço' },
-  { key: 'rv', title: 'REAVALIAR', subtitle: 'baixo impacto · alto esforço' },
+  { key: 'rv', title: 'NÃO COMPENSA', subtitle: 'baixo impacto · alto esforço' },
 ];
 
 export const QUADRANT_NAMES: Record<Quadrant, string> = {
-  qw: 'Quick Wins',
-  ga: 'Grandes Apostas',
-  bp: 'Baixa Prioridade',
-  rv: 'Reavaliar',
+  qw: 'Ganho rápido',
+  ga: 'Grandes apostas',
+  bp: 'Baixa prioridade',
+  rv: 'Não compensa',
 };

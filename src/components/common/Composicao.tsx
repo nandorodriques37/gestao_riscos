@@ -45,7 +45,14 @@ export function Composicao({ fatias, vazio, semLegenda }: ComposicaoProps) {
             data-serie={f.serie}
             style={{ flex: `${f.valor} 0 0` }}
             title={`${f.label}: ${f.valor}`}
-          />
+          >
+            {/* O número entra na faixa quando cabe (≥12% da barra). A barra
+                inteira já tem aria-label; o rótulo visual é redundância para
+                quem lê, não para quem ouve. */}
+            {f.valor / total >= 0.12 && (
+              <span className="stack-seg-rotulo" aria-hidden="true">{f.valor}</span>
+            )}
+          </div>
         ))}
       </div>
       {!semLegenda && (

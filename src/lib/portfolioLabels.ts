@@ -30,7 +30,7 @@ export const ROTULO_VETOR: Record<VetorIniciativa, string> = {
 
 export const ROTULO_STATUS_INICIATIVA: Record<StatusIniciativa, string> = {
   '': 'Sem status',
-  backlog: 'Backlog',
+  backlog: 'Não priorizada',
   aprovada: 'Aprovada',
   em_execucao: 'Em execução',
   pausada: 'Pausada',

@@ -75,26 +75,34 @@ export interface RotuloLacuna {
   entidade: 'objetivo' | 'iniciativa' | 'risco' | 'trabalho';
 }
 
+/*
+ * Os botões falam UMA família de verbo: "Abrir …" navega para o registro e
+ * aplica o recorte daquele contexto. A outra família, "Declarar …", é para
+ * quando o sistema já provou o fato e falta a pessoa assumi-lo — e não cabe
+ * aqui, porque lacuna é exatamente o que ainda não foi provado. Antes
+ * conviviam "Ver tarefas", "Reatribuir" e "Cadastrar marcos", cada um com
+ * uma gramática, para o mesmo gesto.
+ */
 export const LACUNAS: Record<ChaveLacuna, RotuloLacuna> = {
   objetivo_sem_iniciativa: {
     titulo: 'Objetivo ativo sem iniciativa ativa',
     ajuda: 'Ninguém está trabalhando neles. É intenção, não plano.',
-    destino: 'objetivos', acao: 'Ver objetivos', camada: 'objetivo', entidade: 'objetivo',
+    destino: 'objetivos', acao: 'Abrir os objetivos', camada: 'objetivo', entidade: 'objetivo',
   },
   iniciativa_sem_objetivo: {
     titulo: 'Iniciativa sem objetivo',
     ajuda: 'Não deveriam existir — a regra recusa na gravação. Provavelmente o objetivo delas foi excluído.',
-    destino: 'iniciativas', acao: 'Reatribuir', camada: 'objetivo', entidade: 'iniciativa',
+    destino: 'iniciativas', acao: 'Abrir as iniciativas', camada: 'objetivo', entidade: 'iniciativa',
   },
   iniciativa_sem_marco: {
     titulo: 'Iniciativa ativa sem marco',
     ajuda: 'Sem entregável verificável, não há como saber se anda nem medir atraso.',
-    destino: 'iniciativas', acao: 'Cadastrar marcos', camada: 'iniciativa', entidade: 'iniciativa',
+    destino: 'iniciativas', acao: 'Abrir as iniciativas', camada: 'iniciativa', entidade: 'iniciativa',
   },
   iniciativa_parada: {
     titulo: 'Iniciativa parada',
     ajuda: 'Em execução, sem marco movimentado há mais de 30 dias. Ninguém cancela — só para de mexer.',
-    destino: 'iniciativas', acao: 'Ver iniciativas', camada: 'iniciativa', entidade: 'iniciativa',
+    destino: 'iniciativas', acao: 'Abrir as iniciativas', camada: 'iniciativa', entidade: 'iniciativa',
   },
   risco_sem_tratamento: {
     titulo: 'Risco aberto sem tratamento',
@@ -110,11 +118,11 @@ export const LACUNAS: Record<ChaveLacuna, RotuloLacuna> = {
   trabalho_sem_dono: {
     titulo: 'Tarefa ou ação aberta sem dono',
     ajuda: 'Ninguém responde por ela. Prazo sem dono não cobra nada.',
-    destino: 'tarefas', acao: 'Ver tarefas', camada: 'trabalho', entidade: 'trabalho',
+    destino: 'tarefas', acao: 'Abrir as tarefas', camada: 'trabalho', entidade: 'trabalho',
   },
   trabalho_atrasado: {
     titulo: 'Tarefa ou ação atrasada',
     ajuda: 'Prazo vencido e trabalho ainda aberto. Rotina não entra — controle contínuo nunca atrasa.',
-    destino: 'tarefas', acao: 'Ver tarefas', camada: 'trabalho', entidade: 'trabalho',
+    destino: 'tarefas', acao: 'Abrir as tarefas', camada: 'trabalho', entidade: 'trabalho',
   },
 };

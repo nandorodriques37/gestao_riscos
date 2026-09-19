@@ -334,13 +334,22 @@
 .kpi-strip {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: var(--sp-3);
+  /* Uma faixa só, e não uma grade de cartões: as células se tocam, separadas
+     por um filete, dentro de um envelope. A camada final forçava QUATRO
+     colunas em toda faixa — era o que empurrava o quinto KPI do Registro e os
+     três últimos de Tarefas para uma segunda linha com um buraco ao lado. */
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: var(--bg-surface);
 }
 
 /* Contagem fixa de colunas, quando a faixa tem um número redondo de tiles e
    deixá-los se acomodarem sozinhos criaria uma órfã na segunda linha. */
 .kpi-strip[data-colunas='3'] { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .kpi-strip[data-colunas='4'] { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.kpi-strip[data-colunas='5'] { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 
 .kpi-card {
   --c: var(--brand);
@@ -425,6 +434,60 @@
   border-radius: var(--r-full);
   background: var(--c);
   transition: width var(--dur) var(--ease);
+}
+
+/* Célula da faixa: sem borda própria nem raio — o envelope é a faixa. A cor
+   do acento aparece duas vezes de propósito, na barra à esquerda (herdada do
+   cartão) e no filete de baixo: em faixa densa a barra lateral some atrás do
+   rótulo, e o filete é o que se lê de longe. */
+.kpi-strip > .kpi-card {
+  min-width: 0;
+  min-height: 88px;
+  padding: var(--sp-3) var(--sp-4);
+  border: 0;
+  border-right: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.kpi-strip > .kpi-card:last-child {
+  border-right: 0;
+}
+
+.kpi-strip > .kpi-card::after {
+  position: absolute;
+  right: var(--sp-4);
+  bottom: 0;
+  left: var(--sp-4);
+  height: 2px;
+  background: var(--c);
+  content: '';
+  opacity: 0.78;
+}
+
+/* Tile que clica (filtra a lista): o único com hover e estado. */
+.kpi-strip > button.kpi-card {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+}
+
+.kpi-strip > button.kpi-card:hover,
+.kpi-strip > .kpi-card[aria-pressed='true'] {
+  background: var(--brand-soft);
+}
+
+/* Estado vazio no lugar do número. */
+.kpi-vazio {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-2);
+  margin-top: var(--sp-2);
+  font-size: var(--fs-sm);
+  line-height: 1.4;
+  color: var(--ink-3);
 }
 
 /* ---------- Skeleton ---------- */

@@ -58,7 +58,7 @@
   gap: var(--sp-1);
   margin-top: var(--sp-2);
   font-size: var(--fs-2xs);
-  color: var(--tier-alto);
+  color: var(--badge-atencao);
   font-weight: var(--fw-medium);
 }
 
@@ -110,14 +110,34 @@
 .stack-bar {
   display: flex;
   gap: var(--viz-gap);
-  height: 14px;
+  /* Corpo para carregar o valor DENTRO do segmento. A barra de 14px obrigava
+     uma legenda maior que o dado; com 28px o número cabe na faixa e a legenda
+     volta a ser o que deve ser — identidade, não muleta. */
+  height: var(--viz-bar-h);
   border-radius: var(--r-xs);
   overflow: hidden;
   margin-top: var(--sp-3);
 }
 
 .stack-seg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  overflow: hidden;
   background: var(--c, var(--tier-null));
+}
+
+/* O valor só entra no segmento que tem largura para ele — decisão do
+   componente, que conhece a fração. No segmento estreito a legenda responde
+   sozinha, como sempre respondeu. */
+.stack-seg-rotulo {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-bold);
+  color: var(--ink-on-solid);
+  white-space: nowrap;
 }
 
 .serie-dot {
@@ -307,6 +327,21 @@
   right: 0;
   width: 2px;
   background: var(--ink-3);
+}
+
+/* Sem meta ou sem medição a trilha é TRACEJADA e não tem preenchimento. Uma
+   barra em 0% diz "não andou"; o que aconteceu foi "ninguém mediu" — são
+   fracassos diferentes, e só o primeiro é do objetivo. */
+.meta-track[data-sem-medida] {
+  background: repeating-linear-gradient(
+    90deg,
+    var(--line-border) 0 6px,
+    transparent 6px 12px
+  );
+}
+
+.meta-track[data-sem-medida] .meta-alvo {
+  background: var(--ink-4);
 }
 
 .meta-legenda {
@@ -1645,10 +1680,15 @@
   color: var(--ink-1);
 }
 
+/* Dentro do elo a barra é miniatura: o número já está no rótulo ao lado. */
 .cadeia-elo .stack-bar {
   width: 100%;
   height: 8px;
   margin-top: var(--sp-2);
+}
+
+.cadeia-elo .stack-seg-rotulo {
+  display: none;
 }
 
 .cadeia-elo .lista-linhas {

@@ -6,7 +6,7 @@ import {
   impactoComprometido, marcosNoPrazo, slipMedio, wipPorDono, cargaPorPessoa,
   zumbis, mixPorVetor, portfolioPorOrigem, fonteVsVetor,
   tratamentoDosRiscos, exposicaoResidual,
-  saudeObjetivos, saudeIniciativas, saudeRiscos, saudeTrabalho, cadeiaQuebrada,
+  saudeObjetivos, saudeIniciativas, saudeRiscos, saudeTrabalho, cadeiaQuebrada, iniciativaAtiva,
   hojeISO, periodoDe, LIMITE_WIP, DIAS_PARA_ZUMBI, LIMITE_DEFENSIVO,
   type ChaveLacuna, type EstadoTratamento,
 } from '../../lib/portfolioMetrics';
@@ -19,6 +19,7 @@ import { ROTULO_TIER } from '../../lib/calculations';
 import { baixarPortfolioCSV, baixarBackup } from '../../lib/portfolioCsv';
 import { EmptyState } from '../common/EmptyState';
 import { Composicao, type Fatia } from '../common/Composicao';
+import { Kpi, KpiRow, type KpiProps } from '../common/Kpi';
 import { Historico } from '../common/Historico';
 
 interface PainelTabProps {
@@ -242,7 +243,7 @@ export function PainelTab({
       .filter(s => st.includes(s.status))
       .reduce((soma, s) => soma + s.n, 0);
     return [
-      { chave: 'backlog', serie: 'backlog', label: 'Backlog', valor: n('backlog', '') },
+      { chave: 'backlog', serie: 'backlog', label: 'Não priorizadas', valor: n('backlog', '') },
       {
         chave: 'ativa',
         serie: 'ativa',
@@ -288,6 +289,51 @@ export function PainelTab({
 
   const maiorWip = wip[0];
   const sobrecarregados = wip.filter(w => w.acimaDoLimite).length;
+  const ativasN = useMemo(() => iniciativas.filter(iniciativaAtiva).length, [iniciativas]);
+
+  /**
+   * Os dois tiles em R$ nunca mostram "R$ 0" quando a causa é campo em branco.
+   * Três situações, três respostas: não se aplica (nada ativo) é travessão;
+   * se aplica e NINGUÉM preencheu é estado vazio com o botão de quem preenche;
+   * alguém preencheu é o número, com o aviso de que ele é piso.
+   */
+  const valorEmJogo: Omit<KpiProps, 'label'> = ativasN === 0
+    ? { valor: '—', sub: 'Nenhuma iniciativa ativa' }
+    : impacto.semValor === ativasN
+      ? {
+          valor: null,
+          vazio: {
+            texto: 'Nenhuma iniciativa ativa tem valor declarado. Sem isso não dá para priorizar por retorno.',
+            acao: { label: 'Declarar valor', onClick: () => onIrPara('iniciativas') },
+          },
+        }
+      : {
+          valor: formatarMoeda(impacto.total),
+          sub: plural(ativasN, 'iniciativa ativa', 'iniciativas ativas'),
+          title: formatarMoedaCheia(impacto.total),
+          alerta: impacto.semValor > 0
+            ? `${plural(impacto.semValor, 'iniciativa ativa sem valor', 'iniciativas ativas sem valor')} — o total é piso`
+            : undefined,
+        };
+
+  const exposicaoAberta: Omit<KpiProps, 'label'> = exposicao.riscos === 0
+    ? { valor: '—', sub: 'Nenhum risco aberto' }
+    : exposicao.semValor === exposicao.riscos
+      ? {
+          valor: null,
+          vazio: {
+            texto: `${plural(exposicao.riscos, 'risco aberto', 'riscos abertos')}, nenhum com exposição declarada. Sem o valor, o registro não diz o tamanho da ameaça.`,
+            acao: { label: 'Declarar exposição', onClick: () => onIrPara('registro') },
+          },
+        }
+      : {
+          valor: formatarMoeda(exposicao.total),
+          sub: `${plural(exposicao.riscos, 'risco ainda aberto', 'riscos ainda abertos')} — nem mitigados, nem obsoletos, nem descartados`,
+          title: formatarMoedaCheia(exposicao.total),
+          alerta: exposicao.semValor > 0
+            ? `${plural(exposicao.semValor, 'risco aberto sem exposição', 'riscos abertos sem exposição')} em R$`
+            : undefined,
+        };
 
   if (loading && iniciativas.length === 0 && objetivos.length === 0) {
     return (
@@ -371,7 +417,114 @@ export function PainelTab({
         </div>
       )}
 
+      {/* ---- A faixa de estatística: os cinco números que abrem a conversa ----
+          Eram cinco cartões com o mesmo peso dos blocos de decisão, e
+          disputavam a primeira dobra com o que de fato pede uma decisão.
+          Viram uma faixa em linha sob o título: são contexto. O que precisa de
+          atenção vem primeiro. */}
+      <KpiRow colunas={5}>
+        <Kpi label="Valor em jogo" acento="brand" {...valorEmJogo} />
+        <Kpi
+          label="Marcos no prazo"
+          valor={prazo.pct == null ? '—' : formatarPct(prazo.pct)}
+          sub={prazo.pct == null
+            ? 'Nenhum marco venceu ainda'
+            : `${prazo.noPrazo} de ${prazo.total} medidos contra a data original`}
+          alerta={slip.replanejados > 0
+            ? `${plural(slip.replanejados, 'marco replanejado', 'marcos replanejados')} · +${formatarNumero(slip.diasMedioDosReplanejados, 0)} dias em média`
+            : undefined}
+          acento="brand"
+        />
+        <Kpi
+          label="Quem está mais carregado"
+          valor={maiorWip ? maiorWip.wip : '—'}
+          sub={maiorWip ? `${maiorWip.nome} · em execução` : 'Ninguém com iniciativa em execução'}
+          alerta={sobrecarregados > 0
+            ? `${plural(sobrecarregados, 'pessoa acima', 'pessoas acima')} de ${LIMITE_WIP} em execução`
+            : undefined}
+          acento={sobrecarregados > 0 ? 'alto' : 'brand'}
+        />
+        <Kpi
+          label="Iniciativas paradas"
+          valor={parados.length}
+          sub={`Sem marco movimentado há mais de ${DIAS_PARA_ZUMBI} dias`}
+          acento={parados.length > 0 ? 'alto' : 'null'}
+        />
+        <Kpi label="Exposição ainda aberta" acento="brand" {...exposicaoAberta} />
+      </KpiRow>
+
       <div className="bento">
+        {/* ---- O que precisa de atenção ---- */}
+
+        <div className="card" data-span="12">
+          <div className="section-header-row">
+            <div style={{ maxWidth: '78ch' }}>
+              <div className="section-title">O que precisa de atenção</div>
+              <div className="bento-sub">
+                Todo elo solto num lugar só. Nenhum destes é erro de sistema — são
+                decisões que ninguém tomou ainda, e cada linha leva a quem as toma.
+              </div>
+            </div>
+          </div>
+
+          {lacunasAbertas.length === 0 ? (
+            <div className="bento-sub" style={{ marginTop: 'var(--sp-3)' }}>
+              Nada solto: todo objetivo tem iniciativa, toda iniciativa tem marco, todo
+              risco aberto tem tratamento e todo trabalho aberto tem dono e prazo em dia.
+            </div>
+          ) : (
+            <div className="lacunas">
+              {lacunasAbertas.map(l => {
+                const r = LACUNAS[l.chave];
+                const exemplos = l.ids.slice(0, 2)
+                  .flatMap(id => {
+                    const nome = nomePorId.get(id);
+                    return nome ? [{ id, nome }] : [];
+                  });
+                return (
+                  <div className="lacuna" key={l.chave} data-camada={r.camada}>
+                    <span className="lacuna-n tabular">{l.n}</span>
+                    <div className="lacuna-corpo">
+                      <div className="lacuna-titulo">{r.titulo}</div>
+                      <div className="lacuna-ajuda">{r.ajuda}</div>
+                      {exemplos.length > 0 && (
+                        <div className="lacuna-exemplos">
+                          {/* Os nomes cortam com reticências; o "e mais N" fica
+                              FORA do corte. Junto, ele era a primeira coisa que
+                              a elipse comia — e o número é mais útil que um
+                              terceiro nome pela metade. */}
+                          <span className="lacuna-exemplos-nomes">
+                            {exemplos.map((e, i) => (
+                              <span key={e.id}>
+                                {i > 0 && <span aria-hidden="true"> · </span>}
+                                <button
+                                  className="link-ini"
+                                  onClick={() => abrirItemDaLacuna(l.chave, e.id)}
+                                  title={e.nome}
+                                >
+                                  {e.nome}
+                                </button>
+                              </span>
+                            ))}
+                          </span>
+                          {l.n > exemplos.length && (
+                            <span className="lacuna-exemplos-resto">
+                              e mais {l.n - exemplos.length}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    <button className="btn btn-ghost" onClick={() => irParaLacuna(l.chave)}>
+                      {r.acao}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
         {/* ---- A cadeia: objetivo → iniciativa → risco → trabalho ----
             Uma coluna por camada, na ordem da jornada. Cada uma responde
             "quanto existe" e "quanto terminou", que eram quatro perguntas
@@ -455,136 +608,6 @@ export function PainelTab({
           </div>
         </div>
 
-        {/* ---- O que precisa de atenção ---- */}
-
-        <div className="card" data-span="12">
-          <div className="section-header-row">
-            <div style={{ maxWidth: '78ch' }}>
-              <div className="section-title">O que precisa de atenção</div>
-              <div className="bento-sub">
-                Todo elo solto num lugar só. Nenhum destes é erro de sistema — são
-                decisões que ninguém tomou ainda, e cada linha leva a quem as toma.
-              </div>
-            </div>
-          </div>
-
-          {lacunasAbertas.length === 0 ? (
-            <div className="bento-sub" style={{ marginTop: 'var(--sp-3)' }}>
-              Nada solto: todo objetivo tem iniciativa, toda iniciativa tem marco, todo
-              risco aberto tem tratamento e todo trabalho aberto tem dono e prazo em dia.
-            </div>
-          ) : (
-            <div className="lacunas">
-              {lacunasAbertas.map(l => {
-                const r = LACUNAS[l.chave];
-                const exemplos = l.ids.slice(0, 2)
-                  .flatMap(id => {
-                    const nome = nomePorId.get(id);
-                    return nome ? [{ id, nome }] : [];
-                  });
-                return (
-                  <div className="lacuna" key={l.chave} data-camada={r.camada}>
-                    <span className="lacuna-n tabular">{l.n}</span>
-                    <div className="lacuna-corpo">
-                      <div className="lacuna-titulo">{r.titulo}</div>
-                      <div className="lacuna-ajuda">{r.ajuda}</div>
-                      {exemplos.length > 0 && (
-                        <div className="lacuna-exemplos">
-                          {/* Os nomes cortam com reticências; o "e mais N" fica
-                              FORA do corte. Junto, ele era a primeira coisa que
-                              a elipse comia — e o número é mais útil que um
-                              terceiro nome pela metade. */}
-                          <span className="lacuna-exemplos-nomes">
-                            {exemplos.map((e, i) => (
-                              <span key={e.id}>
-                                {i > 0 && <span aria-hidden="true"> · </span>}
-                                <button
-                                  className="link-ini"
-                                  onClick={() => abrirItemDaLacuna(l.chave, e.id)}
-                                  title={e.nome}
-                                >
-                                  {e.nome}
-                                </button>
-                              </span>
-                            ))}
-                          </span>
-                          {l.n > exemplos.length && (
-                            <span className="lacuna-exemplos-resto">
-                              e mais {l.n - exemplos.length}
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                    <button className="btn btn-ghost" onClick={() => irParaLacuna(l.chave)}>
-                      {r.acao}
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* ---- Linha 1: os quatro números que abrem a conversa ---- */}
-
-        <div className="card" data-span="3">
-          <div className="kpi-label">Impacto comprometido</div>
-          <div className="bento-valor" title={formatarMoedaCheia(impacto.total)}>
-            {formatarMoeda(impacto.total)}
-          </div>
-          <div className="bento-sub">
-            {plural(iniciativas.filter(i => ['aprovada', 'em_execucao', 'pausada'].includes(i.status)).length,
-              'iniciativa ativa', 'iniciativas ativas')}
-          </div>
-          {impacto.semValor > 0 && (
-            <div className="bento-lacuna">
-              <span aria-hidden="true">▲</span>
-              {plural(impacto.semValor, 'iniciativa ativa sem valor', 'iniciativas ativas sem valor')} — o total é piso
-            </div>
-          )}
-        </div>
-
-        <div className="card" data-span="3">
-          <div className="kpi-label">Marcos no prazo</div>
-          <div className="bento-valor">
-            {prazo.pct == null ? '—' : formatarPct(prazo.pct)}
-          </div>
-          <div className="bento-sub">
-            {prazo.pct == null
-              ? 'Nenhum marco venceu ainda'
-              : `${prazo.noPrazo} de ${prazo.total} medidos contra a data original`}
-          </div>
-          {slip.replanejados > 0 && (
-            <div className="bento-sub">
-              {plural(slip.replanejados, 'marco replanejado', 'marcos replanejados')} ·
-              {' '}+{formatarNumero(slip.diasMedioDosReplanejados, 0)} dias em média
-            </div>
-          )}
-        </div>
-
-        <div className="card" data-span="3">
-          <div className="kpi-label">Maior Iniciativas em execução por dono</div>
-          <div className="bento-valor">{maiorWip ? maiorWip.wip : '0'}</div>
-          <div className="bento-sub">
-            {maiorWip ? maiorWip.nome : 'Ninguém com iniciativa em execução'}
-          </div>
-          {sobrecarregados > 0 && (
-            <div className="bento-lacuna">
-              <span aria-hidden="true">▲</span>
-              {plural(sobrecarregados, 'pessoa acima', 'pessoas acima')} de {LIMITE_WIP} em execução
-            </div>
-          )}
-        </div>
-
-        <div className="card" data-span="3">
-          <div className="kpi-label">Iniciativas paradas</div>
-          <div className="bento-valor">{parados.length}</div>
-          <div className="bento-sub">
-            Em execução sem marco movimentado há mais de {DIAS_PARA_ZUMBI} dias
-          </div>
-        </div>
-
         {/* ---- Mix e cobertura de objetivo ---- */}
 
         <div className="card" data-span="6">
@@ -644,7 +667,7 @@ export function PainelTab({
               <div className="bento-sub">A série já cobriu todo o caminho até a meta.</div>
               <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
                 <button className="btn btn-ghost" onClick={() => onIrPara('objetivos')}>
-                  Ver objetivos
+                  Abrir os objetivos
                 </button>
               </div>
             </div>
@@ -653,7 +676,7 @@ export function PainelTab({
 
         {/* ---- Carga, paradas e exposição ---- */}
 
-        <div className="card" data-span="4">
+        <div className="card" data-span="6">
           <div className="section-title">Carga por pessoa</div>
           <div className="bento-sub">
             Dias-pessoa que caem neste mês, contra o teto declarado de cada um.
@@ -691,7 +714,7 @@ export function PainelTab({
           )}
         </div>
 
-        <div className="card" data-span="4">
+        <div className="card" data-span="6">
           <div className="section-title">Paradas há mais de {DIAS_PARA_ZUMBI} dias</div>
           <div className="bento-sub">
             Ninguém cancela uma iniciativa — só para de mexer nela.
@@ -716,23 +739,6 @@ export function PainelTab({
                   </span>
                 </div>
               ))}
-            </div>
-          )}
-        </div>
-
-        <div className="card" data-span="4">
-          <div className="kpi-label">Exposição residual</div>
-          <div className="bento-valor" title={formatarMoedaCheia(exposicao.total)}>
-            {formatarMoeda(exposicao.total)}
-          </div>
-          <div className="bento-sub">
-            {plural(exposicao.riscos, 'risco ainda aberto', 'riscos ainda abertos')} —
-            nem mitigados, nem obsoletos, nem descartados.
-          </div>
-          {exposicao.semValor > 0 && (
-            <div className="bento-lacuna">
-              <span aria-hidden="true">▲</span>
-              {plural(exposicao.semValor, 'risco aberto sem exposição', 'riscos abertos sem exposição')} em R$
             </div>
           )}
         </div>
@@ -815,8 +821,8 @@ export function PainelTab({
               </div>
             </div>
             <div className="actions-row">
-              <button className="btn btn-ghost" onClick={() => onIrPara('registro')}>Rastro de mitigação</button>
-              <button className="btn btn-ghost" onClick={() => onIrPara('iniciativas')}>Ver iniciativas</button>
+              <button className="btn btn-ghost" onClick={() => onIrPara('registro')}>Abrir o rastro</button>
+              <button className="btn btn-ghost" onClick={() => onIrPara('iniciativas')}>Abrir as iniciativas</button>
             </div>
           </div>
 

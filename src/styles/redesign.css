@@ -559,55 +559,6 @@ textarea:focus,
   box-shadow: 0 0 0 var(--focus-w) var(--focus-ring);
 }
 
-/* ── Continuous metrics ────────────────────────────────────────────────── */
-
-.metric-strip.kpi-strip,
-.kpi-strip {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0;
-  overflow: hidden;
-  border: 1px solid var(--line);
-  border-radius: var(--r-card);
-  background: var(--surface);
-}
-
-.metric-item.kpi-card,
-.kpi-strip > .kpi-card {
-  position: relative;
-  min-width: 0;
-  min-height: 88px;
-  padding: 14px 16px 15px;
-  border: 0;
-  border-right: 1px solid var(--line);
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-}
-
-.metric-item.kpi-card:last-child,
-.kpi-strip > .kpi-card:last-child {
-  border-right: 0;
-}
-
-.metric-item.kpi-card::after,
-.kpi-strip > .kpi-card::after {
-  position: absolute;
-  right: 16px;
-  bottom: 0;
-  left: 16px;
-  height: 2px;
-  background: var(--kpi-color, var(--brand));
-  content: '';
-  opacity: 0.78;
-}
-
-.kpi-card.clickable:hover,
-.kpi-card.is-active {
-  background: var(--brand-soft);
-  transform: none;
-}
-
 /* ── Context / command bars ────────────────────────────────────────────── */
 
 .filter-row,
