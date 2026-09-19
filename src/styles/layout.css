@@ -21,7 +21,9 @@
   min-width: 0;
 }
 
-/* Sem rail (telas estreitas), o conteúdo assume a linha inteira. */
+/* Sem rail (telas estreitas), o conteúdo assume a linha inteira. O que o
+   header perde nessa faixa (respiro, rota) está em responsive.css, que vem
+   depois das regras base dele. */
 @media (max-width: 1100px) {
   .app-shell {
     grid-template-areas:
@@ -32,56 +34,98 @@
 }
 
 /* ---------- Header ----------
-   Claro, hairline, sem gradiente e sem sombra. O peso visual pertence aos
-   dados, não ao chrome. */
+   Claro, hairline, sem gradiente, sem sombra e sem vidro: papel opaco — o
+   conteúdo passa por baixo, não através. O peso visual pertence aos dados,
+   não ao chrome. Ocupa a largura do shell inteiro (o rail mora embaixo dele),
+   e a marca reserva a largura do rail para que o divisor da rota continue a
+   borda dele. */
 
 .app-header {
   grid-area: header;
   position: sticky;
   top: 0;
   z-index: 30;
-  background: color-mix(in oklab, var(--bg-surface) 88%, transparent);
-  backdrop-filter: saturate(1.6) blur(10px);
-  border-bottom: 1px solid var(--line-border);
+  height: var(--header-h);
+  background: var(--surface-1);
+  border-bottom: 1px solid var(--line-hairline);
 }
 
 .app-header-inner {
-  max-width: var(--container);
-  margin-inline: auto;
-  height: var(--header-h);
-  padding-inline: var(--sp-5);
+  height: 100%;
+  padding-inline: var(--sp-4);
   display: flex;
   align-items: center;
-  gap: var(--sp-5);
+  gap: var(--sp-4);
 }
 
 .brand {
   display: flex;
   align-items: center;
   gap: var(--sp-2);
+  min-width: calc(var(--rail-w) - 2 * var(--sp-4));
   flex: none;
 }
 
+/* O glifo é a rede de decisão: quatro nós ligados, o de risco em coral — o
+   único ponto coral do chrome. */
 .brand-mark {
-  width: 26px;
-  height: 26px;
-  border-radius: var(--r-sm);
-  background: var(--brand);
-  color: var(--brand-ink);
+  width: 38px;
+  height: 30px;
+  flex: 0 0 38px;
   display: grid;
   place-items: center;
-  font-size: var(--fs-2xs);
-  font-weight: var(--fw-bold);
-  letter-spacing: 0.02em;
-  flex: none;
+  overflow: hidden;
+  border-radius: var(--r-control);
+  background: var(--brand-mark-bg);
+}
+
+.brand-mark svg {
+  width: 30px;
+  height: 22px;
+  overflow: visible;
+  fill: none;
+  stroke: var(--brand-ink);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.6;
+}
+
+.brand-mark .brand-mark-risk {
+  fill: var(--brand-red);
+  stroke: var(--brand-red);
+}
+
+.brand-copy {
+  display: grid;
+  align-content: center;
+  line-height: 1;
 }
 
 .brand-name {
   font-size: var(--fs-md);
-  font-weight: var(--fw-semibold);
-  letter-spacing: var(--tracking-tight);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--tracking-tighter);
   color: var(--ink-1);
   white-space: nowrap;
+}
+
+.brand-signature {
+  margin-top: var(--sp-1);
+  font-size: var(--fs-3xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.095em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+/* Rota atual: "Ambiente de gestão / Seção". Some abaixo de 1100px
+   (responsive.css): as abas do topo já dizem onde se está. */
+.header-route {
+  display: grid;
+  min-width: 0;
+  padding-left: var(--sp-4);
+  border-left: 1px solid var(--line-hairline);
+  line-height: 1.1;
 }
 
 /* Abas sublinhadas. O indicador é um pseudo-elemento na base do botão, para
@@ -202,16 +246,16 @@
 }
 
 /* Ícone desenhado em CSS, não por glifo: nenhum dos símbolos de sol/lua/meia-lua
-   existe no Inter, e o fallback rendia um caractere estreito e torto. Círculo
+   existe na Plex, e o fallback rendia um caractere estreito e torto. Círculo
    vazio = claro, metade = seguindo o sistema, cheio = escuro. */
 .theme-toggle {
-  width: max(32px, var(--tap-min));
-  height: max(32px, var(--tap-min));
+  width: max(var(--control-h), var(--tap-min));
+  height: max(var(--control-h), var(--tap-min));
   display: grid;
   place-items: center;
-  border-radius: var(--r-sm);
-  border: 1px solid var(--line-border);
-  background: var(--bg-surface);
+  border-radius: var(--r-control);
+  border: 1px solid transparent;
+  background: transparent;
   color: var(--ink-3);
   transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
 }
@@ -233,9 +277,9 @@
 }
 
 .theme-toggle:hover {
-  background: var(--bg-hover);
+  background: var(--surface-2);
   color: var(--ink-1);
-  border-color: var(--line-strong);
+  border-color: var(--line-hairline);
 }
 
 /* ---------- Páginas de aba ---------- */
@@ -334,20 +378,29 @@
 .kpi-strip {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: var(--sp-3);
+  /* Uma faixa só, e não uma grade de cartões: as células se tocam, separadas
+     por um filete, dentro de um envelope. A camada final forçava QUATRO
+     colunas em toda faixa — era o que empurrava o quinto KPI do Registro e os
+     três últimos de Tarefas para uma segunda linha com um buraco ao lado. */
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: var(--bg-surface);
 }
 
 /* Contagem fixa de colunas, quando a faixa tem um número redondo de tiles e
    deixá-los se acomodarem sozinhos criaria uma órfã na segunda linha. */
 .kpi-strip[data-colunas='3'] { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .kpi-strip[data-colunas='4'] { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.kpi-strip[data-colunas='5'] { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 
 .kpi-card {
   --c: var(--brand);
   position: relative;
   background: var(--bg-surface);
   border: 1px solid var(--line-border);
-  border-radius: var(--r-lg);
+  border-radius: var(--r-card);
   padding: var(--sp-3) var(--sp-4);
   overflow: hidden;
 }
@@ -375,21 +428,23 @@
 }
 
 .kpi-label {
-  font-size: var(--fs-2xs);
+  font-size: var(--fs-3xs);
   color: var(--ink-3);
-  font-weight: var(--fw-medium);
-  letter-spacing: 0.02em;
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.07em;
   text-transform: uppercase;
 }
 
-/* Número grande em figuras proporcionais — tabular só onde precisa alinhar
-   em coluna. */
+/* O número do KPI é cifra como qualquer outra e sai em mono (ver a regra de
+   cifra em base.css). O corpo escala com a viewport entre dois degraus da
+   escala; abaixo de 760px a folha responsiva fixa o degrau menor — e agora
+   vale, porque a camada final deixou de atropelá-la. */
 .kpi-value {
-  font-size: var(--fs-num);
-  font-weight: var(--fw-bold);
+  font-size: clamp(var(--fs-xl), 2vw, var(--fs-num-lg));
+  font-weight: var(--fw-medium);
   letter-spacing: var(--tracking-tighter);
-  line-height: 1.1;
-  margin-top: var(--sp-1);
+  line-height: 1;
+  margin-top: var(--sp-2);
   color: var(--ink-1);
 }
 
@@ -425,6 +480,110 @@
   transition: width var(--dur) var(--ease);
 }
 
+/* Célula da faixa: sem borda própria nem raio — o envelope é a faixa. A cor
+   do acento aparece duas vezes de propósito, na barra à esquerda (herdada do
+   cartão) e no filete de baixo: em faixa densa a barra lateral some atrás do
+   rótulo, e o filete é o que se lê de longe. */
+.kpi-strip > .kpi-card {
+  min-width: 0;
+  min-height: 88px;
+  padding: var(--sp-3) var(--sp-4);
+  border: 0;
+  border-right: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.kpi-strip > .kpi-card:last-child {
+  border-right: 0;
+}
+
+.kpi-strip > .kpi-card::after {
+  position: absolute;
+  right: var(--sp-4);
+  bottom: 0;
+  left: var(--sp-4);
+  height: 2px;
+  background: var(--c);
+  content: '';
+  opacity: 0.78;
+}
+
+/* Tile que clica (filtra a lista): o único com hover e estado. */
+.kpi-strip > button.kpi-card {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+}
+
+.kpi-strip > button.kpi-card:hover,
+.kpi-strip > .kpi-card[aria-pressed='true'] {
+  background: var(--brand-soft);
+}
+
+/* Estado vazio no lugar do número. */
+.kpi-vazio {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-2);
+  margin-top: var(--sp-2);
+  font-size: var(--fs-sm);
+  line-height: 1.4;
+  color: var(--ink-3);
+}
+
+/* ---------- Barra de qualidade do cadastro ----------
+   A melhor métrica do Registro estava enterrada como quinto KPI. Vira uma
+   régua fina sob o título: quanto está preenchido, quais campos estão mais
+   vazios e o botão que recorta a lista só ao que falta. */
+.qualidade-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+  padding: var(--sp-2) var(--sp-4);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: var(--bg-surface);
+  font-size: var(--fs-xs);
+  color: var(--ink-3);
+}
+
+.qualidade-rotulo {
+  font-size: var(--fs-3xs);
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.qualidade-track {
+  flex: 1 1 160px;
+  min-width: 80px;
+  height: 6px;
+  border-radius: var(--r-full);
+  background: var(--bg-sunken);
+  overflow: hidden;
+}
+
+.qualidade-fill {
+  display: block;
+  height: 100%;
+  border-radius: var(--r-full);
+  background: var(--brand);
+}
+
+.qualidade-valor {
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+  color: var(--ink-1);
+}
+
+.qualidade-bar .btn {
+  margin-left: auto;
+}
+
 /* ---------- Skeleton ---------- */
 
 .app-loading {
@@ -443,7 +602,7 @@
 
 .skeleton-kpi {
   height: 78px;
-  border-radius: var(--r-lg);
+  border-radius: var(--r-card);
   border: 1px solid var(--line-border);
   background: var(--bg-surface);
   position: relative;
@@ -453,7 +612,7 @@
 .skeleton-table {
   background: var(--bg-surface);
   border: 1px solid var(--line-border);
-  border-radius: var(--r-lg);
+  border-radius: var(--r-card);
   padding: var(--sp-2) 0;
 }
 
@@ -500,7 +659,7 @@
   padding: var(--sp-3) var(--sp-4);
   background: var(--danger-soft);
   border: 1px solid color-mix(in oklab, var(--danger) 28%, transparent);
-  border-radius: var(--r-md);
+  border-radius: var(--r-card);
   color: var(--danger);
   font-size: var(--fs-sm);
   font-weight: var(--fw-medium);
@@ -514,7 +673,7 @@
   background: var(--bg-surface);
   border: 1px solid color-mix(in oklab, var(--danger) 32%, transparent);
   color: var(--danger);
-  border-radius: var(--r-sm);
+  border-radius: var(--r-control);
   height: var(--control-h);
   padding: 0 var(--sp-3);
   font-size: var(--fs-xs);
@@ -543,8 +702,8 @@
   background: var(--ink-1);
   color: var(--bg-surface);
   padding: var(--sp-2) var(--sp-2) var(--sp-2) var(--sp-4);
-  border-radius: var(--r-md);
-  box-shadow: var(--elev-3);
+  border-radius: var(--r-float);
+  box-shadow: var(--elev-2);
   font-size: var(--fs-sm);
   z-index: 50;
 }

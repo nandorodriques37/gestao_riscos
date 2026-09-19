@@ -58,7 +58,7 @@
   gap: var(--sp-1);
   margin-top: var(--sp-2);
   font-size: var(--fs-2xs);
-  color: var(--tier-alto);
+  color: var(--badge-atencao);
   font-weight: var(--fw-medium);
 }
 
@@ -110,14 +110,34 @@
 .stack-bar {
   display: flex;
   gap: var(--viz-gap);
-  height: 14px;
+  /* Corpo para carregar o valor DENTRO do segmento. A barra de 14px obrigava
+     uma legenda maior que o dado; com 28px o número cabe na faixa e a legenda
+     volta a ser o que deve ser — identidade, não muleta. */
+  height: var(--viz-bar-h);
   border-radius: var(--r-xs);
   overflow: hidden;
   margin-top: var(--sp-3);
 }
 
 .stack-seg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  overflow: hidden;
   background: var(--c, var(--tier-null));
+}
+
+/* O valor só entra no segmento que tem largura para ele — decisão do
+   componente, que conhece a fração. No segmento estreito a legenda responde
+   sozinha, como sempre respondeu. */
+.stack-seg-rotulo {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-bold);
+  color: var(--ink-on-solid);
+  white-space: nowrap;
 }
 
 .serie-dot {
@@ -132,26 +152,27 @@
    ponto da legenda — eram duas listas idênticas de 9 linhas cada, e a segunda
    já vinha atrasada em relação à primeira.
 
-   As séries de status novas (objetivo, iniciativa agrupada, trabalho) passaram
-   pelo validador do skill `dataviz` contra a superfície clara, em pares
-   ADJACENTES na ordem em que a barra os empilha. `--badge-amber` ×
-   `--badge-orange` medem ΔE 4.1 em visão normal e 0.1 em deuteranopia — é por
-   isso que a composição da iniciativa agrupa "em execução" e "pausada" em
-   "Ativas" em vez de empilhá-las lado a lado. */
+   Cada série lê o token do PAPEL que cumpre — neutro para categoria, ok para
+   o que fechou, atenção para o que está em curso, coral para perda — em vez de
+   um pastel próprio. Era assim que se chegava a sete etiquetas na mesma faixa
+   de saturação, indistinguíveis entre si: `--badge-amber` × `--badge-orange`
+   mediam ΔE 4.1 em visão normal e 0.1 em deuteranopia. É também por isso que a
+   composição da iniciativa agrupa "em execução" e "pausada" em "Ativas" em vez
+   de empilhá-las lado a lado. */
 .stack-seg[data-serie='evitar_perda'],
-.serie-dot[data-serie='evitar_perda'] { --c: var(--badge-slate); }
+.serie-dot[data-serie='evitar_perda'] { --c: var(--brand-red); }
 .stack-seg[data-serie='criar_ganho'],
-.serie-dot[data-serie='criar_ganho'] { --c: var(--badge-green); }
+.serie-dot[data-serie='criar_ganho'] { --c: var(--badge-ok); }
 .stack-seg[data-serie='criar_decisao'],
-.serie-dot[data-serie='criar_decisao'] { --c: var(--badge-purple); }
+.serie-dot[data-serie='criar_decisao'] { --c: var(--brand); }
 .stack-seg[data-serie='risco'],
 .serie-dot[data-serie='risco'] { --c: var(--risco-accent); }
 .stack-seg[data-serie='oportunidade'],
-.serie-dot[data-serie='oportunidade'] { --c: var(--badge-blue); }
+.serie-dot[data-serie='oportunidade'] { --c: var(--brand); }
 .stack-seg[data-serie='mitigado'],
 .serie-dot[data-serie='mitigado'] { --c: var(--tier-baixo); }
 .stack-seg[data-serie='aceito'],
-.serie-dot[data-serie='aceito'] { --c: var(--badge-slate); }
+.serie-dot[data-serie='aceito'] { --c: var(--badge-neutro); }
 .stack-seg[data-serie='em_tratamento'],
 .serie-dot[data-serie='em_tratamento'] { --c: var(--tier-medio); }
 .stack-seg[data-serie='sem_tratamento'],
@@ -159,27 +180,27 @@
 
 /* Objetivo: ativo → atingido → abandonado. */
 .stack-seg[data-serie='ativo'],
-.serie-dot[data-serie='ativo'] { --c: var(--badge-blue); }
+.serie-dot[data-serie='ativo'] { --c: var(--camada-objetivo); }
 .stack-seg[data-serie='atingido'],
-.serie-dot[data-serie='atingido'] { --c: var(--badge-green); }
+.serie-dot[data-serie='atingido'] { --c: var(--badge-ok); }
 .stack-seg[data-serie='abandonado'],
 .serie-dot[data-serie='abandonado'] { --c: var(--tier-null); }
 
 /* Iniciativa, agrupada: backlog → ativas → concluídas → canceladas. */
 .stack-seg[data-serie='backlog'],
-.serie-dot[data-serie='backlog'] { --c: var(--badge-slate); }
+.serie-dot[data-serie='backlog'] { --c: var(--badge-neutro); }
 .stack-seg[data-serie='ativa'],
-.serie-dot[data-serie='ativa'] { --c: var(--badge-blue); }
+.serie-dot[data-serie='ativa'] { --c: var(--camada-iniciativa); }
 .stack-seg[data-serie='concluida'],
-.serie-dot[data-serie='concluida'] { --c: var(--badge-green); }
+.serie-dot[data-serie='concluida'] { --c: var(--badge-ok); }
 .stack-seg[data-serie='cancelada'],
 .serie-dot[data-serie='cancelada'] { --c: var(--tier-null); }
 
 /* Trabalho: a fazer → em andamento → concluída → cancelada. */
 .stack-seg[data-serie='a_fazer'],
-.serie-dot[data-serie='a_fazer'] { --c: var(--badge-slate); }
+.serie-dot[data-serie='a_fazer'] { --c: var(--badge-neutro); }
 .stack-seg[data-serie='em_andamento'],
-.serie-dot[data-serie='em_andamento'] { --c: var(--badge-amber); }
+.serie-dot[data-serie='em_andamento'] { --c: var(--badge-atencao); }
 
 /* Risco por criticidade. Os hex são regra de negócio e não mudam; a escada
    semáforo não passa nos limites de daltonismo por matiz, e é por isso que a
@@ -306,6 +327,21 @@
   right: 0;
   width: 2px;
   background: var(--ink-3);
+}
+
+/* Sem meta ou sem medição a trilha é TRACEJADA e não tem preenchimento. Uma
+   barra em 0% diz "não andou"; o que aconteceu foi "ninguém mediu" — são
+   fracassos diferentes, e só o primeiro é do objetivo. */
+.meta-track[data-sem-medida] {
+  background: repeating-linear-gradient(
+    90deg,
+    var(--line-border) 0 6px,
+    transparent 6px 12px
+  );
+}
+
+.meta-track[data-sem-medida] .meta-alvo {
+  background: var(--ink-4);
 }
 
 .meta-legenda {
@@ -446,7 +482,7 @@
   padding: var(--sp-3);
   padding-left: var(--sp-4);
   border: 1px solid transparent;
-  border-radius: var(--r-md);
+  border-radius: var(--r-card);
   background: none;
   text-align: left;
   transition:
@@ -668,7 +704,7 @@
 .fato {
   background: var(--surface-2);
   border: 1px solid var(--line-hairline);
-  border-radius: var(--r-md);
+  border-radius: var(--r-card);
   padding: var(--sp-2) var(--sp-3);
 }
 
@@ -698,7 +734,7 @@
 .stat {
   background: var(--surface-2);
   border: 1px solid var(--line-hairline);
-  border-radius: var(--r-md);
+  border-radius: var(--r-card);
   padding: var(--sp-2) var(--sp-3);
 }
 
@@ -863,7 +899,7 @@
   height: 104px;
   margin-top: var(--sp-4);
   border: 1px dashed var(--line-border);
-  border-radius: var(--r-md);
+  border-radius: var(--r-card);
   font-size: var(--fs-xs);
   color: var(--ink-4);
   text-align: center;
@@ -892,7 +928,7 @@
   border-radius: var(--r-full);
   display: grid;
   place-items: center;
-  font-size: 10px;
+  font-size: var(--fs-3xs);
   font-weight: var(--fw-bold);
   font-variant-numeric: tabular-nums;
   flex: none;
@@ -919,7 +955,7 @@
   overflow-x: auto;
   background: var(--surface-1);
   border: 1px solid var(--line-border);
-  border-radius: var(--r-lg);
+  border-radius: var(--r-card);
   padding: 0 var(--sp-5) var(--sp-4);
 }
 
@@ -1028,7 +1064,7 @@
     gap: var(--sp-1);
     padding: var(--sp-3);
     border: 1px solid var(--line-hairline);
-    border-radius: var(--r-md);
+    border-radius: var(--r-card);
     background: var(--surface-2);
   }
 
@@ -1095,7 +1131,7 @@
 .mitigacao-card {
   background: var(--surface-2);
   border: 1px solid var(--line-hairline);
-  border-radius: var(--r-md);
+  border-radius: var(--r-card);
   padding: var(--sp-3);
 }
 
@@ -1149,7 +1185,7 @@
 .rastro-item {
   background: var(--surface-1);
   border: 1px solid var(--line-border);
-  border-radius: var(--r-md);
+  border-radius: var(--r-card);
   padding: var(--sp-3);
   display: flex;
   flex-direction: column;
@@ -1310,10 +1346,31 @@
   white-space: nowrap;
 }
 
+.form-aviso-com-acao {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+
+.form-aviso-com-acao .btn {
+  margin-left: auto;
+}
+
+/* Linha que abre a ficha: o "Editar" ao fim da linha continua, mas a linha
+   inteira já leva lá. */
+.tabela-simples tbody tr[role='button'] {
+  cursor: pointer;
+}
+
+.tabela-simples tbody tr[role='button']:hover td {
+  background: var(--bg-hover);
+}
+
 .form-aviso {
   margin-top: var(--sp-3);
   padding: var(--sp-2) var(--sp-3);
-  border-radius: var(--r-md);
+  border-radius: var(--r-card);
   background: color-mix(in oklab, var(--tier-alto) 10%, var(--surface-1));
   border: 1px solid color-mix(in oklab, var(--tier-alto) 26%, transparent);
   font-size: var(--fs-xs);
@@ -1343,7 +1400,7 @@
   .app-shell,
   .app-conteudo {
     display: block;
-    background: #FFFFFF;
+    background: var(--print-paper);
   }
 
   .tab-page-lg,
@@ -1366,7 +1423,7 @@
   }
 
   .card {
-    border: 1px solid #999999;
+    border: 1px solid var(--print-line);
     padding: 10px 12px;
     /* Um tile partido no meio de duas páginas não se lê. */
     break-inside: avoid;
@@ -1377,7 +1434,7 @@
   }
 
   .page-title {
-    font-size: 20px;
+    font-size: var(--fs-xl);
   }
 
   /* Fundos de série somem em impressão P&B; forçar a cor mantém a legenda
@@ -1546,10 +1603,13 @@
 }
 
 /* Sem nome, o chip chama atenção: as gravações estão indo para o histórico
-   como "não identificado", e isso é justamente o que ele existe para evitar. */
+   como "não identificado", e isso é justamente o que ele existe para evitar.
+   É o papel de ATENÇÃO da etiqueta — algo pendente da pessoa —, não o laranja
+   de risco alto nem o coral da marca: coral só aparece onde há ameaça, atraso
+   ou perda, e um nome por preencher não é nenhuma das três. */
 .autor-chip[data-vazio='true'] {
-  border-color: color-mix(in oklab, var(--tier-alto) 40%, transparent);
-  color: var(--tier-alto);
+  border-color: color-mix(in oklab, var(--badge-atencao) 40%, transparent);
+  color: var(--badge-atencao);
 }
 
 @media (max-width: 900px) {
@@ -1586,7 +1646,7 @@
   min-width: 0;
   padding: var(--sp-3);
   border: 1px solid var(--line-hairline);
-  border-radius: var(--r-md);
+  border-radius: var(--r-card);
   background: var(--surface-2);
   text-align: left;
   transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
@@ -1612,12 +1672,11 @@
   flex-wrap: wrap;
 }
 
-/* O maior número do app. Força o teto do eixo óptico: a 40px o corte Display
-   do Inter fecha o espacejamento e sobe o contraste do traço, que é o que faz
-   um número grande parecer desenhado em vez de ampliado. */
+/* O maior número do app. A Plex Variable auto-hospedada traz o eixo de PESO,
+   não o óptico — pedir 'opsz' aqui era descrever uma fonte que não está
+   carregada. Quem fecha o espacejamento é o tracking de display. */
 .cadeia-valor {
   font-size: var(--fs-display);
-  font-variation-settings: 'opsz' 32;
   font-weight: var(--fw-bold);
   letter-spacing: var(--tracking-display);
   line-height: 1;
@@ -1642,10 +1701,15 @@
   color: var(--ink-1);
 }
 
+/* Dentro do elo a barra é miniatura: o número já está no rótulo ao lado. */
 .cadeia-elo .stack-bar {
   width: 100%;
   height: 8px;
   margin-top: var(--sp-2);
+}
+
+.cadeia-elo .stack-seg-rotulo {
+  display: none;
 }
 
 .cadeia-elo .lista-linhas {
@@ -1680,6 +1744,170 @@
 }
 
 /* ============================================================================
+   Sankey da cadeia
+
+   Quatro colunas, faixas entre vizinhas e tocos em coral nas pontas soltas.
+   Cor por camada, a mesma da lista de lacunas; o número está sempre escrito
+   — a cor nunca identifica sozinha. Abaixo de 760px o desenho some e a
+   fileira de elos acima volta: são quatro colunas rotuladas, e isso não
+   cabe em 360px.
+   ========================================================================= */
+
+.cadeia-sankey {
+  margin-top: var(--sp-4);
+}
+
+.sankey {
+  display: block;
+  width: 100%;
+  height: auto;
+  font-family: var(--font-sans);
+}
+
+.sankey text {
+  fill: var(--ink-2);
+  font-size: 12px;
+  /* Halo de superfície: o texto atravessa faixa e toco sem perder leitura. */
+  paint-order: stroke;
+  stroke: var(--bg-surface);
+  stroke-width: 4px;
+  stroke-linejoin: round;
+}
+
+.sankey-no {
+  cursor: pointer;
+}
+
+.sankey-no rect {
+  fill: var(--tier-null);
+}
+
+.sankey-no[data-camada='objetivo'] rect { fill: var(--camada-objetivo); }
+.sankey-no[data-camada='iniciativa'] rect { fill: var(--camada-iniciativa); }
+.sankey-no[data-camada='risco'] rect { fill: var(--camada-risco); }
+.sankey-no[data-camada='trabalho'] rect { fill: var(--camada-trabalho); }
+
+.sankey-no:hover rect,
+.sankey-no:focus-visible rect {
+  stroke: var(--ink-1);
+  stroke-width: 2px;
+}
+
+.sankey-rotulo {
+  font-size: 11px;
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  fill: var(--ink-3);
+}
+
+.sankey-total,
+.sankey-n,
+.sankey-solto-n {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.sankey-total {
+  font-size: 18px;
+  font-weight: var(--fw-semibold);
+  fill: var(--ink-1);
+}
+
+/* A faixa leva a cor da camada de DESTINO, translúcida: é a camada que se
+   liga para trás. O vão de 2px é o traço de superfície entre vizinhos. */
+.sankey-faixa {
+  fill: color-mix(in oklab, var(--tier-null) 28%, transparent);
+  stroke: var(--bg-surface);
+  stroke-width: var(--viz-gap);
+}
+
+.sankey-faixa[data-camada='iniciativa'] { fill: color-mix(in oklab, var(--camada-iniciativa) 30%, transparent); }
+.sankey-faixa[data-camada='risco'] { fill: color-mix(in oklab, var(--camada-risco) 28%, transparent); }
+.sankey-faixa[data-camada='trabalho'] { fill: color-mix(in oklab, var(--camada-trabalho) 28%, transparent); }
+
+.sankey-n {
+  font-size: 13px;
+  font-weight: var(--fw-semibold);
+  fill: var(--ink-1);
+}
+
+.sankey-solto path {
+  fill: color-mix(in oklab, var(--ink-4) 40%, transparent);
+  stroke: var(--bg-surface);
+  stroke-width: var(--viz-gap);
+}
+
+/* Coral SÓ aqui, onde ele significa elo partido — a regra 2 do redesign. */
+.sankey-solto[data-tipo='lacuna'] path {
+  fill: color-mix(in oklab, var(--brand-red) 72%, transparent);
+}
+
+.sankey-solto[data-tipo='lacuna'] {
+  cursor: pointer;
+}
+
+.sankey-solto[data-tipo='lacuna']:hover path,
+.sankey-solto[data-tipo='lacuna']:focus-visible path {
+  fill: var(--brand-red);
+}
+
+/* O rótulo do toco fica sobre o próprio toco, encostado no nó: o halo de
+   superfície o segura sobre qualquer preenchimento, e o vão entre colunas
+   fica livre para o número da faixa. */
+.sankey-solto-n {
+  font-size: 12px;
+  font-weight: var(--fw-semibold);
+  fill: var(--ink-1);
+}
+
+.sankey-solto-nome {
+  font-family: var(--font-sans);
+  font-weight: var(--fw-regular);
+  fill: var(--ink-3);
+}
+
+.sankey-legenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2) var(--sp-4);
+  margin: var(--sp-2) 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--fs-2xs);
+  color: var(--ink-3);
+}
+
+.sankey-legenda li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+}
+
+.sankey-swatch {
+  width: 14px;
+  height: 8px;
+  border-radius: 2px;
+  background: color-mix(in oklab, var(--camada-iniciativa) 30%, transparent);
+}
+
+.sankey-swatch[data-tipo='lacuna'] { background: color-mix(in oklab, var(--brand-red) 72%, transparent); }
+.sankey-swatch[data-tipo='livre'] { background: color-mix(in oklab, var(--ink-4) 40%, transparent); }
+
+/* Uma forma por largura: o desenho acima de 760px, a fileira de elos abaixo. */
+@media (min-width: 761px) {
+  .cadeia {
+    display: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .cadeia-sankey {
+    display: none;
+  }
+}
+
+/* ============================================================================
    Lacunas — onde a cadeia quebra
 
    Uma linha por elo rompido: quantos, o que é, por que importa, e o botão que
@@ -1703,14 +1931,14 @@
   padding: var(--sp-3);
   border: 1px solid var(--line-hairline);
   border-left: 3px solid var(--c);
-  border-radius: var(--r-sm);
+  border-radius: var(--r-card);
   background: var(--surface-2);
 }
 
-.lacuna[data-camada='objetivo'] { --c: var(--badge-blue); }
-.lacuna[data-camada='iniciativa'] { --c: var(--badge-purple); }
+.lacuna[data-camada='objetivo'] { --c: var(--camada-objetivo); }
+.lacuna[data-camada='iniciativa'] { --c: var(--camada-iniciativa); }
 .lacuna[data-camada='risco'] { --c: var(--risco-accent); }
-.lacuna[data-camada='trabalho'] { --c: var(--badge-amber); }
+.lacuna[data-camada='trabalho'] { --c: var(--camada-trabalho); }
 
 /* O número é o que se lê primeiro: "quantos estão soltos". Tabular porque
    várias linhas empilhadas formam uma coluna. */

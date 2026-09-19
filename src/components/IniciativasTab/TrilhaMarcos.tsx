@@ -42,6 +42,10 @@ export function TrilhaMarcos({ marcos, hoje = new Date() }: TrilhaMarcosProps) {
     return { min, max, pos };
   }, [marcos, hojeStr]);
 
+  // Sem marco nenhum quem fala é o estado vazio do cartão; aqui só quando há
+  // marco e ele não tem data.
+  if (marcos.length === 0) return null;
+
   if (!dados) {
     return (
       <div className="trilha-vazia">

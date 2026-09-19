@@ -158,7 +158,7 @@
 }
 
 .donut-center-label {
-  font-size: 10px;
+  font-size: var(--fs-3xs);
   color: var(--ink-4);
   font-weight: var(--fw-medium);
   letter-spacing: 0.06em;
@@ -397,7 +397,7 @@
   flex-wrap: wrap;
   background: var(--bg-selected);
   border: 1px solid color-mix(in oklab, var(--brand) 25%, transparent);
-  border-radius: var(--r-md);
+  border-radius: var(--r-card);
   padding: var(--sp-2) var(--sp-3);
   font-size: var(--fs-sm);
 }
@@ -483,7 +483,7 @@
   position: relative;
   aspect-ratio: 1 / 0.85;
   border: 1px solid var(--line-border);
-  border-radius: var(--r-md);
+  border-radius: var(--r-card);
   overflow: hidden;
   background: var(--bg-surface);
 }
@@ -528,16 +528,14 @@
 .quadrant-pill {
   --c: var(--tier-null);
   position: absolute;
-  transform: translateX(-50%);
   padding: var(--sp-1) var(--sp-2);
   border-radius: var(--r-xs);
   border: 1px solid transparent;
   font-size: var(--fs-2xs);
   font-weight: var(--fw-semibold);
   letter-spacing: 0.03em;
-  color: var(--c);
+  color: var(--ink-3);
   cursor: pointer;
-  text-align: center;
   white-space: nowrap;
   transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
 }
@@ -552,7 +550,7 @@
 }
 
 .quadrant-pill-sub {
-  font-size: 10px;
+  font-size: var(--fs-3xs);
   font-weight: var(--fw-regular);
   letter-spacing: 0;
   color: var(--ink-4);
@@ -564,10 +562,51 @@
 .qp-bp { --c: var(--quad-bp); }
 .qp-rv { --c: var(--quad-rv); }
 
-.qp-pos-qw { left: 25%; top: var(--sp-2); }
-.qp-pos-ga { left: 75%; top: var(--sp-2); }
-.qp-pos-bp { left: 25%; bottom: var(--sp-2); }
-.qp-pos-rv { left: 75%; bottom: var(--sp-2); }
+/* Ancorado no CANTO de cada quadrante, fora da nuvem de pontos, e em tinta
+   secundária: o rótulo é referência de leitura, não dado — a cor da faixa
+   fica para o hover e o estado ativo. */
+.qp-pos-qw { left: var(--sp-2); top: var(--sp-2); text-align: left; }
+.qp-pos-ga { right: var(--sp-2); top: var(--sp-2); text-align: right; }
+.qp-pos-bp { left: var(--sp-2); bottom: var(--sp-2); text-align: left; }
+.qp-pos-rv { right: var(--sp-2); bottom: var(--sp-2); text-align: right; }
+
+/* Nome escrito EMBAIXO da bolha (em cima, perto da borda inferior), para as
+   primeiras do ranking e para a que está sob o mouse. Não captura o ponteiro:
+   a bolha continua clicável. A largura máxima é a distância mínima entre dois
+   rótulos vizinhos que o componente aceita antes de suprimir um deles. */
+.matrix-rotulo {
+  position: absolute;
+  transform: translateX(-50%);
+  max-width: 15%;
+  padding: 1px var(--sp-1);
+  border-radius: var(--r-xs);
+  background: color-mix(in oklab, var(--bg-surface) 82%, transparent);
+  font-size: var(--fs-2xs);
+  line-height: 1.3;
+  color: var(--ink-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+
+.matrix-rotulo[data-acima] {
+  transform: translate(-50%, -100%);
+}
+
+.matrix-tick {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--fs-2xs);
+  color: var(--ink-4);
+}
+
+.matrix-yaxis {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+}
 
 /* Bolha com anel de superfície de 2px — regra para marcas sobrepostas. */
 .matrix-bubble {
@@ -601,6 +640,16 @@
   z-index: 10;
 }
 
+.matrix-bubble.hover {
+  --bubble-opacity: 1;
+  box-shadow: 0 0 0 2px var(--bg-surface), 0 0 0 4px var(--brand);
+  z-index: 9;
+}
+
+.ranked-item.hover {
+  background: var(--bg-hover);
+}
+
 .matrix-axis-hint {
   display: flex;
   align-items: center;
@@ -617,7 +666,7 @@
 }
 
 .matrix-axis-hint-edge {
-  font-size: 10px;
+  font-size: var(--fs-3xs);
   color: var(--ink-4);
 }
 
@@ -627,7 +676,7 @@
    sobrava um vão morto embaixo do painel em telas largas. */
 .ranked-list-panel {
   border: 1px solid var(--line-border);
-  border-radius: var(--r-md);
+  border-radius: var(--r-card);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -751,7 +800,7 @@
 
 .priority-group {
   border: 1px solid var(--line-border);
-  border-radius: var(--r-md);
+  border-radius: var(--r-card);
   overflow: hidden;
 }
 

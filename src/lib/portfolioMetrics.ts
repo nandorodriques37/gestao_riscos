@@ -1085,7 +1085,11 @@ export function cadeiaQuebrada(e: EntradaCadeia): Lacuna[] {
   const cobertura = coberturaObjetivos(e.objetivos, e.iniciativas);
   const saudeIni = saudeIniciativas(e.iniciativas, e.marcos, hoje);
   const parados = zumbis(e.iniciativas, e.marcos, hoje);
-  const semTratamento = tratamentoDosRiscos(e.riscos, e.acoes, e.iniciativas)
+  // Linha em branco não é risco — é como se adiciona um. A mesma régua de
+  // `saudeRiscos`, do Registro e da Análise; contá-la aqui fazia a lista de
+  // atenção cobrar tratamento de uma linha que ninguém escreveu ainda.
+  const mapeados = e.riscos.filter(r => r.risco.trim());
+  const semTratamento = tratamentoDosRiscos(mapeados, e.acoes, e.iniciativas)
     .filter(t => t.estado === 'sem_tratamento' && !SITUACOES_FINAIS.has(t.risco.situacao ?? ''));
 
   const abertas = e.trabalho.filter(t => {
@@ -1101,10 +1105,121 @@ export function cadeiaQuebrada(e: EntradaCadeia): Lacuna[] {
     lacuna('iniciativa_sem_marco', saudeIni.semMarco.map(i => i.id)),
     lacuna('iniciativa_parada', parados.map(z => z.iniciativa.id)),
     lacuna('risco_sem_tratamento', semTratamento.map(t => t.risco.id)),
-    lacuna('risco_sem_objetivo', riscosSemObjetivo(e.riscos, e.acoes, e.iniciativas).map(r => r.id)),
+    lacuna('risco_sem_objetivo', riscosSemObjetivo(mapeados, e.acoes, e.iniciativas).map(r => r.id)),
     lacuna('trabalho_sem_dono', abertas.filter(t => !t.dono_id).map(t => t.id)),
     lacuna('trabalho_atrasado', abertas
       .filter(t => t.triagem !== 'rotina' && !!t.prazo && t.prazo < hojeStr)
       .map(t => t.id)),
   ];
+}
+
+/* ------------------------------------------------------------------ */
+/* Fluxo da cadeia: o que o Sankey desenha                             */
+/* ------------------------------------------------------------------ */
+
+export type CamadaCadeia = 'objetivo' | 'iniciativa' | 'risco' | 'trabalho';
+
+export interface PontaSolta {
+  /** Quantos itens desta ponta não se ligam à camada vizinha. */
+  n: number;
+  /**
+   * Lacuna que explica a ponta solta. Nula quando estar solto é legítimo —
+   * tarefa livre não é elo partido, e iniciativa que nasceu de oportunidade
+   * não tem por que cobrir risco nenhum.
+   */
+  chave: ChaveLacuna | null;
+}
+
+export interface EloDoFluxo {
+  de: CamadaCadeia;
+  para: CamadaCadeia;
+  /** Itens de `para` ligados a algum item de `de`. É a espessura da faixa. */
+  ligados: number;
+  /** Itens de `de` sem nada em `para`. */
+  soltosDe: PontaSolta[];
+  /** Itens de `para` sem nada em `de`. */
+  soltosPara: PontaSolta[];
+}
+
+export interface NoDoFluxo {
+  camada: CamadaCadeia;
+  total: number;
+}
+
+export interface FluxoDaCadeia {
+  /** As quatro camadas, na ordem da jornada. */
+  nos: NoDoFluxo[];
+  /** Os três elos entre camadas vizinhas. */
+  elos: EloDoFluxo[];
+}
+
+/**
+ * O que liga cada camada à seguinte, e o que sobra solto em cada ponta.
+ *
+ * É a base do Sankey do Painel, e vive aqui porque métrica não mora em
+ * componente. As pontas soltas reusam `cadeiaQuebrada`: um elo partido no
+ * desenho é a MESMA lacuna da lista de atenção, com o mesmo número — duas
+ * contas diferentes para o mesmo buraco é como se perde a confiança nas
+ * duas. Risco só entra se tem descrição (a régua de `saudeRiscos`).
+ *
+ * Risco sem tratamento aparece uma vez só, na ponta risco → trabalho. Na
+ * ponta iniciativa → risco fica o que TEM trabalho mas por mitigação
+ * autônoma — é a subtração das duas lacunas, e por isso o número pode ser
+ * menor que o recorte que o clique abre.
+ */
+export function fluxoDaCadeia(
+  e: EntradaCadeia,
+  opcoes: { objetivosForaDaConta?: Set<string> } = {},
+): FluxoDaCadeia {
+  const fora = opcoes.objetivosForaDaConta ?? new Set<string>();
+  const objetivos = e.objetivos.filter(o => !fora.has(o.id));
+  const lacunas = cadeiaQuebrada(e);
+  const n = (c: ChaveLacuna) => {
+    const l = lacunas.find(x => x.chave === c);
+    if (!l) return 0;
+    return c === 'objetivo_sem_iniciativa' ? l.ids.filter(id => !fora.has(id)).length : l.n;
+  };
+
+  const objetivosIds = new Set(objetivos.map(o => o.id));
+  const iniciativasIds = new Set(e.iniciativas.map(i => i.id));
+  const mapeados = e.riscos.filter(r => r.risco.trim());
+  const riscosIds = new Set(mapeados.map(r => r.id));
+  const vivas = e.acoes.filter(a => a.status !== 'cancelada' && a.risco_id);
+
+  const iniciativasComObjetivo = e.iniciativas
+    .filter(i => i.objetivo_id && objetivosIds.has(i.objetivo_id)).length;
+
+  const riscosCobertos = new Set(
+    vivas.filter(a => a.iniciativa_id && iniciativasIds.has(a.iniciativa_id)).map(a => a.risco_id as string),
+  );
+  const iniciativasComRisco = new Set(vivas.filter(a => a.iniciativa_id).map(a => a.iniciativa_id as string));
+
+  const trabalhoDeRisco = e.trabalho.filter(t => t.risco_id && riscosIds.has(t.risco_id)).length;
+  const trabalhoLivre = e.trabalho.filter(t => !t.risco_id).length;
+
+  return {
+    nos: [
+      { camada: 'objetivo', total: objetivos.length },
+      { camada: 'iniciativa', total: e.iniciativas.length },
+      { camada: 'risco', total: mapeados.length },
+      { camada: 'trabalho', total: e.trabalho.length },
+    ],
+    elos: [
+      {
+        de: 'objetivo', para: 'iniciativa', ligados: iniciativasComObjetivo,
+        soltosDe: [{ n: n('objetivo_sem_iniciativa'), chave: 'objetivo_sem_iniciativa' }],
+        soltosPara: [{ n: n('iniciativa_sem_objetivo'), chave: 'iniciativa_sem_objetivo' }],
+      },
+      {
+        de: 'iniciativa', para: 'risco', ligados: mapeados.filter(r => riscosCobertos.has(r.id)).length,
+        soltosDe: [{ n: e.iniciativas.filter(i => !iniciativasComRisco.has(i.id)).length, chave: null }],
+        soltosPara: [{ n: Math.max(0, n('risco_sem_objetivo') - n('risco_sem_tratamento')), chave: 'risco_sem_objetivo' }],
+      },
+      {
+        de: 'risco', para: 'trabalho', ligados: trabalhoDeRisco,
+        soltosDe: [{ n: n('risco_sem_tratamento'), chave: 'risco_sem_tratamento' }],
+        soltosPara: [{ n: trabalhoLivre, chave: null }],
+      },
+    ],
+  };
 }

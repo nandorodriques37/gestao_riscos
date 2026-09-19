@@ -8,41 +8,56 @@
    - Elevação significa "flutua acima". Cartão em repouso é hairline puro.
 
    Tema: cada token declara claro e escuro numa linha só, via light-dark(). O
-   `color-scheme` no :root decide qual lado vale — por padrão segue o sistema,
-   e [data-theme] no <html> força um dos dois. Não há bloco duplicado.
+   `color-scheme` no :root decide qual lado vale, e [data-theme] no <html>
+   força um dos três estados. Não há bloco duplicado.
+
+   O PADRÃO é o tema claro, e isso é decisão técnica, não gosto: a cor oficial
+   da marca, #0000BE, rende 12,0:1 sobre o papel quente #FBFAF8 e 1,6:1 sobre
+   um canvas navy. Foi por não caber no escuro que a marca tinha derivado para
+   um azul periwinkle genérico. Quem quiser escuro pede pelo botão; quem quiser
+   seguir o sistema pede também — só não é mais o que acontece por omissão.
 
    As faixas e as cores de criticidade (--tier-*) são regra de negócio
    documentada no CLAUDE.md — os hex do tema claro são exatamente os
-   especificados. O tema escuro usa degraus próprios das mesmas famílias de
-   matiz, porque #15803D sobre superfície escura é ilegível.
+   especificados e NÃO mudam com o redesign. O tema escuro usa degraus próprios
+   das mesmas famílias de matiz, porque #15803D sobre superfície escura é
+   ilegível.
    ========================================================================= */
 
 :root {
-  color-scheme: light dark;
+  /* Claro por omissão. Declarado aqui, e não no JS, para que o PRIMEIRO frame
+     já pinte claro: se o padrão dependesse do useEffect, quem está num SO
+     escuro veria a página nascer escura e virar clara. */
+  color-scheme: light;
 
   /* ---------- Superfícies: escada de quatro planos ----------
-     Antes havia dois planos utilizáveis. A hierarquia nova aninha três níveis
-     — marco dentro de iniciativa dentro de objetivo — e o terceiro não tinha
-     para onde ir. Quatro degraus resolvem sem sombra nenhuma.
+     A hierarquia aninha três níveis — marco dentro de iniciativa dentro de
+     objetivo — e o quarto plano é o que sobra para o topo.
 
      No escuro cada degrau sobe de tinta. No claro não dá para subir de branco,
      então o quarto plano separa por sombra (--elev-2), não por cor: por isso
-     --surface-3 e --surface-1 são o mesmo valor ali. */
-  --surface-0: light-dark(#F5F6F4, #0C111D);
-  --surface-1: light-dark(#FFFFFF, #141B2A);
-  --surface-2: light-dark(#EFF1F0, #1A2333);
-  --surface-3: light-dark(#FFFFFF, #202B3E);
+     --surface-3 e --surface-1 são o mesmo valor ali.
 
-  /* Nomes antigos, mantidos como alias: as ~3.700 linhas de CSS já escritas
+     Os neutros são QUENTES (pedra), não slate frio. O par slate-sobre-navy é a
+     assinatura visual mais reconhecível de interface gerada por modelo, e
+     trocá-lo é metade do redesign. */
+  --surface-0: light-dark(#FBFAF8, #121317);
+  --surface-1: light-dark(#FFFFFF, #1A1C21);
+  --surface-2: light-dark(#F3F1EE, #0E0F12);
+  --surface-3: light-dark(#FFFFFF, #22252B);
+
+  /* Nomes antigos, mantidos como alias: as ~8.400 linhas de CSS já escritas
      continuam válidas sem uma única alteração. */
   --bg-canvas: var(--surface-0);
   --bg-surface: var(--surface-1);
   --bg-sunken: var(--surface-2);
-  --bg-hover: light-dark(#ECEFED, #1D2839);
-  --bg-selected: light-dark(#EEF0FF, #202950);
-  --bg-overlay: light-dark(rgba(11, 18, 32, 0.45), rgba(2, 5, 10, 0.66));
-  /* Vocabulário curto da camada Rede de Decisão. Estes aliases mantêm os
-     componentes novos legíveis sem invalidar os nomes históricos acima. */
+  --bg-hover: light-dark(#F5F3F0, #22252B);
+  --bg-selected: light-dark(#EDEEFE, #1E2033);
+  /* Véu do modal. Já valia para os dois temas; o escuro estava repetido à mão
+     em [data-theme='dark'] .modal-overlay, que não disparava no modo sistema. */
+  --bg-overlay: light-dark(rgba(28, 25, 23, 0.45), rgba(0, 0, 0, 0.62));
+  /* Vocabulário curto da camada nova. Estes aliases mantêm os componentes
+     legíveis sem invalidar os nomes históricos acima. */
   --bg: var(--surface-0);
   --surface: var(--surface-1);
   --surface-raised: var(--surface-2);
@@ -50,45 +65,74 @@
   /* Fundo do visualizador de imagem em tela cheia. Escuro nos dois temas — de
      propósito: o assunto ali é a imagem, e um scrim claro lava as cores dela.
      Por isso a tinta sobre ele também não segue --ink-1. */
-  --scrim: light-dark(rgba(6, 10, 18, 0.84), rgba(2, 5, 10, 0.88));
-  --scrim-ink: #F2F5F9;
+  --scrim: light-dark(rgba(12, 10, 8, 0.86), rgba(2, 3, 5, 0.88));
+  --scrim-ink: #F5F4F2;
 
-  /* ---------- Traços ---------- */
-  --line-hairline: light-dark(rgba(17, 24, 39, 0.08), rgba(255, 255, 255, 0.08));
-  --line-border: light-dark(rgba(17, 24, 39, 0.14), rgba(255, 255, 255, 0.13));
-  --line-strong: light-dark(rgba(17, 24, 39, 0.25), rgba(255, 255, 255, 0.24));
+  /* ---------- Traços ----------
+     Alpha QUENTE: hairline frio sobre papel quente lê como sujeira azul. */
+  --line-hairline: light-dark(rgba(28, 25, 23, 0.09), rgba(255, 255, 255, 0.09));
+  --line-border: light-dark(rgba(28, 25, 23, 0.16), rgba(255, 255, 255, 0.14));
+  --line-strong: light-dark(rgba(28, 25, 23, 0.28), rgba(255, 255, 255, 0.26));
   --line: var(--line-hairline);
+  /* Grade vertical do fundo da casca. Era regra de tema à parte, que ficava
+     muda no modo sistema; como token, os dois lados valem sempre. */
+  --grid-line: light-dark(rgba(28, 25, 23, 0.05), rgba(255, 255, 255, 0.022));
 
-  /* ---------- Tinta ---------- */
-  --ink-1: light-dark(#111827, #F3F4F6);
-  --ink-2: light-dark(#374151, #CAD2DF);
-  --ink-3: light-dark(#667085, #98A5B8);
-  --ink-4: light-dark(#98A2B3, #718096);
+  /* ---------- Tinta ----------
+     --ink-4 é o degrau que NÃO passa AA em corpo pequeno nos dois temas. Ele
+     existe para texto ≥14px e para o que é decorativo; a régua é: nada com
+     13px ou menos desce abaixo de --ink-3. Era exatamente aqui que o app
+     falhava — --ink-4 era a cor de todo subtítulo explicativo de 12–13px. */
+  --ink-1: light-dark(#1C1917, #F5F4F2);
+  --ink-2: light-dark(#44403C, #D6D3D0);
+  --ink-3: light-dark(#6B6560, #A8A29E);
+  --ink-4: light-dark(#A8A29E, #78716C);
   --ink: var(--ink-1);
   --ink-muted: var(--ink-3);
   --ink-subtle: var(--ink-4);
   /* Tinta sobre preenchimento de série (célula do heatmap, bolha da matriz,
      número do ranking). No tema escuro os degraus de tier são claros, então
      texto branco cairia para ~2:1 — a tinta escura é que contrasta ali. */
-  --ink-on-solid: light-dark(#FFFFFF, #0B1220);
+  --ink-on-solid: light-dark(#FFFFFF, #14120F);
 
-  /* ---------- Marca ---------- */
-  --brand-core: #0B17C4;
-  --brand-red: light-dark(#FF2840, #FF6B7A);
-  --brand: light-dark(#1D3FD4, #8EA2FF);
-  --brand-hover: light-dark(#132FB1, #AAB8FF);
-  --brand-soft: light-dark(#EEF0FF, #202950);
-  --brand-ink: light-dark(#FFFFFF, #0C111D);
+  /* ---------- Marca ----------
+     Valores oficiais. #0000BE é hue 240 puro; a rampa escura desce em direção
+     ao periwinkle apenas porque o azul do núcleo não sustenta fundo escuro —
+     no claro, que é o padrão, a cor aparece exata. */
+  --brand-core: #0000BE;
+  --brand: light-dark(#0000BE, #7280FF);
+  --brand-hover: light-dark(#0000A0, #94A0FF);
+  --brand-soft: light-dark(#EDEEFE, rgba(114, 128, 255, 0.14));
+  --brand-ink: light-dark(#FFFFFF, #0E0F12);
+  /* Tinta sobre o NÚCLEO da marca. Separado de --brand-ink porque
+     --brand-core não muda com o tema: no escuro a tinta sobre --brand
+     precisa ser escura, mas sobre o azul do núcleo continua sendo branca. */
+  --ink-on-brand-core: #FFFFFF;
+  /* Fundo do glifo da marca. Sai de regra de tema e vira token pelo mesmo
+     motivo do --bg-overlay: [data-theme='dark'] não cobre o modo sistema. */
+  --brand-mark-bg: light-dark(var(--brand-core), var(--brand));
 
-  /* ---------- Foco ---------- */
-  --focus: light-dark(#1D3FD4, #8EA2FF);
-  --focus-ring: light-dark(rgba(29, 63, 212, 0.24), rgba(142, 162, 255, 0.32));
+  /* Coral da marca. São DOIS tokens porque medem coisas diferentes:
+     #FF2342 rende 3,8:1 sobre o papel — serve de preenchimento, ícone e cifra
+     grande, e reprova AA em texto pequeno. Para texto corrido de ameaça em
+     fundo claro existe o degrau escurecido, que rende 5,2:1. */
+  --brand-red: light-dark(#FF2342, #FF6B7A);
+  --coral-texto: light-dark(#D3102C, #FF8A99);
+
+  /* ---------- Foco ----------
+     Anel SÓLIDO. O anterior era alpha de 24–32%, quase invisível sobre
+     superfície clara, e anel de foco invisível é barreira de teclado, não
+     detalhe de estilo. A espessura e o vão são tokens porque o anel aparece
+     em cinco folhas diferentes. */
+  --focus: light-dark(#2B3BE8, #7280FF);
+  --focus-ring: var(--focus);
+  --focus-w: 2px;
+  --focus-offset: 2px;
 
   /* ---------- Criticidade / priorização ----------
-     Os hex do tema claro são os documentados no CLAUDE.md e não mudam.
-     Os degraus escuros foram escolhidos com o validador do skill `dataviz`
-     contra a superfície #151B24: todos passam 3:1 de contraste, e o pior par
-     de visão normal subiu de ΔE 8.1 para 10.3. A escada semáforo
+     Os hex do tema claro são os documentados no CLAUDE.md e não mudam — nem
+     com redesign. Os degraus escuros foram escolhidos com o validador do skill
+     `dataviz`: todos passam 3:1 contra a superfície escura. A escada semáforo
      verde→amarelo→laranja→vermelho não passa nos limites de daltonismo por
      matiz sozinha, em nenhum tema — por isso toda cor de tier neste app
      aparece sempre junto do número ou do rótulo, nunca sozinha. */
@@ -98,28 +142,62 @@
   --tier-critico: light-dark(#DC2626, #E9585F);
   --tier-null: light-dark(#94A3B8, #8494A8);
 
-  /* ---------- Badges categóricos ---------- */
-  --badge-slate: light-dark(#475569, #A6B3C4);
-  --badge-blue: light-dark(#1D4ED8, #7BA4F3);
-  --badge-green: light-dark(#15803D, #3AAE63);
-  --badge-amber: light-dark(#B45309, #E9A94A);
-  --badge-red: light-dark(#B91C1C, #E9585F);
-  --badge-purple: light-dark(#6D28D9, #A995F0);
-  --badge-orange: light-dark(#C2410C, #F0894F);
+  /* ---------- Etiquetas ----------
+     Eram SETE pastéis na mesma faixa de saturação e luminosidade — roxo, azul,
+     laranja, âmbar, verde, vermelho e slate —, o que dava sopa de etiquetas
+     sem hierarquia nenhuma. Sobraram quatro papéis, e só três recebem croma:
 
-  /* ---------- Quadrantes da matriz esforço × impacto ---------- */
-  --quad-qw: light-dark(#15803D, #3AAE63);
-  --quad-ga: light-dark(#5B7FB5, #7BA4F3);
-  --quad-bp: light-dark(#94A3B8, #8494A8);
-  --quad-rv: light-dark(#C2811C, #CBA61F);
+       neutro   texto + hairline, SEM preenchimento colorido. É o destino de
+                toda etiqueta que apenas nomeia uma categoria (origem, vetor,
+                resposta padrão, status inicial). Categoria não é severidade.
+       atencao  algo está em curso e ainda pode escapar.
+       ok       concluído, ou dentro do limite.
+       risco    ameaça, atraso, perda.
+
+     Quem decide o papel são respostaKind/statusKind e os mapas BADGE_* em
+     src/lib — o CSS só resolve a cor. */
+  --badge-neutro: light-dark(#6B6560, #A8A29E);
+  --badge-atencao: var(--tier-medio);
+  --badge-ok: var(--tier-baixo);
+  --badge-risco: var(--tier-critico);
+
+  /* Sim, os três papéis com croma reaproveitam os degraus de criticidade em vez
+     de trazer hex próprios, e isso é deliberado: verde já significa "dentro do
+     limite" e vermelho já significa "ameaça" neste app, e inventar um segundo
+     verde a poucos ΔE do primeiro criaria duas cores quase iguais com
+     significados quase iguais — que é o problema que o redesign veio desfazer.
+     O papel de atenção pega o degrau MÉDIO, não o alto: "em andamento" é algo
+     a acompanhar, não um alerta, e o laranja de risco alto exagerava o recado.
+     Os dois eixos nunca se confundem na tela porque etiqueta carrega sempre o
+     rótulo escrito e faixa de criticidade carrega sempre o número. */
+
+  /* ---------- Camadas da cadeia ----------
+     Objetivo → iniciativa → risco → trabalho. São quatro e sempre serão quatro:
+     é o modelo de dados, não uma paleta categórica que pode crescer. Antes
+     pegavam emprestado --badge-blue/--badge-purple/--badge-amber, que estão
+     sendo aposentados; com família própria, a lista de lacunas do Painel e o
+     Sankey da cadeia falam a mesma língua. */
+  --camada-objetivo: light-dark(#0000BE, #7280FF);
+  --camada-iniciativa: light-dark(#3D5A9E, #9BB0E8);
+  --camada-risco: light-dark(#9C3F3A, #E08A84);
+  --camada-trabalho: light-dark(#6B6560, #A8A29E);
+
+  /* ---------- Quadrantes da matriz esforço × impacto ----------
+     Derivados, não inventados: ganho rápido é "dentro do limite", não compensa
+     é "atenção", grande aposta é a marca e não priorizada é ausência. Eram
+     quatro hex próprios que ninguém conseguia justificar. */
+  --quad-qw: var(--tier-baixo);
+  --quad-ga: var(--brand);
+  --quad-bp: var(--tier-null);
+  --quad-rv: var(--tier-medio);
 
   /* ---------- Estado ---------- */
-  --danger: light-dark(#DC2626, #E9585F);
-  --danger-soft: light-dark(#FEF2F2, #2A1618);
-  --success: light-dark(#15803D, #3AAE63);
+  --danger: var(--tier-critico);
+  --danger-soft: light-dark(#FFECEF, #2A1618);
+  --success: var(--tier-baixo);
 
   /* ---------- Coluna "Riscos" (acento, não fundo cheio) ---------- */
-  --risco-accent: light-dark(#9C3F3A, #E08A84);
+  --risco-accent: var(--camada-risco);
 
   /* ---------- Espaçamento ---------- */
   --sp-1: 4px;
@@ -130,22 +208,38 @@
   --sp-6: 32px;
   --sp-7: 48px;
 
-  /* ---------- Raio ---------- */
+  /* ---------- Raio ----------
+     A escala crua continua, mas o que os componentes leem agora é o PAPEL.
+     Quando controle, cartão e linha de tabela têm todos o mesmo arredondamento
+     médio, tudo vira cartão e nada tem hierarquia — era o que acontecia. */
   --r-xs: 4px;
   --r-sm: 6px;
   --r-md: 8px;
   --r-lg: 12px;
+  --r-xl: 16px;
   --r-full: 999px;
 
+  --r-control: var(--r-xs);
+  --r-card: var(--r-md);
+  --r-row: 0px;
+  /* O que FLUTUA (modal, gaveta, popover, folha, snackbar) leva o degrau
+     maior: é o único caso em que o raio precisa separar a peça do que está
+     embaixo dela, e não só arredondar um canto. */
+  --r-float: var(--r-lg);
+
   /* ---------- Tipografia ----------
-     Inter Variable com eixo ÓPTICO (ver src/index.css). O `opsz` acompanha o
-     tamanho sozinho — `font-optical-sizing: auto` em base.css —, então cada
-     degrau desta escala recebe um desenho de letra apropriado a ele, e não o
-     mesmo desenho esticado. Só o teto do eixo é forçado à mão, no número da
-     cadeia do Painel, que é onde o corte mais fechado se paga. */
+     IBM Plex Sans Variable (eixo de peso) para interface e prosa; IBM Plex
+     Mono para CIFRA — score, GUT, data, percentual, valor. O mono na cifra é
+     metade da assinatura: número proporcional em tabela densa não alinha, e
+     dashboard que alinha número lê como instrumento, não como template. */
   --font-sans: 'IBM Plex Sans Variable', 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Consolas, monospace;
 
+  /* Degrau de micro-rótulo: caixa alta com tracking aberto, que lê maior que o
+     corpo nominal (rótulo de KPI, cabeçalho de tabela, caption de grupo do
+     trilho). Existe para dar destino aos 9px e 10px que estavam espalhados em
+     literal — não para autorizar texto miúdo novo. Prosa nunca desce até aqui. */
+  --fs-3xs: 10px;
   --fs-2xs: 11px;
   --fs-xs: 12px;
   --fs-sm: 13px;
@@ -172,14 +266,18 @@
   --fw-semibold: 600;
   --fw-bold: 700;
 
-  /* ---------- Elevação ---------- */
+  /* ---------- Elevação ----------
+     Cartão em repouso é hairline puro: --elev-1 é para o que GRUDA (cabeçalho
+     sticky, linha em hover), --elev-2 para popover e --elev-3 para modal.
+     Sombra em cartão parado é o que transforma uma página inteira em pilha de
+     retângulos com o mesmo peso. */
   --elev-1:
-    0 1px 2px -1px light-dark(rgba(11, 18, 32, 0.10), rgba(0, 0, 0, 0.5)),
-    0 2px 6px -2px light-dark(rgba(11, 18, 32, 0.08), rgba(0, 0, 0, 0.4));
+    0 1px 2px -1px light-dark(rgba(28, 25, 23, 0.10), rgba(0, 0, 0, 0.5)),
+    0 2px 6px -2px light-dark(rgba(28, 25, 23, 0.08), rgba(0, 0, 0, 0.4));
   --elev-2:
-    0 8px 20px -6px light-dark(rgba(11, 18, 32, 0.14), rgba(0, 0, 0, 0.6)),
-    0 2px 6px -2px light-dark(rgba(11, 18, 32, 0.08), rgba(0, 0, 0, 0.4));
-  --elev-3: 0 24px 56px -12px light-dark(rgba(11, 18, 32, 0.28), rgba(0, 0, 0, 0.7));
+    0 8px 20px -6px light-dark(rgba(28, 25, 23, 0.14), rgba(0, 0, 0, 0.6)),
+    0 2px 6px -2px light-dark(rgba(28, 25, 23, 0.08), rgba(0, 0, 0, 0.4));
+  --elev-3: 0 24px 56px -12px light-dark(rgba(28, 25, 23, 0.28), rgba(0, 0, 0, 0.7));
 
   /* ---------- Movimento ---------- */
   --ease: cubic-bezier(0.2, 0.7, 0.3, 1);
@@ -202,8 +300,8 @@
      que o buraco que deixava, e a coluna de 82vw do celular não levava o overlay
      junto. */
   --kanban-col-w: 288px;
-  /* Altura-base medida nos cards compactos da Rede de Decisão. Cards com vínculo
-     ou título extenso podem crescer, mas nunca encolhem abaixo desta medida. */
+  /* Altura-base medida nos cards compactos. Cards com vínculo ou título extenso
+     podem crescer, mas nunca encolhem abaixo desta medida. */
   --kanban-card-h: 172px;
   --kanban-visible-cards: 5;
   /* Altura da coluna: cinco cards à vista, com rolagem apenas no corpo.
@@ -216,14 +314,17 @@
      Altura de botão/campo e alvo mínimo de toque. São a ÚNICA porta de entrada
      da adaptação a toque: todo controle lê estes tokens, então o bloco de
      ponteiro grosso lá embaixo adapta o app inteiro sem uma regra por
-     componente. Antes eram ~15 literais de `height: 32px` espalhados por cinco
-     folhas, e no celular todos ficavam abaixo dos 44px de alvo.
+     componente.
+
+     34px, e não 32px: o botão já declarava 34px em literal enquanto o token
+     dizia 32px, então botão e campo lado a lado já não fechavam. Um valor só
+     resolve a divergência e o aperto de alvo ao mesmo tempo.
 
      --tap-min é um PISO, não um tamanho: cada botão de ícone declara
      `max(<tamanho em repouso>, var(--tap-min))`, e no desktop o piso é zero —
      o desenho manda. Isso é o que deixa o × de 22px na linha da tabela
      continuar com 22px no mouse e virar 44px no dedo, sem duas regras. */
-  --control-h: 32px;
+  --control-h: 34px;
   --tap-min: 0px;
 
   /* Corpo do texto DENTRO de um campo. Separado de --fs-sm porque muda por
@@ -231,11 +332,24 @@
      foco e não desfaz depois. Ver o bloco de ponteiro grosso. */
   --fs-field: var(--fs-sm);
 
+  /* ---------- Impressão ----------
+     Papel não tem tema: o fundo é branco e o traço precisa de tinta suficiente
+     para sobreviver a uma impressora a laser. Ficam aqui, e não soltos no
+     @media print, porque a regra de "nenhum hex fora deste arquivo" não abre
+     exceção — ela existe justamente para que ninguém precise caçar cor pelo
+     CSS. */
+  --print-paper: #FFFFFF;
+  --print-line: #999999;
+
   /* ---------- Data viz ---------- */
   /* Vão de superfície entre preenchimentos adjacentes (células do heatmap,
-     segmentos empilhados, arcos do donut). Sempre 2px. */
+     segmentos empilhados, arcos do donut, faixas do Sankey). Sempre 2px. */
   --viz-gap: 2px;
   --viz-axis: var(--ink-4);
+  /* Espessura de marca fina. Barra empilhada legível tem corpo para carregar
+     rótulo e valor dentro; a de 8px obrigava uma legenda maior que o dado. */
+  --viz-bar-h: 28px;
+  --viz-ring-w: 14px;
 }
 
 /* ---------- Ponteiro grosso ----------
@@ -263,7 +377,11 @@
   }
 }
 
-/* O botão de tema no header marca o <html>; isso precisa vencer o sistema nos
-   dois sentidos, e vence porque light-dark() obedece ao color-scheme vigente. */
+/* O botão de tema no header marca o <html>. São TRÊS estados explícitos, e o
+   'system' também é marcado — antes ele era a AUSÊNCIA do atributo, o que
+   tinha dois efeitos ruins: não dava para escrever uma regra para ele, e
+   qualquer regra escrita para [data-theme='dark'] ficava muda justamente para
+   quem seguia um sistema escuro. */
 :root[data-theme='light'] { color-scheme: light; }
 :root[data-theme='dark'] { color-scheme: dark; }
+:root[data-theme='system'] { color-scheme: light dark; }

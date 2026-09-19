@@ -18,13 +18,20 @@ export interface ColumnDef {
   num?: boolean;
 }
 
+/*
+ * O nome do risco vem PRIMEIRO e é a coluna congelada. Era a quarta, atrás de
+ * área, rotina e categoria — três colunas de taxonomia com largura fixa
+ * enquanto o texto livre mais importante da tabela cortava em ~40 caracteres.
+ * Agora ele fica à vista durante todo o scroll horizontal, com duas linhas,
+ * e a taxonomia leva só o mínimo que precisa.
+ */
 export const COLUMNS: ColumnDef[] = [
-  { id: 'area', label: 'Área', width: 150, group: 'Identificação' },
-  { id: 'rotina', label: 'Rotina', width: 160, group: 'Identificação', priority: 'low' },
-  { id: 'categoria', label: 'Categoria', width: 110, group: 'Identificação' },
-  { id: 'risco', label: 'Riscos', width: 270, red: true, group: 'Identificação' },
+  { id: 'risco', label: 'Riscos', width: 380, red: true, group: 'Identificação' },
+  { id: 'area', label: 'Área', width: 140, group: 'Identificação' },
+  { id: 'rotina', label: 'Rotina', width: 140, group: 'Identificação', priority: 'low' },
+  { id: 'categoria', label: 'Categoria', width: 100, group: 'Identificação' },
   { id: 'resposta', label: 'Resposta', width: 100, group: 'Avaliação do Risco Inerente' },
-  { id: 'probab', label: 'Probab.', width: 64, sortKey: 'probab', group: 'Avaliação do Risco Inerente', num: true },
+  { id: 'probab', label: 'Prob.', width: 60, sortKey: 'probab', group: 'Avaliação do Risco Inerente', num: true },
   { id: 'impact', label: 'Impact.', width: 64, sortKey: 'impact', group: 'Avaliação do Risco Inerente', num: true },
   { id: 'score', label: 'Score', width: 70, sortKey: 'score', group: 'Avaliação do Risco Inerente' },
   { id: 'acoes', label: 'Ações', width: 250, group: 'Plano de Ação' },

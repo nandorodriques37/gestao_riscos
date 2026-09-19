@@ -24,9 +24,9 @@ type Filtro = 'fila' | 'decididas' | DestinoSugerido;
 
 /** Cor do destino: categórica, não ordinal — nenhum destino é "pior". */
 const BADGE_DESTINO: Record<DestinoSugerido, string> = {
-  acao: 'slate',
-  iniciativa: 'blue',
-  rotina: 'purple',
+  acao: 'neutro',
+  iniciativa: 'neutro',
+  rotina: 'neutro',
 };
 
 const STATUS_ROTULO: Record<string, string> = {
@@ -174,8 +174,8 @@ export function TriagemTab({ records, pf }: TriagemTabProps) {
     ];
     if (r.comStatusHerdadoEmObs > 0) {
       partes.push(r.comStatusHerdadoEmObs === 1
-        ? 'Uma delas veio de uma ação já em andamento e nasceu em "backlog" — cadastre os marcos antes de mover o status'
-        : `${r.comStatusHerdadoEmObs} vieram de ações já em andamento e nasceram em "backlog" — cadastre os marcos antes de mover o status`);
+        ? 'Uma delas veio de uma ação já em andamento e nasceu como "não priorizada" — cadastre os marcos antes de mover o status'
+        : `${r.comStatusHerdadoEmObs} vieram de ações já em andamento e nasceram como "não priorizada" — cadastre os marcos antes de mover o status`);
     }
     if (r.semRiscoDeOrigem > 0) {
       partes.push(r.semRiscoDeOrigem === 1
@@ -225,7 +225,6 @@ export function TriagemTab({ records, pf }: TriagemTabProps) {
       {portfolio.acoes_risco.length === 0 ? (
         <div className="card">
           <EmptyState
-            icon="↓"
             message="Os planos de ação ainda estão dentro dos registros de risco"
             hint="A extração só insere linhas novas: os campos Ações e Resultado Esperado de cada risco ficam exatamente como estão."
             action={{
@@ -291,7 +290,7 @@ export function TriagemTab({ records, pf }: TriagemTabProps) {
                   </div>
                   <div className="section-subtitle" style={{ marginBottom: 0 }}>
                     Cada uma vira uma iniciativa sob <strong>A CLASSIFICAR</strong>, herdando esforço,
-                    impacto, gravidade, recurso e dono do risco de origem. Nasce em <strong>backlog</strong> —
+                    impacto, gravidade, recurso e dono do risco de origem. Nasce como <strong>não priorizada</strong> —
                     sem marco não se declara execução.
                     {jaPromovidas > 0 && ` ${jaPromovidas} já foram promovidas.`}
                   </div>
@@ -354,7 +353,6 @@ export function TriagemTab({ records, pf }: TriagemTabProps) {
           {listaVisivel.length === 0 ? (
             <div className="card" ref={listaRef}>
               <EmptyState
-                icon="✓"
                 message={naFila
                   ? 'Fila vazia — tudo classificado'
                   : filtro === 'decididas' ? 'Nada classificado ainda'
@@ -392,7 +390,7 @@ export function TriagemTab({ records, pf }: TriagemTabProps) {
                         {dono && acao.prazo && <span>·</span>}
                         {acao.prazo && <span className="tabular">{formatarData(acao.prazo)}</span>}
                         {(dono || acao.prazo) && <span>·</span>}
-                        <span className="badge" data-badge={acao.status === 'concluida' ? 'green' : acao.status === 'em_andamento' ? 'amber' : 'slate'}>
+                        <span className="badge" data-badge={acao.status === 'concluida' ? 'ok' : acao.status === 'em_andamento' ? 'atencao' : 'neutro'}>
                           {STATUS_ROTULO[acao.status] ?? 'A fazer'}
                         </span>
                       </div>
@@ -406,7 +404,7 @@ export function TriagemTab({ records, pf }: TriagemTabProps) {
                               {ROTULO_DESTINO[acao.triagem as DestinoSugerido]}
                             </span>
                             {acao.triagem === 'iniciativa' && (
-                              <span className="badge" data-badge={acao.iniciativa_id ? 'green' : 'amber'}>
+                              <span className="badge" data-badge={acao.iniciativa_id ? 'ok' : 'atencao'}>
                                 {acao.iniciativa_id ? 'Promovida' : 'Aguardando promoção'}
                               </span>
                             )}

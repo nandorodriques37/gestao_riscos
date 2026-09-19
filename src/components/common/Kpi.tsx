@@ -17,7 +17,7 @@ import type { TierKind } from '../../lib/calculations';
 /** Acento da barra lateral: a marca, ou uma faixa de criticidade. */
 export type AcentoKpi = 'brand' | TierKind;
 
-interface KpiProps {
+export interface KpiProps {
   label: string;
   /** O número. String para caber '—', '42%' e '12 / 30' sem casos especiais. */
   valor: ReactNode;
@@ -28,6 +28,13 @@ interface KpiProps {
   progresso?: number;
   /** Aviso de que o número está incompleto — nunca deixar lacuna passar por zero. */
   alerta?: ReactNode;
+  /**
+   * Estado vazio NO LUGAR do número, quando a causa é campo em branco. Um
+   * "R$ 0" gigante que só diz "ninguém preencheu" grita sem informar; aqui o
+   * tile explica o que falta e leva a quem preenche. Não combinar com
+   * `onClick` — botão dentro de botão não é HTML válido.
+   */
+  vazio?: { texto: ReactNode; acao?: { label: string; onClick: () => void } };
   /**
    * Torna o tile clicável. Só quando o clique FAZ algo: tile inerte com
    * aparência de botão é affordance falsa, e foi por isso que o hover-lift
@@ -45,13 +52,22 @@ interface KpiProps {
 }
 
 export function Kpi({
-  label, valor, sub, acento = 'brand', progresso, alerta, onClick, ativo, largo, title,
+  label, valor, sub, acento = 'brand', progresso, alerta, vazio, onClick, ativo, largo, title,
 }: KpiProps) {
   const classe = largo ? 'metric-item kpi-card wide' : 'metric-item kpi-card';
   const corpo = (
     <div className="kpi-body">
       <div className="kpi-label">{label}</div>
-      {sub != null && typeof sub === 'string' ? (
+      {vazio != null ? (
+        <div className="kpi-vazio">
+          <span>{vazio.texto}</span>
+          {vazio.acao && (
+            <button type="button" className="btn btn-ghost" onClick={vazio.acao.onClick}>
+              {vazio.acao.label}
+            </button>
+          )}
+        </div>
+      ) : sub != null && typeof sub === 'string' ? (
         <>
           <div className="kpi-value">{valor}</div>
           <div className="kpi-value-sub">{sub}</div>
@@ -113,7 +129,7 @@ interface KpiRowProps {
    * que reduz a faixa a duas colunas em tela estreita, e os quatro tiles
    * ficariam espremidos em 320px.
    */
-  colunas?: 3 | 4;
+  colunas?: 3 | 4 | 5;
 }
 
 /** Faixa de KPIs. Uma grade só, para as abas pararem de inventar a sua. */

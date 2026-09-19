@@ -2,16 +2,9 @@ import { describe, it, expect } from 'vitest';
 import type { RiskRecord } from '../types';
 import {
   round1, round2, computeScore, computePrioriz, normStatus,
-  scoreColor, criticidadeLabel, priorizColor, tierColor,
+  scoreTier, criticidadeLabel, priorizTier, barTier,
   respostaKind, statusKind, computeCompletude, COMPLETUDE_FIELDS,
 } from './calculations';
-
-// Cores canônicas das faixas (fonte da verdade: CLAUDE.md / README do handoff).
-const VERDE = '#15803D';
-const AMARELO = '#B8901F';
-const LARANJA = '#D97706';
-const VERMELHO = '#DC2626';
-const CINZA = '#94A3B8';
 
 function rec(partial: Partial<RiskRecord> = {}): RiskRecord {
   return {
@@ -99,29 +92,31 @@ describe('normStatus', () => {
   });
 });
 
-describe('scoreColor (limites de criticidade)', () => {
-  it('null → cinza', () => {
-    expect(scoreColor(null)).toBe(CINZA);
+// As faixas são regra de negócio (CLAUDE.md); a cor de cada uma vive em
+// `--tier-*` (tokens.css) e o CSS resolve por `data-tier`.
+describe('scoreTier (limites de criticidade)', () => {
+  it('null → sem faixa', () => {
+    expect(scoreTier(null)).toBe('null');
   });
 
-  it('≤ 4 → verde (baixo)', () => {
-    expect(scoreColor(0)).toBe(VERDE);
-    expect(scoreColor(4)).toBe(VERDE);
+  it('≤ 4 → baixo', () => {
+    expect(scoreTier(0)).toBe('baixo');
+    expect(scoreTier(4)).toBe('baixo');
   });
 
-  it('5–9 → amarelo (médio)', () => {
-    expect(scoreColor(5)).toBe(AMARELO);
-    expect(scoreColor(9)).toBe(AMARELO);
+  it('5–9 → médio', () => {
+    expect(scoreTier(5)).toBe('medio');
+    expect(scoreTier(9)).toBe('medio');
   });
 
-  it('10–14 → laranja (alto)', () => {
-    expect(scoreColor(10)).toBe(LARANJA);
-    expect(scoreColor(14)).toBe(LARANJA);
+  it('10–14 → alto', () => {
+    expect(scoreTier(10)).toBe('alto');
+    expect(scoreTier(14)).toBe('alto');
   });
 
-  it('> 14 → vermelho (crítico)', () => {
-    expect(scoreColor(15)).toBe(VERMELHO);
-    expect(scoreColor(25)).toBe(VERMELHO);
+  it('> 14 → crítico', () => {
+    expect(scoreTier(15)).toBe('critico');
+    expect(scoreTier(25)).toBe('critico');
   });
 });
 
@@ -140,56 +135,59 @@ describe('criticidadeLabel (limites estritos > para donut/heatmap)', () => {
   });
 });
 
-describe('priorizColor (limites de priorização)', () => {
-  it('null → cinza', () => {
-    expect(priorizColor(null)).toBe(CINZA);
+describe('priorizTier (limites de priorização)', () => {
+  it('null → sem faixa', () => {
+    expect(priorizTier(null)).toBe('null');
   });
 
-  it('≥ 6 → crítica (vermelho)', () => {
-    expect(priorizColor(6)).toBe(VERMELHO);
-    expect(priorizColor(8)).toBe(VERMELHO);
+  it('≥ 6 → crítico', () => {
+    expect(priorizTier(6)).toBe('critico');
+    expect(priorizTier(8)).toBe('critico');
   });
 
-  it('≥ 4.5 e < 6 → alta (laranja)', () => {
-    expect(priorizColor(4.5)).toBe(LARANJA);
-    expect(priorizColor(5.99)).toBe(LARANJA);
+  it('≥ 4.5 e < 6 → alto', () => {
+    expect(priorizTier(4.5)).toBe('alto');
+    expect(priorizTier(5.99)).toBe('alto');
   });
 
-  it('≥ 3 e < 4.5 → média (amarelo)', () => {
-    expect(priorizColor(3)).toBe(AMARELO);
-    expect(priorizColor(4.49)).toBe(AMARELO);
+  it('≥ 3 e < 4.5 → médio', () => {
+    expect(priorizTier(3)).toBe('medio');
+    expect(priorizTier(4.49)).toBe('medio');
   });
 
-  it('< 3 → baixa (verde)', () => {
-    expect(priorizColor(2.99)).toBe(VERDE);
-    expect(priorizColor(0)).toBe(VERDE);
+  it('< 3 → baixo', () => {
+    expect(priorizTier(2.99)).toBe('baixo');
+    expect(priorizTier(0)).toBe('baixo');
   });
 });
 
-describe('tierColor (razão sobre o maior do grupo)', () => {
+describe('barTier (razão sobre o maior do grupo)', () => {
   it('faixas por razão', () => {
-    expect(tierColor(1)).toBe(VERMELHO);
-    expect(tierColor(0.75)).toBe(VERMELHO);
-    expect(tierColor(0.5)).toBe(LARANJA);
-    expect(tierColor(0.25)).toBe(AMARELO);
-    expect(tierColor(0.24)).toBe(VERDE);
-    expect(tierColor(0)).toBe(VERDE);
+    expect(barTier(1)).toBe('critico');
+    expect(barTier(0.75)).toBe('critico');
+    expect(barTier(0.5)).toBe('alto');
+    expect(barTier(0.25)).toBe('medio');
+    expect(barTier(0.24)).toBe('baixo');
+    expect(barTier(0)).toBe('baixo');
   });
 });
 
 describe('badges de resposta e status', () => {
-  it('respostaKind mapeia cada resposta', () => {
-    expect(respostaKind('Mitigar')).toBe('blue');
-    expect(respostaKind('Aceitar')).toBe('slate');
-    expect(respostaKind('Transferir')).toBe('purple');
-    expect(respostaKind('Evitar')).toBe('red');
-    expect(respostaKind('')).toBe('slate');
+  it('só pinta a resposta que é exceção', () => {
+    // "Mitigar" é a resposta da maioria absoluta das linhas: pintá-la repete o
+    // mesmo pill tela abaixo sem informar nada. Evitar é o único que anuncia
+    // ameaça; o resto apenas nomeia a escolha.
+    expect(respostaKind('Evitar')).toBe('risco');
+    expect(respostaKind('Aceitar')).toBe('atencao');
+    expect(respostaKind('Transferir')).toBe('atencao');
+    expect(respostaKind('Mitigar')).toBe('neutro');
+    expect(respostaKind('')).toBe('neutro');
   });
 
   it('statusKind mapeia o status normalizado', () => {
-    expect(statusKind('Em andamento')).toBe('amber');
-    expect(statusKind('Concluído')).toBe('green');
-    expect(statusKind('Não iniciado')).toBe('slate');
+    expect(statusKind('Em andamento')).toBe('atencao');
+    expect(statusKind('Concluído')).toBe('ok');
+    expect(statusKind('Não iniciado')).toBe('neutro');
   });
 });
 

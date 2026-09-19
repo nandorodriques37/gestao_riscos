@@ -11,7 +11,7 @@
   position: relative;
   background: var(--bg-surface);
   border: 1px solid var(--line-border);
-  border-radius: var(--r-lg);
+  border-radius: var(--r-card);
   overflow: auto;
   max-height: 64vh;
 }
@@ -40,7 +40,7 @@
   text-align: left;
   white-space: nowrap;
   padding: 0 var(--sp-3);
-  height: 34px;
+  height: var(--control-h);
   border-bottom: 1px solid var(--line-border);
   top: 0;
   z-index: 4;
@@ -49,7 +49,7 @@
 /* Faixa de grupo: era uma barra navy de 24px, virou uma linha discreta. */
 .risk-table .group-row th {
   height: 26px;
-  font-size: 10px;
+  font-size: var(--fs-3xs);
   font-weight: var(--fw-medium);
   color: var(--ink-4);
   background: var(--bg-sunken);
@@ -95,14 +95,35 @@
   background: color-mix(in oklab, var(--risco-accent) 55%, transparent);
 }
 
-/* Só a célula do corpo precisa de `relative` para ancorar a faixa. No <th> o
-   `position: sticky` já cria o bloco de contenção — declarar `relative` ali
-   derrubaria o sticky e jogaria o cabeçalho para dentro do corpo. */
+/* A célula do nome é a coluna congelada, e o `position: sticky` dela (vindo de
+   `.sticky-col-left`) já cria o bloco de contenção da faixa — declarar
+   `relative` aqui derrubaria o sticky. Duas linhas, não uma: o nome do risco é
+   texto livre longo e era a coluna mais truncada da tabela, enquanto área e
+   categoria levavam largura fixa. */
 .risk-table td.risco-cell {
-  position: relative;
   color: var(--ink-1);
   font-weight: var(--fw-medium);
   padding-left: var(--sp-4);
+  padding-block: var(--sp-1);
+  white-space: normal;
+  line-height: 1.35;
+}
+
+.risco-nome {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.density-compact .risco-nome {
+  -webkit-line-clamp: 1;
+}
+
+/* Resposta em texto simples: só a exceção vira etiqueta (ver Resposta.tsx). */
+.resposta-texto {
+  font-size: var(--fs-xs);
+  color: var(--ink-3);
 }
 
 .risk-table thead th.th-red {
@@ -268,7 +289,7 @@
   transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
 }
 
-/* Check desenhado em CSS: o Inter não tem ✓ e o fallback sai torto. */
+/* Check desenhado em CSS: a Plex não tem ✓ e o fallback sai torto. */
 .done-check {
   width: 9px;
   height: 5px;
@@ -308,7 +329,7 @@
 .risk-card {
   background: var(--bg-surface);
   border: 1px solid var(--line-border);
-  border-radius: var(--r-md);
+  border-radius: var(--r-card);
   padding: var(--sp-3);
   display: flex;
   flex-direction: column;
@@ -375,7 +396,7 @@
   top: 0;
   bottom: 0;
   width: 3px;
-  border-radius: var(--r-md) 0 0 var(--r-md);
+  border-radius: var(--r-card) 0 0 var(--r-card);
   background: var(--c, var(--tier-null));
 }
 
@@ -401,7 +422,7 @@
 
 .desc-table-wrap {
   border: 1px solid var(--line-border);
-  border-radius: var(--r-md);
+  border-radius: var(--r-card);
   overflow: auto;
   max-height: 380px;
 }
@@ -425,7 +446,7 @@
   letter-spacing: 0.02em;
   text-transform: uppercase;
   text-align: left;
-  height: 32px;
+  height: var(--control-h);
   padding: 0 var(--sp-3);
   border-bottom: 1px solid var(--line-border);
   white-space: nowrap;
@@ -542,7 +563,7 @@ tr[data-tier='null'] { --c: var(--tier-null); }
   display: grid;
   place-items: center;
   flex: none;
-  font-size: 10px;
+  font-size: var(--fs-3xs);
   font-weight: var(--fw-semibold);
   color: var(--ink-2);
   background: var(--bg-sunken);
@@ -570,7 +591,7 @@ tr[data-tier='null'] { --c: var(--tier-null); }
   max-width: calc(100vw - var(--sp-6));
   background: var(--bg-surface);
   border: 1px solid var(--line-border);
-  border-radius: var(--r-md);
+  border-radius: var(--r-float);
   box-shadow: var(--elev-2);
   padding: var(--sp-4);
 }

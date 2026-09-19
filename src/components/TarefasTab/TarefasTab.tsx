@@ -17,6 +17,8 @@ import {
   type KanbanGroupBy, type TaskView,
 } from '../../lib/uiPrefs';
 import { Kpi, KpiRow } from '../common/Kpi';
+import { useConfirmacao } from '../common/Confirmacao';
+import { plural } from '../../lib/portfolioLabels';
 import { TarefasFilterBar } from './TarefasFilterBar';
 import { TarefasTable } from './TarefasTable';
 import { TarefasKanban } from './TarefasKanban';
@@ -147,6 +149,7 @@ export function TarefasTab({ records, pf, tarefas, selecionada, onSelecionar, id
   );
 
   const vinculadas = useMemo(() => rows.filter(r => r.vinculo != null).length, [rows]);
+  const [confirmar, dialogoConfirmacao] = useConfirmacao();
   const atrasadas = useMemo(() => rows.filter(r => r.atrasada).length, [rows]);
 
   const tipoOptions = useMemo(() => [...new Set(tasks.map(t => t.tipo).filter(Boolean))], [tasks]);
@@ -279,21 +282,31 @@ export function TarefasTab({ records, pf, tarefas, selecionada, onSelecionar, id
    * do risco e muda o estado de tratamento dele, que é o número que vai ao
    * comitê. O aviso diz de qual risco se trata.
    */
-  function confirmarExclusao(idx: number): boolean {
+  function confirmarExclusao(idx: number): Promise<boolean> {
     const row = rows.find(r => r.idx === idx);
+    const t = row?.task;
     const vinculo = row?.vinculo;
-    if (!vinculo) return window.confirm('Tem certeza que deseja excluir esta tarefa?');
-    return window.confirm(
-      `Esta é uma mitigação do risco "${vinculo.risco || 'sem título'}".\n\n`
-      + 'Excluir remove a ação do plano do risco e altera o estado de tratamento dele. '
-      + 'Tem certeza?',
-    );
+    const nome = t?.tarefa || 'tarefa sem título';
+    const anexos = t?.anexos?.length ?? 0;
+    const sobreAnexos = anexos > 0 ? ` ${plural(anexos, 'O anexo vai', 'Os ' + anexos + ' anexos vão')} junto.` : '';
+    if (!vinculo) {
+      return confirmar({
+        titulo: `Excluir "${nome}"?`,
+        consequencia: `Ela some do quadro.${sobreAnexos}`,
+        rotuloConfirmar: 'Excluir tarefa',
+      });
+    }
+    return confirmar({
+      titulo: `Excluir a mitigação "${nome}"?`,
+      consequencia: `Ela sai do plano de ação do risco "${vinculo.risco || 'sem título'}", e o estado de tratamento dele muda — é o número que vai ao comitê.${sobreAnexos}`,
+      rotuloConfirmar: 'Excluir mitigação',
+    });
   }
 
   async function handleDeleteRow(idx: number) {
     const t = tasks[idx];
     if (!t) return;
-    if (!confirmarExclusao(idx)) return;
+    if (!(await confirmarExclusao(idx))) return;
     if (editingId === t.id) setEditingId(null);
     await deleteTaskById(t.id);
   }
@@ -344,7 +357,7 @@ export function TarefasTab({ records, pf, tarefas, selecionada, onSelecionar, id
   async function handleDeleteFromModal() {
     if (!editingId) return;
     const idx = tasks.findIndex(t => t.id === editingId);
-    if (!confirmarExclusao(idx)) return;
+    if (!(await confirmarExclusao(idx))) return;
     const id = editingId;
     setEditingId(null);
     await deleteTaskById(id);
@@ -390,12 +403,17 @@ export function TarefasTab({ records, pf, tarefas, selecionada, onSelecionar, id
             </div>
           </div>
 
-          <KpiRow>
-            <Kpi label="Tarefas e ações" valor={total} acento="brand" />
-            <Kpi label="A fazer" valor={aFazer} acento="null" />
-            <Kpi label="Em andamento" valor={emAndamento} acento="alto" />
+          {/* Quatro números, não sete: "abertas" carrega a fazer, em andamento
+              e concluídas na linha de baixo, e ninguém rola duas fileiras de
+              KPI antes de ver uma tarefa. */}
+          <KpiRow colunas={4}>
+            <Kpi
+              label="Abertas"
+              valor={aFazer + emAndamento}
+              sub={`${aFazer} a fazer · ${emAndamento} em andamento · ${concluidas} concluídas de ${total}`}
+              acento="brand"
+            />
             <Kpi label="Atrasadas" valor={atrasadas} acento={atrasadas > 0 ? 'critico' : 'baixo'} />
-            <Kpi label="Concluídas" valor={concluidas} acento="baixo" />
             <Kpi label="GUT crítico" valor={criticas} acento="critico" />
             <Kpi
               label="Avaliadas (GUT)"
@@ -406,6 +424,8 @@ export function TarefasTab({ records, pf, tarefas, selecionada, onSelecionar, id
               largo
             />
           </KpiRow>
+
+          {dialogoConfirmacao}
 
           <TarefasFilterBar
             search={search}

@@ -133,10 +133,60 @@ plano Hobby do Vercel limita a 12 funções.
 4. Uma entrada `api/index.ts` atende as URLs existentes via rewrite. O roteador
    é compartilhado com desenvolvimento; as telas do front carregam sob demanda.
 
+### 14. Rede de Decisão — 17/09/2026 (PR #40)
+
+Primeira troca de identidade: IBM Plex no lugar do Inter, glifo da rede de
+decisão, escada de superfícies e uma **camada final de migração**
+(`src/styles/redesign.css`, 1.579 linhas) sobrescrevendo as folhas anteriores.
+Deixou três `var()` apontando para tokens inexistentes e dois âmbares
+indistinguíveis — o que a auditoria seguinte apontou.
+
+### 15. Redesign "Registro" — 19/09/2026 (cinco fases, uma por commit)
+
+Uma auditoria tela a tela (36 achados) concluiu que o app acertou o sistema e
+errou a assinatura: periwinkle sobre navy, sete etiquetas pastel, KPI repetido
+doze vezes, nenhuma peça própria. A causa técnica: o azul oficial da marca,
+`#0000BE`, rende 1,6:1 sobre navy — não havia como usá-lo, e alguém clareou até
+chegar no genérico. O redesign inteiro sai daí.
+
+1. **Pele** — tema claro como padrão (12,0:1 para a marca), neutros quentes,
+   grafite neutro no escuro, três estados de tema marcados no `<html>`, sete
+   etiquetas viram quatro papéis, anel de foco sólido, `--control-h` 34px. Os
+   tokens mudaram de VALOR, não de nome. No caminho: três `var()` mortos,
+   `font-feature-settings` que nunca chegava ao texto, 43 tamanhos de fonte em
+   literal, `opsz` numa fonte sem eixo óptico.
+2. **Forma e cifra** — raio por papel (controle 4 · cartão 8 · linha 0 ·
+   flutuante 12), toda cifra em Plex Mono por uma regra só, sombra só no que
+   flutua, coral só onde significa risco. Primeiro passo da dissolução
+   incremental da camada final (`.card`, `.kpi-*`).
+3. **Hierarquia do Painel** — a faixa de cinco números sob o título, atenção
+   primeiro, nada de `R$ 0` ou `0%` por campo em branco (estado vazio com o
+   botão de quem preenche; trilha tracejada no objetivo sem medição), barra
+   empilhada de 28px com o valor dentro, copy corrigida ("Quem está mais
+   carregado", "Valor em jogo", "Ganho rápido", "Não compensa", "Não
+   priorizada", "Quadro", "Cadastro preenchido") e a família "Abrir …".
+4. **Densidade** — nome do risco primeiro e congelado em duas linhas, "Mitigar"
+   em texto, régua de qualidade do cadastro com filtro dos incompletos, visões
+   salvas e `/` em Iniciativas, stepper de marcos, prioridade `/10`, Tarefas com
+   quatro KPIs, Pessoas com linha clicável e "Declarar capacidade", vocabulário
+   de vazio unificado.
+5. **Assinatura** — o Sankey da cadeia (`fluxoDaCadeia` pura + `SankeyCadeia`
+   em SVG), Priorização com rótulo nas primeiras bolhas e hover cruzado, paleta
+   de comando Ctrl/⌘+K, confirmação destrutiva com consequência em números e
+   botões nomeados (`useConfirmacao`), estados vazios que faltavam.
+
+Duas decisões desta fase valem por si: `light-dark()` numa linha por token venceu
+o bloco `[data-theme]` que a auditoria propunha, porque bloco separado não
+responde ao modo "sistema"; e a camada final NÃO foi dobrada de uma vez —
+33 classes dela também existem em folhas anteriores, e mover tudo inverteria a
+cascata só em algumas larguras de tela. Ela encolhe a cada mudança e some
+quando esvaziar.
+
 ## Estado atual desta alteração
 
-- 484 testes em 27 arquivos, incluindo transações, conflitos, anexos, roteador,
-  hooks de sincronização e rascunhos do modal de risco.
+- 491 testes em 28 arquivos, incluindo transações, conflitos, anexos, roteador,
+  hooks de sincronização, rascunhos do modal de risco, a cadeia quebrada e o
+  fluxo da cadeia.
 - CI verifica tipos, lint, testes e build nos PRs e nos pushes à `main`.
 - JavaScript principal: cerca de 527 KB → 295 KB minificado; os demais módulos
   são carregados conforme o destino. Isso não mede o tempo real de abertura.

@@ -4,7 +4,7 @@ import type { UsePortfolio } from '../../hooks/usePortfolio';
 import {
   iniciativaAtiva, progressoObjetivo, riscosPorObjetivo, saudeObjetivos,
 } from '../../lib/portfolioMetrics';
-import { computeScore, scoreTier } from '../../lib/calculations';
+import { computeScore, scoreTier, type BadgeKind } from '../../lib/calculations';
 import {
   ROTULO_HORIZONTE, ROTULO_STATUS_OBJETIVO, ROTULO_STATUS_INICIATIVA,
   BADGE_STATUS_INICIATIVA, formatarData, formatarMoeda, formatarNumero,
@@ -13,6 +13,7 @@ import {
 import { OBJETIVO_BALDE } from '../../lib/portfolioUi';
 import { EmptyState } from '../common/EmptyState';
 import { Kpi, KpiRow } from '../common/Kpi';
+import { useConfirmacao } from '../common/Confirmacao';
 import { ObjetivoModal } from './ObjetivoModal';
 import { MedicaoModal } from './MedicaoModal';
 import { Sparkline } from './Sparkline';
@@ -33,8 +34,8 @@ const ROTULO_TENDENCIA: Record<string, string> = {
 };
 
 /** Badge do status do objetivo: verde só quando a meta caiu de fato. */
-const BADGE_STATUS: Record<string, string> = {
-  ativo: 'blue', atingido: 'green', abandonado: 'slate', '': 'slate',
+const BADGE_STATUS: Record<string, BadgeKind> = {
+  ativo: 'neutro', atingido: 'ok', abandonado: 'neutro', '': 'neutro',
 };
 
 export function ObjetivosTab({
@@ -46,6 +47,7 @@ export function ObjetivosTab({
   const [medindo, setMedindo] = useState<Objetivo | null>(null);
   const [criando, setCriando] = useState(false);
   const [mostrarEncerrados, setMostrarEncerrados] = useState(false);
+  const [confirmar, dialogoConfirmacao] = useConfirmacao();
 
   const pessoaPorId = useMemo(() => new Map(pessoas.map(p => [p.id, p.nome])), [pessoas]);
 
@@ -100,11 +102,14 @@ export function ObjetivosTab({
    * meta; quem responde pelo resultado é quem clica.
    */
   async function declararAtingido(o: Objetivo) {
-    if (!window.confirm(
-      `Declarar "${o.descricao}" como atingido?\n\n`
-      + 'A série já cobriu todo o caminho entre baseline e meta. Ele sai da conta de '
-      + 'objetivos ativos e passa a contar como alcançado.',
-    )) return;
+    if (!(await confirmar({
+      titulo: `Declarar "${o.descricao}" como atingido?`,
+      consequencia: 'A série já cobriu todo o caminho entre baseline e meta. Ele sai da conta de '
+        + 'objetivos ativos e passa a contar como alcançado — e quem declara responde por isso.',
+      rotuloConfirmar: 'Declarar atingido',
+      rotuloManter: 'Ainda não',
+      perigo: false,
+    }))) return;
     await patchEntidade('objetivos', o.id, { status: 'atingido' });
   }
 
@@ -118,7 +123,14 @@ export function ObjetivosTab({
       );
       return;
     }
-    if (!window.confirm(`Excluir o objetivo "${o.descricao}"?`)) return;
+    const nMedicoes = medicoes.filter(m => m.objetivo_id === o.id).length;
+    if (!(await confirmar({
+      titulo: `Excluir o objetivo "${o.descricao}"?`,
+      consequencia: nMedicoes > 0
+        ? `Ele some do portfólio. ${plural(nMedicoes, 'A medição registrada vai', 'As ' + nMedicoes + ' medições registradas vão')} junto — a tendência se perde.`
+        : 'Ele some do portfólio. Não tem medição registrada.',
+      rotuloConfirmar: 'Excluir objetivo',
+    }))) return;
     const ok = await deleteEntidade('objetivos', o.id);
     if (ok) setEditando(null);
   }
@@ -143,6 +155,8 @@ export function ObjetivosTab({
           <button className="error-banner-dismiss" onClick={clearError} aria-label="Fechar aviso">×</button>
         </div>
       )}
+
+      {dialogoConfirmacao}
 
       <div className="page-bar">
         <div>
@@ -192,7 +206,6 @@ export function ObjetivosTab({
       {visiveis.length === 0 ? (
         <div className="card">
           <EmptyState
-            icon="◇"
             message="Nenhum objetivo cadastrado"
             hint="O objetivo é o porquê: o resultado de negócio que as iniciativas movem. Poucos e ativos — três a seis dão conta de um ano."
             action={{ label: '+ Novo objetivo', onClick: () => setCriando(true) }}
@@ -209,6 +222,9 @@ export function ObjetivosTab({
             const orfao = !balde && o.status === 'ativo' && ativas.length === 0;
             const pctExecucao = daqui.length === 0 ? 0 : concluidas / daqui.length;
             const progresso = progressoObjetivo(o, medicoes);
+            // Sem baseline ou meta não existe caminho para medir — é diferente
+            // de "existe caminho e ninguém mediu", e o cartão diz qual dos dois.
+            const semMeta = o.baseline == null || o.meta == null || o.baseline === o.meta;
             const ameacas = riscosPorObj.get(o.id) ?? [];
             const sufixo = o.unidade ? ` ${o.unidade}` : '';
             // Casas decimais seguem o próprio número: 8,4% mantém a casa, 145 dias não ganha uma.
@@ -218,7 +234,7 @@ export function ObjetivosTab({
               <div className="card objetivo-card" key={o.id} data-orfao={orfao} data-balde={balde}>
                 <div>
                   <div className="ini-meta" style={{ marginTop: 0 }}>
-                    <span className="badge" data-badge={BADGE_STATUS[o.status] ?? 'slate'}>
+                    <span className="badge" data-badge={BADGE_STATUS[o.status] ?? 'neutro'}>
                       {ROTULO_STATUS_OBJETIVO[o.status]}
                     </span>
                     <span>{ROTULO_HORIZONTE[o.horizonte]}</span>
@@ -287,17 +303,31 @@ export function ObjetivosTab({
                         <span className="tabular">{num(o.meta)}{sufixo}</span>
                       </div>
 
-                      <div className="meta-track" title={
-                        progresso.pct == null
-                          ? 'Sem medição, baseline ou meta — não há caminho para medir'
-                          : `${formatarPct(progresso.pct)} do caminho entre baseline e meta`
-                      }>
-                        <span className="meta-fill" style={{ width: `${Math.round((progresso.pct ?? 0) * 100)}%` }} />
+                      {/* Sem meta ou sem medição a trilha é tracejada e não
+                          tem preenchimento — nunca uma barra em 0%. Zero por
+                          cento diz "não andou"; o que aconteceu foi "ninguém
+                          mediu", e só o primeiro é fracasso do objetivo. */}
+                      <div
+                        className="meta-track"
+                        data-sem-medida={progresso.pct == null || undefined}
+                        title={
+                          progresso.pct == null
+                            ? (semMeta
+                              ? 'Sem baseline ou meta — não há caminho para medir'
+                              : 'Sem medição — não há onde marcar o ponto')
+                            : `${formatarPct(progresso.pct)} do caminho entre baseline e meta`
+                        }
+                      >
+                        {progresso.pct != null && (
+                          <span className="meta-fill" style={{ width: `${Math.round(progresso.pct * 100)}%` }} />
+                        )}
                         <span className="meta-alvo" />
                       </div>
                       <div className="meta-legenda">
                         <span>
-                          {progresso.pct == null ? 'sem progresso medido' : `${formatarPct(progresso.pct)} do caminho`}
+                          {progresso.pct == null
+                            ? (semMeta ? 'Sem meta definida' : 'Sem medição')
+                            : `${formatarPct(progresso.pct)} do caminho`}
                         </span>
                         {progresso.tendencia && (
                           <span className="tendencia" data-t={progresso.tendencia}>
@@ -317,6 +347,11 @@ export function ObjetivosTab({
                       />
 
                       <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
+                        {semMeta && (
+                          <button className="btn btn-ghost" onClick={() => setEditando(o)}>
+                            Definir meta
+                          </button>
+                        )}
                         <button className="btn btn-ghost" onClick={() => setMedindo(o)}>
                           {progresso.serie.length === 0
                             ? 'Registrar 1ª medição'
@@ -328,9 +363,16 @@ export function ObjetivosTab({
                       </div>
                     </>
                   ) : (
-                    <div className="bento-sub">
-                      Sem indicador. Objetivo sem número vira opinião no fim do trimestre.
-                    </div>
+                    <>
+                      <div className="bento-sub">
+                        Sem indicador. Objetivo sem número vira opinião no fim do trimestre.
+                      </div>
+                      <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
+                        <button className="btn btn-ghost" onClick={() => setEditando(o)}>
+                          Definir indicador
+                        </button>
+                      </div>
+                    </>
                   )}
 
                   <div className="fato-label" style={{ marginTop: 'var(--sp-4)' }}>Execução</div>
@@ -348,10 +390,13 @@ export function ObjetivosTab({
                   </div>
                   {daqui.length === 0 ? (
                     <div className="bento-sub">
-                      Nada pendurado aqui ainda.{' '}
-                      <button className="link-ini" onClick={() => onCriarIniciativa(o.id)}>
-                        Criar uma iniciativa
-                      </button>
+                      <strong>Nenhuma iniciativa sustenta este objetivo.</strong> Enquanto não
+                      houver, ele é intenção — não plano.
+                      <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
+                        <button className="btn btn-ghost" onClick={() => onCriarIniciativa(o.id)}>
+                          Criar iniciativa
+                        </button>
+                      </div>
                     </div>
                   ) : (
                     <div className="lista-linhas">

@@ -12,6 +12,16 @@ body,
   min-height: 100%;
 }
 
+/* A família fica no <html>, não só no <body>.
+   Não é purismo: `getComputedStyle(document.documentElement).fontFamily`
+   devolvia "Times New Roman", e todo elemento que o navegador resolve contra o
+   elemento-raiz — e todo nó que por algum caminho não herda do body — caía em
+   serif de sistema se a Plex demorasse ou falhasse. A queda tem que ser para a
+   pilha do sistema, não para um serif que ninguém escolheu. */
+html {
+  font-family: var(--font-sans);
+}
+
 body {
   margin: 0;
   font-family: var(--font-sans);
@@ -22,23 +32,59 @@ body {
   background: var(--bg-canvas);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  /* cv05: "l" com cauda, evita confundir com "1" em coluna numérica. */
-  font-feature-settings: 'cv05' 1;
-  /* O eixo óptico segue o tamanho de fonte por conta própria — é o que faz o
-     título a 24px e a célula a 11px terem desenhos diferentes sem uma regra
-     por componente. Explícito porque é decisão, não herança acidental. */
-  font-optical-sizing: auto;
+  /* cv05: "l" com cauda, evita confundir com "1" em coluna numérica.
+     As demais são o desenho alternativo da Plex para a, g e l. Precisam estar
+     na MESMA declaração: font-feature-settings não acumula, e enquanto o
+     :root pedia ss01/cv02/cv03/cv04 e o body pedia cv05, só o cv05 valia. */
+  font-feature-settings: 'cv05' 1, 'ss01' 1, 'cv02' 1, 'cv03' 1, 'cv04' 1;
   /* Sem peso sintético: sem isto o navegador finge um semibold engordando o
      traço quando o eixo não é aplicado, e o resultado é sujo ao lado do real. */
   font-synthesis: none;
 }
 
-/* Figuras tabulares só onde precisam alinhar verticalmente — colunas de tabela
-   e rótulos de eixo. Números soltos (KPI, centro do donut) ficam proporcionais,
-   que é como um número grande deve ser desenhado. */
-table,
-.tabular {
+/* ---------- Cifra ----------
+   Todo número que informa — score, GUT, prazo, percentual, valor, contagem,
+   o número grande do KPI e o do centro do donut — sai em Plex Mono. Não é
+   ornamento: em tabela densa o número proporcional não alinha, e um painel
+   que alinha número lê como instrumento, não como template. Mono já é
+   tabular por construção; o `tabular-nums` fica para o caso de a fonte cair
+   no fallback do sistema.
+
+   A lista é de CLASSE DE CIFRA, não de tudo que contém dígito: `.lista-nota`
+   às vezes traz prosa, `.acao-prazo` é o contêiner de um campo de data e
+   `.marco-num` são glifos — ficam de fora, e onde carregam número recebem
+   `.tabular` no próprio elemento. Cabeçalho de coluna numérica (`th.num`)
+   alinha à direita mas não é cifra. */
+table {
   font-variant-numeric: tabular-nums;
+}
+
+.tabular,
+td.num,
+.tier-chip,
+.kpi-value,
+.donut-center-value,
+.bento-valor,
+.stat-valor,
+.fato-valor,
+.cadeia-valor,
+.lacuna-n,
+.heat-cell,
+.risk-score,
+.bar-score,
+.legend-pct,
+.legend-status-pct,
+.ranked-item-num,
+.ranked-item-eig,
+.task-date,
+.ini-date,
+.prazo-cell,
+.prazo-atraso,
+.objetivo-progress-value,
+.lista-valor {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--tracking-tighter);
 }
 
 button,
@@ -64,10 +110,14 @@ h1, h2, h3, h4 {
   outline: none;
 }
 
+/* Anel SÓLIDO, nunca translúcido. Espessura e vão vêm de token porque o anel
+   reaparece em cinco folhas: enquanto cada uma escolhia o seu, metade do app
+   tinha anel de 32% de alpha — visível no escuro, quase invisível sobre
+   superfície clara. Anel de foco que não se vê é barreira de teclado. */
 :focus-visible {
-  outline: 2px solid var(--focus);
-  outline-offset: 2px;
-  border-radius: var(--r-xs);
+  outline: var(--focus-w) solid var(--focus);
+  outline-offset: var(--focus-offset);
+  border-radius: var(--r-control);
 }
 
 /* Em linha de tabela e célula de heatmap o anel externo é cortado pelo
@@ -75,7 +125,7 @@ h1, h2, h3, h4 {
 tr:focus-visible,
 .heat-cell:focus-visible,
 .matrix-bubble:focus-visible {
-  outline-offset: -2px;
+  outline-offset: calc(-1 * var(--focus-offset));
 }
 
 /* ---------- Scrollbar ---------- */

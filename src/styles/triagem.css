@@ -48,7 +48,7 @@
 .triagem-item {
   background: var(--bg-surface);
   border: 1px solid var(--line-border);
-  border-radius: var(--r-lg);
+  border-radius: var(--r-card);
   padding: var(--sp-4);
   display: flex;
   gap: var(--sp-5);
@@ -125,7 +125,7 @@
 .triagem-sugestao {
   background: var(--bg-sunken);
   border: 1px solid var(--line-hairline);
-  border-radius: var(--r-md);
+  border-radius: var(--r-card);
   padding: var(--sp-2) var(--sp-3);
 }
 

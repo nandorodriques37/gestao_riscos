@@ -9,6 +9,16 @@
 /* ---------- Tablet / notebook estreito ---------- */
 
 @media (max-width: 1100px) {
+  /* Sem rail, o header aperta o respiro e a rota some — as abas do topo já
+     dizem onde se está. */
+  .app-header-inner {
+    padding-inline: var(--sp-3);
+  }
+
+  .header-route {
+    display: none;
+  }
+
   .kpi-grid-4 {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -126,6 +136,26 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  /* Atalho de teclado não tem sentido onde o teclado é virtual. */
+  .header-paleta {
+    display: none;
+  }
+
+  /* A marca encolhe: glifo e nome; a assinatura não cabe em 390px. */
+  .brand {
+    min-width: 0;
+  }
+
+  .brand-mark {
+    width: 34px;
+    height: 28px;
+    flex-basis: 34px;
+  }
+
+  .brand-signature {
+    display: none;
+  }
+
   .kpi-card.wide {
     grid-column: 1 / -1;
   }
@@ -135,6 +165,9 @@
   }
 
   /* ---------- Faixa de KPI compacta ----------
+     O tile com estado vazio (texto + botão no lugar do número) fica de fora
+     da forma deitada: rótulo à esquerda e um parágrafo à direita, numa
+     coluna de 180px, é o que se espremia no Painel.
      Empilhado, rótulo em cima e número embaixo dá ~100px por tile: sete tiles
      viravam 460px, e na aba Tarefas a pessoa rolava um título, três botões e
      quatro fileiras de número antes de ver UMA tarefa. Num telefone o que
@@ -148,18 +181,18 @@
      aviso de lacuna continua em pé, porque essas três coisas moram embaixo do
      número e não têm para onde ir numa linha só — e `:has()` é o que permite
      distinguir os dois sem inventar uma variante no componente. */
-  .kpi-card:not(:has(.kpi-progress-track)):not(:has(.kpi-value-sub)):not(:has(.bento-lacuna)) {
+  .kpi-card:not(:has(.kpi-progress-track)):not(:has(.kpi-value-sub)):not(:has(.bento-lacuna)):not(:has(.kpi-vazio)) {
     padding: var(--sp-3);
   }
 
-  .kpi-card:not(:has(.kpi-progress-track)):not(:has(.kpi-value-sub)):not(:has(.bento-lacuna)) .kpi-body {
+  .kpi-card:not(:has(.kpi-progress-track)):not(:has(.kpi-value-sub)):not(:has(.bento-lacuna)):not(:has(.kpi-vazio)) .kpi-body {
     display: flex;
     align-items: baseline;
     justify-content: space-between;
     gap: var(--sp-2);
   }
 
-  .kpi-card:not(:has(.kpi-progress-track)):not(:has(.kpi-value-sub)):not(:has(.bento-lacuna)) .kpi-value {
+  .kpi-card:not(:has(.kpi-progress-track)):not(:has(.kpi-value-sub)):not(:has(.bento-lacuna)):not(:has(.kpi-vazio)) .kpi-value {
     margin-top: 0;
     flex: none;
   }
@@ -264,7 +297,7 @@
   .modal-card {
     max-width: none;
     max-height: 94dvh;
-    border-radius: var(--r-lg) var(--r-lg) 0 0;
+    border-radius: var(--r-float) var(--r-float) 0 0;
     border-bottom: none;
   }
 
@@ -312,7 +345,7 @@
     max-width: none;
     max-height: 80dvh;
     overflow-y: auto;
-    border-radius: var(--r-lg) var(--r-lg) 0 0;
+    border-radius: var(--r-float) var(--r-float) 0 0;
     box-shadow: var(--elev-3);
     padding-bottom: max(var(--sp-4), env(safe-area-inset-bottom));
     /* Acima da barra de navegação, que também é fixa na base. */
@@ -326,5 +359,17 @@
      continua em duas — ver acima. */
   .modal-grid-3 {
     grid-template-columns: 1fr;
+  }
+}
+
+/* Celular estreito: o header aperta mais um degrau e o nome da marca desce um
+   tamanho, para caber ao lado do botão de tema. */
+@media (max-width: 420px) {
+  .app-header-inner {
+    padding-inline: var(--sp-2);
+  }
+
+  .brand-name {
+    font-size: var(--fs-sm);
   }
 }

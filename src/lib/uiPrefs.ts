@@ -96,26 +96,36 @@ export type ThemePref = 'light' | 'dark' | 'system';
 
 const THEME_KEY = 'riskMatrix.theme.v1';
 
-/** Tema escolhido pelo usuário; 'system' segue a preferência do sistema operacional. */
+/**
+ * Tema escolhido pelo usuário; 'system' segue a preferência do sistema.
+ *
+ * O padrão é CLARO, e não 'system'. A razão é a cor da marca: #0000BE rende
+ * 12,0:1 sobre o papel quente do tema claro e 1,6:1 sobre um canvas escuro —
+ * não existe forma de mostrar a marca correta num fundo escuro. Quem prefere
+ * escuro, ou prefere acompanhar o sistema, pede pelo botão do header e a
+ * escolha fica gravada; o que mudou foi só o que acontece sem pedir nada.
+ */
 export function readThemePref(): ThemePref {
   try {
     const raw = localStorage.getItem(THEME_KEY);
     if (raw === 'light' || raw === 'dark' || raw === 'system') return raw;
   } catch {
-    // storage ausente/corrompido — segue o sistema
+    // storage ausente/corrompido — vale o padrão
   }
-  return 'system';
+  return 'light';
 }
 
 /**
- * Marca o <html> com o tema escolhido. 'system' remove o atributo, deixando o
- * `color-scheme: light dark` do :root responder à media query — é o que faz o
- * light-dark() dos tokens escolher o lado certo.
+ * Marca o <html> com o tema escolhido. Os TRÊS estados são marcados, 'system'
+ * inclusive — antes ele era a ausência do atributo, e isso tinha dois efeitos
+ * ruins: não havia como escrever uma regra para ele, e toda regra escrita para
+ * [data-theme='dark'] ficava muda justamente para quem seguia um sistema
+ * escuro. Quem responde pelo lado do light-dark() é o `color-scheme` que
+ * tokens.css declara para cada um dos três.
  */
 export function applyThemePref(pref: ThemePref): void {
   const root = document.documentElement;
-  if (pref === 'system') root.removeAttribute('data-theme');
-  else root.setAttribute('data-theme', pref);
+  root.setAttribute('data-theme', pref);
   try {
     localStorage.setItem(THEME_KEY, pref);
   } catch {

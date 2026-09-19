@@ -78,7 +78,7 @@ export function RiskTable({ rows, colWidths, onColWidthChange, sortKey, sortDir,
                 const isSorted = sortable && sortKey === col.sortKey;
                 const arrow = isSorted ? (sortDir === 'asc' ? ' ▲' : ' ▼') : '';
                 const ariaSort = isSorted ? (sortDir === 'asc' ? 'ascending' : 'descending') : sortable ? 'none' : undefined;
-                const stickyClass = col.id === 'area' ? 'sticky-col-left' : col.id === '_del' ? 'sticky-col-right' : '';
+                const stickyClass = col.id === 'risco' ? 'sticky-col-left' : col.id === '_del' ? 'sticky-col-right' : '';
                 return (
                   <th
                     key={col.id}

@@ -8,9 +8,11 @@ interface RankedListProps {
   selectedRank: number | null;
   onItemClick: (rankIndex: number) => void;
   onClearFilter: () => void;
+  hoverRank: number | null;
+  onHover: (rankIndex: number | null) => void;
 }
 
-export function RankedList({ items, title, filterActive, selectedRank, onItemClick, onClearFilter }: RankedListProps) {
+export function RankedList({ items, title, filterActive, selectedRank, onItemClick, onClearFilter, hoverRank, onHover }: RankedListProps) {
   return (
     <div className="ranked-list-panel">
       <div className="ranked-list-header">
@@ -24,9 +26,11 @@ export function RankedList({ items, title, filterActive, selectedRank, onItemCli
         {items.map(item => (
           <button
             key={item.rankIndex}
-            className={`ranked-item${selectedRank === item.rankIndex ? ' selected' : ''}`}
+            className={`ranked-item${selectedRank === item.rankIndex ? ' selected' : ''}${hoverRank === item.rankIndex ? ' hover' : ''}`}
             aria-pressed={selectedRank === item.rankIndex}
             onClick={() => onItemClick(item.rankIndex)}
+            onMouseEnter={() => onHover(item.rankIndex)}
+            onMouseLeave={() => onHover(null)}
           >
             <span className="ranked-item-num" data-tier={item.tier}>{item.num}</span>
             <div className="ranked-item-body">

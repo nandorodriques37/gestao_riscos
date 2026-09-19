@@ -10,9 +10,12 @@
 
 .card {
   background: var(--bg-surface);
-  border: 1px solid var(--line-border);
-  border-radius: var(--r-lg);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
   padding: var(--sp-5);
+  /* Cartão em repouso é hairline puro — e continua sendo no hover. Sombra é
+     para o que flutua acima da página, e um cartão parado não flutua. */
+  box-shadow: none;
 }
 
 .card-col {
@@ -55,7 +58,7 @@
   gap: var(--sp-2);
   height: var(--control-h);
   padding: 0 var(--sp-3);
-  border-radius: var(--r-sm);
+  border-radius: var(--r-control);
   border: 1px solid transparent;
   font-size: var(--fs-sm);
   font-weight: var(--fw-medium);
@@ -143,7 +146,7 @@
   max-width: 360px;
   height: var(--control-h);
   padding: 0 var(--sp-3) 0 30px;
-  border-radius: var(--r-sm);
+  border-radius: var(--r-control);
   border: 1px solid var(--line-border);
   font-size: var(--fs-field);
   background: var(--bg-surface);
@@ -164,7 +167,7 @@
 
 .search-input:focus {
   border-color: var(--focus);
-  box-shadow: 0 0 0 3px var(--focus-ring);
+  box-shadow: 0 0 0 var(--focus-w) var(--focus-ring);
 }
 
 /* Mesmo motivo do `.actions-row`: o grupo de status soma 394px a 390 de tela e
@@ -202,7 +205,7 @@
 .select-filter {
   height: var(--control-h);
   padding: 0 28px 0 var(--sp-3);
-  border-radius: var(--r-sm);
+  border-radius: var(--r-control);
   border: 1px solid var(--line-border);
   font-size: var(--fs-field);
   font-weight: var(--fw-medium);
@@ -226,7 +229,7 @@
   gap: 2px;
   background: var(--bg-sunken);
   border: 1px solid var(--line-border);
-  border-radius: var(--r-sm);
+  border-radius: var(--r-control);
   padding: 2px;
   height: var(--control-h);
 }
@@ -252,7 +255,10 @@
 .view-toggle button.active {
   background: var(--bg-surface);
   color: var(--ink-1);
-  box-shadow: var(--elev-1);
+  /* O segmento ativo não flutua: ele se distingue pela superfície e pela
+     tinta, e o filete só desenha a borda dele. Sombra aqui era o único
+     controle do app com elevação em repouso. */
+  box-shadow: inset 0 0 0 1px var(--line-border);
 }
 
 .filter-count {
@@ -272,7 +278,7 @@
   gap: var(--sp-2);
   height: var(--control-h);
   padding: 0 var(--sp-3);
-  border-radius: var(--r-sm);
+  border-radius: var(--r-control);
   border: 1px solid var(--line-border);
   background: var(--bg-surface);
   color: var(--ink-2);
@@ -296,7 +302,7 @@
 }
 
 .filtros-toggle-seta {
-  font-size: 9px;
+  font-size: var(--fs-3xs);
   color: var(--ink-4);
 }
 
@@ -319,11 +325,53 @@
   }
 }
 
-/* ---------- Badge categórico ----------
-   Fundo derivado da própria tinta, então claro e escuro saem de uma regra só. */
+/* Ação que destrói: só dentro de um diálogo de confirmação, ao lado de
+   "Manter". Fora dele o vermelho continua reservado a ameaça e atraso. */
+.btn-danger {
+  border-color: var(--danger);
+  background: var(--danger);
+  color: var(--brand-ink);
+}
+
+.btn-danger:hover {
+  filter: brightness(0.92);
+}
+
+/* ---------- Vocabulário de vazio ----------
+   Duas formas, e só duas. O travessão, em --ink-4, para o campo que NÃO se
+   aplica ao registro. "Não preenchido", em --ink-3, itálico e sempre
+   clicável (leva ao campo), para o que se aplica e falta alguém preencher.
+   A régua: se preencher muda uma decisão, é "Não preenchido" e é link; se
+   não muda, é travessão. Antes conviviam "Não avaliada", "sem teto", "Sem
+   score" e "—" para dizer a mesma coisa. */
+.nao-preenchido {
+  font: inherit;
+  font-style: italic;
+  color: var(--ink-3);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.nao-preenchido:hover {
+  color: var(--brand);
+  text-decoration: underline;
+}
+
+/* ---------- Etiqueta ----------
+   Fundo derivado da própria tinta, então claro e escuro saem de uma regra só.
+
+   São QUATRO papéis, não sete cores. O padrão — `neutro` — não recebe croma
+   nenhum: é texto sobre hairline. Etiqueta que só nomeia uma categoria (a
+   origem, o vetor, a resposta padrão, o status inicial) não tem por que
+   disputar atenção com a que diz que algo está em risco, e enquanto todas
+   tinham preenchimento colorido nenhuma tinha hierarquia. Croma aqui é
+   privilégio de quem informa estado: em curso, concluído, ameaçado. */
 
 .badge {
-  --c: var(--badge-slate);
+  --c: var(--badge-neutro);
   display: inline-flex;
   align-items: center;
   height: 20px;
@@ -337,13 +385,18 @@
   border: 1px solid color-mix(in oklab, var(--c) 22%, transparent);
 }
 
-.badge[data-badge='slate'] { --c: var(--badge-slate); }
-.badge[data-badge='blue'] { --c: var(--badge-blue); }
-.badge[data-badge='green'] { --c: var(--badge-green); }
-.badge[data-badge='amber'] { --c: var(--badge-amber); }
-.badge[data-badge='red'] { --c: var(--badge-red); }
-.badge[data-badge='purple'] { --c: var(--badge-purple); }
-.badge[data-badge='orange'] { --c: var(--badge-orange); }
+.badge[data-badge='atencao'] { --c: var(--badge-atencao); }
+.badge[data-badge='ok'] { --c: var(--badge-ok); }
+.badge[data-badge='risco'] { --c: var(--badge-risco); }
+
+/* O neutro perde o preenchimento — é o que o separa dos outros três à
+   distância, antes de qualquer leitura. */
+.badge[data-badge='neutro'],
+.badge:not([data-badge]) {
+  color: var(--ink-2);
+  background: transparent;
+  border-color: var(--line-border);
+}
 
 /* ---------- Chip de criticidade / priorização ----------
    Identidade nunca por cor sozinha: o ponto acompanha sempre o valor. */
@@ -393,7 +446,7 @@
   gap: var(--sp-2);
   height: 36px;
   padding: 0 var(--sp-3);
-  border-radius: var(--r-sm);
+  border-radius: var(--r-control);
   font-size: var(--fs-md);
   font-weight: var(--fw-semibold);
   color: var(--c);

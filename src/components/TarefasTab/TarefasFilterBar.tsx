@@ -15,7 +15,7 @@ const VINCULO_OPTIONS: { value: FiltroVinculo; label: string; title: string }[] 
 
 const VIEW_OPTIONS: { value: TaskView; label: string; title: string }[] = [
   { value: 'lista', label: 'Lista', title: 'Tabela com todas as colunas' },
-  { value: 'kanban', label: 'Kanban', title: 'Quadro com colunas arrastáveis' },
+  { value: 'kanban', label: 'Quadro', title: 'Quadro com colunas arrastáveis' },
 ];
 
 interface TarefasFilterBarProps {

@@ -7,16 +7,7 @@ export function computeGUT(t: Pick<Task, 'g' | 'u' | 't'>): number | null {
   return t.g * t.u * t.t;
 }
 
-/** Cor por faixa de GUT (independente das faixas de criticidade da Matriz de Risco). */
-export function gutColor(gut: number | null): string {
-  if (gut == null) return '#94A3B8';
-  if (gut >= 100) return '#DC2626';
-  if (gut >= 60) return '#D97706';
-  if (gut >= 30) return '#B8901F';
-  return '#15803D';
-}
-
-/** Faixa de GUT — mesmos limiares de gutColor, para o chip suave (tier-chip). */
+/** Faixa de GUT (independente das faixas de criticidade da Matriz de Risco): ≥100 crítico · ≥60 alto · ≥30 médio · <30 baixo. */
 export function gutTier(gut: number | null): TierKind {
   if (gut == null) return 'null';
   if (gut >= 100) return 'critico';
@@ -25,7 +16,7 @@ export function gutTier(gut: number | null): TierKind {
   return 'baixo';
 }
 
-/** Rótulo de prioridade — mesmas faixas de gutColor. */
+/** Rótulo de prioridade — mesmas faixas de gutTier. */
 export function prioridadeLabel(gut: number | null): 'Crítica' | 'Alta' | 'Média' | 'Baixa' | null {
   if (gut == null) return null;
   if (gut >= 100) return 'Crítica';
@@ -43,9 +34,9 @@ export function normTaskStatus(status: string | null | undefined): string {
 }
 
 export function taskStatusKind(norm: string): BadgeKind {
-  if (norm === 'Em andamento') return 'amber';
-  if (norm === 'Concluída') return 'green';
-  return 'slate';
+  if (norm === 'Em andamento') return 'atencao';
+  if (norm === 'Concluída') return 'ok';
+  return 'neutro';
 }
 
 /**

@@ -28,9 +28,8 @@
   width: var(--rail-w-mini);
   display: flex;
   flex-direction: column;
-  background: color-mix(in oklab, var(--surface-1) 88%, transparent);
-  backdrop-filter: saturate(1.6) blur(10px);
-  border-right: 1px solid var(--line-border);
+  background: color-mix(in srgb, var(--surface-1) 70%, var(--surface-0));
+  border-right: 1px solid var(--line-hairline);
   overflow: hidden;
   z-index: 20;
 }
@@ -50,10 +49,10 @@
   min-height: 0;
   overflow-y: auto;
   scrollbar-width: thin;
-  padding: var(--sp-4) var(--sp-3);
+  padding: var(--sp-4) var(--sp-3) var(--sp-3);
   display: flex;
   flex-direction: column;
-  gap: var(--sp-5);
+  gap: var(--sp-4);
 }
 
 .nav-rail[data-expandido='false'] .rail-nav {
@@ -68,12 +67,12 @@
 }
 
 .rail-group-label {
-  font-size: var(--fs-2xs);
-  font-weight: var(--fw-medium);
-  letter-spacing: 0.06em;
+  font-size: var(--fs-3xs);
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.11em;
   text-transform: uppercase;
   color: var(--ink-4);
-  padding: 0 var(--sp-3) var(--sp-2);
+  padding: 0 var(--sp-3) var(--sp-1);
   white-space: nowrap;
 }
 
@@ -94,12 +93,13 @@
   display: flex;
   align-items: center;
   gap: var(--sp-3);
+  position: relative;
   height: 36px;
   padding: 0 var(--sp-3);
   border: none;
-  border-radius: var(--r-sm);
+  border-radius: var(--r-control);
   background: none;
-  font-size: var(--fs-sm);
+  font-size: var(--fs-xs);
   font-weight: var(--fw-medium);
   color: var(--ink-3);
   white-space: nowrap;
@@ -116,10 +116,29 @@
   justify-content: center;
 }
 
+/* Marcador do item ativo: barra de 2px encostada na borda esquerda do rail.
+   O negativo desfaz o padding do `.rail-nav`; colapsado, o item de 40px está
+   centrado na largura mini e a conta é outra. */
+.rail-item::before {
+  content: '';
+  position: absolute;
+  top: var(--sp-2);
+  bottom: var(--sp-2);
+  left: calc(-1 * var(--sp-3));
+  width: 2px;
+  border-radius: 0 2px 2px 0;
+  background: transparent;
+}
+
+.nav-rail[data-expandido='false'] .rail-item::before {
+  left: calc((40px - var(--rail-w-mini)) / 2);
+}
+
 .rail-item svg,
 .rail-toggle svg {
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
+  stroke-width: 1.8;
   flex: none;
 }
 
@@ -144,15 +163,20 @@
 @media (hover: hover) {
   .rail-item:hover,
   .rail-toggle:hover {
-    background: var(--surface-2);
+    background: color-mix(in srgb, var(--brand) 4%, transparent);
     color: var(--ink-1);
   }
 }
 
+/* Ativo é a marca no texto e a barra na borda, sem preenchimento: o azul é
+   estrutura, não destaque (ver "Identidade Registro" no CLAUDE.md). */
 .rail-item[data-ativo='true'] {
-  background: var(--brand-soft);
-  color: var(--ink-1);
-  font-weight: var(--fw-semibold);
+  color: var(--brand);
+  font-weight: var(--fw-bold);
+}
+
+.rail-item[data-ativo='true']::before {
+  background: var(--brand);
 }
 
 /* Contador da fila de triagem: número junto do ícone, nunca um ponto solto —
@@ -172,17 +196,13 @@
 }
 
 /* Colapsado o contador vira um selo sobre o ícone: some da linha, não da tela. */
-.nav-rail[data-expandido='false'] .rail-item {
-  position: relative;
-}
-
 .nav-rail[data-expandido='false'] .rail-item-count {
   position: absolute;
   top: 2px;
   right: 0;
   min-width: 16px;
   height: 16px;
-  font-size: 10px;
+  font-size: var(--fs-3xs);
   box-shadow: 0 0 0 2px var(--surface-1);
 }
 
@@ -197,6 +217,7 @@
 }
 
 .rail-toggle {
+  border-radius: 0;
   color: var(--ink-4);
 }
 
@@ -205,8 +226,8 @@
 
    Fica na zona do polegar, não no topo: é o único lugar de uma tela de 844px de
    altura que a mão alcança sem trocar a pegada. Pertence ao mesmo chrome do
-   header, e por isso repete o vidro dele (superfície translúcida + blur) em vez
-   de inventar uma superfície própria.
+   header, e por isso repete a superfície dele — papel opaco sobre hairline, sem
+   vidro — em vez de inventar uma superfície própria.
    ========================================================================= */
 
 .nav-bottom {
@@ -216,9 +237,9 @@
   right: 0;
   bottom: 0;
   z-index: 40;
-  background: color-mix(in oklab, var(--bg-surface) 92%, transparent);
-  backdrop-filter: saturate(1.6) blur(10px);
-  border-top: 1px solid var(--line-border);
+  min-height: calc(var(--nav-bottom-h) + env(safe-area-inset-bottom));
+  background: var(--surface-1);
+  border-top: 1px solid var(--line-hairline);
   /* A faixa do indicador de gestos do iPhone. Sem isto a última linha de
      rótulos fica embaixo dela. */
   padding-bottom: env(safe-area-inset-bottom);
@@ -296,7 +317,7 @@
   border-radius: var(--r-full);
   background: var(--tier-alto);
   color: var(--ink-on-solid);
-  font-size: 10px;
+  font-size: var(--fs-3xs);
   font-weight: var(--fw-semibold);
 }
 
@@ -330,7 +351,7 @@
   padding-bottom: max(var(--sp-4), env(safe-area-inset-bottom));
   background: var(--bg-surface);
   border-top: 1px solid var(--line-border);
-  border-radius: var(--r-lg) var(--r-lg) 0 0;
+  border-radius: var(--r-float) var(--r-float) 0 0;
   box-shadow: var(--elev-3);
 }
 

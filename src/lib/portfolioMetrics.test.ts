@@ -8,7 +8,7 @@ import {
   riscosAbertos, exposicaoResidual, riscosPorIniciativa,
   usoPorPessoa, progressoObjetivo,
   saudeObjetivos, saudeIniciativas, saudeRiscos, saudeTrabalho,
-  riscosPorObjetivo, riscosSemObjetivo, cadeiaQuebrada,
+  riscosPorObjetivo, riscosSemObjetivo, cadeiaQuebrada, fluxoDaCadeia,
   LIMITE_WIP, DIAS_PARA_ZUMBI,
   type TrabalhoParaSaude,
 } from './portfolioMetrics';
@@ -1066,5 +1066,64 @@ describe('cadeiaQuebrada', () => {
     const t = trabalho({ status: 'Concluída', prazo: '2026-01-01', dono_id: null });
     const lacunas = cadeiaQuebrada({ ...vazia, trabalho: [t], hoje: HOJE });
     expect(lacunas.every(l => l.n === 0)).toBe(true);
+  });
+
+  it('linha em branco não é risco: fica fora das duas lacunas de risco', () => {
+    const branco = risco({ risco: '  ' });
+    const lacunas = cadeiaQuebrada({ ...vazia, riscos: [branco], hoje: HOJE });
+    expect(lacunas.find(l => l.chave === 'risco_sem_tratamento')?.n).toBe(0);
+    expect(lacunas.find(l => l.chave === 'risco_sem_objetivo')?.n).toBe(0);
+  });
+});
+
+describe('fluxoDaCadeia', () => {
+  it('liga as quatro camadas e conta os soltos de cada ponta com a mesma régua das lacunas', () => {
+    const o = objetivo({ status: 'ativo' });
+    const semNada = objetivo({ status: 'ativo' });
+    const i1 = iniciativa({ objetivo_id: o.id, status: 'em_execucao' });
+    const orfa = iniciativa({ objetivo_id: null, status: 'backlog' });
+    const coberto = risco({});
+    const autonomo = risco({});
+    const semTrato = risco({});
+    const branco = risco({ risco: '' });
+    const acoes = [
+      acao({ risco_id: coberto.id, iniciativa_id: i1.id, status: 'aberta' }),
+      acao({ risco_id: autonomo.id, iniciativa_id: null, status: 'aberta' }),
+    ];
+    const t1 = trabalho({ risco_id: coberto.id });
+    const livre = trabalho({ risco_id: null });
+
+    const f = fluxoDaCadeia({
+      objetivos: [o, semNada], iniciativas: [i1, orfa], marcos: [],
+      riscos: [coberto, autonomo, semTrato, branco], acoes, trabalho: [t1, livre], hoje: HOJE,
+    });
+
+    // Linha em branco não é risco mapeado — a régua é a de saudeRiscos.
+    expect(f.nos.map(n => n.total)).toEqual([2, 2, 3, 2]);
+    const [e1, e2, e3] = f.elos;
+
+    expect(e1.ligados).toBe(1);
+    expect(e1.soltosDe[0]).toMatchObject({ n: 1, chave: 'objetivo_sem_iniciativa' });
+    expect(e1.soltosPara[0]).toMatchObject({ n: 1, chave: 'iniciativa_sem_objetivo' });
+
+    // Só `coberto` está dentro de uma iniciativa; `orfa` não cobre risco, e
+    // isso não é lacuna. `autonomo` tem trabalho mas não sustenta objetivo.
+    expect(e2.ligados).toBe(1);
+    expect(e2.soltosDe[0]).toMatchObject({ n: 1, chave: null });
+    expect(e2.soltosPara[0]).toMatchObject({ n: 1, chave: 'risco_sem_objetivo' });
+
+    expect(e3.ligados).toBe(1);
+    expect(e3.soltosDe[0]).toMatchObject({ n: 1, chave: 'risco_sem_tratamento' });
+    expect(e3.soltosPara[0]).toMatchObject({ n: 1, chave: null });
+  });
+
+  it('objetivo fora da conta não vira ponta solta nem entra no total', () => {
+    const balde = objetivo({ status: 'ativo' });
+    const f = fluxoDaCadeia(
+      { objetivos: [balde], iniciativas: [], marcos: [], riscos: [], acoes: [], trabalho: [], hoje: HOJE },
+      { objetivosForaDaConta: new Set([balde.id]) },
+    );
+    expect(f.nos[0].total).toBe(0);
+    expect(f.elos[0].soltosDe[0].n).toBe(0);
   });
 });

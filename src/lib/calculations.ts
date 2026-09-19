@@ -28,27 +28,10 @@ export function normStatus(status: string | null | undefined): string {
   return status;
 }
 
-/** Cor de criticidade do score (risco inerente). */
-export function scoreColor(score: number | null): string {
-  if (score == null) return '#94A3B8';
-  if (score <= 4) return '#15803D';
-  if (score <= 9) return '#B8901F';
-  if (score <= 14) return '#D97706';
-  return '#DC2626';
-}
-
-/** Rótulo de criticidade — mesmos limiares de scoreColor, expressos como faixas. */
+/** Rótulo de criticidade — a faixa de scoreTier, por extenso. */
 export function criticidadeLabel(score: number | null): 'Crítico' | 'Alto' | 'Médio' | 'Baixo' | null {
   if (score == null) return null;
   return ROTULO_TIER[scoreTier(score)] as 'Crítico' | 'Alto' | 'Médio' | 'Baixo';
-}
-
-export function priorizColor(p: number | null): string {
-  if (p == null) return '#94A3B8';
-  if (p >= 6) return '#DC2626';
-  if (p >= 4.5) return '#D97706';
-  if (p >= 3) return '#B8901F';
-  return '#15803D';
 }
 
 export type TierKind = 'baixo' | 'medio' | 'alto' | 'critico' | 'null';
@@ -66,7 +49,7 @@ export const ROTULO_TIER: Record<TierKind, string> = {
   null: 'Sem score',
 };
 
-/** Faixa de criticidade do score — mesmos limiares de scoreColor. */
+/** Faixa de criticidade do score: ≤4 baixo · 5–9 médio · 10–14 alto · >14 crítico. */
 export function scoreTier(score: number | null): TierKind {
   if (score == null) return 'null';
   if (score <= 4) return 'baixo';
@@ -75,7 +58,7 @@ export function scoreTier(score: number | null): TierKind {
   return 'critico';
 }
 
-/** Faixa de priorização — mesmos limiares de priorizColor. */
+/** Faixa de priorização: ≥6 crítico · ≥4.5 alto · ≥3 médio · <3 baixo. */
 export function priorizTier(p: number | null): TierKind {
   if (p == null) return 'null';
   if (p >= 6) return 'critico';
@@ -84,15 +67,7 @@ export function priorizTier(p: number | null): TierKind {
   return 'baixo';
 }
 
-/** Cor por "tier" relativo ao maior valor do grupo (barras de Categoria/Área/Rotina). */
-export function tierColor(ratio: number): string {
-  if (ratio >= 0.75) return '#DC2626';
-  if (ratio >= 0.5) return '#D97706';
-  if (ratio >= 0.25) return '#B8901F';
-  return '#15803D';
-}
-
-/** Faixa relativa ao maior do grupo — mesmos limiares de tierColor. */
+/** Faixa relativa ao maior valor do grupo (barras de Categoria/Área/Rotina): ≥0.75 crítico · ≥0.5 alto · ≥0.25 médio · abaixo, baixo. */
 export function barTier(ratio: number): TierKind {
   if (ratio >= 0.75) return 'critico';
   if (ratio >= 0.5) return 'alto';
@@ -100,20 +75,34 @@ export function barTier(ratio: number): TierKind {
   return 'baixo';
 }
 
-export type BadgeKind = 'slate' | 'blue' | 'green' | 'amber' | 'red' | 'purple' | 'orange';
+/**
+ * Papel de uma etiqueta — não a cor dela.
+ *
+ * Eram sete nomes de cor ('slate', 'blue', 'purple'…), e nome de cor num tipo
+ * é o que produz sete pastéis na mesma faixa de saturação sem hierarquia
+ * nenhuma: quem escreve não precisa justificar por que aquele estado é roxo.
+ * São quatro papéis, e só três recebem croma — `neutro` é texto sobre
+ * hairline. Quem resolve a cor é o CSS, por `data-badge`.
+ */
+export type BadgeKind = 'neutro' | 'atencao' | 'ok' | 'risco';
 
+/**
+ * Resposta ao risco. "Mitigar" é a resposta padrão e aparece em quase toda
+ * linha — pintá-la repetia o mesmo pill dez vezes seguidas sem acrescentar
+ * informação nenhuma, e por isso nem vira etiqueta (ver `Resposta.tsx`).
+ * A exceção é o que merece o olho: evitar é ameaça; aceitar e transferir são
+ * escolhas que alguém precisa sustentar, e ficam em atenção.
+ */
 export function respostaKind(v: string): BadgeKind {
-  if (v === 'Mitigar') return 'blue';
-  if (v === 'Aceitar') return 'slate';
-  if (v === 'Transferir') return 'purple';
-  if (v === 'Evitar') return 'red';
-  return 'slate';
+  if (v === 'Evitar') return 'risco';
+  if (v === 'Aceitar' || v === 'Transferir') return 'atencao';
+  return 'neutro';
 }
 
 export function statusKind(norm: string): BadgeKind {
-  if (norm === 'Em andamento') return 'amber';
-  if (norm === 'Concluído') return 'green';
-  return 'slate';
+  if (norm === 'Em andamento') return 'atencao';
+  if (norm === 'Concluído') return 'ok';
+  return 'neutro';
 }
 
 /** Campos considerados no cálculo de completude (KPI da aba Registro). */

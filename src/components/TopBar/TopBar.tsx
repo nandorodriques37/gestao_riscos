@@ -35,11 +35,16 @@ interface TopBarProps {
   theme: ThemePref;
   onCycleTheme: () => void;
   themeLabel: string;
+  /** Abre a paleta de comando (o mesmo que Ctrl/⌘+K). */
+  onAbrirPaleta?: () => void;
 }
+
+/** Tecla que o sistema da pessoa usa — o rótulo do botão diz a certa. */
+const TECLA_PALETA = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘K' : 'Ctrl K';
 
 export function TopBar({
   tab, onChangeTab, sync, mostrarTriagem = false, triagemPendente = 0,
-  autor, onPedirNome, theme, onCycleTheme, themeLabel,
+  autor, onPedirNome, theme, onCycleTheme, themeLabel, onAbrirPaleta,
 }: TopBarProps) {
   // Os mesmos destinos do rail e da barra inferior, achatados em uma fita.
   // Esta lista era escrita à mão aqui, com os rótulos repetidos — e a fita só
@@ -94,6 +99,15 @@ export function TopBar({
         </nav>
 
         <div className="header-aside">
+          {onAbrirPaleta && (
+            <button
+              className="btn btn-ghost header-paleta"
+              onClick={onAbrirPaleta}
+              title="Buscar risco, iniciativa, objetivo, tarefa ou pessoa — e ir para qualquer seção"
+            >
+              Buscar <kbd>{TECLA_PALETA}</kbd>
+            </button>
+          )}
           <button
             className="autor-chip"
             data-vazio={autor ? undefined : 'true'}
