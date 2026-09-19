@@ -103,7 +103,9 @@ painel de telemetria. Consequências, todas em `tokens.css`:
   `[data-theme='dark']` fica muda para quem segue um sistema escuro, então
   refinamento de tema vira token `light-dark()`, nunca seletor de atributo.
   Neutros são **quentes** (pedra), no claro e no escuro; o escuro é grafite
-  neutro, nunca navy.
+  neutro, nunca navy. O chrome fixo — header, rail, barra inferior — é papel
+  opaco sobre hairline, **sem vidro** (nada de superfície translúcida com
+  `backdrop-filter`): o conteúdo passa por baixo, não através.
 - **Cor é semáforo, nunca decoração.** Azul da marca (`--brand`) é estrutura:
   navegação, link, foco, estado ativo, marcador do item ativo e barra do título.
   **Coral (`--brand-red`) só onde significa ameaça, atraso ou perda** — o nó de
@@ -163,7 +165,7 @@ painel de telemetria. Consequências, todas em `tokens.css`:
   uma vez inverteria quem ganha, às vezes só numa largura de tela. Cada mudança
   que toca um componente leva o bloco dele para a folha canônica e funde as
   propriedades na regra que já existe (foi assim com `.card`, `.kpi-*`, a
-  faixa de KPI, a cifra e o rail). **Nunca nasce uma segunda camada final sobre ela.**
+  faixa de KPI, a cifra, o rail, o header e a barra inferior). **Nunca nasce uma segunda camada final sobre ela.**
 
 - **Nenhum hex literal fora de `tokens.css`.** Nenhum espaçamento fora da escala
   `--sp-*`; nenhum tamanho de fonte fora de `--fs-*`. Altura de controle vem de

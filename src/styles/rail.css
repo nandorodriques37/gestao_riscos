@@ -226,8 +226,8 @@
 
    Fica na zona do polegar, não no topo: é o único lugar de uma tela de 844px de
    altura que a mão alcança sem trocar a pegada. Pertence ao mesmo chrome do
-   header, e por isso repete o vidro dele (superfície translúcida + blur) em vez
-   de inventar uma superfície própria.
+   header, e por isso repete a superfície dele — papel opaco sobre hairline, sem
+   vidro — em vez de inventar uma superfície própria.
    ========================================================================= */
 
 .nav-bottom {
@@ -237,9 +237,9 @@
   right: 0;
   bottom: 0;
   z-index: 40;
-  background: color-mix(in oklab, var(--bg-surface) 92%, transparent);
-  backdrop-filter: saturate(1.6) blur(10px);
-  border-top: 1px solid var(--line-border);
+  min-height: calc(var(--nav-bottom-h) + env(safe-area-inset-bottom));
+  background: var(--surface-1);
+  border-top: 1px solid var(--line-hairline);
   /* A faixa do indicador de gestos do iPhone. Sem isto a última linha de
      rótulos fica embaixo dela. */
   padding-bottom: env(safe-area-inset-bottom);

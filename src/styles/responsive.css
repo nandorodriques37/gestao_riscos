@@ -9,6 +9,16 @@
 /* ---------- Tablet / notebook estreito ---------- */
 
 @media (max-width: 1100px) {
+  /* Sem rail, o header aperta o respiro e a rota some — as abas do topo já
+     dizem onde se está. */
+  .app-header-inner {
+    padding-inline: var(--sp-3);
+  }
+
+  .header-route {
+    display: none;
+  }
+
   .kpi-grid-4 {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -128,6 +138,21 @@
 
   /* Atalho de teclado não tem sentido onde o teclado é virtual. */
   .header-paleta {
+    display: none;
+  }
+
+  /* A marca encolhe: glifo e nome; a assinatura não cabe em 390px. */
+  .brand {
+    min-width: 0;
+  }
+
+  .brand-mark {
+    width: 34px;
+    height: 28px;
+    flex-basis: 34px;
+  }
+
+  .brand-signature {
     display: none;
   }
 
@@ -334,5 +359,17 @@
      continua em duas — ver acima. */
   .modal-grid-3 {
     grid-template-columns: 1fr;
+  }
+}
+
+/* Celular estreito: o header aperta mais um degrau e o nome da marca desce um
+   tamanho, para caber ao lado do botão de tema. */
+@media (max-width: 420px) {
+  .app-header-inner {
+    padding-inline: var(--sp-2);
+  }
+
+  .brand-name {
+    font-size: var(--fs-sm);
   }
 }
