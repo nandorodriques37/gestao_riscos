@@ -6,7 +6,7 @@ import {
   impactoComprometido, marcosNoPrazo, slipMedio, wipPorDono, cargaPorPessoa,
   zumbis, mixPorVetor, portfolioPorOrigem, fonteVsVetor,
   tratamentoDosRiscos, exposicaoResidual,
-  saudeObjetivos, saudeIniciativas, saudeRiscos, saudeTrabalho, cadeiaQuebrada, iniciativaAtiva,
+  saudeObjetivos, saudeIniciativas, saudeRiscos, saudeTrabalho, cadeiaQuebrada, fluxoDaCadeia, iniciativaAtiva,
   hojeISO, periodoDe, LIMITE_WIP, DIAS_PARA_ZUMBI, LIMITE_DEFENSIVO,
   type ChaveLacuna, type EstadoTratamento,
 } from '../../lib/portfolioMetrics';
@@ -20,6 +20,7 @@ import { baixarPortfolioCSV, baixarBackup } from '../../lib/portfolioCsv';
 import { EmptyState } from '../common/EmptyState';
 import { Composicao, type Fatia } from '../common/Composicao';
 import { Kpi, KpiRow, type KpiProps } from '../common/Kpi';
+import { SankeyCadeia } from './SankeyCadeia';
 import { Historico } from '../common/Historico';
 
 interface PainelTabProps {
@@ -182,17 +183,23 @@ export function PainelTab({
    * que ninguém deve atender. A TELA o separa, e não a métrica, para não enfiar
    * uma string mágica dentro de uma função de domínio.
    */
+  const balde = useMemo(
+    () => new Set(objetivos.filter(o => o.descricao === OBJETIVO_BALDE).map(o => o.id)),
+    [objetivos],
+  );
+  /** O que o Sankey desenha. Mesma entrada e mesma régua das lacunas. */
+  const fluxo = useMemo(() => fluxoDaCadeia({
+    objetivos, iniciativas, marcos, riscos: records, acoes: acoes_risco, trabalho: tarefas, hoje,
+  }, { objetivosForaDaConta: balde }), [objetivos, iniciativas, marcos, records, acoes_risco, tarefas, hoje, balde]);
+
   const lacunasAbertas = useMemo(() => {
-    const balde = new Set(
-      objetivos.filter(o => o.descricao === OBJETIVO_BALDE).map(o => o.id),
-    );
     return lacunas
       .map(l => (l.chave === 'objetivo_sem_iniciativa' && balde.size > 0
         ? { ...l, ids: l.ids.filter(id => !balde.has(id)) }
         : l))
       .map(l => ({ ...l, n: l.ids.length }))
       .filter(l => l.n > 0);
-  }, [lacunas, objetivos]);
+  }, [lacunas, balde]);
 
   /**
    * Nome legível de qualquer id da cadeia — objetivo, iniciativa, risco ou
@@ -537,10 +544,13 @@ export function PainelTab({
               <div className="section-title">A cadeia, de ponta a ponta</div>
               <div className="bento-sub" style={{ maxWidth: '78ch' }}>
                 O objetivo diz por quê; a iniciativa, o quê; o risco, o que ameaça; a
-                tarefa, quem faz. Cada elo leva à sua seção.
+                tarefa, quem faz. A faixa é o que está ligado; o toco em coral é o elo
+                partido, e leva a quem resolve.
               </div>
             </div>
           </div>
+
+          <SankeyCadeia fluxo={fluxo} onIrPara={onIrPara} onAbrirLacuna={irParaLacuna} />
 
           <div className="cadeia">
             <Elo

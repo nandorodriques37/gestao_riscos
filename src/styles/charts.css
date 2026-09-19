@@ -528,16 +528,14 @@
 .quadrant-pill {
   --c: var(--tier-null);
   position: absolute;
-  transform: translateX(-50%);
   padding: var(--sp-1) var(--sp-2);
   border-radius: var(--r-xs);
   border: 1px solid transparent;
   font-size: var(--fs-2xs);
   font-weight: var(--fw-semibold);
   letter-spacing: 0.03em;
-  color: var(--c);
+  color: var(--ink-3);
   cursor: pointer;
-  text-align: center;
   white-space: nowrap;
   transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
 }
@@ -564,10 +562,51 @@
 .qp-bp { --c: var(--quad-bp); }
 .qp-rv { --c: var(--quad-rv); }
 
-.qp-pos-qw { left: 25%; top: var(--sp-2); }
-.qp-pos-ga { left: 75%; top: var(--sp-2); }
-.qp-pos-bp { left: 25%; bottom: var(--sp-2); }
-.qp-pos-rv { left: 75%; bottom: var(--sp-2); }
+/* Ancorado no CANTO de cada quadrante, fora da nuvem de pontos, e em tinta
+   secundária: o rótulo é referência de leitura, não dado — a cor da faixa
+   fica para o hover e o estado ativo. */
+.qp-pos-qw { left: var(--sp-2); top: var(--sp-2); text-align: left; }
+.qp-pos-ga { right: var(--sp-2); top: var(--sp-2); text-align: right; }
+.qp-pos-bp { left: var(--sp-2); bottom: var(--sp-2); text-align: left; }
+.qp-pos-rv { right: var(--sp-2); bottom: var(--sp-2); text-align: right; }
+
+/* Nome escrito EMBAIXO da bolha (em cima, perto da borda inferior), para as
+   primeiras do ranking e para a que está sob o mouse. Não captura o ponteiro:
+   a bolha continua clicável. A largura máxima é a distância mínima entre dois
+   rótulos vizinhos que o componente aceita antes de suprimir um deles. */
+.matrix-rotulo {
+  position: absolute;
+  transform: translateX(-50%);
+  max-width: 15%;
+  padding: 1px var(--sp-1);
+  border-radius: var(--r-xs);
+  background: color-mix(in oklab, var(--bg-surface) 82%, transparent);
+  font-size: var(--fs-2xs);
+  line-height: 1.3;
+  color: var(--ink-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+
+.matrix-rotulo[data-acima] {
+  transform: translate(-50%, -100%);
+}
+
+.matrix-tick {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--fs-2xs);
+  color: var(--ink-4);
+}
+
+.matrix-yaxis {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+}
 
 /* Bolha com anel de superfície de 2px — regra para marcas sobrepostas. */
 .matrix-bubble {
@@ -599,6 +638,16 @@
   --bubble-opacity: 1;
   box-shadow: 0 0 0 2px var(--bg-surface), 0 0 0 4px var(--ink-1);
   z-index: 10;
+}
+
+.matrix-bubble.hover {
+  --bubble-opacity: 1;
+  box-shadow: 0 0 0 2px var(--bg-surface), 0 0 0 4px var(--brand);
+  z-index: 9;
+}
+
+.ranked-item.hover {
+  background: var(--bg-hover);
 }
 
 .matrix-axis-hint {

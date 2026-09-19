@@ -40,6 +40,8 @@ export function PriorizacaoTab({
   // nenhuma iniciativa priorizável, a tela continua lendo os riscos — assim ela
   // não fica vazia no meio da transição.
   const [fonte, setFonte] = useState<Fonte>('iniciativas');
+  // Hover cruzado: a bolha destaca a linha da lista, e a linha destaca a bolha.
+  const [hoverRank, setHoverRank] = useState<number | null>(null);
   const podeEscolher = dasIniciativas.length > 0 && dosRiscos.length > 0;
   const fonteEfetiva: Fonte = dasIniciativas.length === 0 ? 'riscos' : fonte;
 
@@ -177,6 +179,8 @@ export function PriorizacaoTab({
             selectedQuadrant={selectedQuadrant}
             onBubbleClick={handleRankClick}
             onQuadrantClick={handleQuadrantClick}
+            hoverRank={hoverRank}
+            onHover={setHoverRank}
           />
           <RankedList
             items={matrixListFiltered}
@@ -185,6 +189,8 @@ export function PriorizacaoTab({
             selectedRank={selectedRank}
             onItemClick={handleRankClick}
             onClearFilter={clearMatrixFilter}
+            hoverRank={hoverRank}
+            onHover={setHoverRank}
           />
         </div>
       </div>

@@ -1744,6 +1744,170 @@
 }
 
 /* ============================================================================
+   Sankey da cadeia
+
+   Quatro colunas, faixas entre vizinhas e tocos em coral nas pontas soltas.
+   Cor por camada, a mesma da lista de lacunas; o número está sempre escrito
+   — a cor nunca identifica sozinha. Abaixo de 760px o desenho some e a
+   fileira de elos acima volta: são quatro colunas rotuladas, e isso não
+   cabe em 360px.
+   ========================================================================= */
+
+.cadeia-sankey {
+  margin-top: var(--sp-4);
+}
+
+.sankey {
+  display: block;
+  width: 100%;
+  height: auto;
+  font-family: var(--font-sans);
+}
+
+.sankey text {
+  fill: var(--ink-2);
+  font-size: 12px;
+  /* Halo de superfície: o texto atravessa faixa e toco sem perder leitura. */
+  paint-order: stroke;
+  stroke: var(--bg-surface);
+  stroke-width: 4px;
+  stroke-linejoin: round;
+}
+
+.sankey-no {
+  cursor: pointer;
+}
+
+.sankey-no rect {
+  fill: var(--tier-null);
+}
+
+.sankey-no[data-camada='objetivo'] rect { fill: var(--camada-objetivo); }
+.sankey-no[data-camada='iniciativa'] rect { fill: var(--camada-iniciativa); }
+.sankey-no[data-camada='risco'] rect { fill: var(--camada-risco); }
+.sankey-no[data-camada='trabalho'] rect { fill: var(--camada-trabalho); }
+
+.sankey-no:hover rect,
+.sankey-no:focus-visible rect {
+  stroke: var(--ink-1);
+  stroke-width: 2px;
+}
+
+.sankey-rotulo {
+  font-size: 11px;
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  fill: var(--ink-3);
+}
+
+.sankey-total,
+.sankey-n,
+.sankey-solto-n {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.sankey-total {
+  font-size: 18px;
+  font-weight: var(--fw-semibold);
+  fill: var(--ink-1);
+}
+
+/* A faixa leva a cor da camada de DESTINO, translúcida: é a camada que se
+   liga para trás. O vão de 2px é o traço de superfície entre vizinhos. */
+.sankey-faixa {
+  fill: color-mix(in oklab, var(--tier-null) 28%, transparent);
+  stroke: var(--bg-surface);
+  stroke-width: var(--viz-gap);
+}
+
+.sankey-faixa[data-camada='iniciativa'] { fill: color-mix(in oklab, var(--camada-iniciativa) 30%, transparent); }
+.sankey-faixa[data-camada='risco'] { fill: color-mix(in oklab, var(--camada-risco) 28%, transparent); }
+.sankey-faixa[data-camada='trabalho'] { fill: color-mix(in oklab, var(--camada-trabalho) 28%, transparent); }
+
+.sankey-n {
+  font-size: 13px;
+  font-weight: var(--fw-semibold);
+  fill: var(--ink-1);
+}
+
+.sankey-solto path {
+  fill: color-mix(in oklab, var(--ink-4) 40%, transparent);
+  stroke: var(--bg-surface);
+  stroke-width: var(--viz-gap);
+}
+
+/* Coral SÓ aqui, onde ele significa elo partido — a regra 2 do redesign. */
+.sankey-solto[data-tipo='lacuna'] path {
+  fill: color-mix(in oklab, var(--brand-red) 72%, transparent);
+}
+
+.sankey-solto[data-tipo='lacuna'] {
+  cursor: pointer;
+}
+
+.sankey-solto[data-tipo='lacuna']:hover path,
+.sankey-solto[data-tipo='lacuna']:focus-visible path {
+  fill: var(--brand-red);
+}
+
+/* O rótulo do toco fica sobre o próprio toco, encostado no nó: o halo de
+   superfície o segura sobre qualquer preenchimento, e o vão entre colunas
+   fica livre para o número da faixa. */
+.sankey-solto-n {
+  font-size: 12px;
+  font-weight: var(--fw-semibold);
+  fill: var(--ink-1);
+}
+
+.sankey-solto-nome {
+  font-family: var(--font-sans);
+  font-weight: var(--fw-regular);
+  fill: var(--ink-3);
+}
+
+.sankey-legenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2) var(--sp-4);
+  margin: var(--sp-2) 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--fs-2xs);
+  color: var(--ink-3);
+}
+
+.sankey-legenda li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+}
+
+.sankey-swatch {
+  width: 14px;
+  height: 8px;
+  border-radius: 2px;
+  background: color-mix(in oklab, var(--camada-iniciativa) 30%, transparent);
+}
+
+.sankey-swatch[data-tipo='lacuna'] { background: color-mix(in oklab, var(--brand-red) 72%, transparent); }
+.sankey-swatch[data-tipo='livre'] { background: color-mix(in oklab, var(--ink-4) 40%, transparent); }
+
+/* Uma forma por largura: o desenho acima de 760px, a fileira de elos abaixo. */
+@media (min-width: 761px) {
+  .cadeia {
+    display: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .cadeia-sankey {
+    display: none;
+  }
+}
+
+/* ============================================================================
    Lacunas — onde a cadeia quebra
 
    Uma linha por elo rompido: quantos, o que é, por que importa, e o botão que

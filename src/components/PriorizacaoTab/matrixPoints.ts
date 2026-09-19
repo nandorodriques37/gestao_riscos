@@ -11,6 +11,8 @@ export interface MatrixPoint {
   size: number;
   tier: TierKind;
   tooltip: string;
+  /** O nome, para o rótulo direto ao lado das primeiras bolhas. */
+  rotulo: string;
   isSelected: boolean;
   dimmed: boolean;
 }
@@ -65,6 +67,7 @@ export function buildMatrixPoints(
       xPct, yPct, size,
       tier: priorizTier(x.prioriz),
       tooltip: `${x.item.rotulo || '(sem descrição)'} — Priorização ${round2(x.prioriz)}`,
+      rotulo: x.item.rotulo || '(sem descrição)',
       isSelected,
       dimmed,
     };
