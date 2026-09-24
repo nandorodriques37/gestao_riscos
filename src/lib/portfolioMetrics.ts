@@ -154,6 +154,48 @@ export function impactoComprometido(
   };
 }
 
+export interface ImpactoDoObjetivo {
+  /** Σ `impacto_rs` das iniciativas concluídas — o que já virou resultado. */
+  entregue: number;
+  /** Σ `impacto_rs` das ativas — a mesma régua de `impactoComprometido`. */
+  emJogo: number;
+  concluidas: number;
+  ativas: number;
+  /** Concluídas + ativas sem valor preenchido: os dois totais mentem por baixo. */
+  semValor: number;
+}
+
+/**
+ * O que as entregas de um objetivo já renderam e o que ainda está prometido.
+ *
+ * `emJogo` usa `iniciativaAtiva`, a mesma régua do total comprometido do
+ * Painel: somar aqui com outra lista de status daria dois "em jogo" para a
+ * mesma iniciativa. Backlog e cancelada ficam fora dos dois lados — uma
+ * ninguém prometeu, a outra ninguém vai entregar.
+ */
+export function impactoDoObjetivo(objetivoId: string, iniciativas: Iniciativa[]): ImpactoDoObjetivo {
+  const r: ImpactoDoObjetivo = { entregue: 0, emJogo: 0, concluidas: 0, ativas: 0, semValor: 0 };
+
+  for (const i of iniciativas) {
+    if (i.objetivo_id !== objetivoId) continue;
+    const concluida = i.status === 'concluida';
+    const ativa = iniciativaAtiva(i);
+    if (!concluida && !ativa) continue;
+
+    if (i.impacto_rs == null) r.semValor++;
+    const valor = i.impacto_rs ?? 0;
+    if (concluida) {
+      r.concluidas++;
+      r.entregue += valor;
+    } else {
+      r.ativas++;
+      r.emJogo += valor;
+    }
+  }
+
+  return r;
+}
+
 /* ------------------------------------------------------------------ */
 /* Marcos: prazo e slip                                                */
 /* ------------------------------------------------------------------ */
@@ -848,6 +890,20 @@ export function saudeIniciativas(
 /** Faixas de criticidade, da pior para a melhor. `null` fecha, como toda ausência. */
 const ORDEM_TIER: TierKind[] = ['critico', 'alto', 'medio', 'baixo', 'null'];
 
+/**
+ * Riscos mapeados: as linhas COM descrição. Linha em branco é como se
+ * adiciona um risco, não é risco.
+ *
+ * Uma função só porque a pergunta "quantos riscos eu mapeei" aparece no
+ * Painel, nas lacunas, no Sankey e no detalhe do objetivo — era o mesmo
+ * `filter` copiado em três lugares, e a quarta cópia seria a que diverge.
+ * Genérica pelo mesmo motivo de `riscosAbertos`: é filtro, devolve o tipo que
+ * recebeu.
+ */
+export function riscosMapeados<T extends Pick<RiskRecord, 'risco'>>(riscos: T[]): T[] {
+  return riscos.filter(r => r.risco.trim());
+}
+
 export interface SaudeRiscos {
   /** Riscos com descrição. Linha em branco não é risco mapeado. */
   total: number;
@@ -879,8 +935,8 @@ export function saudeRiscos(
    * Análise (`records.filter(r => r.risco)`); duas contagens diferentes para a
    * mesma pergunta em duas telas é como se perde a confiança nas duas.
    */
-  const semDescricao = riscos.filter(r => !r.risco.trim()).length;
-  const mapeados = riscos.filter(r => r.risco.trim());
+  const mapeados = riscosMapeados(riscos);
+  const semDescricao = riscos.length - mapeados.length;
 
   const contagem = new Map<TierKind, number>();
   for (const r of mapeados) {
@@ -1038,6 +1094,125 @@ export function riscosSemObjetivo<T extends RiscoComId>(
     .filter(r => r.resposta !== 'Aceitar' && !sustentam.has(r.id));
 }
 
+/**
+ * Onde cada ameaça a um objetivo está. Quatro estados, não os cinco de
+ * `SituacaoRisco` nem os quatro de `EstadoTratamento`: é a resposta a "o que
+ * ainda ameaça", e para ela tratamento concluído mas não fechado continua
+ * ameaçando.
+ */
+export type EstadoAmeaca = 'neutralizado' | 'em_tratamento' | 'sem_tratamento' | 'aceito';
+
+/**
+ * O estado da ameaça de UM risco. Separado de `ameacasDoObjetivo` porque a
+ * tradução é a regra — mitigado confirmado neutraliza; tratamento concluído
+ * sem fechamento continua em tratamento — e ela precisa ser testável sozinha:
+ * pelo caminho do objetivo, `sem_tratamento` não chega a acontecer, já que a
+ * ação que liga o risco ao objetivo é, ela mesma, uma ação viva.
+ */
+export function estadoDaAmeaca(
+  risco: Pick<RiskRecord, 'resposta' | 'situacao'>,
+  acoesDoRisco: AcaoRisco[],
+  iniciativas: Iniciativa[],
+): EstadoAmeaca {
+  if (risco.situacao === 'mitigado') return 'neutralizado';
+  const t = estadoTratamento(risco, acoesDoRisco, iniciativas);
+  return t === 'tratamento_concluido' ? 'em_tratamento' : t;
+}
+
+export interface AmeacaDoObjetivo<T> {
+  risco: T;
+  estado: EstadoAmeaca;
+  score: number | null;
+}
+
+export interface AmeacasDoObjetivo<T> {
+  /** Por score, do mais grave ao sem nota. */
+  itens: AmeacaDoObjetivo<T>[];
+  neutralizados: number;
+  emTratamento: number;
+  semTratamento: number;
+  aceitos: number;
+  total: number;
+}
+
+/**
+ * Riscos que ameaçam um objetivo, cada um com o estado da ameaça.
+ *
+ * O caminho é o de `riscosPorObjetivo` — derivado, e ação cancelada não liga.
+ * Neutralizado é SÓ o mitigado confirmado (`situacao === 'mitigado'`): a
+ * iniciativa ter concluído prova a entrega, não que a ameaça caiu, e quem
+ * declara isso é o gestor, como em `prontosParaFechar`. Até lá o risco conta
+ * como em tratamento.
+ *
+ * Obsoleto e descartado saem da conta: não ameaçam nem foram neutralizados
+ * por ninguém. Linha sem descrição sai pela régua de `riscosMapeados`.
+ */
+export function ameacasDoObjetivo<T extends RiscoComId>(
+  objetivoId: string, iniciativas: Iniciativa[], acoes: AcaoRisco[], riscos: T[],
+): AmeacasDoObjetivo<T> {
+  const candidatos = riscosMapeados(riscosPorObjetivo(objetivoId, iniciativas, acoes, riscos))
+    .filter(r => r.situacao !== 'obsoleto' && r.situacao !== 'descartado');
+  const porRisco = acoesPorRisco(acoes);
+
+  const itens: AmeacaDoObjetivo<T>[] = candidatos.map(risco => ({
+    risco,
+    estado: estadoDaAmeaca(risco, porRisco.get(risco.id) ?? [], iniciativas),
+    score: computeScore(risco),
+  }));
+
+  // Mais grave primeiro; sem nota fecha a fila, como toda ausência. O empate
+  // vai pelo texto para a lista não trocar de ordem entre duas leituras.
+  itens.sort((a, b) => {
+    if (a.score !== b.score) {
+      if (a.score == null) return 1;
+      if (b.score == null) return -1;
+      return b.score - a.score;
+    }
+    return a.risco.risco.localeCompare(b.risco.risco, 'pt-BR');
+  });
+
+  return { itens, ...contarAmeacas(itens) };
+}
+
+export interface ContagemAmeacas {
+  neutralizados: number;
+  emTratamento: number;
+  semTratamento: number;
+  aceitos: number;
+  total: number;
+}
+
+function contarAmeacas(itens: { estado: EstadoAmeaca }[]): ContagemAmeacas {
+  const c: ContagemAmeacas = { neutralizados: 0, emTratamento: 0, semTratamento: 0, aceitos: 0, total: 0 };
+  for (const { estado } of itens) {
+    c.total++;
+    if (estado === 'neutralizado') c.neutralizados++;
+    else if (estado === 'em_tratamento') c.emTratamento++;
+    else if (estado === 'sem_tratamento') c.semTratamento++;
+    else c.aceitos++;
+  }
+  return c;
+}
+
+/**
+ * Soma das ameaças de vários objetivos, contando cada risco UMA vez.
+ *
+ * O mesmo risco pode ameaçar dois objetivos (duas iniciativas o tratam), mas
+ * o estado dele é um só — somar as contagens de cada objetivo contaria o
+ * mesmo risco duas vezes no total do topo da tela.
+ */
+export function ameacasSomadas<T extends { id: string }>(
+  listas: AmeacasDoObjetivo<T>[],
+): ContagemAmeacas {
+  const porId = new Map<string, { estado: EstadoAmeaca }>();
+  for (const lista of listas) {
+    for (const item of lista.itens) {
+      if (!porId.has(item.risco.id)) porId.set(item.risco.id, item);
+    }
+  }
+  return contarAmeacas([...porId.values()]);
+}
+
 /* ------------------------------------------------------------------ */
 /* Cadeia quebrada: todo elo solto num lugar só                        */
 /* ------------------------------------------------------------------ */
@@ -1088,7 +1263,7 @@ export function cadeiaQuebrada(e: EntradaCadeia): Lacuna[] {
   // Linha em branco não é risco — é como se adiciona um. A mesma régua de
   // `saudeRiscos`, do Registro e da Análise; contá-la aqui fazia a lista de
   // atenção cobrar tratamento de uma linha que ninguém escreveu ainda.
-  const mapeados = e.riscos.filter(r => r.risco.trim());
+  const mapeados = riscosMapeados(e.riscos);
   const semTratamento = tratamentoDosRiscos(mapeados, e.acoes, e.iniciativas)
     .filter(t => t.estado === 'sem_tratamento' && !SITUACOES_FINAIS.has(t.risco.situacao ?? ''));
 
@@ -1182,7 +1357,7 @@ export function fluxoDaCadeia(
 
   const objetivosIds = new Set(objetivos.map(o => o.id));
   const iniciativasIds = new Set(e.iniciativas.map(i => i.id));
-  const mapeados = e.riscos.filter(r => r.risco.trim());
+  const mapeados = riscosMapeados(e.riscos);
   const riscosIds = new Set(mapeados.map(r => r.id));
   const vivas = e.acoes.filter(a => a.status !== 'cancelada' && a.risco_id);
 

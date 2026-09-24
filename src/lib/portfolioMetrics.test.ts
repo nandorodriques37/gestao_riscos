@@ -9,6 +9,7 @@ import {
   usoPorPessoa, progressoObjetivo,
   saudeObjetivos, saudeIniciativas, saudeRiscos, saudeTrabalho,
   riscosPorObjetivo, riscosSemObjetivo, cadeiaQuebrada, fluxoDaCadeia,
+  impactoDoObjetivo, ameacasDoObjetivo, ameacasSomadas, riscosMapeados, estadoDaAmeaca,
   LIMITE_WIP, DIAS_PARA_ZUMBI,
   type TrabalhoParaSaude,
 } from './portfolioMetrics';
@@ -1125,5 +1126,223 @@ describe('fluxoDaCadeia', () => {
     );
     expect(f.nos[0].total).toBe(0);
     expect(f.elos[0].soltosDe[0].n).toBe(0);
+  });
+});
+
+describe('impactoDoObjetivo', () => {
+  it('separa o entregue (concluída) do que está em jogo (ativa); backlog e cancelada ficam fora', () => {
+    const o = objetivo({});
+    const r = impactoDoObjetivo(o.id, [
+      iniciativa({ objetivo_id: o.id, status: 'concluida', impacto_rs: 300 }),
+      iniciativa({ objetivo_id: o.id, status: 'em_execucao', impacto_rs: 100 }),
+      iniciativa({ objetivo_id: o.id, status: 'aprovada', impacto_rs: 50 }),
+      iniciativa({ objetivo_id: o.id, status: 'pausada', impacto_rs: 25 }),
+      iniciativa({ objetivo_id: o.id, status: 'backlog', impacto_rs: 1000 }),
+      iniciativa({ objetivo_id: o.id, status: 'cancelada', impacto_rs: 2000 }),
+    ]);
+    expect(r).toEqual({ entregue: 300, emJogo: 175, concluidas: 1, ativas: 3, semValor: 0 });
+  });
+
+  it('valor em branco soma zero e entra em semValor, dos dois lados', () => {
+    const o = objetivo({});
+    const r = impactoDoObjetivo(o.id, [
+      iniciativa({ objetivo_id: o.id, status: 'concluida', impacto_rs: null }),
+      iniciativa({ objetivo_id: o.id, status: 'em_execucao', impacto_rs: null }),
+      iniciativa({ objetivo_id: o.id, status: 'em_execucao', impacto_rs: 80 }),
+      // Backlog sem valor não é promessa: não cobra o campo.
+      iniciativa({ objetivo_id: o.id, status: 'backlog', impacto_rs: null }),
+    ]);
+    expect(r).toEqual({ entregue: 0, emJogo: 80, concluidas: 1, ativas: 2, semValor: 2 });
+  });
+
+  it('iniciativa de outro objetivo, ou sem objetivo, não vaza', () => {
+    const o = objetivo({});
+    const outro = objetivo({});
+    const r = impactoDoObjetivo(o.id, [
+      iniciativa({ objetivo_id: outro.id, status: 'concluida', impacto_rs: 500 }),
+      iniciativa({ objetivo_id: null, status: 'em_execucao', impacto_rs: 500 }),
+    ]);
+    expect(r).toEqual({ entregue: 0, emJogo: 0, concluidas: 0, ativas: 0, semValor: 0 });
+  });
+
+  it('em jogo usa a mesma régua do total comprometido do Painel', () => {
+    const o = objetivo({});
+    const inis = [
+      iniciativa({ objetivo_id: o.id, status: 'em_execucao', impacto_rs: 10 }),
+      iniciativa({ objetivo_id: o.id, status: 'pausada', impacto_rs: 20 }),
+      iniciativa({ objetivo_id: o.id, status: 'backlog', impacto_rs: 40 }),
+    ];
+    expect(impactoDoObjetivo(o.id, inis).emJogo).toBe(impactoComprometido(inis, [o]).total);
+  });
+});
+
+describe('riscosMapeados', () => {
+  it('é a régua de "risco mapeado": só linha com descrição, preservando o tipo', () => {
+    const a = risco({ risco: 'Ameaça' });
+    const lista = [a, risco({ risco: '' }), risco({ risco: '   ' })];
+    expect(riscosMapeados(lista)).toEqual([a]);
+  });
+});
+
+describe('ameacasDoObjetivo', () => {
+  /** Um objetivo com uma iniciativa em execução que trata cada risco passado. */
+  function cenario(riscos: RiscoComId[], extra: Partial<AcaoRisco> = {}) {
+    const o = objetivo({});
+    const i = iniciativa({ objetivo_id: o.id, status: 'em_execucao' });
+    const acoes = riscos.map(r => acao({ risco_id: r.id, iniciativa_id: i.id, ...extra }));
+    return { o, i, acoes };
+  }
+
+  it('só o mitigado confirmado é neutralizado', () => {
+    const mitigado = risco({ situacao: 'mitigado', data_situacao: '2026-03-01' });
+    const aberto = risco({});
+    const { o, i, acoes } = cenario([mitigado, aberto]);
+    const r = ameacasDoObjetivo(o.id, [i], acoes, [mitigado, aberto]);
+    const estado = (x: RiscoComId) => r.itens.find(it => it.risco.id === x.id)?.estado;
+    expect(estado(mitigado)).toBe('neutralizado');
+    expect(estado(aberto)).toBe('em_tratamento');
+    expect(r).toMatchObject({ neutralizados: 1, emTratamento: 1, semTratamento: 0, aceitos: 0, total: 2 });
+  });
+
+  it('tratamento concluído mas não fechado continua em tratamento', () => {
+    const o = objetivo({});
+    const concluida = iniciativa({ objetivo_id: o.id, status: 'concluida' });
+    const r1 = risco({});
+    const acoes = [acao({ risco_id: r1.id, iniciativa_id: concluida.id })];
+    // A régua de tratamento diz que acabou…
+    expect(estadoTratamento(r1, acoes, [concluida])).toBe('tratamento_concluido');
+    // …mas a ameaça só cai quando alguém a declara mitigada.
+    const r = ameacasDoObjetivo(o.id, [concluida], acoes, [r1]);
+    expect(r.itens[0].estado).toBe('em_tratamento');
+    expect(r.neutralizados).toBe(0);
+    expect(r.emTratamento).toBe(1);
+  });
+
+  it('resposta Aceitar vira aceito', () => {
+    const aceito = risco({ resposta: 'Aceitar' });
+    const { o, i, acoes } = cenario([aceito]);
+    const r = ameacasDoObjetivo(o.id, [i], acoes, [aceito]);
+    expect(r.itens[0].estado).toBe('aceito');
+    expect(r.aceitos).toBe(1);
+  });
+
+  it('pelo caminho do objetivo, a ação que liga já é tratamento vivo', () => {
+    const r1 = risco({ resposta: 'Mitigar' });
+    const { o, i, acoes } = cenario([r1], { status: 'aberta' });
+    const r = ameacasDoObjetivo(o.id, [i], acoes, [r1]);
+    expect(r.itens[0].estado).toBe('em_tratamento');
+    expect(r.semTratamento).toBe(0);
+  });
+
+  it('ação cancelada não liga o risco ao objetivo', () => {
+    const r1 = risco({});
+    const { o, i, acoes } = cenario([r1], { status: 'cancelada' });
+    const r = ameacasDoObjetivo(o.id, [i], acoes, [r1]);
+    expect(r.itens).toEqual([]);
+    expect(r.total).toBe(0);
+  });
+
+  it('obsoleto e descartado saem da conta; linha sem descrição também', () => {
+    const obsoleto = risco({ situacao: 'obsoleto' });
+    const descartado = risco({ situacao: 'descartado' });
+    const branco = risco({ risco: '  ' });
+    const vivo = risco({});
+    const todos = [obsoleto, descartado, branco, vivo];
+    const { o, i, acoes } = cenario(todos);
+    const r = ameacasDoObjetivo(o.id, [i], acoes, todos);
+    expect(r.itens.map(x => x.risco.id)).toEqual([vivo.id]);
+    expect(r.total).toBe(1);
+  });
+
+  it('ordena por score, sem nota por último, e empata pelo texto', () => {
+    const baixo = risco({ risco: 'B', probab: 1, impact: 2 });   // 2
+    const critico = risco({ risco: 'C', probab: 5, impact: 4 }); // 20
+    const semNota = risco({ risco: 'A', probab: null, impact: 3 });
+    const empateZ = risco({ risco: 'Zeta', probab: 3, impact: 3 }); // 9
+    const empateA = risco({ risco: 'Alfa', probab: 3, impact: 3 }); // 9
+    const todos = [baixo, semNota, empateZ, critico, empateA];
+    const { o, i, acoes } = cenario(todos);
+    const r = ameacasDoObjetivo(o.id, [i], acoes, todos);
+    expect(r.itens.map(x => x.risco.risco)).toEqual(['C', 'Alfa', 'Zeta', 'B', 'A']);
+    expect(r.itens.map(x => x.score)).toEqual([20, 9, 9, 2, null]);
+  });
+
+  it('um risco sem ação alguma que chegue pelo objetivo não aparece', () => {
+    const o = objetivo({});
+    const i = iniciativa({ objetivo_id: o.id });
+    const solto = risco({});
+    expect(ameacasDoObjetivo(o.id, [i], [], [solto]).total).toBe(0);
+  });
+
+  it('com ação viva e outra de mitigação autônoma, o estado olha todas as ações do risco', () => {
+    const o = objetivo({});
+    const concluida = iniciativa({ objetivo_id: o.id, status: 'concluida' });
+    const r1 = risco({});
+    const acoes = [
+      acao({ risco_id: r1.id, iniciativa_id: concluida.id }),
+      // Mitigação autônoma ainda aberta: o risco segue em tratamento.
+      acao({ risco_id: r1.id, iniciativa_id: null, status: 'aberta' }),
+    ];
+    expect(ameacasDoObjetivo(o.id, [concluida], acoes, [r1]).itens[0].estado).toBe('em_tratamento');
+  });
+});
+
+describe('estadoDaAmeaca', () => {
+  it('mitigado confirmado neutraliza, mesmo com a resposta Aceitar ou sem ação', () => {
+    expect(estadoDaAmeaca({ resposta: 'Mitigar', situacao: 'mitigado' }, [], [])).toBe('neutralizado');
+    expect(estadoDaAmeaca({ resposta: 'Aceitar', situacao: 'mitigado' }, [], [])).toBe('neutralizado');
+  });
+
+  it('sem ação viva é sem tratamento; só cancelada também', () => {
+    expect(estadoDaAmeaca({ resposta: 'Mitigar', situacao: '' }, [], [])).toBe('sem_tratamento');
+    expect(estadoDaAmeaca({ resposta: 'Mitigar', situacao: 'validado' }, [acao({ status: 'cancelada' })], []))
+      .toBe('sem_tratamento');
+  });
+
+  it('Aceitar é aceito enquanto não for declarado mitigado', () => {
+    expect(estadoDaAmeaca({ resposta: 'Aceitar', situacao: '' }, [], [])).toBe('aceito');
+  });
+
+  it('tratamento concluído sem fechamento continua em tratamento', () => {
+    const concluida = iniciativa({ status: 'concluida' });
+    expect(estadoDaAmeaca(
+      { resposta: 'Mitigar', situacao: 'validado' },
+      [acao({ iniciativa_id: concluida.id })],
+      [concluida],
+    )).toBe('em_tratamento');
+    expect(estadoDaAmeaca({ resposta: 'Mitigar', situacao: '' }, [acao({ status: 'concluida' })], []))
+      .toBe('em_tratamento');
+  });
+});
+
+describe('ameacasSomadas', () => {
+  it('conta cada risco uma vez, mesmo quando ameaça dois objetivos', () => {
+    const o1 = objetivo({});
+    const o2 = objetivo({});
+    const i1 = iniciativa({ objetivo_id: o1.id, status: 'em_execucao' });
+    const i2 = iniciativa({ objetivo_id: o2.id, status: 'em_execucao' });
+    const compartilhado = risco({ situacao: 'mitigado' });
+    const so1 = risco({});
+    const so2 = risco({ resposta: 'Aceitar' });
+    const acoes = [
+      acao({ risco_id: compartilhado.id, iniciativa_id: i1.id }),
+      acao({ risco_id: compartilhado.id, iniciativa_id: i2.id }),
+      acao({ risco_id: so1.id, iniciativa_id: i1.id }),
+      acao({ risco_id: so2.id, iniciativa_id: i2.id }),
+    ];
+    const riscos = [compartilhado, so1, so2];
+    const a1 = ameacasDoObjetivo(o1.id, [i1, i2], acoes, riscos);
+    const a2 = ameacasDoObjetivo(o2.id, [i1, i2], acoes, riscos);
+    expect(a1.total + a2.total).toBe(4);
+
+    expect(ameacasSomadas([a1, a2])).toEqual({
+      neutralizados: 1, emTratamento: 1, semTratamento: 0, aceitos: 1, total: 3,
+    });
+  });
+
+  it('lista vazia soma zero', () => {
+    expect(ameacasSomadas([])).toEqual({
+      neutralizados: 0, emTratamento: 0, semTratamento: 0, aceitos: 0, total: 0,
+    });
   });
 });

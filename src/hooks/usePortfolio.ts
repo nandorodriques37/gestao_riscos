@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { PortfolioBundle } from '../types';
 import { fetchPortfolio, patchEntidadeApi, createEntidadeApi, deleteEntidadeApi,
-  migrarAcoesApi, promoverTriagemApi, mesclarPessoasApi, salvarRiscoApi, criarIniciativaDaAcaoApi,
+  migrarAcoesApi, promoverTriagemApi, mesclarPessoasApi, salvarRiscoApi, criarIniciativaDaAcaoApi, reordenarObjetivosApi,
   type EntidadeUrl, type SalvarRiscoPedido } from '../lib/portfolioApi';
 import { invalidarDados, observarDados } from '../lib/dataSync';
 const CACHE = 'riskMatrix.portfolio.v1';
@@ -92,6 +92,12 @@ export function usePortfolio() {
   const migrarAcoes = useCallback(() => mutate(migrarAcoesApi), [mutate]);
   const promoverTriagem = useCallback(() => mutate(promoverTriagemApi), [mutate]);
   const mesclarPessoas = useCallback(async (destino: string, origem: string) => (await mutate(() => mesclarPessoasApi(destino, origem)))?.movidas ?? null, [mutate]);
+  // A ordem manual volta inteira do servidor: substitui a lista, não mescla —
+  // a posição é o que mudou, e ela não viaja no objeto.
+  const reordenarObjetivos = useCallback(async (ordem: string[]) => (await mutate(async () => {
+    const objetivos = await reordenarObjetivosApi(ordem);
+    commit({ ...current.current, objetivos }); return true;
+  })) === true, [mutate, commit]);
   const clearError = useCallback(() => setError(null), []);
   useEffect(() => {
     mounted.current = true; void refresh().finally(() => { if (mounted.current) setLoading(false); });
@@ -99,6 +105,6 @@ export function usePortfolio() {
     return () => { mounted.current = false; stop(); };
   }, [refresh]);
   return { portfolio, loading, saving, error, refresh, clearError, patchEntidade, patchVarios, createEntidade, criarERetornar,
-    deleteEntidade, salvarRisco, criarIniciativaDaAcao, migrarAcoes, promoverTriagem, mesclarPessoas };
+    deleteEntidade, salvarRisco, criarIniciativaDaAcao, migrarAcoes, promoverTriagem, mesclarPessoas, reordenarObjetivos };
 }
 export type UsePortfolio = ReturnType<typeof usePortfolio>;

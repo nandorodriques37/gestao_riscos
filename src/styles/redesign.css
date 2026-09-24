@@ -408,7 +408,6 @@ textarea:focus,
 
 /* ── Structured portfolio rows ─────────────────────────────────────────── */
 
-.objetivo-card.card,
 .ini-portfolio-group.card {
   overflow: hidden;
   border-radius: var(--r-card);
@@ -417,11 +416,6 @@ textarea:focus,
   box-shadow: none;
 }
 
-.objetivo-card.card {
-  padding: 16px 18px;
-}
-
-.objetivo-card:hover,
 .ini-portfolio-group:hover {
   border-color: var(--line-strong);
   border-left-color: var(--brand);
@@ -429,7 +423,6 @@ textarea:focus,
   transform: none;
 }
 
-.objetivo-progress-track,
 .ini-progress-track,
 .carga-track {
   height: 5px;
@@ -438,7 +431,6 @@ textarea:focus,
   background: var(--surface-sunken);
 }
 
-.objetivo-progress-fill,
 .ini-progress-fill,
 .carga-fill {
   border-radius: 2px;

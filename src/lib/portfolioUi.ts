@@ -2,7 +2,7 @@
 // `portfolioMetrics.ts` de propósito: aquele arquivo é de funções puras de
 // domínio, e não deve conhecer nome de balde de migração nem cor de badge.
 import type { BadgeKind } from './calculations';
-import type { ChaveLacuna, EstadoTratamento } from './portfolioMetrics';
+import type { ChaveLacuna, EstadoAmeaca, EstadoTratamento } from './portfolioMetrics';
 import type { Tab } from '../types';
 
 /**
@@ -42,6 +42,33 @@ export const AJUDA_TRATAMENTO: Record<EstadoTratamento, string> = {
   aceito: 'A resposta escolhida foi aceitar — não se cobra ação.',
   em_tratamento: 'Há ação em aberto, ou iniciativa vinculada que ainda não concluiu.',
   tratamento_concluido: 'Toda ação viva concluiu — e, quando está dentro de uma iniciativa, a iniciativa também.',
+};
+
+/**
+ * Estado da ameaça a um objetivo (`ameacasDoObjetivo`). Rótulo, papel de
+ * etiqueta e série da barra de composição saem daqui, juntos: a série
+ * reaproveita as do tratamento de propósito — neutralizado é o verde de
+ * `mitigado`, e só o mitigado confirmado chega a esse estado.
+ */
+export const ROTULO_AMEACA: Record<EstadoAmeaca, string> = {
+  neutralizado: 'Neutralizado',
+  em_tratamento: 'Em tratamento',
+  sem_tratamento: 'Sem tratamento',
+  aceito: 'Aceito',
+};
+
+export const BADGE_AMEACA: Record<EstadoAmeaca, BadgeKind> = {
+  neutralizado: 'ok',
+  em_tratamento: 'atencao',
+  sem_tratamento: 'risco',
+  aceito: 'neutro',
+};
+
+export const SERIE_AMEACA: Record<EstadoAmeaca, string> = {
+  neutralizado: 'mitigado',
+  em_tratamento: 'em_tratamento',
+  sem_tratamento: 'sem_tratamento',
+  aceito: 'aceito',
 };
 
 /* ------------------------------------------------------------------ */

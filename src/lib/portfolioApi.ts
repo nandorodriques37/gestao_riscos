@@ -1,6 +1,6 @@
 // Cliente HTTP do portfólio. Uma rota só (`/api/portfolio`) atende as cinco
 // entidades, então este módulo é bem mais fino que `api.ts` e `tasksApi.ts`.
-import type { PortfolioBundle } from '../types';
+import type { Objetivo, PortfolioBundle } from '../types';
 import { cabecalhosDeEscrita } from './autor';
 
 const BASE = '/api/portfolio';
@@ -130,3 +130,14 @@ export const salvarRiscoApi = (pedido: SalvarRiscoPedido) => operacao<RiscoSalvo
 export const criarIniciativaDaAcaoApi = (pedido: {
   chave: string; acaoId: string; expectedVersion: number; dados: Record<string, unknown>;
 }) => operacao<import('../types').Iniciativa>('criar-iniciativa', pedido);
+
+/**
+ * Grava a ordem manual dos objetivos e devolve a lista já nessa ordem.
+ *
+ * Manda a lista inteira: o servidor recusa com 409 se o conjunto não bater com
+ * o dele (alguém criou ou excluiu no meio), e a tela relê em vez de gravar uma
+ * ordem sobre uma lista que não existe mais.
+ */
+export async function reordenarObjetivosApi(ordem: string[]): Promise<Objetivo[]> {
+  return operacao<Objetivo[]>('reordenar-objetivos', { ordem });
+}

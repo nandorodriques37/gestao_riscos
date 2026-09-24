@@ -214,6 +214,43 @@
 .stack-seg[data-serie='baixo'],
 .serie-dot[data-serie='baixo'] { --c: var(--tier-baixo); }
 
+/* Impacto em jogo: o que as iniciativas ativas prometem e ainda não entregaram.
+   Fica ao lado de `concluida` (o entregue), e preenchido seria lido como
+   resultado — então é o azul da estrutura só no contorno, sobre o fundo suave
+   da marca. O texto no segmento sai no azul, porque `--ink-on-solid` some
+   sobre fundo claro. */
+.stack-seg[data-serie='em_jogo'],
+.serie-dot[data-serie='em_jogo'] {
+  --c: var(--brand-soft);
+  box-shadow: inset 0 0 0 1px var(--brand);
+}
+
+.stack-seg[data-serie='em_jogo'] .stack-seg-rotulo {
+  color: var(--brand);
+}
+
+/* Linha de legenda que também age (`Fatia.onClick`): botão com a cara da
+   linha. O reset de `button` em `base.css` herda fonte e cor, mas não tira
+   fundo, borda nem alinhamento — sem isto a legenda viraria uma pilha de
+   botões cinza. O anel fica rente à linha, por fora: recuado para dentro,
+   como na linha de tabela, ele passava por cima do ponto da série. A legenda
+   mora dentro do padding do cartão, então o anel rente não é cortado. */
+button.lista-linha {
+  width: 100%;
+  border: 0;
+  background: none;
+  text-align: left;
+}
+
+button.lista-linha:hover .lista-texto {
+  color: var(--brand);
+  text-decoration: underline;
+}
+
+button.lista-linha:focus-visible {
+  outline-offset: 0;
+}
+
 /* Barra simples de carga, com o traço da capacidade. */
 .carga-track {
   position: relative;
@@ -265,40 +302,795 @@
   }
 }
 
-/* ---------- Objetivos ---------- */
+/* ---------- Objetivos ----------
+   A lista virou gráfico: uma linha por objetivo com as três perguntas da
+   cadeia lado a lado — o número andou (indicador), quanto rendeu (impacto),
+   o que ainda ameaça (riscos) — e o detalhe abrindo logo abaixo.
 
-.objetivo-card {
+   Cabeçalho, linhas e total dividem UMA grade, nomeada por
+   `grid-template-areas`, e é só ela que muda por largura: as células não
+   sabem em que tela estão. Era o cartão de três colunas fixas (340px, 260px,
+   resto) que empilhava já em 1280px e fazia cada objetivo ocupar meia tela. */
+
+.objetivos-bloco {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.objetivos-ferramentas {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2) var(--sp-4);
+}
+
+.objetivos-ordenar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.objetivos-estado {
+  flex: 1 1 240px;
+  min-width: 0;
+  font-size: var(--fs-xs);
+  color: var(--ink-3);
+}
+
+/* Dica da ordem manual: a frase do arraste vale enquanto a alça existe; no
+   celular (≤760px, onde ela some) vale a do modo Reordenar. */
+.objetivos-dica-toque {
+  display: none;
+}
+
+.objetivos-ferramentas-acoes {
+  margin-left: auto;
+}
+
+.objetivos-ferramentas .btn[aria-pressed='true'] {
+  background: var(--brand-soft);
+  border-color: var(--brand);
+  color: var(--brand);
+}
+
+/* Micro-rótulo: cabeçalho de coluna, rótulo de seção do detalhe, "Ordenar".
+   O mesmo desenho do rótulo de KPI — caixa alta com tracking aberto, único
+   lugar em que o degrau de 10px vale. */
+.objetivo-rotulo {
+  font-size: var(--fs-3xs);
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+/* O envelope corta nos cantos arredondados; todo foco de dentro fica a pelo
+   menos --sp-4 da borda, então o anel nunca é cortado. */
+.objetivos-lista.card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.objetivos-colunas,
+.objetivo-linha,
+.objetivos-total {
   display: grid;
-  grid-template-columns: 340px 260px minmax(0, 1fr);
-  gap: var(--sp-5);
+  grid-template-columns:
+    max(var(--sp-5), var(--tap-min)) var(--sp-5) max(var(--sp-6), var(--tap-min))
+    minmax(0, 2.4fr) minmax(0, 1.5fr) minmax(0, 1.4fr) minmax(0, 1.1fr) minmax(0, 0.8fr);
+  grid-template-areas: 'alca num chev titulo ind imp risc tend';
+  column-gap: var(--sp-3);
   align-items: start;
+  padding: var(--sp-3) var(--sp-4);
 }
 
-@media (max-width: 1280px) {
-  .objetivo-card {
-    grid-template-columns: minmax(0, 1fr);
-    gap: var(--sp-4);
-  }
+.objetivos-lista [data-area='num'] { grid-area: num; }
+.objetivos-lista [data-area='titulo'] { grid-area: titulo; }
+.objetivos-lista [data-area='ind'] { grid-area: ind; }
+.objetivos-lista [data-area='imp'] { grid-area: imp; }
+.objetivos-lista [data-area='risc'] { grid-area: risc; }
+.objetivos-lista [data-area='tend'] { grid-area: tend; }
+
+.objetivos-colunas {
+  padding-block: var(--sp-2);
+  border-bottom: 1px solid var(--line-hairline);
 }
 
-.objetivo-card[data-orfao='true'] {
-  border-color: color-mix(in oklab, var(--tier-alto) 34%, transparent);
+.objetivos-colunas [data-area='num'] {
+  text-align: right;
+}
+
+.objetivos-linhas {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.objetivo-item + .objetivo-item {
+  border-top: 1px solid var(--line-hairline);
+}
+
+.objetivo-linha:hover {
+  background: var(--bg-hover);
+}
+
+/* Aberto: o marcador da marca desce pela linha e pelo detalhe — é o item
+   ativo, não um alerta. */
+.objetivo-item[data-aberto] {
+  box-shadow: inset 2px 0 0 var(--brand);
 }
 
 /* Balde temporário da migração: tracejado para não passar por objetivo real. */
-.objetivo-card[data-balde='true'] {
+.objetivo-item[data-balde] {
   background: var(--surface-2);
-  border-style: dashed;
-  border-color: var(--line-strong);
+  border-top: 1px dashed var(--line-strong);
 }
 
-.objetivo-titulo {
+/* Arraste: a original fica no lugar, esmaecida, como vaga; o filete da marca
+   diz de que lado do alvo ela vai cair — o mesmo lado que `moverPara` usa. */
+.objetivo-item[data-arrastando] {
+  opacity: 0.45;
+}
+
+.objetivo-item[data-alvo='acima'] {
+  box-shadow: inset 0 2px 0 var(--brand);
+}
+
+.objetivo-item[data-alvo='abaixo'] {
+  box-shadow: inset 0 -2px 0 var(--brand);
+}
+
+.objetivo-fantasma {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--surface-1);
+  border: 1px solid var(--line-border);
+  border-radius: var(--r-card);
+  box-shadow: var(--elev-2);
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+  color: var(--ink-1);
+  cursor: grabbing;
+}
+
+/* Botão de ícone: o repouso é 24×32, e o piso de toque vale como em todo
+   ícone — entre 761 e 1100px, com ponteiro grosso, a alça ainda é o único
+   caminho de arraste. A coluna `alca` das três grades lê o mesmo piso. */
+.objetivo-alca {
+  grid-area: alca;
+  display: grid;
+  place-items: center;
+  width: max(var(--sp-5), var(--tap-min));
+  height: max(var(--sp-6), var(--tap-min));
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-control);
+  background: transparent;
+  color: var(--ink-3);
+  cursor: grab;
+  /* Sem isto o navegador rola a página no lugar de levantar a linha. */
+  touch-action: none;
+}
+
+.objetivo-alca:hover:not(:disabled) {
+  color: var(--brand);
+  background: var(--bg-hover);
+}
+
+.objetivo-alca:disabled {
+  color: var(--ink-4);
+  cursor: not-allowed;
+}
+
+.objetivo-alca-vazia {
+  cursor: default;
+}
+
+.objetivo-num {
+  grid-area: num;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  height: var(--sp-6);
+  font-size: var(--fs-sm);
+  color: var(--ink-3);
+}
+
+.objetivo-chevron {
+  grid-area: chev;
+  display: grid;
+  place-items: center;
+  width: max(var(--sp-6), var(--tap-min));
+  height: max(var(--sp-6), var(--tap-min));
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-control);
+  background: transparent;
+  color: var(--ink-3);
   font-size: var(--fs-lg);
+  line-height: 1;
+}
+
+.objetivo-chevron:hover {
+  color: var(--brand);
+  background: var(--bg-hover);
+}
+
+.objetivo-chevron > span {
+  display: inline-block;
+  transition: transform var(--dur-fast) var(--ease);
+}
+
+.objetivo-chevron[aria-expanded='true'] > span {
+  transform: rotate(90deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .objetivo-chevron > span {
+    transition: none;
+  }
+}
+
+.objetivo-cel-titulo {
+  grid-area: titulo;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-1);
+  min-width: 0;
+}
+
+/* `scroll-margin-top`: a legenda "De onde vem o impacto" rola até este
+   botão e põe o foco nele; sem a margem ele parava sob o header fixo,
+   com o foco num controle encoberto. */
+.objetivo-nome {
+  scroll-margin-top: calc(var(--header-h) + var(--sp-3));
+  padding: var(--sp-1) 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink-1);
+  font-size: var(--fs-md);
   font-weight: var(--fw-semibold);
   letter-spacing: var(--tracking-tight);
-  line-height: 1.35;
+  line-height: 1.4;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+button.objetivo-nome:hover {
+  color: var(--brand);
+}
+
+.objetivo-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-1) var(--sp-3);
+  font-size: var(--fs-2xs);
+  color: var(--ink-3);
+}
+
+.objetivo-balde-texto {
+  max-width: 60ch;
+  font-size: var(--fs-2xs);
+  line-height: 1.45;
+  color: var(--ink-3);
+}
+
+.objetivo-cel-titulo .bento-lacuna {
+  margin-top: 0;
+}
+
+.objetivos-lista .objetivo-cel {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-1);
+  min-width: 0;
+  padding-top: var(--sp-1);
+  font-size: var(--fs-xs);
+  color: var(--ink-2);
+}
+
+.objetivo-ind-nome {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--fs-2xs);
+  color: var(--ink-3);
+}
+
+.objetivo-valores {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 var(--sp-1);
+}
+
+/* Número e unidade não se separam: "131" numa linha e "linhas/h" na outra
+   não é mais um valor. Quem quebra é o espaço ENTRE valores, no flex acima. */
+.objetivo-cifra {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  white-space: nowrap;
   color: var(--ink-1);
+}
+
+.objetivo-alvo {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--sp-1);
+  white-space: nowrap;
+}
+
+.objetivo-cifra-meta,
+.objetivo-seta-meta {
+  font-size: var(--fs-xs);
+  color: var(--ink-3);
+}
+
+/* Em jogo é promessa: o azul da estrutura, o mesmo do contorno do segmento. */
+.objetivo-emjogo {
+  font-size: var(--fs-2xs);
+  color: var(--brand);
+}
+
+.objetivo-nota {
+  font-size: var(--fs-2xs);
+  color: var(--ink-3);
+}
+
+/* Ameaça sem tratamento é o único coral da linha: significa perda. */
+.objetivo-sem-trat {
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-semibold);
+  color: var(--coral-texto);
+}
+
+/* Travessão: não se aplica. Decorativo — é o degrau que --ink-4 pode ocupar. */
+.objetivo-travessao {
+  color: var(--ink-4);
+}
+
+.objetivos-lista .meta-track {
+  width: 100%;
+  margin-top: var(--sp-1);
+}
+
+/* Barra de impacto: entregue + em jogo, na régua COMPARTILHADA pelas linhas
+   visíveis. A trilha é a escala — a linha que não enche mostra de quanto
+   ficou abaixo da maior. Os segmentos reaproveitam as séries da composição
+   (`.stack-seg[data-serie]`), cor e contorno, sem uma segunda declaração. */
+.impacto-barra {
+  display: flex;
+  gap: var(--viz-gap);
+  width: 100%;
+  height: 8px;
+  margin-top: var(--sp-1);
+  border-radius: var(--r-xs);
+  overflow: hidden;
+  background: var(--surface-2);
+}
+
+.impacto-barra .stack-seg {
+  flex: none;
+}
+
+.objetivo-item[data-balde] .impacto-barra {
+  background: var(--surface-1);
+}
+
+/* Um quadrado por risco que ameaça o objetivo, na cor do estado. O número
+   escrito ao lado é quem conta; o quadrado mostra a forma. */
+.ameaca-quadros {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--viz-gap);
+  max-width: 100%;
+}
+
+.ameaca-quadro {
+  width: 8px;
+  height: 8px;
+  background: var(--c, var(--tier-null));
+}
+
+.ameaca-quadro[data-estado='neutralizado'] { --c: var(--tier-baixo); }
+.ameaca-quadro[data-estado='em_tratamento'] { --c: var(--tier-medio); }
+.ameaca-quadro[data-estado='sem_tratamento'] { --c: var(--tier-critico); }
+.ameaca-quadro[data-estado='aceito'] { --c: var(--badge-neutro); }
+
+.ameaca-mais {
+  margin-left: var(--sp-1);
+  font-size: var(--fs-2xs);
+  color: var(--ink-3);
+}
+
+/* Modo Reordenar: só posição, nome e as setas. O resto recolhe — ninguém
+   decide ordem olhando barra, e as setas precisam do espaço no celular. */
+.objetivos-lista[data-reordenando] .objetivo-linha {
+  grid-template-columns: max(var(--sp-5), var(--tap-min)) var(--sp-5) minmax(0, 1fr) auto;
+  grid-template-areas: 'alca num titulo setas';
+  align-items: center;
+}
+
+/* O balde não tem setas e carrega o texto do que pede: centrado, o "—" da
+   posição caía no meio do parágrafo, longe do nome. */
+.objetivos-lista[data-reordenando] .objetivo-item[data-balde] .objetivo-linha {
+  align-items: start;
+}
+
+.objetivo-setas {
+  grid-area: setas;
+  display: flex;
+  gap: var(--sp-1);
+}
+
+.objetivo-seta {
+  display: grid;
+  place-items: center;
+  width: max(var(--control-h), var(--tap-min));
+  height: max(var(--control-h), var(--tap-min));
+  padding: 0;
+  border: 1px solid var(--line-border);
+  border-radius: var(--r-control);
+  background: var(--bg-surface);
+  color: var(--ink-2);
+  font-size: var(--fs-lg);
+}
+
+.objetivo-seta:hover:not(:disabled) {
+  border-color: var(--brand);
+  color: var(--brand);
+}
+
+.objetivo-seta:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* Linha de total: os mesmos números da faixa de KPI, no pé das colunas. */
+.objetivos-total {
+  align-items: baseline;
+  border-top: 1px solid var(--line-border);
+  background: var(--surface-2);
+  font-size: var(--fs-xs);
+  color: var(--ink-2);
+}
+
+.objetivos-total > [data-area='titulo'] {
+  grid-column: alca-start / titulo-end;
+  font-weight: var(--fw-semibold);
+  color: var(--ink-1);
+}
+
+.objetivos-total .objetivo-cel {
+  padding-top: 0;
+}
+
+/* Legenda dos quadradinhos de risco: cada estado com o quadrado, o rótulo e a
+   contagem. Sem ela, em tratamento e aceito só se distinguiam pela cor. */
+.objetivos-legenda {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-1) var(--sp-4);
+  padding: var(--sp-2) var(--sp-4);
+  border-top: 1px solid var(--line-hairline);
+  background: var(--surface-2);
+  font-size: var(--fs-2xs);
+  color: var(--ink-3);
+}
+
+.objetivos-legenda-item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+}
+
+.objetivos-legenda .objetivo-cifra {
+  font-size: var(--fs-2xs);
+  color: var(--ink-2);
+}
+
+/* ---------- Objetivo aberto: três perguntas lado a lado ---------- */
+
+.objetivo-detalhe {
+  padding: var(--sp-4);
+  border-top: 1px solid var(--line-hairline);
+  background: var(--surface-2);
+}
+
+.objetivo-detalhe-grade {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--sp-5);
+}
+
+.objetivo-secao {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+
+.objetivo-secao + .objetivo-secao {
+  padding-left: var(--sp-5);
+  border-left: 1px solid var(--line-hairline);
+}
+
+.objetivo-secao-titulo {
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--tracking-tight);
+  color: var(--ink-1);
+}
+
+.objetivo-secao-acoes {
+  margin-top: auto;
+  padding-top: var(--sp-2);
+}
+
+.objetivo-det-indicador {
+  margin: 0;
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+  color: var(--ink-2);
+}
+
+.objetivo-det-numeros {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--sp-2) var(--sp-5);
+}
+
+.objetivo-det-numero {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  min-width: 0;
+}
+
+.objetivo-det-valor {
+  font-size: var(--fs-num);
+  font-weight: var(--fw-medium);
+  letter-spacing: var(--tracking-tighter);
+  line-height: 1;
+  color: var(--ink-1);
+}
+
+.objetivo-det-valor-2 {
+  font-size: var(--fs-xl);
+  color: var(--ink-2);
+}
+
+/* Entregue na cor do que fechou; em jogo no azul da estrutura. */
+.objetivo-det-numero[data-tom='entregue'] .objetivo-det-valor:not(.objetivo-travessao) {
+  color: var(--badge-ok);
+}
+
+.objetivo-det-numero[data-tom='em_jogo'] .objetivo-det-valor:not(.objetivo-travessao) {
+  color: var(--brand);
+}
+
+.objetivo-det-valor.objetivo-travessao {
+  color: var(--ink-4);
+}
+
+.objetivo-det-valor-vazio {
+  font-size: var(--fs-lg);
+}
+
+.objetivo-det-legenda {
+  font-size: var(--fs-2xs);
+  color: var(--ink-3);
+}
+
+/* Pronto para declarar: a prova está na série, a decisão é de quem responde. */
+.objetivo-pronto {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2) var(--sp-3);
+  padding: var(--sp-3);
+  border: 1px solid color-mix(in oklab, var(--badge-atencao) 40%, transparent);
+  border-radius: var(--r-card);
+  background: color-mix(in oklab, var(--badge-atencao) 8%, var(--surface-1));
+  font-size: var(--fs-xs);
+  color: var(--ink-2);
+}
+
+.objetivo-ini {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  min-width: 0;
+  padding: var(--sp-2) 0;
+}
+
+.objetivo-ini + .objetivo-ini {
+  border-top: 1px solid var(--line-hairline);
+}
+
+.objetivo-ini-topo {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+
+/* Nome que é link dentro de lista: o corpo da lista, não o micro do link.
+   Duas linhas no máximo, o resto no `title`: o texto do risco é escrito como
+   frase longa ("Falta de compartilhamento das decisões estratégicas — equipe
+   sente o top down…"), e cinco linhas por item esticavam a coluna de riscos
+   até deixar indicador e impacto com meia tela de vazio embaixo. */
+.lista-texto.objetivo-ini-nome,
+.lista-texto.objetivo-risco-nome {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  white-space: normal;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+}
+
+/* A nota vai de "—" a "20": sem piso, o chip muda de largura e o nome de
+   cada risco começa numa coluna diferente. O piso cabe dois dígitos. */
+.objetivo-secao .tier-chip {
+  flex: none;
+  min-width: calc(var(--sp-6) + var(--sp-2) + var(--sp-1));
+}
+
+.objetivo-ini-valor {
+  flex: none;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  color: var(--ink-1);
+}
+
+.objetivo-ini-vazio {
+  flex: none;
+  font-size: var(--fs-xs);
+}
+
+.objetivo-ini .impacto-barra {
+  margin-top: 0;
+  background: var(--surface-1);
+}
+
+.objetivo-detalhe-rodape {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--sp-4);
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--line-hairline);
+}
+
+/* Série do indicador em tamanho de leitura (SerieIndicador). O desenho estica
+   na largura; traço e ponto têm espessura fixa pelo vector-effect, e os
+   rótulos de referência são HTML por cima, não <text> deformado. */
+.serie-indicador {
+  margin: var(--sp-2) 0 0;
+}
+
+.serie-area {
+  position: relative;
+}
+
+.serie-area svg {
+  display: block;
+  width: 100%;
+  height: 132px;
+  overflow: visible;
+}
+
+.serie-caminho {
+  fill: var(--brand-soft);
+}
+
+.serie-ref {
+  stroke: var(--viz-axis);
+  stroke-width: 1;
+  stroke-dasharray: 2 3;
+  vector-effect: non-scaling-stroke;
+}
+
+.serie-ref[data-ref='meta'] {
+  stroke: var(--ink-3);
+  stroke-dasharray: 5 3;
+}
+
+.serie-linha {
+  fill: none;
+  stroke: var(--brand);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+
+/* Ponto = traço de comprimento zero com ponta redonda: continua redondo em
+   qualquer proporção, coisa que um <circle> esticado não faz. */
+.serie-ponto {
+  stroke: var(--brand);
+  stroke-width: 6;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.serie-ponto[data-ultimo] {
+  stroke-width: 10;
+}
+
+/* O rótulo fica do lado de FORA da faixa baseline–meta: é por dentro dela
+   que a série passa, e rótulo por dentro caía em cima do primeiro ponto. */
+.serie-ref-rotulo {
+  position: absolute;
+  font-size: var(--fs-2xs);
+  color: var(--ink-3);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.serie-ref-rotulo[data-lado='acima'] {
+  padding-bottom: var(--sp-1);
+  transform: translateY(-100%);
+}
+
+.serie-ref-rotulo[data-lado='abaixo'] {
+  padding-top: var(--sp-1);
+}
+
+/* A meta fica na ponta direita, onde mora o último ponto — o maior, 5px de
+   raio. Quando a série chega lá, o vão de 4px deixava o ponto encostado no
+   "meta 95 %". O baseline, à esquerda, divide a ponta com o primeiro ponto,
+   de 3px, e com as datas do eixo logo abaixo: fica no vão curto. */
+.serie-ref-rotulo[data-ref='meta'][data-lado='acima'] {
+  padding-bottom: var(--sp-2);
+}
+
+.serie-ref-rotulo[data-ref='meta'][data-lado='abaixo'] {
+  padding-top: var(--sp-2);
+}
+
+.serie-ref-rotulo[data-ref='baseline'] { left: 0; }
+.serie-ref-rotulo[data-ref='meta'] { right: 0; }
+
+.serie-eixo {
+  display: flex;
+  justify-content: space-between;
+  margin-top: var(--sp-1);
+  font-size: var(--fs-2xs);
+  color: var(--ink-3);
+}
+
+/* Sem série: área tracejada que diz por que está vazia — nunca um gráfico em 0. */
+.serie-vazia {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--sp-1);
+  min-height: 132px;
   margin-top: var(--sp-2);
+  padding: var(--sp-4);
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--r-card);
+  font-size: var(--fs-xs);
+  line-height: 1.45;
+  color: var(--ink-3);
+}
+
+.serie-vazia strong {
+  font-weight: var(--fw-semibold);
+  color: var(--ink-2);
 }
 
 /* Medidor baseline → meta. O traço final é a meta; o preenchimento é o quanto
@@ -344,15 +1136,6 @@
   background: var(--ink-4);
 }
 
-.meta-legenda {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--sp-2);
-  margin-top: var(--sp-1);
-  font-size: var(--fs-2xs);
-  color: var(--ink-4);
-}
-
 /* Série do indicador em miniatura. `preserveAspectRatio: none` deixa a curva
    ocupar a largura da coluna sem esticar o traço — a espessura vem do
    vector-effect. */
@@ -362,6 +1145,13 @@
   height: 44px;
   margin-top: var(--sp-2);
   overflow: visible;
+}
+
+/* Na coluna Tendência: mais baixa, e sem esticar além do que a série diz. */
+.sparkline-compacta {
+  max-width: 120px;
+  height: 24px;
+  margin-top: 0;
 }
 
 .sparkline-linha {
@@ -394,24 +1184,105 @@
   gap: var(--sp-1);
   font-size: var(--fs-2xs);
   font-weight: var(--fw-semibold);
-  color: var(--ink-4);
+  color: var(--ink-3);
 }
 
 .tendencia[data-t='melhorou'] { color: var(--tier-baixo); }
 .tendencia[data-t='piorou'] { color: var(--tier-critico); }
 
-.objetivo-iniciativas {
-  border-left: 1px solid var(--line-hairline);
-  padding-left: var(--sp-4);
-  min-width: 0;
+/* ≤1100px: a tendência é a coluna que sai — o detalhe a mostra em tamanho de
+   leitura — e as três perguntas do detalhe empilham. */
+@media (max-width: 1100px) {
+  .objetivos-colunas,
+  .objetivo-linha,
+  .objetivos-total {
+    grid-template-columns:
+      max(var(--sp-5), var(--tap-min)) var(--sp-5) max(var(--sp-6), var(--tap-min))
+      minmax(0, 2.2fr) minmax(0, 1.4fr) minmax(0, 1.3fr) minmax(0, 1fr);
+    grid-template-areas: 'alca num chev titulo ind imp risc';
+  }
+
+  .objetivos-lista [data-area='tend'] {
+    display: none;
+  }
+
+  .objetivo-detalhe-grade {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--sp-4);
+  }
+
+  .objetivo-secao + .objetivo-secao {
+    padding-top: var(--sp-4);
+    padding-left: 0;
+    border-top: 1px solid var(--line-hairline);
+    border-left: 0;
+  }
 }
 
-@media (max-width: 1280px) {
-  .objetivo-iniciativas {
-    border-left: none;
-    border-top: 1px solid var(--line-hairline);
-    padding-left: 0;
-    padding-top: var(--sp-3);
+/* ≤760px: a linha vira cartão — título em cima, indicador e impacto lado a
+   lado, riscos embaixo. Sem cabeçalho de colunas, cada célula carrega o
+   próprio rótulo, no mesmo idioma de `.rastro-linha` (`data-rotulo` +
+   `::before`). A alça some: arrastar com o polegar numa lista que rola é
+   briga; o caminho aqui é o modo Reordenar, com as setas no alvo de toque. */
+@media (max-width: 760px) {
+  .objetivos-colunas {
+    display: none;
+  }
+
+  .objetivo-alca {
+    display: none;
+  }
+
+  .objetivos-dica-alca {
+    display: none;
+  }
+
+  .objetivos-dica-toque {
+    display: inline;
+  }
+
+  .objetivo-linha {
+    grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr) auto;
+    grid-template-areas:
+      'num titulo titulo chev'
+      'ind ind imp imp'
+      'risc risc risc risc';
+    row-gap: var(--sp-3);
+  }
+
+  .objetivos-lista .objetivo-cel[data-rotulo]::before {
+    content: attr(data-rotulo);
+    font-size: var(--fs-3xs);
+    font-weight: var(--fw-bold);
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+
+  .objetivos-lista[data-reordenando] .objetivo-linha {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas: 'num titulo setas';
+  }
+
+  .objetivos-total {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas:
+      'titulo titulo'
+      'ind imp'
+      'risc risc';
+    row-gap: var(--sp-2);
+  }
+
+  .objetivos-total > [data-area='titulo'] {
+    grid-column: auto;
+  }
+
+  .objetivo-detalhe {
+    padding: var(--sp-3);
+  }
+
+  .objetivos-ferramentas-acoes {
+    margin-left: 0;
   }
 }
 
