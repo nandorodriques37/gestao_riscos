@@ -231,7 +231,9 @@
   border: 1px solid var(--line-border);
   border-radius: var(--r-control);
   padding: 2px;
-  height: var(--control-h);
+  /* Piso, não altura: abaixo de 760px todo botão ganha 44px de alvo, e com
+     altura travada o segmento vazava para fora do contorno do grupo. */
+  min-height: var(--control-h);
 }
 
 .density-toggle button,

@@ -80,7 +80,11 @@ td.num,
 .ini-date,
 .prazo-cell,
 .prazo-atraso,
-.objetivo-progress-value,
+.objetivo-num,
+.objetivo-cifra,
+.objetivo-cifra-meta,
+.objetivo-det-valor,
+.objetivo-ini-valor,
 .lista-valor {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;

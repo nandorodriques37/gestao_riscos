@@ -9,6 +9,7 @@ import { ensureTudo } from './_schema.js';
 import { migrarAcoes } from './_migracaoAcoes.js';
 import { promoverTriagem } from './_promocaoTriagem.js';
 import { mesclarPessoas } from './_donos.js';
+import { reordenarObjetivos } from './_ordem.js';
 import {
   autorDaRequisicao, listarAuditoria,
   registrarCriacao, registrarAlteracao, registrarExclusao,
@@ -19,6 +20,7 @@ import {
 //
 //   GET    /api/portfolio                  → pacote das 5 listas
 //   GET    /api/portfolio/backup           → dump completo (?anexos=1 inclui bytes)
+//   POST   /api/portfolio/reordenar-objetivos → grava a ordem manual { ordem: id[] }
 //   GET    /api/portfolio/:entidade        → uma lista
 //   POST   /api/portfolio/:entidade        → cria
 //   PATCH  /api/portfolio/:entidade/:id    → atualiza (409 em conflito de versão)
@@ -159,6 +161,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse, d
       const r = await mesclarPessoas(sql, destino, origem);
       if (antes) await registrarExclusao(sql, 'pessoas', antes, autorDaRequisicao(req.headers as Record<string, unknown>));
       res.status(200).json(r);
+      return;
+    }
+
+    // POST /api/portfolio/reordenar-objetivos — a ordem manual da aba Objetivos.
+    //
+    // Recebe a lista inteira, não um "mova X para Y": o servidor confere que o
+    // conjunto é o mesmo que ele tem (409 se alguém criou ou excluiu no meio) e
+    // grava as posições sem avançar `version`, para não derrubar quem está com
+    // o modal aberto. Posição não é conteúdo, então também não vai à auditoria.
+    if (partes.length === 1 && partes[0] === 'reordenar-objetivos') {
+      if (method !== 'POST') {
+        res.setHeader('Allow', 'POST');
+        res.status(405).json({ error: 'Método não permitido' });
+        return;
+      }
+      res.status(200).json(await reordenarObjetivos(sql, parseBody(req).ordem));
       return;
     }
 

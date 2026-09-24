@@ -1,4 +1,4 @@
-import { formatarData, formatarNumero } from '../../lib/portfolioLabels';
+import { descreverSerie } from './objetivosUi';
 
 interface SparklineProps {
   serie: { data: string; valor: number }[];
@@ -6,10 +6,14 @@ interface SparklineProps {
   baseline: number | null;
   meta: number | null;
   unidade: string;
+  /**
+   * Miniatura de coluna de tabela: mais baixa, e com a caixa de desenho na
+   * proporção da célula — com `preserveAspectRatio: none`, desenhar em 220×44
+   * e exibir em 100×24 achatava o ponto final numa elipse.
+   */
+  compacta?: boolean;
 }
 
-const W = 220;
-const H = 44;
 const PAD = 4;
 
 /**
@@ -21,8 +25,11 @@ const PAD = 4;
  *
  * O último ponto é marcado — é o número que a tela está afirmando.
  */
-export function Sparkline({ serie, baseline, meta, unidade }: SparklineProps) {
+export function Sparkline({ serie, baseline, meta, unidade, compacta }: SparklineProps) {
   if (serie.length === 0) return null;
+
+  const W = compacta ? 100 : 220;
+  const H = compacta ? 24 : 44;
 
   const valores = [
     ...serie.map(p => p.valor),
@@ -41,18 +48,12 @@ export function Sparkline({ serie, baseline, meta, unidade }: SparklineProps) {
   const pontos = serie.map((p, i) => `${x(i)},${y(p.valor)}`).join(' ');
   const ultimo = serie[serie.length - 1];
 
-  const rotulo = serie.length === 1
-    ? `Uma leitura: ${formatarNumero(ultimo.valor, 1)}${unidade} em ${formatarData(ultimo.data)}`
-    : `${serie.length} leituras, de ${formatarNumero(serie[0].valor, 1)}${unidade} `
-      + `em ${formatarData(serie[0].data)} a ${formatarNumero(ultimo.valor, 1)}${unidade} `
-      + `em ${formatarData(ultimo.data)}`;
-
   return (
     <svg
-      className="sparkline"
+      className={compacta ? 'sparkline sparkline-compacta' : 'sparkline'}
       viewBox={`0 0 ${W} ${H}`}
       role="img"
-      aria-label={rotulo}
+      aria-label={descreverSerie(serie, unidade)}
       preserveAspectRatio="none"
     >
       {/* Linha da meta ao fundo: recessiva, é referência e não dado. */}
@@ -63,7 +64,7 @@ export function Sparkline({ serie, baseline, meta, unidade }: SparklineProps) {
         />
       )}
       {serie.length > 1 && <polyline className="sparkline-linha" points={pontos} />}
-      <circle className="sparkline-ponta" cx={x(serie.length - 1)} cy={y(ultimo.valor)} r="3" />
+      <circle className="sparkline-ponta" cx={x(serie.length - 1)} cy={y(ultimo.valor)} r={compacta ? 2.5 : 3} />
     </svg>
   );
 }

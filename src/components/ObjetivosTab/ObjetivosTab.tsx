@@ -1,22 +1,21 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { Objetivo, StoredRiskRecord, Tab } from '../../types';
 import type { UsePortfolio } from '../../hooks/usePortfolio';
+import { useSessionState } from '../../hooks/useSessionState';
 import {
-  iniciativaAtiva, progressoObjetivo, riscosPorObjetivo, saudeObjetivos,
-} from '../../lib/portfolioMetrics';
-import { computeScore, scoreTier, type BadgeKind } from '../../lib/calculations';
-import {
-  ROTULO_HORIZONTE, ROTULO_STATUS_OBJETIVO, ROTULO_STATUS_INICIATIVA,
-  BADGE_STATUS_INICIATIVA, formatarData, formatarMoeda, formatarNumero,
-  formatarPct, nomeRisco, plural,
-} from '../../lib/portfolioLabels';
-import { OBJETIVO_BALDE } from '../../lib/portfolioUi';
+  CRITERIOS_OBJETIVOS, aplicarOrdemVisivel, moverPara, moverUm, ordenarObjetivos,
+  type CriterioObjetivos,
+} from '../../lib/ordemObjetivos';
+import { formatarMoeda, formatarMoedaCheia, formatarPct, plural } from '../../lib/portfolioLabels';
 import { EmptyState } from '../common/EmptyState';
-import { Kpi, KpiRow } from '../common/Kpi';
+import { Kpi, KpiRow, type KpiProps } from '../common/Kpi';
+import { Composicao, type Fatia } from '../common/Composicao';
 import { useConfirmacao } from '../common/Confirmacao';
 import { ObjetivoModal } from './ObjetivoModal';
 import { MedicaoModal } from './MedicaoModal';
-import { Sparkline } from './Sparkline';
+import { ListaObjetivos } from './ListaObjetivos';
+import { ObjetivoDetalhe } from './ObjetivoDetalhe';
+import { ehBalde, montarLinhas, somarTotais, type LinhaObjetivo } from './objetivosUi';
 
 interface ObjetivosTabProps {
   idsDoRecorte?: Set<string> | null;
@@ -29,19 +28,28 @@ interface ObjetivosTabProps {
   onAbrirRisco: (id: string) => void;
 }
 
-const ROTULO_TENDENCIA: Record<string, string> = {
-  melhorou: 'melhorou', piorou: 'piorou', estavel: 'estável',
-};
+type EstadoOrdem = 'ocioso' | 'salvando' | 'salvo';
 
-/** Badge do status do objetivo: verde só quando a meta caiu de fato. */
-const BADGE_STATUS: Record<string, BadgeKind> = {
-  ativo: 'neutro', atingido: 'ok', abandonado: 'neutro', '': 'neutro',
-};
+const CRITERIOS_VALIDOS = new Set<string>(CRITERIOS_OBJETIVOS.map(c => c.id));
 
+/**
+ * A aba Objetivos: a lista virou gráfico.
+ *
+ * Cada objetivo é uma linha que responde, de relance, às três perguntas da
+ * cadeia — o número andou, quanto as entregas renderam, o que ainda ameaça —
+ * e abre para o detalhe que prova cada uma. Tudo nasce recolhido: com seis
+ * objetivos abertos a tela era uma pilha de cartões e ninguém comparava nada.
+ *
+ * A ordem da lista É a ordem manual, gravada para todos (`position` no
+ * servidor). Impacto, progresso e prazo são VISTAS: reordenam na tela e não
+ * gravam — voltar para Manual devolve a ordem combinada intacta.
+ */
 export function ObjetivosTab({
-  riscos, pf, onAbrirIniciativa, onAbrirRisco, idsDoRecorte, onCriarIniciativa,
+  riscos, pf, onIrPara, onAbrirIniciativa, onAbrirRisco, idsDoRecorte, onCriarIniciativa,
 }: ObjetivosTabProps) {
-  const { portfolio, loading, error, clearError, createEntidade, patchEntidade, deleteEntidade } = pf;
+  const {
+    portfolio, loading, error, clearError, createEntidade, patchEntidade, deleteEntidade, reordenarObjetivos,
+  } = pf;
   const { objetivos, medicoes, iniciativas, acoes_risco, pessoas } = portfolio;
   const [editando, setEditando] = useState<Objetivo | null>(null);
   const [medindo, setMedindo] = useState<Objetivo | null>(null);
@@ -49,48 +57,196 @@ export function ObjetivosTab({
   const [mostrarEncerrados, setMostrarEncerrados] = useState(false);
   const [confirmar, dialogoConfirmacao] = useConfirmacao();
 
-  const pessoaPorId = useMemo(() => new Map(pessoas.map(p => [p.id, p.nome])), [pessoas]);
+  const [criterioSalvo, setCriterio] = useSessionState<CriterioObjetivos>('objetivos.criterio', 'manual');
+  const criterio: CriterioObjetivos = CRITERIOS_VALIDOS.has(criterioSalvo) ? criterioSalvo : 'manual';
+  const [abertosSalvos, setAbertos] = useSessionState<string[]>('objetivos.abertos', []);
+  const abertos = useMemo(() => new Set(Array.isArray(abertosSalvos) ? abertosSalvos : []), [abertosSalvos]);
+  const [modoReordenar, setModoReordenar] = useState(false);
+  const reordenando = modoReordenar && criterio === 'manual';
 
-  const porObjetivo = useMemo(() => {
-    const m = new Map<string, typeof iniciativas>();
-    for (const i of iniciativas) {
-      if (!i.objetivo_id) continue;
-      const lista = m.get(i.objetivo_id) ?? [];
-      lista.push(i);
-      m.set(i.objetivo_id, lista);
+  /*
+   * Ordem que está indo para o servidor. A tela já mostra a nova ordem
+   * enquanto grava — esperar o ida e volta para a linha sair do lugar faria o
+   * arraste parecer quebrado. Ao terminar volta a valer a lista do servidor:
+   * em sucesso ela já é a nova ordem; em falha, é a de antes.
+   */
+  const [ordemPendente, setOrdemPendente] = useState<string[] | null>(null);
+  const [estadoOrdem, setEstadoOrdem] = useState<EstadoOrdem>('ocioso');
+  const [anuncio, setAnuncio] = useState('');
+  /*
+   * Uma gravação da ordem por vez. Cada POST abre a própria conexão no
+   * servidor e disputa o lock da tabela: dois em voo fazem commit em qualquer
+   * ordem, e vale o último a chegar — que pode ser uma ordem intermediária.
+   * Enquanto uma está em voo, só a ordem MAIS RECENTE fica guardada e sai
+   * quando ela terminar; as do meio já foram superadas e nem viajam.
+   */
+  const emVoo = useRef(false);
+  const proximaOrdem = useRef<string[] | null>(null);
+
+  // Chegar com um recorte do Painel abre os objetivos recortados: quem veio
+  // resolver uma lacuna não deveria ter de achar e abrir cada um. Cada id abre
+  // UMA vez por chegada: o recorte encolhe quando uma lacuna é resolvida, e
+  // somar de novo os que sobraram reabriria o que a pessoa já fechou.
+  const chaveRecorte = idsDoRecorte ? [...idsDoRecorte].sort().join('|') : '';
+  const abertosPeloRecorte = useRef(new Set<string>());
+  useEffect(() => {
+    if (!chaveRecorte) {
+      abertosPeloRecorte.current.clear();
+      return;
     }
-    return m;
-  }, [iniciativas]);
-
-  const semObjetivo = useMemo(() => iniciativas.filter(i => !i.objetivo_id), [iniciativas]);
-
-  const visiveis = useMemo(() => {
-    const lista = idsDoRecorte ? objetivos.filter(o => idsDoRecorte.has(o.id)) : mostrarEncerrados ? objetivos : objetivos.filter(o => o.status !== 'abandonado');
-    // O balde da migração vai para o fim: é caixa de entrada, não direção.
-    return [...lista].sort((a, b) => {
-      const ba = a.descricao === OBJETIVO_BALDE ? 1 : 0;
-      const bb = b.descricao === OBJETIVO_BALDE ? 1 : 0;
-      return ba - bb;
+    const ids = chaveRecorte.split('|').filter(id => !abertosPeloRecorte.current.has(id));
+    if (ids.length === 0) return;
+    for (const id of ids) abertosPeloRecorte.current.add(id);
+    setAbertos(prev => {
+      const novos = ids.filter(id => !prev.includes(id));
+      return novos.length > 0 ? [...prev, ...novos] : prev;
     });
-  }, [objetivos, mostrarEncerrados, idsDoRecorte]);
+  }, [chaveRecorte, setAbertos]);
 
-  const encerrados = objetivos.length - objetivos.filter(o => o.status !== 'abandonado').length;
+  const linhas = useMemo(
+    () => montarLinhas({ objetivos, iniciativas, medicoes, acoes: acoes_risco, riscos, pessoas }),
+    [objetivos, iniciativas, medicoes, acoes_risco, riscos, pessoas],
+  );
 
-  const saude = useMemo(() => saudeObjetivos(objetivos, medicoes), [objetivos, medicoes]);
+  /** A ordem manual em vigor: a do servidor, ou a que está indo para lá. */
+  const ordemManual = useMemo(() => {
+    if (!ordemPendente) return objetivos;
+    const porId = new Map(objetivos.map(o => [o.id, o]));
+    const naOrdem = new Set(ordemPendente);
+    return [
+      ...ordemPendente.flatMap(id => porId.get(id) ?? []),
+      // Criado por outra pessoa no meio da gravação: vai para o fim, como no servidor.
+      ...objetivos.filter(o => !naOrdem.has(o.id)),
+    ];
+  }, [objetivos, ordemPendente]);
+
+  const visiveis = useMemo(() => ordemManual.filter(o => (idsDoRecorte
+    ? idsDoRecorte.has(o.id)
+    : mostrarEncerrados || o.status !== 'abandonado')), [ordemManual, idsDoRecorte, mostrarEncerrados]);
+
+  const linhaDe = (o: Objetivo): LinhaObjetivo[] => {
+    const l = linhas.get(o.id);
+    return l ? [l] : [];
+  };
+
+  const naVista = useMemo(() => ordenarObjetivos(
+    visiveis.filter(o => !ehBalde(o)),
+    criterio,
+    o => {
+      const l = linhas.get(o.id);
+      return { impacto: l ? l.impacto.entregue + l.impacto.emJogo : 0, progresso: l?.progresso.pct ?? null };
+    },
+  ).flatMap(o => linhas.get(o.id) ?? []), [visiveis, criterio, linhas]);
+  // O balde da migração vai para o fim em qualquer vista: é caixa de entrada,
+  // não direção, e não entra na ordem.
+  const baldes = visiveis.filter(ehBalde).flatMap(linhaDe);
+  const todasVisiveis = [...naVista, ...baldes];
+  const totais = somarTotais(todasVisiveis, medicoes);
+
+  const encerrados = objetivos.filter(o => o.status === 'abandonado').length;
+  const ativosNoPortfolio = objetivos.filter(o => o.status === 'ativo' && !ehBalde(o)).length;
+  const atingidos = objetivos.filter(o => o.status === 'atingido').length;
+
+  /* ---------------- Abrir e fechar ---------------- */
+
+  function alternar(id: string) {
+    setAbertos(prev => (prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]));
+  }
 
   /**
-   * Riscos que ameaçam cada objetivo, derivados do caminho que já existe:
-   * objetivo ← iniciativa ← ação ← risco. Um `objetivo_id` no próprio risco
-   * criaria um segundo caminho para o mesmo fato — e quando os dois
-   * discordassem, ninguém saberia qual vale.
+   * Abre e leva até a linha — é o que a legenda da composição faz. O título
+   * para abaixo do header fixo por `scroll-margin-top` (portfolio.css); sem
+   * isso o foco caía num botão encoberto.
    */
-  const riscosPorObj = useMemo(() => {
-    const m = new Map<string, StoredRiskRecord[]>();
-    for (const o of objetivos) {
-      m.set(o.id, riscosPorObjetivo(o.id, iniciativas, acoes_risco, riscos));
+  function abrirEIr(id: string) {
+    setModoReordenar(false);
+    setAbertos(prev => (prev.includes(id) ? prev : [...prev, id]));
+    const suave = typeof matchMedia !== 'function'
+      || !matchMedia('(prefers-reduced-motion: reduce)').matches;
+    requestAnimationFrame(() => {
+      const el = document.getElementById(`objetivo-${id}`);
+      el?.scrollIntoView?.({ block: 'start', behavior: suave ? 'smooth' : 'auto' });
+      el?.focus({ preventScroll: true });
+    });
+  }
+
+  const idsVisiveis = todasVisiveis.map(l => l.objetivo.id);
+  const tudoAberto = idsVisiveis.length > 0 && idsVisiveis.every(id => abertos.has(id));
+  function alternarTudo() {
+    setAbertos(prev => (tudoAberto
+      ? prev.filter(id => !idsVisiveis.includes(id))
+      : [...new Set([...prev, ...idsVisiveis])]));
+  }
+
+  /* ---------------- Ordem ---------------- */
+
+  function trocarCriterio(c: CriterioObjetivos) {
+    setCriterio(c);
+    setEstadoOrdem('ocioso');
+    if (c !== 'manual') setModoReordenar(false);
+  }
+
+  async function gravarOrdem(novaVisivel: string[], movidoId: string) {
+    if (criterio !== 'manual') return;
+    const todos = ordemManual.map(o => o.id);
+    // A tela reordena só o que mostra; o servidor grava a lista inteira. Os
+    // ocultos (abandonados, fora do recorte, o balde) ficam onde estavam.
+    const completa = aplicarOrdemVisivel(todos, novaVisivel);
+    if (completa.every((id, i) => id === todos[i])) return;
+
+    const nome = linhas.get(movidoId)?.nome ?? 'Objetivo';
+    setAnuncio(`${nome} na posição ${novaVisivel.indexOf(movidoId) + 1} de ${novaVisivel.length}`);
+    setOrdemPendente(completa);
+    setEstadoOrdem('salvando');
+    proximaOrdem.current = completa;
+    // Já há uma em voo: ela leva esta quando terminar.
+    if (emVoo.current) return;
+
+    emVoo.current = true;
+    let ok = true;
+    try {
+      while (ok && proximaOrdem.current) {
+        const ordem = proximaOrdem.current;
+        proximaOrdem.current = null;
+        ok = await reordenarObjetivos(ordem);
+      }
+    } finally {
+      emVoo.current = false;
+      // Em falha a fila cai inteira: as ordens seguintes foram montadas sobre
+      // a que o servidor recusou, e a tela volta à que ele tem.
+      proximaOrdem.current = null;
     }
-    return m;
-  }, [objetivos, iniciativas, acoes_risco, riscos]);
+    setOrdemPendente(null);
+    setEstadoOrdem(ok ? 'salvo' : 'ocioso');
+    if (!ok) setAnuncio('A ordem não foi salva. A lista voltou à ordem anterior.');
+  }
+
+  const idsNaVista = naVista.map(l => l.objetivo.id);
+  const mover = (id: string, delta: -1 | 1) => { void gravarOrdem(moverUm(idsNaVista, id, delta), id); };
+  const soltar = (id: string, alvoId: string) => { void gravarOrdem(moverPara(idsNaVista, id, alvoId), id); };
+
+  const rotuloCriterio = CRITERIOS_OBJETIVOS.find(c => c.id === criterio)?.rotulo ?? '';
+  const textoEstado: ReactNode = estadoOrdem === 'salvando'
+    ? 'Salvando a ordem…'
+    : criterio !== 'manual'
+      ? `Vista por ${rotuloCriterio.toLowerCase()}. A ordem manual continua guardada.`
+      : estadoOrdem === 'salvo'
+        ? 'Ordem salva · vale para todos'
+        : reordenando
+          ? 'Use ↑ ↓ em cada linha. A ordem vale para todos.'
+          : (
+              // Abaixo de 760px a alça some (portfolio.css), e a dica que manda
+              // arrastá-la apontava para um controle que não está na tela. As
+              // duas frases ficam no DOM e o CSS escolhe — a mesma régua de
+              // largura que esconde a alça.
+              <>
+                <span className="objetivos-dica-alca">Arraste pela alça, ou foque nela e use ↑ ↓.</span>
+                <span className="objetivos-dica-toque">Toque em Reordenar para mover com ↑ ↓.</span>
+                {' '}A ordem vale para todos.
+              </>
+            );
+
+  /* ---------------- Ações do objetivo ---------------- */
 
   async function salvarNovo(dados: Record<string, unknown>) {
     return createEntidade('objetivos', dados);
@@ -113,9 +269,8 @@ export function ObjetivosTab({
     await patchEntidade('objetivos', o.id, { status: 'atingido' });
   }
 
-
   async function excluir(o: Objetivo) {
-    const presas = porObjetivo.get(o.id)?.length ?? 0;
+    const presas = iniciativas.filter(i => i.objetivo_id === o.id).length;
     if (presas > 0) {
       window.alert(
         `Este objetivo tem ${plural(presas, 'iniciativa pendurada', 'iniciativas penduradas')}. `
@@ -134,6 +289,106 @@ export function ObjetivosTab({
     const ok = await deleteEntidade('objetivos', o.id);
     if (ok) setEditando(null);
   }
+
+  const porId = (id: string) => objetivos.find(o => o.id === id) ?? null;
+
+  /* ---------------- KPIs ---------------- */
+
+  /*
+   * Os dois tiles em R$ seguem a régua do Painel: não se aplica é travessão;
+   * se aplica e ninguém preencheu é estado vazio com o botão de quem preenche;
+   * alguém preencheu é o número, com o aviso de que ele é piso. "R$ 0" por
+   * campo em branco grita sem informar.
+   */
+  const kpiEntregue: Omit<KpiProps, 'label'> = totais.concluidas === 0
+    ? { valor: '—', sub: 'Nenhuma iniciativa concluída' }
+    : totais.entreguesSemValor === totais.concluidas
+      ? {
+          valor: null,
+          vazio: {
+            texto: `${plural(totais.concluidas, 'iniciativa concluída', 'iniciativas concluídas')}, nenhuma com valor de impacto declarado.`,
+            acao: { label: 'Declarar valor', onClick: () => onIrPara('iniciativas') },
+          },
+        }
+      : {
+          valor: formatarMoeda(totais.entregue),
+          sub: plural(totais.concluidas, 'iniciativa concluída', 'iniciativas concluídas'),
+          title: formatarMoedaCheia(totais.entregue),
+          alerta: totais.entreguesSemValor > 0
+            ? `${totais.entreguesSemValor} sem valor de impacto`
+            : undefined,
+        };
+
+  const kpiEmJogo: Omit<KpiProps, 'label'> = totais.ativas === 0
+    ? { valor: '—', sub: 'Nenhuma iniciativa ativa' }
+    : totais.emCursoSemValor === totais.ativas
+      ? {
+          valor: null,
+          vazio: {
+            texto: `${plural(totais.ativas, 'iniciativa ativa', 'iniciativas ativas')}, nenhuma com valor de impacto declarado.`,
+            acao: { label: 'Declarar valor', onClick: () => onIrPara('iniciativas') },
+          },
+        }
+      : {
+          valor: formatarMoeda(totais.emJogo),
+          sub: plural(totais.ativas, 'iniciativa ativa', 'iniciativas ativas'),
+          title: formatarMoedaCheia(totais.emJogo),
+          alerta: totais.emCursoSemValor > 0
+            ? `${totais.emCursoSemValor} sem valor de impacto`
+            : undefined,
+        };
+
+  const { ameacas } = totais;
+  const kpiRiscos: Omit<KpiProps, 'label'> = ameacas.total === 0
+    ? { valor: '—', sub: 'Nenhum risco chega a estes objetivos pelas iniciativas' }
+    : {
+        valor: `${ameacas.neutralizados} de ${ameacas.total}`,
+        progresso: ameacas.neutralizados / ameacas.total,
+        sub: ameacas.semTratamento > 0 ? `${ameacas.semTratamento} sem tratamento` : undefined,
+        title: 'Só conta o mitigado confirmado. Tratamento entregue e ainda não fechado continua ameaçando.',
+      };
+
+  const pendentesDeNumero = totais.prontos + totais.semNumero;
+  const kpiIndicadores: Omit<KpiProps, 'label'> = totais.ativos === 0
+    ? { valor: '—', sub: 'Nenhum objetivo ativo à vista', acento: 'null' }
+    : {
+        valor: `${totais.melhorando} de ${totais.ativos}`,
+        sub: `${plural(totais.prontos, 'pronto', 'prontos')} para atingir · ${totais.semNumero} sem número`,
+        acento: pendentesDeNumero > 0 ? 'medio' : 'null',
+      };
+
+  /* ---------------- Composição do impacto ---------------- */
+
+  const comprometido = totais.entregue + totais.emJogo;
+  const comIniciativa = totais.concluidas + totais.ativas;
+  const semValor = totais.entreguesSemValor + totais.emCursoSemValor;
+  // O entregue só vira número quando alguma concluída declarou valor. Sem
+  // concluída ele não se aplica; com todas em branco, "R$ 0 · 0%" seria o
+  // campo vazio posando de resultado.
+  const entregueDeclarado = totais.concluidas > 0 && totais.entreguesSemValor < totais.concluidas;
+  const fatiasImpacto: Fatia[] = [
+    ...todasVisiveis
+      .filter(l => l.impacto.entregue > 0)
+      .sort((a, b) => b.impacto.entregue - a.impacto.entregue)
+      .map(l => ({
+        chave: l.objetivo.id,
+        serie: 'concluida',
+        label: l.balde ? 'A classificar · balde da migração' : l.nome,
+        valor: l.impacto.entregue,
+        rotulo: formatarMoeda(l.impacto.entregue),
+        onClick: () => abrirEIr(l.objetivo.id),
+      })),
+    // Em jogo é um bloco só: dividir por objetivo o que ainda não foi entregue
+    // poria promessa lado a lado com resultado, na mesma cor de régua.
+    ...(totais.emJogo > 0
+      ? [{
+          chave: 'em_jogo', serie: 'em_jogo', label: 'Em jogo · iniciativas ativas',
+          valor: totais.emJogo, rotulo: formatarMoeda(totais.emJogo),
+        }]
+      : []),
+  ];
+
+  /* ---------------- Render ---------------- */
 
   if (loading && objetivos.length === 0) {
     return (
@@ -162,16 +417,14 @@ export function ObjetivosTab({
         <div>
           <div className="page-title">Objetivos</div>
           <div className="page-subtitle">
-            {plural(objetivos.filter(o => o.status === 'ativo').length, 'objetivo ativo', 'objetivos ativos')} ·
-            {' '}toda iniciativa pendura em um deles
+            {plural(ativosNoPortfolio, 'objetivo ativo', 'objetivos ativos')} ·
+            {' '}{plural(atingidos, 'atingido', 'atingidos')} ·
+            {' '}o que cada um já rendeu, o que está em jogo e o que ainda ameaça
           </div>
         </div>
         <div className="actions-row">
           {encerrados > 0 && (
-            <button
-              className="btn btn-ghost"
-              onClick={() => setMostrarEncerrados(v => !v)}
-            >
+            <button className="btn btn-ghost" onClick={() => setMostrarEncerrados(v => !v)}>
               {mostrarEncerrados ? 'Ocultar abandonados' : `Mostrar abandonados · ${encerrados}`}
             </button>
           )}
@@ -181,312 +434,150 @@ export function ObjetivosTab({
 
       {objetivos.length > 0 && (
         <KpiRow colunas={4}>
-          <Kpi label="Ativos" valor={saude.ativos} acento="brand" />
-          <Kpi
-            label="Atingidos"
-            valor={saude.atingidos}
-            sub="declarados por você"
-            acento="baixo"
-          />
-          <Kpi
-            label="Prontos para atingir"
-            valor={saude.prontosParaAtingir.length}
-            sub="a série cobriu o caminho todo"
-            acento={saude.prontosParaAtingir.length > 0 ? 'medio' : 'null'}
-          />
-          <Kpi
-            label="Sem número"
-            valor={saude.semIndicador + saude.semMedicao}
-            sub={`${saude.semIndicador} sem indicador · ${saude.semMedicao} sem medição`}
-            acento={saude.semIndicador + saude.semMedicao > 0 ? 'alto' : 'null'}
-          />
+          <Kpi label="Impacto entregue" acento="baixo" {...kpiEntregue} />
+          <Kpi label="Em jogo" acento="brand" {...kpiEmJogo} />
+          <Kpi label="Riscos neutralizados" acento="baixo" {...kpiRiscos} />
+          <Kpi label="Indicadores melhorando" {...kpiIndicadores} />
         </KpiRow>
       )}
 
-      {visiveis.length === 0 ? (
+      {todasVisiveis.length === 0 ? (
         <div className="card">
-          <EmptyState
-            message="Nenhum objetivo cadastrado"
-            hint="O objetivo é o porquê: o resultado de negócio que as iniciativas movem. Poucos e ativos — três a seis dão conta de um ano."
-            action={{ label: '+ Novo objetivo', onClick: () => setCriando(true) }}
-          />
+          {objetivos.length === 0 ? (
+            <EmptyState
+              message="Nenhum objetivo cadastrado"
+              hint="O objetivo é o porquê: o resultado de negócio que as iniciativas movem. Poucos e ativos — três a seis dão conta de um ano."
+              action={{ label: '+ Novo objetivo', onClick: () => setCriando(true) }}
+            />
+          ) : (
+            <EmptyState
+              message="Nenhum objetivo à vista"
+              hint={idsDoRecorte
+                ? 'Nenhum objetivo sobrou neste recorte — a lacuna que o trouxe até aqui já foi resolvida.'
+                : 'Os objetivos cadastrados estão todos abandonados. Mostre-os para consultar ou reativar.'}
+              action={!idsDoRecorte && encerrados > 0
+                ? { label: `Mostrar abandonados · ${encerrados}`, onClick: () => setMostrarEncerrados(true) }
+                : undefined}
+            />
+          )}
         </div>
       ) : (
-        <div className="card-col" style={{ gap: 'var(--sp-3)' }}>
-          {visiveis.map(o => {
-            const daqui = porObjetivo.get(o.id) ?? [];
-            const ativas = daqui.filter(iniciativaAtiva);
-            const concluidas = daqui.filter(i => i.status === 'concluida').length;
-            const comprometido = daqui.reduce((s, i) => s + (i.impacto_rs ?? 0), 0);
-            const balde = o.descricao === OBJETIVO_BALDE;
-            const orfao = !balde && o.status === 'ativo' && ativas.length === 0;
-            const pctExecucao = daqui.length === 0 ? 0 : concluidas / daqui.length;
-            const progresso = progressoObjetivo(o, medicoes);
-            // Sem baseline ou meta não existe caminho para medir — é diferente
-            // de "existe caminho e ninguém mediu", e o cartão diz qual dos dois.
-            const semMeta = o.baseline == null || o.meta == null || o.baseline === o.meta;
-            const ameacas = riscosPorObj.get(o.id) ?? [];
-            const sufixo = o.unidade ? ` ${o.unidade}` : '';
-            // Casas decimais seguem o próprio número: 8,4% mantém a casa, 145 dias não ganha uma.
-            const num = (v: number | null) => formatarNumero(v, v != null && !Number.isInteger(v) ? 1 : 0);
+        <>
+          <section className="card objetivos-impacto" aria-labelledby="objetivos-impacto-titulo">
+            <div className="section-title" id="objetivos-impacto-titulo">De onde vem o impacto</div>
+            {comprometido > 0 && (entregueDeclarado ? (
+              <div className="bento-sub">
+                <span className="tabular">{formatarMoeda(totais.entregue)}</span> entregues de
+                {' '}<span className="tabular">{formatarMoeda(comprometido)}</span> comprometidos ·
+                {' '}<span className="tabular">{formatarPct(totais.entregue / comprometido)}</span> já virou resultado
+              </div>
+            ) : (
+              <div className="bento-sub">
+                <span className="tabular">{formatarMoeda(totais.emJogo)}</span> em jogo ·
+                {' '}{totais.concluidas === 0
+                  ? 'nenhuma iniciativa concluída ainda'
+                  : `${plural(totais.concluidas, 'concluída', 'concluídas')} sem valor de impacto declarado`}
+              </div>
+            ))}
+            <Composicao
+              fatias={fatiasImpacto}
+              vazio={comIniciativa === 0
+                ? 'Nenhuma iniciativa concluída ou ativa nos objetivos à vista — ainda não há entrega para somar.'
+                : semValor === comIniciativa
+                  ? 'Nenhuma iniciativa daqui tem valor de impacto declarado. O valor entra pela ficha de cada '
+                    + 'iniciativa, no campo Impacto financeiro — sem ele não dá para dizer o que as entregas renderam.'
+                  : 'O valor de impacto declarado nas iniciativas daqui soma zero — não há o que compor.'}
+            />
+            {semValor > 0 && semValor < comIniciativa && (
+              <div className="bento-lacuna">
+                <span aria-hidden="true">▲</span>
+                {plural(semValor, 'iniciativa sem valor de impacto', 'iniciativas sem valor de impacto')} — os totais são piso
+              </div>
+            )}
+          </section>
 
-            return (
-              <div className="card objetivo-card" key={o.id} data-orfao={orfao} data-balde={balde}>
-                <div>
-                  <div className="ini-meta" style={{ marginTop: 0 }}>
-                    <span className="badge" data-badge={BADGE_STATUS[o.status] ?? 'neutro'}>
-                      {ROTULO_STATUS_OBJETIVO[o.status]}
-                    </span>
-                    <span>{ROTULO_HORIZONTE[o.horizonte]}</span>
-                    {o.prazo && <><span>·</span><span className="tabular">até {formatarData(o.prazo)}</span></>}
-                  </div>
-
-                  <div className="objetivo-titulo">{o.descricao || 'Objetivo sem descrição'}</div>
-
-                  <div className="ini-meta">
-                    <span>{o.dono_id ? pessoaPorId.get(o.dono_id) ?? 'Dono removido' : 'Sem dono'}</span>
-                    {comprometido > 0 && <><span>·</span><span>{formatarMoeda(comprometido)} em jogo</span></>}
-                  </div>
-
-                  <div className="actions-row" style={{ marginTop: 'var(--sp-3)' }}>
-                    <button className="btn btn-ghost" onClick={() => setEditando(o)}>Editar</button>
-                    {/* O sistema prova que a meta foi alcançada; declarar é
-                        sempre de quem responde pelo objetivo. Nada aqui muda o
-                        status sozinho. */}
-                    {progresso.pct === 1 && o.status === 'ativo' && (
-                      <button
-                        className="btn btn-navy"
-                        onClick={() => { void declararAtingido(o); }}
-                        title="A série já cobriu todo o caminho entre baseline e meta."
-                      >
-                        Declarar atingido
-                      </button>
-                    )}
-                  </div>
-
-                  {balde && (
-                    <div className="bento-sub" style={{ marginTop: 'var(--sp-3)' }}>
-                      Balde temporário da migração. Reclassifique as iniciativas daqui para
-                      objetivos de verdade — depois ele pode ser excluído.
-                    </div>
-                  )}
-                  {orfao && (
-                    <div className="bento-lacuna">
-                      <span aria-hidden="true">▲</span> Sem iniciativa ativa — é intenção, não plano
-                    </div>
-                  )}
-                </div>
-
-                <div>
-                  <div className="fato-label">Indicador</div>
-                  {o.indicador ? (
-                    <>
-                      <div className="lista-texto" style={{ whiteSpace: 'normal', marginTop: 'var(--sp-1)' }}>
-                        {o.indicador}
-                      </div>
-
-                      {/* baseline → hoje → meta. O do meio é o que a série diz,
-                          e só existe quando alguém mediu. */}
-                      <div className="ini-meta">
-                        <span className="tabular">{num(o.baseline)}{sufixo}</span>
-                        <span aria-hidden="true">→</span>
-                        <span
-                          className="tabular"
-                          style={{
-                            color: progresso.atual == null ? 'var(--ink-4)' : 'var(--ink-1)',
-                            fontWeight: 'var(--fw-semibold)',
-                          }}
-                        >
-                          {progresso.atual == null ? 'sem medição' : `${num(progresso.atual)}${sufixo}`}
-                        </span>
-                        <span aria-hidden="true">→</span>
-                        <span className="tabular">{num(o.meta)}{sufixo}</span>
-                      </div>
-
-                      {/* Sem meta ou sem medição a trilha é tracejada e não
-                          tem preenchimento — nunca uma barra em 0%. Zero por
-                          cento diz "não andou"; o que aconteceu foi "ninguém
-                          mediu", e só o primeiro é fracasso do objetivo. */}
-                      <div
-                        className="meta-track"
-                        data-sem-medida={progresso.pct == null || undefined}
-                        title={
-                          progresso.pct == null
-                            ? (semMeta
-                              ? 'Sem baseline ou meta — não há caminho para medir'
-                              : 'Sem medição — não há onde marcar o ponto')
-                            : `${formatarPct(progresso.pct)} do caminho entre baseline e meta`
-                        }
-                      >
-                        {progresso.pct != null && (
-                          <span className="meta-fill" style={{ width: `${Math.round(progresso.pct * 100)}%` }} />
-                        )}
-                        <span className="meta-alvo" />
-                      </div>
-                      <div className="meta-legenda">
-                        <span>
-                          {progresso.pct == null
-                            ? (semMeta ? 'Sem meta definida' : 'Sem medição')
-                            : `${formatarPct(progresso.pct)} do caminho`}
-                        </span>
-                        {progresso.tendencia && (
-                          <span className="tendencia" data-t={progresso.tendencia}>
-                            <span aria-hidden="true">
-                              {progresso.tendencia === 'melhorou' ? '▲' : progresso.tendencia === 'piorou' ? '▼' : '='}
-                            </span>
-                            {ROTULO_TENDENCIA[progresso.tendencia]}
-                          </span>
-                        )}
-                      </div>
-
-                      <Sparkline
-                        serie={progresso.serie}
-                        baseline={o.baseline}
-                        meta={o.meta}
-                        unidade={sufixo}
-                      />
-
-                      <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
-                        {semMeta && (
-                          <button className="btn btn-ghost" onClick={() => setEditando(o)}>
-                            Definir meta
-                          </button>
-                        )}
-                        <button className="btn btn-ghost" onClick={() => setMedindo(o)}>
-                          {progresso.serie.length === 0
-                            ? 'Registrar 1ª medição'
-                            : `Medições · ${progresso.serie.length}`}
-                        </button>
-                        {progresso.data && (
-                          <span className="lista-nota">última: {formatarData(progresso.data)}</span>
-                        )}
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div className="bento-sub">
-                        Sem indicador. Objetivo sem número vira opinião no fim do trimestre.
-                      </div>
-                      <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
-                        <button className="btn btn-ghost" onClick={() => setEditando(o)}>
-                          Definir indicador
-                        </button>
-                      </div>
-                    </>
-                  )}
-
-                  <div className="fato-label" style={{ marginTop: 'var(--sp-4)' }}>Execução</div>
-                  <div className="meta-legenda" style={{ marginTop: 'var(--sp-1)' }}>
-                    <span>{concluidas} de {daqui.length} iniciativas concluídas</span>
-                    <span>{formatarPct(pctExecucao)}</span>
-                  </div>
-                </div>
-
-                <div className="objetivo-iniciativas">
-                  <div className="fato-label">
-                    {daqui.length === 0
-                      ? 'Nenhuma iniciativa'
-                      : `${plural(daqui.length, 'iniciativa', 'iniciativas')} · ${ativas.length} ativas`}
-                  </div>
-                  {daqui.length === 0 ? (
-                    <div className="bento-sub">
-                      <strong>Nenhuma iniciativa sustenta este objetivo.</strong> Enquanto não
-                      houver, ele é intenção — não plano.
-                      <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
-                        <button className="btn btn-ghost" onClick={() => onCriarIniciativa(o.id)}>
-                          Criar iniciativa
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="lista-linhas">
-                      {daqui.slice(0, 8).map(i => (
-                        <div className="lista-linha" key={i.id}>
-                          <button
-                            className="lista-texto link-ini"
-                            style={{ fontSize: 'var(--fs-xs)', fontWeight: 'var(--fw-medium)' }}
-                            onClick={() => onAbrirIniciativa(i.id)}
-                          >
-                            {i.nome || 'Iniciativa sem nome'}
-                          </button>
-                          <span className="badge" data-badge={BADGE_STATUS_INICIATIVA[i.status]}>
-                            {ROTULO_STATUS_INICIATIVA[i.status]}
-                          </span>
-                        </div>
-                      ))}
-                      {daqui.length > 8 && (
-                        <div className="lista-linha">
-                          <span className="lista-nota">e mais {daqui.length - 8}</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Riscos que ameaçam este objetivo. Derivado: chega aqui
-                      pelas iniciativas penduradas, nunca por um campo no
-                      próprio risco. Risco tratado só por mitigação autônoma
-                      não aparece em objetivo nenhum — e é justamente essa a
-                      lacuna que o Painel cobra. */}
-                  <div className="fato-label" style={{ marginTop: 'var(--sp-4)' }}>
-                    {ameacas.length === 0
-                      ? 'Nenhum risco vinculado'
-                      : `${plural(ameacas.length, 'risco ameaça', 'riscos ameaçam')} este objetivo`}
-                  </div>
-                  {ameacas.length === 0 ? (
-                    <div className="bento-sub">
-                      Nenhuma iniciativa daqui trata risco mapeado. Vincular um risco a uma
-                      delas faz ele aparecer nesta lista.
-                    </div>
-                  ) : (
-                    <div className="lista-linhas">
-                      {ameacas.slice(0, 6).map(r => {
-                        const score = computeScore(r);
-                        return (
-                          <div className="lista-linha" key={r.id}>
-                            <button
-                              className="lista-texto link-ini"
-                              style={{ fontSize: 'var(--fs-xs)', fontWeight: 'var(--fw-medium)' }}
-                              onClick={() => onAbrirRisco(r.id)}
-                              title={nomeRisco(r)}
-                            >
-                              {nomeRisco(r)}
-                            </button>
-                            <span className="tier-chip" data-tier={scoreTier(score)}>
-                              <span className="tier-dot" aria-hidden="true" />
-                              {score == null ? 'sem score' : String(score).replace('.', ',')}
-                            </span>
-                          </div>
-                        );
-                      })}
-                      {ameacas.length > 6 && (
-                        <div className="lista-linha">
-                          <span className="lista-nota">e mais {ameacas.length - 6}</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
+          <div className="objetivos-bloco">
+            <div className="objetivos-ferramentas">
+              <div className="objetivos-ordenar">
+                <span className="objetivo-rotulo" id="objetivos-ordenar-rotulo">Ordenar</span>
+                <div className="view-toggle" role="group" aria-labelledby="objetivos-ordenar-rotulo">
+                  {CRITERIOS_OBJETIVOS.map(c => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      className={criterio === c.id ? 'active' : ''}
+                      aria-pressed={criterio === c.id}
+                      onClick={() => trocarCriterio(c.id)}
+                    >
+                      {c.rotulo}
+                    </button>
+                  ))}
                 </div>
               </div>
-            );
-          })}
-        </div>
+              <span className="objetivos-estado" aria-live="polite">{textoEstado}</span>
+              <div className="actions-row objetivos-ferramentas-acoes">
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  aria-pressed={reordenando}
+                  disabled={criterio !== 'manual' || (naVista.length < 2 && !reordenando)}
+                  title={criterio !== 'manual' ? 'Volte ao critério Manual para reordenar' : undefined}
+                  onClick={() => setModoReordenar(v => !v)}
+                >
+                  Reordenar
+                </button>
+                <button type="button" className="btn btn-ghost" onClick={alternarTudo} disabled={reordenando}>
+                  {tudoAberto ? 'Recolher tudo' : 'Expandir tudo'}
+                </button>
+              </div>
+            </div>
+            <div className="sr-only" aria-live="polite">{anuncio}</div>
+
+            <ListaObjetivos
+              linhas={naVista}
+              baldes={baldes}
+              abertos={abertos}
+              onAlternar={alternar}
+              onAbrir={id => setAbertos(prev => (prev.includes(id) ? prev : [...prev, id]))}
+              podeReordenar={criterio === 'manual'}
+              reordenando={reordenando}
+              onMover={mover}
+              onSoltar={soltar}
+              totais={totais}
+              onEditar={id => setEditando(porId(id))}
+              onMedir={id => setMedindo(porId(id))}
+              onDeclararValor={() => onIrPara('iniciativas')}
+              detalhe={l => (
+                <ObjetivoDetalhe
+                  id={`objetivo-detalhe-${l.objetivo.id}`}
+                  linha={l}
+                  onEditar={() => setEditando(l.objetivo)}
+                  onMedir={() => setMedindo(l.objetivo)}
+                  onDeclarar={() => { void declararAtingido(l.objetivo); }}
+                  onCriarIniciativa={() => onCriarIniciativa(l.objetivo.id)}
+                  onAbrirIniciativa={onAbrirIniciativa}
+                  onAbrirRisco={onAbrirRisco}
+                />
+              )}
+            />
+          </div>
+        </>
       )}
 
-      {semObjetivo.length > 0 && (
-        <div className="card" style={{ marginTop: 'var(--sp-3)' }}>
+      {iniciativas.some(i => !i.objetivo_id) && (
+        <div className="card">
           <div className="section-title">
-            {plural(semObjetivo.length, 'iniciativa sem objetivo', 'iniciativas sem objetivo')}
+            {plural(iniciativas.filter(i => !i.objetivo_id).length, 'iniciativa sem objetivo', 'iniciativas sem objetivo')}
           </div>
           <div className="bento-sub">
             Não deveriam existir — a regra recusa iniciativa sem objetivo na gravação.
             Provavelmente o objetivo delas foi excluído. Reatribua pelo detalhe de cada uma.
           </div>
           <div className="lista-linhas">
-            {semObjetivo.map(i => (
+            {iniciativas.filter(i => !i.objetivo_id).map(i => (
               <div className="lista-linha" key={i.id}>
                 <button
-                  className="lista-texto link-ini"
-                  style={{ fontSize: 'var(--fs-xs)', fontWeight: 'var(--fw-medium)' }}
+                  className="lista-texto link-ini objetivo-ini-nome"
                   onClick={() => onAbrirIniciativa(i.id)}
                 >
                   {i.nome || 'Iniciativa sem nome'}

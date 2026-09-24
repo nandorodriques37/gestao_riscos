@@ -182,11 +182,27 @@ responde ao modo "sistema"; e a camada final NÃO foi dobrada de uma vez —
 cascata só em algumas larguras de tela. Ela encolhe a cada mudança e some
 quando esvaziar.
 
+### 16. Objetivos como placar de impacto — 24/09/2026
+
+A aba Objetivos era uma pilha de cartões abertos, e os números que mais
+importam — quanto as entregas renderam e quanto da ameaça caiu — viviam
+espalhados dentro de cada cartão. Proposta desenhada num canvas e aprovada
+antes do código. A lista virou gráfico: cada linha tem indicador, R$ entregue
+e em jogo numa escala comum, riscos neutralizados e tendência; o detalhe
+recolhe e expande. KPIs trocaram contagem de cadastro por impacto, e a barra
+"De onde vem o impacto" mostra que objetivo produziu o resultado.
+
+Três decisões do usuário viraram regra: neutralizado é só o mitigado
+confirmado; "em jogo" não se divide por objetivo; a ordem manual vale para
+todos e fica em `position`, coluna que já existia — sem campo novo. A rota de
+reordenação exige o conjunto completo e não toca em `version`, para arrastar
+uma linha não gerar conflito em quem está editando.
+
 ## Estado atual desta alteração
 
-- 491 testes em 28 arquivos, incluindo transações, conflitos, anexos, roteador,
-  hooks de sincronização, rascunhos do modal de risco, a cadeia quebrada e o
-  fluxo da cadeia.
+- 563 testes em 31 arquivos, incluindo transações, conflitos, anexos, roteador,
+  hooks de sincronização, rascunhos do modal de risco, a cadeia quebrada, o
+  fluxo da cadeia e a reordenação dos objetivos.
 - CI verifica tipos, lint, testes e build nos PRs e nos pushes à `main`.
 - JavaScript principal: cerca de 527 KB → 295 KB minificado; os demais módulos
   são carregados conforme o destino. Isso não mede o tempo real de abertura.
