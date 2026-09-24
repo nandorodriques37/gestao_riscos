@@ -36,9 +36,15 @@ function lerOrdem(ordem: unknown): string[] {
  */
 export async function reordenarObjetivos(sql: Sql, ordem: unknown): Promise<Objetivo[]> {
   const ids = lerOrdem(ordem);
-  const run = async (tx: Sql): Promise<Objetivo[]> => {
-    // Trava as linhas para duas reordenações simultâneas não se intercalarem.
-    const atuais = (await tx('select id from objetivos for update')).map(r => String(r.id));
+  const run = async (tx: Sql, emTransacao: boolean): Promise<Objetivo[]> => {
+    // Trava a TABELA, não as linhas. `for update` só alcança linha que já
+    // existe: um objetivo criado entre a leitura e o commit escapava da
+    // checagem de conjunto e a ordem gravava sem ele, com 200 em vez de 409.
+    // SHARE ROW EXCLUSIVE barra insert/update/delete e outra reordenação até
+    // o commit; quem estava inserindo antes termina primeiro e cai no conjunto.
+    // Fora de transação o LOCK nem é aceito — e não haveria o que proteger.
+    if (emTransacao) await tx('lock table objetivos in share row exclusive mode');
+    const atuais = (await tx('select id from objetivos')).map(r => String(r.id));
     const pedido = new Set(ids);
     if (atuais.length !== ids.length || atuais.some(id => !pedido.has(id))) {
       throw new ErroOperacao('A lista de objetivos mudou enquanto você reordenava. A tela foi atualizada; tente de novo.', 409);
@@ -52,5 +58,5 @@ export async function reordenarObjetivos(sql: Sql, ordem: unknown): Promise<Obje
     );
     return objetivos.list(tx);
   };
-  return sql.transaction ? sql.transaction(run) : run(sql);
+  return sql.transaction ? sql.transaction(tx => run(tx, true)) : run(sql, false);
 }

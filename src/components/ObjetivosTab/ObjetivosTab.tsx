@@ -75,7 +75,7 @@ export function ObjetivosTab({
   const [anuncio, setAnuncio] = useState('');
   /*
    * Uma gravação da ordem por vez. Cada POST abre a própria conexão no
-   * servidor e disputa o `for update`: dois em voo fazem commit em qualquer
+   * servidor e disputa o lock da tabela: dois em voo fazem commit em qualquer
    * ordem, e vale o último a chegar — que pode ser uma ordem intermediária.
    * Enquanto uma está em voo, só a ordem MAIS RECENTE fica guardada e sai
    * quando ela terminar; as do meio já foram superadas e nem viajam.

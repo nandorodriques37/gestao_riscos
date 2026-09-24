@@ -123,6 +123,21 @@ describe('reordenarObjetivos', () => {
     expect(descricoes(await objetivos.list(sql))).toEqual(['B', 'A', 'C']);
   });
 
+  it('trava a tabela contra escrita antes de conferir o conjunto', async () => {
+    // `for update` não barra INSERT: um objetivo criado no meio escapava da
+    // checagem. O lock de tabela tem de vir antes da leitura, dentro da transação.
+    const [a, b] = await criar('A', 'B');
+    const vistas: string[] = [];
+    const espiao: Sql = (query, params) => sql(query, params);
+    espiao.transaction = run => sql.transaction!(tx => run((query, params) => {
+      vistas.push(query.replace(/\s+/g, ' ').trim());
+      return tx(query, params);
+    }));
+    await reordenarObjetivos(espiao, [b.id, a.id]);
+    expect(vistas[0]).toBe('lock table objetivos in share row exclusive mode');
+    expect(vistas[1]).toBe('select id from objetivos');
+  });
+
   it('funciona sem suporte a transação no executor', async () => {
     const [a, b] = await criar('A', 'B');
     const semTransacao: Sql = (query, params) => sql(query, params);
