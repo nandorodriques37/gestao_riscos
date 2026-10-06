@@ -19,6 +19,7 @@ import { VincularRiscoModal } from './VincularRiscoModal';
 import { proximoMarco, dataPlanoMarco } from './iniciativasUi';
 import { OBJETIVO_BALDE } from '../../lib/portfolioUi';
 import { Historico } from '../common/Historico';
+import { useConfirmacao } from '../common/Confirmacao';
 
 interface IniciativaDetalheProps {
   iniciativa: Iniciativa;
@@ -84,8 +85,14 @@ export function IniciativaDetalhe({
     return pf.patchEntidade('marcos', id, dados, marcoEditando?.version);
   }
 
+  const [confirmar, dialogoConfirmacao] = useConfirmacao();
+
   async function excluirMarco(m: Marco) {
-    if (!window.confirm(`Excluir o marco "${m.nome}"?`)) return;
+    if (!(await confirmar({
+      titulo: `Excluir o marco "${m.nome}"?`,
+      consequencia: 'A data, o critério de aceite e o histórico de replanejamento do marco somem.',
+      rotuloConfirmar: 'Excluir marco',
+    }))) return;
     const ok = await pf.deleteEntidade('marcos', m.id);
     if (ok) setMarcoEditando(null);
   }
@@ -106,9 +113,12 @@ export function IniciativaDetalhe({
   }
 
   async function soltarAcao(a: AcaoRisco) {
-    if (!window.confirm(
-      'Desvincular esta ação da iniciativa? Ela volta a ser uma mitigação autônoma do risco.',
-    )) return;
+    if (!(await confirmar({
+      titulo: 'Desvincular esta ação da iniciativa?',
+      consequencia: 'Ela volta a ser uma mitigação autônoma do risco; nada é apagado.',
+      rotuloConfirmar: 'Desvincular ação',
+      perigo: false,
+    }))) return;
     await pf.patchEntidade('acoes-risco', a.id, { iniciativa_id: null });
   }
 
@@ -416,6 +426,7 @@ export function IniciativaDetalhe({
           onClose={() => setVinculando(false)}
         />
       )}
+      {dialogoConfirmacao}
     </div>
   );
 }

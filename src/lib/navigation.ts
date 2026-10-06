@@ -11,6 +11,16 @@ export function routeHash(route: Partial<AppRoute>) {
   Object.entries(route).forEach(([key, value]) => { if (value) q.set(key, value); });
   return '#' + q.toString();
 }
-const guards = new Set<() => boolean>();
-export function guardNavigation(guard: () => boolean) { guards.add(guard); return () => { guards.delete(guard); }; }
-export function canNavigate() { return [...guards].every(guard => guard()); }
+/**
+ * Quem tem rascunho sujo registra um guard. Ele pode abrir um diálogo, então
+ * responde por Promise: `window.confirm` bloqueava a thread, o diálogo não.
+ */
+export type GuardNavegacao = () => boolean | Promise<boolean>;
+const guards = new Set<GuardNavegacao>();
+export function guardNavigation(guard: GuardNavegacao) { guards.add(guard); return () => { guards.delete(guard); }; }
+export function temGuard() { return guards.size > 0; }
+/** Pergunta um a um e para no primeiro "não": dois diálogos em fila seriam pior que um. */
+export async function canNavigate() {
+  for (const guard of [...guards]) if (!(await guard())) return false;
+  return true;
+}

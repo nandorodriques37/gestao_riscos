@@ -3,6 +3,7 @@ import type { TaskAttachment } from '../../types';
 import { taskAttachmentUrl } from '../../lib/tasksApi';
 import { ACCEPT_IMAGE_MIMES, formatBytes, isImageFile } from '../../lib/imageAttachments';
 import { ImageLightbox } from './ImageLightbox';
+import { useConfirmacao } from '../common/Confirmacao';
 
 interface AnexosEditorProps {
   taskId: string;
@@ -81,8 +82,14 @@ export function AnexosEditor({ taskId, anexos, onAdd, onRemove }: AnexosEditorPr
     e.target.value = ''; // permite reenviar o mesmo arquivo depois de removê-lo
   }
 
+  const [confirmar, dialogoConfirmacao] = useConfirmacao();
+
   async function remover(anexo: TaskAttachment) {
-    if (!window.confirm(`Remover a imagem "${anexo.nome}"?`)) return;
+    if (!(await confirmar({
+      titulo: `Remover a imagem "${anexo.nome}"?`,
+      consequencia: 'A imagem sai da tarefa e não dá para recuperá-la.',
+      rotuloConfirmar: 'Remover imagem',
+    }))) return;
     setErro(null);
     try {
       await onRemove(anexo.id);
@@ -164,6 +171,7 @@ export function AnexosEditor({ taskId, anexos, onAdd, onRemove }: AnexosEditorPr
           onClose={() => setVisualizando(null)}
         />
       )}
+      {dialogoConfirmacao}
     </div>
   );
 }

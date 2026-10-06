@@ -25,7 +25,7 @@ export function PessoaModal({ pessoa, onSalvar, onExcluir, onClose, erro }: Pess
   const initial = useRef(JSON.stringify(d));
   const busy = useRef(false);
   const [falha, setFalha] = useState('');
-  const fechar = useDraftGuard(JSON.stringify(d) !== initial.current, salvando, onClose);
+  const [fechar, dialogoDescarte] = useDraftGuard(JSON.stringify(d) !== initial.current, salvando, onClose);
 
   const set = <K extends keyof typeof d>(k: K, v: (typeof d)[K]) => setD(p => ({ ...p, [k]: v }));
 
@@ -41,6 +41,7 @@ export function PessoaModal({ pessoa, onSalvar, onExcluir, onClose, erro }: Pess
   }
 
   return (
+    <>
     <ModalShell
       titulo={pessoa ? 'Editar pessoa' : 'Nova pessoa'}
       subtitulo="Quem executa. É daqui que saem o dono do objetivo, da iniciativa e da ação."
@@ -109,5 +110,7 @@ export function PessoaModal({ pessoa, onSalvar, onExcluir, onClose, erro }: Pess
         </div>
       </div>
     </ModalShell>
+    {dialogoDescarte}
+    </>
   );
 }

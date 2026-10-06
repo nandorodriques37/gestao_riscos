@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { canNavigate, readRoute, routeHash, type AppRoute } from '../lib/navigation';
+import { canNavigate, readRoute, temGuard, routeHash, type AppRoute } from '../lib/navigation';
 export function useAppNavigation() {
   const [route, setRoute] = useState(() => readRoute(window.location.hash));
   const lastHash = useRef(window.location.hash);
@@ -12,13 +12,21 @@ export function useAppNavigation() {
     lastHash.current = hash; setRoute(next);
   }, []);
   useEffect(() => {
-    const read = () => {
-      if (window.location.hash === lastHash.current) return;
-      if (!canNavigate()) { window.history.pushState(null, '', lastHash.current || '#tab=painel'); return; }
-      lastHash.current = window.location.hash; setRoute(readRoute(window.location.hash));
+    const read = async () => {
+      const alvo = window.location.hash, base = lastHash.current;
+      if (alvo === base) return;
+      if (temGuard()) {
+        // O navegador já andou: volta para onde estava enquanto o diálogo pergunta,
+        // e só reaplica o destino se o usuário confirmar e nada mais navegou.
+        window.history.pushState(null, '', base || '#tab=painel');
+        if (!(await canNavigate()) || lastHash.current !== base) return;
+        window.history.pushState(null, '', alvo);
+      }
+      lastHash.current = alvo; setRoute(readRoute(alvo));
     };
-    window.addEventListener('popstate', read); window.addEventListener('hashchange', read);
-    return () => { window.removeEventListener('popstate', read); window.removeEventListener('hashchange', read); };
+    const ouvir = () => { void read(); };
+    window.addEventListener('popstate', ouvir); window.addEventListener('hashchange', ouvir);
+    return () => { window.removeEventListener('popstate', ouvir); window.removeEventListener('hashchange', ouvir); };
   }, []);
   return { route, navigate };
 }

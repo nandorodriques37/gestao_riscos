@@ -28,7 +28,7 @@ export function MedicaoModal({ objetivo, medicoes, pf, onClose }: MedicaoModalPr
   const [obs, setObs] = useState('');
   const [salvando, setSalvando] = useState(false);
 
-  const fechar = useDraftGuard(valor !== null || !!obs, salvando || pf.saving, onClose);
+  const [fechar, dialogoDescarte] = useDraftGuard(valor !== null || !!obs, salvando || pf.saving, onClose);
   const progresso = progressoObjetivo(objetivo, medicoes);
   const serie = [...progresso.serie].reverse();
   const unidade = objetivo.unidade ? ` ${objetivo.unidade}` : '';
@@ -157,6 +157,7 @@ export function MedicaoModal({ objetivo, medicoes, pf, onClose }: MedicaoModalPr
       )}
     </ModalShell>
     {dialogoConfirmacao}
+    {dialogoDescarte}
     </>
   );
 }

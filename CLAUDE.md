@@ -185,7 +185,10 @@ decisão própria do produto. Consequências, todas em `tokens.css`:
   (`common/Confirmacao.tsx`, sobre o `ModalShell` compacto) diz a consequência
   em números ("Os 5 marcos vão junto") e nomeia os dois botões — o verbo, e
   "Manter". Vale para excluir risco, iniciativa, objetivo, pessoa, tarefa,
-  mitigação e medição, e para juntar fichas e declarar atingido.
+  mitigação e medição, e para juntar fichas e declarar atingido. Também vale
+  para descartar rascunho, recarregar a versão do servidor, remover imagem,
+  excluir marco e desvincular ação: `window.confirm` não existe mais no app
+  (só o `beforeunload` do navegador, que não é substituível).
 - **Shell:** o rail azul (`--rail-bg`) vai de ponta a ponta e leva a marca
   (`common/Marca.tsx`) no topo; o header é só da direita (migalha `Grupo ·
   Seção`, busca "Buscar ou ir para…", sync, tema, autor). Com o rail fora
@@ -254,12 +257,6 @@ decisão própria do produto. Consequências, todas em `tokens.css`:
   Exceção conhecida de hex fora de `tokens.css`: a seta do `<select>`
   (`modal.css`) e a lupa do `.search-input` (`primitives.css`) são SVG em data-URI
   e não trocam com o tema.
-- **Confirmação ainda usa `window.confirm` em seis pontos** (`useDraftGuard`, o
-  "recarregar versão" do `EditModal` e do `TarefaEditModal`, remover imagem em
-  `AnexosEditor`, duas em `IniciativaDetalhe`), contra a regra acima. O teste do
-  `EditModal` espia `window.confirm`; trocar para `useConfirmacao` é mudança de
-  comportamento e pede o teste junto.
-
 - **Nenhum hex literal fora de `tokens.css`.** Nenhum espaçamento fora da escala
   `--sp-*`; nenhum tamanho de fonte fora de `--fs-*`. Altura de controle vem de
   `--control-h`, alvo de toque de `--tap-min`, corpo de campo de `--fs-field` —
@@ -343,7 +340,11 @@ decisão própria do produto. Consequências, todas em `tokens.css`:
 ### Navegação e formulários
 - `navigation.ts` e `useAppNavigation` mantêm destino e seleção na URL, com
   Voltar/Avançar do navegador. `useDraftGuard` protege rascunhos ao fechar,
-  trocar de destino ou sair da página. Não salvar implicitamente ao fechar.
+  trocar de destino ou sair da página, e devolve `[fechar, dialogo]` — a tela
+  renderiza o `dialogo`. O guard de navegação é **assíncrono**: `canNavigate()`
+  devolve Promise e para no primeiro "não"; `useAppNavigation` restaura o hash
+  na hora no Voltar e só o reaplica se o usuário confirmar e nada mais navegou
+  no meio. `irPara` é `async`. Não salvar implicitamente ao fechar.
 - `useSessionState` preserva busca, filtros e ordenação das listas principais
   na sessão. Os atalhos do Painel levam os IDs da lacuna ao destino e oferecem
   limpeza explícita do recorte.

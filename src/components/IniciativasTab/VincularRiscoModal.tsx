@@ -14,7 +14,7 @@ export function VincularRiscoModal({ iniciativaNome, riscos, acoes, jaCobertos, 
   const [riscoId, setRiscoId] = useState<string | null>(null), [acao, setAcao] = useState<AcaoRisco | null>(null);
   const [salvando, setSalvando] = useState(false), [falha, setFalha] = useState('');
   const busy = useRef(false);
-  const fechar = useDraftGuard(!!descricao || !!acao, salvando, onClose);
+  const [fechar, dialogoDescarte] = useDraftGuard(!!descricao || !!acao, salvando, onClose);
   const candidatos = riscos.filter(r => r.risco && chaveDoNome([r.risco, r.area, r.categoria, r.rotina].join(' ')).includes(chaveDoNome(busca)));
   const risco = riscos.find(r => r.id === riscoId);
   const soltas = acoes.filter(a => a.risco_id === riscoId && !a.iniciativa_id && a.status !== 'cancelada');
@@ -26,7 +26,7 @@ export function VincularRiscoModal({ iniciativaNome, riscos, acoes, jaCobertos, 
       if (ok) onClose(); else setFalha('Não foi possível salvar. Sua escolha foi mantida.');
     } finally { busy.current = false; setSalvando(false); }
   }
-  return <ModalShell largo titulo="Vincular um risco" subtitulo={'Iniciativa: ' + iniciativaNome} onClose={fechar} busy={salvando} error={error || falha}
+  return <><ModalShell largo titulo="Vincular um risco" subtitulo={'Iniciativa: ' + iniciativaNome} onClose={fechar} busy={salvando} error={error || falha}
     rodape={<div className="modal-footer-actions">
       <button className="btn btn-ghost" onClick={fechar}>Cancelar</button>
       <button className="btn modal-btn-save" disabled={salvando || !risco || (!acao && !descricao.trim())} onClick={() => { void confirmar(); }}>{salvando ? 'Salvando…' : 'Confirmar vínculo'}</button>
@@ -49,5 +49,5 @@ export function VincularRiscoModal({ iniciativaNome, riscos, acoes, jaCobertos, 
       <textarea className="modal-textarea" rows={2} aria-label="Nova ação de mitigação" placeholder="O que esta iniciativa faz por este risco?" value={descricao} onChange={e => { setDescricao(e.target.value); setAcao(null); }} />
       <p className="campo-ajuda">A ação aparecerá no plano do risco e no quadro de tarefas, vinculada a esta iniciativa.</p>
     </>}
-  </ModalShell>;
+  </ModalShell>{dialogoDescarte}</>;
 }

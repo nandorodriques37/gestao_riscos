@@ -18,7 +18,7 @@ export function PromoverAcaoModal({ acao, risco, objetivos, pf, onClose, onPromo
   const [donoId, setDonoId] = useState(acao.dono_id), [vetor, setVetor] = useState<Iniciativa['vetor']>('evitar_perda');
   const [salvando, setSalvando] = useState(false);
   const busy = useRef(false), request = useRef({ fingerprint: '', chave: '' });
-  const fechar = useDraftGuard(nome !== acao.descricao.slice(0, 120) || !!objetivoId || !!descricao || !!iniciativaId || donoId !== acao.dono_id || vetor !== 'evitar_perda', salvando, onClose);
+  const [fechar, dialogoDescarte] = useDraftGuard(nome !== acao.descricao.slice(0, 120) || !!objetivoId || !!descricao || !!iniciativaId || donoId !== acao.dono_id || vetor !== 'evitar_perda', salvando, onClose);
   async function confirmar() {
     if (busy.current) return;
     busy.current = true; setSalvando(true);
@@ -36,7 +36,7 @@ export function PromoverAcaoModal({ acao, risco, objetivos, pf, onClose, onPromo
       if (criada) onPromovida(criada.id);
     } finally { busy.current = false; setSalvando(false); }
   }
-  return <ModalShell titulo="Vincular iniciativa" subtitulo="Escolha onde esta ação será executada."
+  return <><ModalShell titulo="Vincular iniciativa" subtitulo="Escolha onde esta ação será executada."
     onClose={fechar} busy={salvando} error={pf.error} rodape={<div className="modal-footer-actions">
       <button className="btn btn-ghost" onClick={fechar}>Cancelar</button>
       <button className="btn modal-btn-save" disabled={salvando || (modo === 'nova' ? !objetivoId || !nome.trim() : !iniciativaId)}
@@ -56,5 +56,5 @@ export function PromoverAcaoModal({ acao, risco, objetivos, pf, onClose, onPromo
       <CampoArea label="Descrição" valor={descricao} onChange={setDescricao} linhas={2} />
       <p className="campo-ajuda">A iniciativa começa no planejamento. A ação permanece no plano do risco, com o vínculo registrado.</p>
     </>}
-  </ModalShell>;
+  </ModalShell>{dialogoDescarte}</>;
 }

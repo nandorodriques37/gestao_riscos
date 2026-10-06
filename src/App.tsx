@@ -130,8 +130,8 @@ function App() {
   useEffect(() => { writePref(MODO_RISCO_KEY, modoRisco); }, [modoRisco]);
 
   /** Troca de seção com cross-fade onde o navegador suportar. */
-  const irPara = useCallback((destino: Tab, recorte?: string) => {
-    if (!canNavigate()) return;
+  const irPara = useCallback(async (destino: Tab, recorte?: string) => {
+    if (!(await canNavigate())) return;
     if (destino === 'registro' && recorte) setModoRisco('tabela');
     trocarComTransicao(() => navigate({ ...readRoute(''), tab: destino, recorte: recorte ?? null }));
   }, [navigate]);

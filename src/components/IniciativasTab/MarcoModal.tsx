@@ -34,7 +34,7 @@ export function MarcoModal({
   const initial = useRef(JSON.stringify(d));
   const busy = useRef(false);
   const [falha, setFalha] = useState('');
-  const fechar = useDraftGuard(JSON.stringify(d) !== initial.current, salvando, onClose);
+  const [fechar, dialogoDescarte] = useDraftGuard(JSON.stringify(d) !== initial.current, salvando, onClose);
 
   const set = <K extends keyof typeof d>(k: K, v: (typeof d)[K]) => setD(p => ({ ...p, [k]: v }));
 
@@ -75,6 +75,7 @@ export function MarcoModal({
   const podeSalvar = d.nome.trim().length > 0 && !faltaMotivo && !salvando;
 
   return (
+    <>
     <ModalShell
       titulo={marco ? 'Editar marco' : 'Novo marco'}
       subtitulo={iniciativaNome}
@@ -178,5 +179,7 @@ export function MarcoModal({
         </>
       )}
     </ModalShell>
+    {dialogoDescarte}
+    </>
   );
 }
