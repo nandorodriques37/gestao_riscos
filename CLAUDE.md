@@ -229,15 +229,36 @@ decisão própria do produto. Consequências, todas em `tokens.css`:
   no `App`, indexa os destinos de `NavRail/secoes.tsx` e os registros das
   camadas, e **não abre enquanto há outro `[role="dialog"]`** — o foco preso do
   modal brigaria com ela. `/` foca a busca da aba Iniciativas.
-- **`redesign.css` é a última folha e vai sumindo por etapas.** Ela vence
-  qualquer camada anterior pela ordem, e 33 classes dela também existem em
-  `portfolio.css` ou `responsive.css`; mover um bloco para a folha "dona" de
-  uma vez inverteria quem ganha, às vezes só numa largura de tela. Cada mudança
-  que toca um componente leva o bloco dele para a folha canônica e funde as
-  propriedades na regra que já existe (foi assim com `.card`, `.kpi-*`, a
-  faixa de KPI, a cifra, o rail, o header, a barra inferior, as tabelas, o Kanban,
-  o Rastro e a Triagem). Hoje sobram nela só o gaveta/modal e a faixa 761–820 —
-  o Lote dos modais a esvazia. **Nunca nasce uma segunda camada final sobre ela.**
+- **Modal é diálogo centralizado, não gaveta.** `modal.css` é a única dona:
+  `.modal-card` 640px (`data-largo` 960px, `.modal-card--editor` 1040px para risco
+  e tarefa, `data-compact` 440px na confirmação), `--r-float`, `--elev-3`, scrim de
+  uma cor só nos dois temas (`--bg-overlay`, sem blur — sem vidro). Abaixo de
+  760px vira folha inferior (`responsive.css`: 94dvh, raio só no topo, safe-area
+  no rodapé). A animação de entrada usa `fill-mode: backwards`, nunca `both`: um
+  `transform` residual no cartão o torna o bloco recipiente de todo `position:
+  fixed` de dentro. Foi assim que o visualizador de imagem passou a cobrir só o
+  modal; hoje ele sai por `createPortal` no `<body>`, como os três modais. As
+  abas do risco (`.detail-tabs`) são sublinhado azul e seguem `aria-pressed`
+  (o teste consulta `button`). O rodapé é `--bg-sunken` com `border-top`.
+- **Paleta e folha "Mais":** a paleta (680px, centralizada) marca o item ativo com
+  `--brand-soft` e barra inset azul, e leva o quadradinho da camada da cadeia
+  (`data-camada`); o foco é o item destacado (`aria-activedescendant`), então o
+  campo não repete o anel. A folha "Mais" é `role="dialog"` com alvos de 48px.
+- **Estado vazio** é um cartão (`--elev-1`) com glifo, `contexto` opcional em caixa
+  alta, título 18px/800 e a explicação; dentro de um `.card` ele é achatado, sem
+  segundo cartão. O título é curto ("Nenhuma tarefa com esses filtros") e o "por
+  quê + o que fazer" vai no `hint`.
+- **Não existe mais `redesign.css`.** A identidade nova foi fundida nas folhas
+  donas (tokens, base, primitives, layout, rail, table, kanban, charts, modal,
+  portfolio, triagem, responsive); **não recriar uma camada final** sobre elas.
+  Exceção conhecida de hex fora de `tokens.css`: a seta do `<select>`
+  (`modal.css`) e a lupa do `.search-input` (`primitives.css`) são SVG em data-URI
+  e não trocam com o tema.
+- **Confirmação ainda usa `window.confirm` em seis pontos** (`useDraftGuard`, o
+  "recarregar versão" do `EditModal` e do `TarefaEditModal`, remover imagem em
+  `AnexosEditor`, duas em `IniciativaDetalhe`), contra a regra acima. O teste do
+  `EditModal` espia `window.confirm`; trocar para `useConfirmacao` é mudança de
+  comportamento e pede o teste junto.
 
 - **Nenhum hex literal fora de `tokens.css`.** Nenhum espaçamento fora da escala
   `--sp-*`; nenhum tamanho de fonte fora de `--fs-*`. Altura de controle vem de

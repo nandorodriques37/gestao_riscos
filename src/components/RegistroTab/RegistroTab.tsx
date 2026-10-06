@@ -162,10 +162,13 @@ export function RegistroTab({
   }
 
   const emptyMessage = rows.length === 0
-    ? 'Nenhum registro cadastrado ainda.'
+    ? 'Nenhum risco mapeado'
     : visibleRows.length === 0
-      ? 'Nenhum registro encontrado com esses filtros.'
+      ? 'Nenhum risco com esses filtros'
       : undefined;
+  const emptyHint = rows.length === 0
+    ? 'O risco é o primeiro elo da cadeia. Com ele cadastrado, o Painel passa a mostrar o que ainda está solto.'
+    : `Os filtros não encontram nada entre os ${plural(rows.length, 'registro', 'registros')}. Limpe-os para ver tudo de novo.`;
 
   const emptyAction = rows.length === 0
     ? { label: '+ Adicionar registro', onClick: onAddRow }
@@ -275,6 +278,7 @@ export function RegistroTab({
         onOpenEdit={onOpenEdit}
         onDeleteRow={onDeleteRow}
         emptyMessage={emptyMessage}
+        emptyHint={emptyHint}
         emptyAction={emptyAction}
         density={density}
       />

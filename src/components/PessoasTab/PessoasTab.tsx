@@ -123,8 +123,8 @@ export function PessoasTab({ pf, onIrPara }: PessoasTabProps) {
   async function excluir(p: Pessoa) {
     const u = uso.find(x => x.pessoa.id === p.id);
     const consequencia = u && u.total > 0
-      ? `${p.nome} é dona de ${plural(u.total, 'item', 'itens')} (${u.objetivos} objetivos, `
-        + `${u.iniciativas} iniciativas, ${u.trabalho} tarefas e ações). Excluir não apaga esses itens — `
+      ? `${p.nome} é dona de ${plural(u.total, 'item', 'itens')} (${plural(u.objetivos, 'objetivo', 'objetivos')}, `
+        + `${plural(u.iniciativas, 'iniciativa', 'iniciativas')}, ${plural(u.trabalho, 'tarefa ou ação', 'tarefas e ações')}). Excluir não apaga esses itens — `
         + 'deixa todos sem dono, e não há como saber depois quem era. Se a pessoa apenas saiu do '
         + 'time, marque como inativa: o histórico fica de pé.'
       : 'A ficha some da lista. Nenhum objetivo, iniciativa ou tarefa depende dela.';

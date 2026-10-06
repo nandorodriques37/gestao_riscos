@@ -17,6 +17,7 @@ interface TarefasTableProps {
   onToggleConcluida: (idx: number) => void;
   onDeleteRow: (idx: number) => void;
   emptyMessage?: string;
+  emptyHint?: string;
   density: Density;
 }
 
@@ -38,7 +39,7 @@ function startColResize(e: React.MouseEvent, id: string, startWidth: number, onW
   window.addEventListener('mouseup', onUp);
 }
 
-export function TarefasTable({ rows, colWidths, onColWidthChange, sortKey, sortDir, onSort, onOpenEdit, onToggleConcluida, onDeleteRow, emptyMessage, density }: TarefasTableProps) {
+export function TarefasTable({ rows, colWidths, onColWidthChange, sortKey, sortDir, onSort, onOpenEdit, onToggleConcluida, onDeleteRow, emptyMessage, emptyHint, density }: TarefasTableProps) {
   const isEmpty = rows.length === 0 && !!emptyMessage;
 
   return (
@@ -96,7 +97,7 @@ export function TarefasTable({ rows, colWidths, onColWidthChange, sortKey, sortD
       {/* Fora dos dois de propósito: dentro do envelope da tabela, a mensagem
           de "nenhuma tarefa" sumia junto com ela no celular. É onde o
           `RiskTable` já a coloca. */}
-      {isEmpty && <EmptyState message={emptyMessage} />}
+      {isEmpty && <EmptyState message={emptyMessage} hint={emptyHint} />}
     </>
   );
 }

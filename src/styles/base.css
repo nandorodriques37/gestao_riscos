@@ -209,3 +209,19 @@ tr:focus-visible,
   white-space: nowrap;
   border: 0;
 }
+
+/* ---------- Movimento reduzido ----------
+   Quem pede menos movimento não recebe transição nem animação, em nenhum
+   componente. Os blocos de entrada (`modal.css`, `rail.css`) já só rodam em
+   `no-preference`; esta regra cobre o resto. */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

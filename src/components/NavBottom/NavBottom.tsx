@@ -145,6 +145,8 @@ export function NavBottom({
           <nav
             ref={folhaRef}
             className="nav-sheet"
+            role="dialog"
+            aria-modal="true"
             aria-label="Todas as seções"
             onClick={e => e.stopPropagation()}
           >

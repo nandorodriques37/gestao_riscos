@@ -95,7 +95,7 @@ export function PessoaModal({ pessoa, onSalvar, onExcluir, onClose, erro }: Pess
       />
 
       <div className="form-campo">
-        <label className="ini-meta" style={{ marginTop: 0, cursor: 'pointer' }}>
+        <label className="ini-meta modal-bloco-topo modal-rotulo-clicavel">
           <input
             type="checkbox"
             checked={d.ativo}

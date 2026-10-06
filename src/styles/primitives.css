@@ -500,11 +500,19 @@ textarea:focus,
   justify-content: center;
   gap: var(--sp-2);
   min-height: 220px;
-  padding: var(--sp-6) var(--sp-5);
+  padding: var(--sp-7) var(--sp-5);
   text-align: center;
-  border: 1px dashed var(--line-strong);
+  border: 1px solid var(--line-border);
   border-radius: var(--r-card);
-  background: color-mix(in srgb, var(--surface) 64%, transparent);
+  background: var(--bg-surface);
+  box-shadow: var(--elev-1);
+}
+
+/* Dentro de um cartão o vazio é o conteúdo dele: sem segundo cartão por cima. */
+.card .empty-state {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .empty-state-overlay {
@@ -519,7 +527,7 @@ textarea:focus,
   display: grid;
   width: 132px;
   height: 48px;
-  margin-bottom: var(--sp-4);
+  margin-bottom: var(--sp-3);
   place-items: center;
   color: var(--brand-text);
 }
@@ -529,29 +537,13 @@ textarea:focus,
   height: 48px;
 }
 
-.decision-network-line {
-  stroke: var(--brand-text);
-  stroke-width: 2;
-}
-
-.decision-network-node {
-  fill: var(--surface);
-  stroke: var(--brand-text);
-  stroke-width: 2;
-}
-
-.decision-network-node-risk {
-  fill: var(--brand-red);
-  stroke: var(--brand-red);
-}
-
 .decision-network path {
   stroke: var(--brand-text);
   stroke-width: 2;
 }
 
 .decision-network circle {
-  fill: var(--surface);
+  fill: var(--bg-surface);
   stroke: var(--brand-text);
   stroke-width: 2;
 }
@@ -561,21 +553,25 @@ textarea:focus,
   stroke: var(--brand-red);
 }
 
-.empty-state-title {
-  color: var(--ink);
-  font-size: var(--fs-lg);
+.empty-state-contexto {
+  font-size: var(--fs-xs);
   font-weight: var(--fw-bold);
+  letter-spacing: var(--tracking-rotulo);
+  text-transform: uppercase;
+  color: var(--ink-3);
 }
 
 .empty-state-message {
-  font-size: var(--fs-md);
-  font-weight: var(--fw-semibold);
+  font-size: var(--fs-card);
+  font-weight: var(--fw-heavy);
+  letter-spacing: var(--tracking-tight);
   color: var(--ink-1);
 }
 
 .empty-state-hint {
-  font-size: var(--fs-sm);
-  color: var(--ink-3);
+  font-size: var(--fs-md);
+  line-height: 1.5;
+  color: var(--ink-2);
   max-width: 42ch;
 }
 

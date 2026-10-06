@@ -116,7 +116,7 @@ export function MarcoModal({
         {originalTravada ? (
           <div className="form-campo">
             <div className="modal-field-label">Plano original</div>
-            <div className="modal-input" style={{ display: 'flex', alignItems: 'center', color: 'var(--ink-3)' }}>
+            <div className="modal-input modal-input-leitura">
               <span className="tabular">{formatarDataLonga(marco?.data_plano_original)}</span>
             </div>
             <div className="campo-ajuda">Congelada. É a régua contra a qual o atraso é medido.</div>

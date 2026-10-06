@@ -202,7 +202,7 @@ export function EditModal({
     <div className="modal-overlay" onClick={() => { void requestClose(); }}>
       <div
         ref={cardRef}
-        className="modal-card"
+        className="modal-card modal-card--editor"
         role="dialog"
         aria-modal="true"
         aria-label="Editar registro de risco"
@@ -261,7 +261,7 @@ export function EditModal({
                 <input className="modal-input" list="dl-categoria" value={draft.categoria} onChange={e => setField({ categoria: e.target.value })} />
               </div>
             </div>
-            <div style={{ marginTop: 12 }}>
+            <div className="modal-bloco">
               <div className="modal-field-label">Risco</div>
               <textarea className="modal-textarea" rows={2} value={draft.risco} onChange={e => setField({ risco: e.target.value })} />
             </div>
@@ -344,13 +344,13 @@ export function EditModal({
               </div>
               <div>
                 <div className="modal-field-label">Desde</div>
-                <div className="modal-input" style={{ display: 'flex', alignItems: 'center', color: 'var(--ink-3)' }}>
+                <div className="modal-input modal-input-leitura">
                   <span className="tabular">{formatarDataLonga(draft.data_situacao)}</span>
                 </div>
                 <div className="campo-ajuda">Gravada junto com a situação.</div>
               </div>
             </div>
-            <div style={{ marginTop: 12 }}>
+            <div className="modal-bloco">
               <div className="modal-field-label">Causa raiz</div>
               <textarea
                 className="modal-textarea" rows={2}
@@ -367,7 +367,7 @@ export function EditModal({
             {/* O estado é derivado das linhas e das iniciativas que as executam.
                 Fica junto do editor porque é ele que explica por que o risco
                 está onde está. */}
-            <div className="ini-meta" style={{ marginTop: 0, marginBottom: 'var(--sp-3)' }}>
+            <div className="ini-meta modal-bloco-topo">
               <span className="badge" data-badge={BADGE_TRATAMENTO[estado]}>
                 {ROTULO_TRATAMENTO[estado]}
               </span>
@@ -375,14 +375,14 @@ export function EditModal({
             </div>
 
             {legado && linhas.length > 0 && (
-              <div className="form-aviso" style={{ marginTop: 0, marginBottom: 'var(--sp-3)' }}>
+              <div className="form-aviso modal-bloco-topo">
                 Este plano ainda está só dentro do registro. Salvar traz estas {linhas.length}{' '}
                 {linhas.length === 1 ? 'ação' : 'ações'} para o rastro — até lá, o risco aparece
                 como sem tratamento.
               </div>
             )}
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div className="modal-pilha">
               <div>
                 {/* Sem rótulo "Ações": o título da seção e o cabeçalho de colunas já nomeiam a lista. */}
                 <AcoesEditor
@@ -471,7 +471,7 @@ export function EditModal({
                 </select>
               </div>
             </div>
-            <div style={{ marginTop: 12 }}>
+            <div className="modal-bloco">
               <div className="modal-field-label">Observação</div>
               <textarea className="modal-textarea" rows={2} value={draft.obs} onChange={e => setField({ obs: e.target.value })} />
             </div>

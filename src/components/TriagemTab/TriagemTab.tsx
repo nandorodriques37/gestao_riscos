@@ -348,8 +348,9 @@ export function TriagemTab({ records, pf }: TriagemTabProps) {
           {listaVisivel.length === 0 ? (
             <div className="card" ref={listaRef}>
               <EmptyState
+                contexto={naFila ? 'Triagem concluída' : undefined}
                 message={naFila
-                  ? 'Fila vazia — tudo classificado'
+                  ? 'A fila está vazia'
                   : filtro === 'decididas' ? 'Nada classificado ainda'
                     : `Nenhuma ação em "${ROTULO_DESTINO[filtro]}"`}
                 hint={naFila

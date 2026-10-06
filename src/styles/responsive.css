@@ -79,6 +79,20 @@
 }
 
 @media (max-width: 760px) {
+  /* Alvo de toque: em tela estreita todo controle tem 44px, mesmo com ponteiro
+     fino (janela de desktop redimensionada). `pointer: coarse` já cobre o
+     toque real em `tokens.css`; esta é a rede para o resto. */
+  button,
+  input,
+  select,
+  textarea {
+    min-height: 44px;
+  }
+
+  button[aria-label]:not(.bar-row):not(.legend-item) {
+    min-width: 44px;
+  }
+
   .prio-filter-row,
   .filter-row {
     position: relative;
@@ -340,7 +354,9 @@
 
   /* `dvh` e não `vh`: com a barra de endereço do navegador aberta, `vh` mede a
      tela inteira e empurra o rodapé com "Salvar" para fora dela. */
-  .modal-card {
+  .modal-card,
+  .modal-card[data-largo='true'],
+  .modal-card--editor {
     max-width: none;
     max-height: 94dvh;
     border-radius: var(--r-float) var(--r-float) 0 0;
@@ -421,7 +437,7 @@
 }
 
 /* Em 768px as oito abas já não cabem ao lado da marca: a barra inferior entra
-   antes do layout móvel (ver redesign.css e rail.css) e o conteúdo ganha o
+   antes do layout móvel (ver rail.css) e o conteúdo ganha o
    respiro dela. */
 @media (min-width: 761px) and (max-width: 820px) {
   .app-conteudo {

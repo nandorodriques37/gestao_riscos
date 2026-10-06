@@ -407,7 +407,6 @@
   inset: 0;
   z-index: 50;
   background: var(--bg-overlay);
-  backdrop-filter: blur(3px);
   display: flex;
   align-items: flex-end;
 }
@@ -437,7 +436,7 @@
   }
 
   .nav-sheet {
-    animation: sheet-in var(--dur) var(--ease) both;
+    animation: sheet-in var(--dur) var(--ease) backwards;
   }
 
   @keyframes sheet-in {
@@ -450,9 +449,9 @@
 .nav-sheet-alca {
   flex: none;
   align-self: center;
-  width: 36px;
+  width: 40px;
   height: 4px;
-  margin-bottom: var(--sp-1);
+  margin-bottom: var(--sp-2);
   border-radius: var(--r-full);
   background: var(--line-strong);
 }
@@ -463,8 +462,11 @@
   gap: 2px;
 }
 
+/* Alvo de toque de 48px e texto de 16px: quem abre "Mais" está com o polegar. */
 .nav-sheet .rail-item {
-  height: max(36px, var(--tap-min));
+  height: max(48px, var(--tap-min));
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-semibold);
 }
 
 /* Autor e tema: os dois moradores do header que não cabem no celular. */
@@ -503,6 +505,19 @@
 @media (min-width: 1101px) {
   .app-header .nav-tabs {
     display: none;
+  }
+}
+
+/* Entre 761 e 820px as oito abas já não cabem ao lado da marca. A navegação
+   inferior entra antes do layout móvel, para que Pessoas, Triagem e Priorização
+   nunca desapareçam por recorte do header em tablets estreitos. */
+@media (min-width: 761px) and (max-width: 820px) {
+  .app-header .nav-tabs {
+    display: none;
+  }
+
+  .nav-bottom {
+    display: flex;
   }
 }
 

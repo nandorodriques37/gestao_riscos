@@ -146,7 +146,7 @@ export function TarefaEditModal({
     <div className="modal-overlay" onClick={requestClose}>
       <div
         ref={cardRef}
-        className="modal-card"
+        className="modal-card modal-card--editor"
         role="dialog"
         aria-modal="true"
         aria-label="Editar tarefa"
@@ -195,11 +195,11 @@ export function TarefaEditModal({
                 <input className="modal-input" list="dl-tipo" value={draft.tipo} onChange={e => setField({ tipo: e.target.value })} />
               </div>
             </div>
-            <div style={{ marginTop: 12 }}>
+            <div className="modal-bloco">
               <div className="modal-field-label">Tarefa</div>
               <textarea className="modal-textarea" rows={2} value={draft.tarefa} onChange={e => setField({ tarefa: e.target.value })} />
             </div>
-            <div style={{ marginTop: 12 }}>
+            <div className="modal-bloco">
               <div className="modal-field-label">Detalhes</div>
               <textarea className="modal-textarea" rows={2} value={draft.detalhes} onChange={e => setField({ detalhes: e.target.value })} />
             </div>
@@ -289,7 +289,7 @@ export function TarefaEditModal({
                 {vinculo?.rotina && <div className="modal-field-hint">Controle contínuo — sem prazo.</div>}
               </div>
             </div>
-            <div style={{ marginTop: 12 }}>
+            <div className="modal-bloco">
               <div className="modal-field-label">Observações</div>
               <textarea className="modal-textarea" rows={2} value={draft.obs} onChange={e => setField({ obs: e.target.value })} />
             </div>

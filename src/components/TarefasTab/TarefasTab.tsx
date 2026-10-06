@@ -373,10 +373,13 @@ export function TarefasTab({ records, pf, tarefas, selecionada, onSelecionar, id
   const showLoading = loading && tasks.length === 0;
 
   const emptyMessage = rows.length === 0
-    ? 'Nenhuma tarefa cadastrada ainda. Clique em "+ Adicionar tarefa" para começar.'
+    ? 'Nenhuma tarefa cadastrada'
     : visibleRows.length === 0
-      ? 'Nenhuma tarefa encontrada com esses filtros.'
+      ? 'Nenhuma tarefa com esses filtros'
       : undefined;
+  const emptyHint = rows.length === 0
+    ? 'Tarefa livre e mitigação de risco moram aqui. Use "+ Adicionar tarefa" para começar.'
+    : `A busca e os recortes não encontram nada entre as ${plural(rows.length, 'tarefa', 'tarefas')}. Limpe um deles para ver o resto.`;
 
   return (
     <div className="tab-page">
@@ -490,6 +493,7 @@ export function TarefasTab({ records, pf, tarefas, selecionada, onSelecionar, id
               onToggleConcluida={handleToggleConcluida}
               onDeleteRow={handleDeleteRow}
               emptyMessage={emptyMessage}
+              emptyHint={emptyHint}
               density={density}
             />
           )}

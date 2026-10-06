@@ -55,7 +55,7 @@
   --bg-selected: light-dark(#EDEDFA, #21265A);
   /* Véu do modal. Já valia para os dois temas; o escuro estava repetido à mão
      em [data-theme='dark'] .modal-overlay, que não disparava no modo sistema. */
-  --bg-overlay: light-dark(rgba(7, 10, 31, 0.55), rgba(2, 3, 12, 0.72));
+  --bg-overlay: rgba(7, 10, 31, 0.62);
   /* Vocabulário curto da camada nova. Estes aliases mantêm os componentes
      legíveis sem invalidar os nomes históricos acima. */
   --bg: var(--surface-0);

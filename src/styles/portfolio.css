@@ -2262,12 +2262,6 @@ button.objetivo-nome:hover {
   margin-top: var(--sp-3);
 }
 
-/* Formulário de duas colunas precisa de mais largura que o modal padrão de
-   780px, senão cada coluna fica abaixo do mínimo legível de um select. */
-.modal-card[data-largo='true'] {
-  max-width: 960px;
-}
-
 .campo-ajuda {
   margin-top: var(--sp-1);
   font-size: var(--fs-2xs);
