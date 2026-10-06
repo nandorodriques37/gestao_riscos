@@ -75,7 +75,7 @@ td.num,
 .fato-valor,
 .cadeia-valor,
 .lacuna-n,
-.heat-cell,
+.heatmap-cell,
 .risk-score,
 .bar-score,
 .legend-pct,
@@ -132,7 +132,7 @@ h1, h2, h3, h4 {
 /* Em linha de tabela e célula de heatmap o anel externo é cortado pelo
    overflow do container, então ele vai para dentro. */
 tr:focus-visible,
-.heat-cell:focus-visible,
+.heatmap-cell:focus-visible,
 .matrix-bubble:focus-visible {
   outline-offset: calc(-1 * var(--focus-offset));
 }

@@ -44,6 +44,7 @@
 /* ---------- Heatmap ---------- */
 
 .heatmap-row {
+  --heat-h: 60px;
   display: flex;
   gap: var(--sp-2);
 }
@@ -57,9 +58,14 @@
 
 .heatmap-ylabel {
   width: 14px;
-  height: 44px;
+  height: var(--heat-h);
   display: grid;
   place-items: center;
+}
+
+/* Altura da linha de rótulos do eixo X, para a coluna Y fechar com a grade. */
+.heatmap-ylabels-gap {
+  height: var(--sp-5);
 }
 
 .heatmap-grid-wrap {
@@ -78,15 +84,19 @@
 
 .heatmap-cell {
   --c: var(--tier-null);
-  height: 44px;
-  border-radius: var(--r-xs);
+  height: var(--heat-h);
+  border-radius: var(--r-control);
   display: grid;
-  place-items: center;
-  font-weight: var(--fw-semibold);
-  font-size: var(--fs-md);
+  place-content: center;
+  justify-items: center;
+  font-weight: var(--fw-heavy);
+  font-size: var(--fs-card);
   font-variant-numeric: tabular-nums;
-  background: var(--c);
-  color: var(--ink-on-solid);
+  /* Tingida, não chapada: a faixa vem do contorno e do rótulo da célula, e o
+     número fica em tinta legível nos dois temas. */
+  background: color-mix(in srgb, var(--c) 24%, var(--bg-surface));
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--c) 70%, transparent);
+  color: var(--ink-1);
   transition: transform var(--dur-fast) var(--ease), outline-color var(--dur-fast) var(--ease);
 }
 
@@ -99,9 +109,16 @@
    obrigando o leitor a inferir a diferença entre "nenhum risco" e "não medido". */
 .heatmap-cell[data-empty='true'] {
   background: var(--bg-sunken);
-  color: var(--ink-4);
+  color: var(--ink-3);
   font-weight: var(--fw-regular);
   box-shadow: inset 0 0 0 1px var(--line-hairline);
+}
+
+/* A pontuação P × I da célula, escrita: a faixa nunca viaja só por cor. */
+.heatmap-score {
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  color: var(--ink-3);
 }
 
 .heatmap-cell[role='button'] {

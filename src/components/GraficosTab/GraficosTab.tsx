@@ -7,6 +7,8 @@ import { matchGraphFilter, graphFilterLabel } from './graphFilter';
 import { buildScoreBars, buildResourceStatusBars } from './scoreBars';
 import { FilterBanner } from './FilterBanner';
 import { Kpi, KpiRow } from '../common/Kpi';
+import { plural } from '../../lib/portfolioLabels';
+import { julgar } from '../../lib/portfolioUi';
 import { Heatmap } from './Heatmap';
 import { CriticidadeDonut, type CritLegendItem } from './CriticidadeDonut';
 import { RiskDescriptionTable, type RiskListItem } from './RiskDescriptionTable';
@@ -22,7 +24,7 @@ interface GraficosTabProps {
    * era uma aba própria e começava direto num filtro, sem título nenhum — hoje
    * é a leitura "Análise" da seção Riscos e usa o mesmo cabeçalho do Rastro.
    */
-  cabecalho?: ReactNode;
+  cabecalho?: (titulo: ReactNode, subtitulo: string) => ReactNode;
 }
 
 // Os status reaproveitam as faixas de cor já existentes: cinza para não
@@ -95,7 +97,14 @@ export function GraficosTab({ records, cabecalho }: GraficosTabProps) {
     [gfRecords],
   );
   const totalAvaliados = scoredVals.length;
-  const criticosCount = scoredVals.filter(sc => sc > 14).length;
+  const criticosCount = scoredVals.filter(sc => scoreTier(sc) === 'critico').length;
+  // O título fala do registro inteiro, não do recorte do heatmap: clicar numa
+  // célula não pode trocar a frase da página.
+  const criticosTodos = useMemo(
+    () => records.filter(r => scoreTier(computeScore(r)) === 'critico'),
+    [records],
+  );
+  const criticosAltaProbab = criticosTodos.filter(r => (r.probab ?? 0) >= 4).length;
   const scoreMedio: number | '—' = totalAvaliados
     ? round1(scoredVals.reduce((a, b) => a + b, 0) / totalAvaliados)
     : '—';
@@ -121,7 +130,15 @@ export function GraficosTab({ records, cabecalho }: GraficosTabProps) {
 
   return (
     <div className="tab-page-lg">
-      {cabecalho}
+      {cabecalho?.(
+        totalRiscos === 0 ? 'Análise de riscos' : criticosTodos.length === 0 ? 'Nenhum risco crítico' : (
+          <>
+            <em>{plural(criticosTodos.length, 'risco crítico', 'riscos críticos')}</em>
+            {`, ${criticosAltaProbab} com probabilidade 4 ou 5`}
+          </>
+        ),
+        `${plural(totalRiscos, 'risco mapeado', 'riscos mapeados')} · criticidade = probabilidade × impacto · clique numa célula para recortar`,
+      )}
 
       {graphFilter && (
         <FilterBanner label={graphFilterLabel(graphFilter)} count={riskListCount} onClear={() => setGraphFilterState(null)} />
@@ -135,7 +152,10 @@ export function GraficosTab({ records, cabecalho }: GraficosTabProps) {
           acento="brand"
         />
         <Kpi label="Score médio (P × I)" valor={scoreMedio} acento="medio" />
-        <Kpi label="Riscos críticos" valor={criticosCount} acento="critico" />
+        <Kpi
+          label="Riscos críticos" valor={criticosCount} acento="critico"
+          {...(criticosCount > 0 ? julgar('risco', 'Crítico') : {})}
+        />
         <Kpi label="Ações concluídas" valor={`${pctConcluido}%`} acento="baixo" />
       </KpiRow>
 

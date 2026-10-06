@@ -2061,6 +2061,13 @@ button.objetivo-nome:hover {
   background: color-mix(in oklab, var(--brand) 4%, var(--surface-1));
 }
 
+/* A lista é um cartão sem respiro lateral: o cabeçalho azul vai de borda a
+   borda, como na lista de Objetivos, e as linhas trazem o próprio padding. */
+.rastro-lista {
+  padding: 0;
+  overflow: hidden;
+}
+
 .rastro-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -2091,9 +2098,13 @@ button.objetivo-nome:hover {
   display: grid;
   grid-template-columns: minmax(200px, 1.5fr) 76px minmax(200px, 2fr) 148px 150px;
   gap: var(--sp-3);
-  padding: var(--sp-3) 0;
+  padding: var(--sp-3) var(--sp-5);
   border-bottom: 1px solid var(--line-hairline);
   align-items: start;
+}
+
+.rastro-linha .select-filter {
+  width: 100%;
 }
 
 @media (max-width: 900px) {
@@ -2119,8 +2130,15 @@ button.objetivo-nome:hover {
 /* Cabeçalho do rastro: some junto com as colunas quando o grid colapsa —
    rótulo de coluna sem coluna é ruído. */
 .rastro-cabecalho {
-  padding-bottom: var(--sp-2);
-  border-bottom: 1px solid var(--line-border);
+  align-items: center;
+  padding-block: var(--sp-3);
+  border-bottom: 0;
+  background: var(--brand-core);
+  color: var(--ink-on-brand-core);
+}
+
+.rastro-cabecalho .fato-label {
+  color: inherit;
 }
 
 @media (max-width: 900px) {
@@ -2131,6 +2149,9 @@ button.objetivo-nome:hover {
 
 .rastro-risco {
   position: relative;
+  display: block;
+  width: 100%;
+  text-align: left;
   padding-left: var(--sp-3);
   font-size: var(--fs-xs);
   font-weight: var(--fw-medium);
@@ -2163,6 +2184,27 @@ button.objetivo-nome:hover {
   width: 2px;
   border-radius: 2px;
   background: var(--brand);
+}
+
+.rastro-acao-texto {
+  font-size: var(--fs-xs);
+  color: var(--ink-1);
+  line-height: 1.4;
+}
+
+.rastro-espera {
+  margin-top: var(--sp-1);
+}
+
+/* Elo partido: tracejado coral, o mesmo desenho do toco no Sankey do Painel.
+   O texto escrito diz o que falta; a borda só marca onde. */
+.rastro-quebra {
+  margin-top: var(--sp-1);
+  padding: var(--sp-1) var(--sp-2);
+  border: 1.5px dashed var(--brand-red);
+  border-radius: var(--r-control);
+  color: var(--coral-texto);
+  font-weight: var(--fw-bold);
 }
 
 .rastro-acao + .rastro-acao {

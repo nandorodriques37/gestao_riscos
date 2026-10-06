@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { ModoRisco, RiskRecord, StoredRiskRecord, Tab } from './types';
 import { MODOS_RISCO } from './types';
 import { TopBar } from './components/TopBar/TopBar';
@@ -291,7 +291,7 @@ function App() {
    * recebem este, para as três terem a mesma barra e o mesmo alternador —
    * antes a análise era uma aba que começava direto num filtro, sem título.
    */
-  function cabecalhoRisco(titulo: string, subtitulo: string) {
+  function cabecalhoRisco(titulo: ReactNode, subtitulo: string) {
     return (
       <div className="page-bar">
         <div>
@@ -412,6 +412,8 @@ function App() {
           {tab === 'registro' && modoRisco === 'tabela' && (
             <RegistroTab idsDoRecorte={idsDoRecorte}
               records={records}
+              acoes={pf.portfolio.acoes_risco}
+              iniciativas={pf.portfolio.iniciativas}
               onOpenEdit={handleOpenEdit}
               onDeleteRow={handleDeleteRow}
               onAddRow={handleAddRow}
@@ -433,22 +435,14 @@ function App() {
               onAbrirIniciativa={abrirIniciativa}
               onPromoverAcao={acao => setPromovendoId(acao.id)}
               onIrPara={irPara}
-              cabecalho={cabecalhoRisco(
-                'Rastro de mitigação',
-                'Os mesmos riscos, lidos pelo tratamento: o que foi feito, onde foi feito '
-                + 'e o que já pode ser fechado',
-              )}
+              cabecalho={cabecalhoRisco}
             />
           )}
 
           {tab === 'registro' && modoRisco === 'analise' && (
             <GraficosTab
               records={records}
-              cabecalho={cabecalhoRisco(
-                'Análise de riscos',
-                'Os mesmos riscos, lidos pela distribuição: onde a exposição se concentra '
-                + 'por probabilidade, impacto, área, rotina e recurso',
-              )}
+              cabecalho={cabecalhoRisco}
             />
           )}
 

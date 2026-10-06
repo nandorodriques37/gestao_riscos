@@ -1,9 +1,12 @@
 import { useSessionState } from '../../hooks/useSessionState';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import type { Density, RegistroStatus, RiskRecord, SortDir, SortKey } from '../../types';
+import type { AcaoRisco, Density, Iniciativa, RegistroStatus, RiskRecord, SortDir, SortKey, StoredRiskRecord } from '../../types';
 import { REGISTRO_STATUSES } from '../../types';
 import { buildRows, type EnrichedRow } from '../../lib/rows';
-import { computeCompletude, COMPLETUDE_FIELDS } from '../../lib/calculations';
+import { computeCompletude, computeScore, scoreTier, COMPLETUDE_FIELDS } from '../../lib/calculations';
+import { riscosMapeados, riscosSemTratamento } from '../../lib/portfolioMetrics';
+import { plural } from '../../lib/portfolioLabels';
+import { julgar } from '../../lib/portfolioUi';
 import { readColWidths, readDensity, readStatusFilter, writeDensity, writePref } from '../../lib/uiPrefs';
 import { Kpi, KpiRow } from '../common/Kpi';
 import { FilterBar } from './FilterBar';
@@ -28,7 +31,10 @@ function campoVazio(r: RiskRecord, f: keyof RiskRecord): boolean {
 
 interface RegistroTabProps {
   idsDoRecorte?: Set<string> | null;
-  records: RiskRecord[];
+  records: StoredRiskRecord[];
+  /** Ações e iniciativas: o título conta os riscos sem tratamento, que é derivado. */
+  acoes: AcaoRisco[];
+  iniciativas: Iniciativa[];
   onOpenEdit: (idx: number) => void;
   onDeleteRow: (idx: number) => void;
   onAddRow: () => void;
@@ -52,7 +58,7 @@ function sortValue(row: EnrichedRow, key: SortKey): number | null {
 }
 
 export function RegistroTab({
-  records, onOpenEdit, onDeleteRow, onAddRow, onExportCSV,
+  records, acoes, iniciativas, onOpenEdit, onDeleteRow, onAddRow, onExportCSV,
   areaOptions, categoriaOptions, modoToggle, idsDoRecorte,
 }: RegistroTabProps) {
   const [search, setSearch] = useSessionState('riscos.busca', '');
@@ -89,7 +95,17 @@ export function RegistroTab({
   const totalRiscos = useMemo(() => records.filter(r => r.risco).length, [records]);
   const totalEmAndamento = useMemo(() => rows.filter(r => r.normSt === 'Em andamento').length, [rows]);
   const totalConcluido = useMemo(() => rows.filter(r => r.normSt === 'Concluído').length, [rows]);
-  const totalCritico = useMemo(() => rows.filter(r => r.prioriz != null && r.prioriz >= 6).length, [rows]);
+  // Criticidade é o score (P × I) acima de 14 — a mesma régua da Análise e do
+  // heatmap. A conta antiga olhava a priorização (≥ 6), que é outra pergunta.
+  const totalCritico = useMemo(() => rows.filter(r => scoreTier(r.score) === 'critico').length, [rows]);
+  const semTratamento = useMemo(
+    () => riscosSemTratamento(riscosMapeados(records), acoes, iniciativas),
+    [records, acoes, iniciativas],
+  );
+  const semTratamentoCriticos = useMemo(
+    () => semTratamento.filter(t => scoreTier(computeScore(t.risco)) === 'critico').length,
+    [semTratamento],
+  );
   const completude = useMemo(() => computeCompletude(records), [records]);
   /** Campos mais vazios, do pior para o melhor — é o que a barra de qualidade cita. */
   const camposVazios = useMemo(() => COMPLETUDE_FIELDS
@@ -172,8 +188,17 @@ export function RegistroTab({
           embolavam a partir de qualquer largura de notebook. */}
       <div className="page-bar">
         <div>
-          <div className="page-title">Registro de riscos e ações</div>
-          <div className="page-subtitle">{rows.length} {rows.length === 1 ? 'registro' : 'registros'} · clique em uma linha para editar</div>
+          <div className="page-title">
+            {totalRiscos === 0 ? 'Registro de riscos e ações' : semTratamento.length === 0 ? 'Nenhum risco sem tratamento' : (
+              <>
+                <em>{plural(semTratamento.length, 'risco sem tratamento', 'riscos sem tratamento')}</em>
+                {semTratamentoCriticos > 0 && `, ${semTratamentoCriticos} ${semTratamentoCriticos === 1 ? 'deles crítico' : 'deles críticos'}`}
+              </>
+            )}
+          </div>
+          <div className="page-subtitle">
+            {plural(totalRiscos, 'risco mapeado', 'riscos mapeados')} · criticidade = probabilidade × impacto · clique em uma linha para editar
+          </div>
         </div>
         <div className="actions-row">
           {modoToggle}
@@ -210,10 +235,16 @@ export function RegistroTab({
       )}
 
       <KpiRow colunas={4}>
-        <Kpi label="Riscos mapeados" valor={totalRiscos} acento="brand" />
-        <Kpi label="Em andamento" valor={totalEmAndamento} acento="alto" />
-        <Kpi label="Concluídas" valor={totalConcluido} acento="baixo" />
-        <Kpi label="Priorização crítica" valor={totalCritico} acento="critico" />
+        <Kpi label="Riscos mapeados" valor={totalRiscos} sub="só linhas com descrição" acento="brand" />
+        <Kpi label="Em andamento" valor={totalEmAndamento} sub="com status em andamento" acento="alto" />
+        <Kpi
+          label="Concluídas" valor={totalConcluido} sub="com status concluído" acento="baixo"
+          {...(totalConcluido > 0 ? julgar('ok', 'Concluído') : {})}
+        />
+        <Kpi
+          label="Criticidade crítica" valor={totalCritico} sub="acima de 14 pontos" acento="critico"
+          {...(totalCritico > 0 ? julgar('risco', 'Crítico') : {})}
+        />
       </KpiRow>
 
       <FilterBar

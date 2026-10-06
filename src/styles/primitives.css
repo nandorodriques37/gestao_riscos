@@ -127,10 +127,19 @@
    (8px) tinham paddings diferentes e não alinhavam na linha. */
 
 .filter-row {
+  position: sticky;
+  z-index: 10;
+  top: calc(var(--header-h) + var(--sp-2));
   display: flex;
   align-items: center;
   gap: var(--sp-2);
   flex-wrap: wrap;
+  min-height: calc(var(--control-h) + var(--sp-3));
+  padding: var(--sp-2);
+  border: 1px solid var(--line-border);
+  border-radius: var(--r-card);
+  background: var(--bg-surface);
+  box-shadow: var(--elev-1);
 }
 
 .search-input {

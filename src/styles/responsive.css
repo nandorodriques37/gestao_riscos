@@ -79,7 +79,8 @@
 }
 
 @media (max-width: 760px) {
-  .prio-filter-row {
+  .prio-filter-row,
+  .filter-row {
     position: relative;
     top: auto;
     overflow-x: auto;
