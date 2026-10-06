@@ -18,92 +18,6 @@
    Nada aqui define token: cor, medida e tipografia vêm de `tokens.css`.
    ========================================================================= */
 
-/* ── Triage review workspace ───────────────────────────────────────────── */
-
-.triagem-item {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
-  gap: 0;
-  overflow: hidden;
-  border: 1px solid var(--line);
-  border-radius: var(--r-card);
-  background: var(--surface);
-  box-shadow: none;
-}
-
-.triagem-corpo {
-  min-width: 0;
-  padding: 16px 18px;
-}
-
-.triagem-decisao {
-  position: relative;
-  align-self: stretch;
-  padding: 16px;
-  border: 0;
-  border-left: 1px solid var(--line);
-  border-radius: 0;
-  background: var(--surface-raised);
-}
-
-.triagem-confidence,
-.triagem-confianca {
-  font-variant-numeric: tabular-nums;
-}
-
-.triagem-bulk-bar,
-.batch-action-bar {
-  position: sticky;
-  z-index: 12;
-  bottom: 12px;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--r-card);
-  background: var(--surface);
-  box-shadow: var(--elev-1);
-}
-
-[data-tab='triagem'] .filter-pills {
-  position: sticky;
-  z-index: 12;
-  top: calc(var(--header-h) + 8px);
-  padding: 8px;
-  border: 1px solid var(--line);
-  border-radius: var(--r-card);
-  background: var(--surface);
-}
-
-/* ── Kanban ────────────────────────────────────────────────────────────── */
-
-.kanban-board {
-  gap: 10px;
-}
-
-.kanban-column {
-  border: 1px solid var(--line);
-  border-radius: var(--r-card);
-  background: color-mix(in srgb, var(--surface-raised) 72%, var(--bg));
-  box-shadow: none;
-}
-
-.kanban-column-header {
-  border-bottom: 1px solid var(--line);
-  background: transparent;
-}
-
-.kanban-card {
-  position: relative;
-  overflow: hidden;
-  border: 1px solid var(--line);
-  border-radius: var(--r-card);
-  background: var(--surface);
-  box-shadow: none;
-}
-
-.kanban-card:hover {
-  border-color: var(--line-strong);
-  transform: none;
-}
-
 /* ── Record editors become contextual drawers ─────────────────────────── */
 
 .modal-overlay {
@@ -187,17 +101,6 @@
 
 /* ── Responsive grids ──────────────────────────────────────────────────── */
 
-@media (max-width: 900px) {
-  .triagem-item {
-    grid-template-columns: 1fr;
-  }
-
-  .triagem-decisao {
-    border-top: 1px solid var(--line);
-    border-left: 0;
-  }
-}
-
 /* Em 768 px as oito abas já não cabem ao lado da marca. A navegação inferior
    entra antes do layout móvel para que Pessoas, Triagem e Priorização nunca
    desapareçam por recorte do header em tablets estreitos. */
@@ -225,23 +128,6 @@
     min-width: 44px;
   }
 
-  .filter-row,
-  .toolbar-row,
-  .tarefas-toolbar,
-  .tarefas-filter-bar {
-    position: relative;
-    top: auto;
-    overflow-x: auto;
-    box-shadow: none;
-    backdrop-filter: none;
-  }
-
-  [data-tab='triagem'] .filter-pills {
-    position: relative;
-    top: auto;
-    flex-wrap: wrap;
-  }
-
   .modal-card,
   .modal-card[data-largo],
   .modal-card.modal-large {
@@ -255,13 +141,6 @@
     padding: 16px 14px 24px;
   }
 
-  .kanban-board {
-    scroll-snap-type: x proximity;
-  }
-
-  .kanban-column {
-    scroll-snap-align: start;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {

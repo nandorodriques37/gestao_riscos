@@ -19,6 +19,8 @@ import {
 import { Kpi, KpiRow } from '../common/Kpi';
 import { useConfirmacao } from '../common/Confirmacao';
 import { plural } from '../../lib/portfolioLabels';
+import { saudeTrabalho } from '../../lib/portfolioMetrics';
+import { julgar } from '../../lib/portfolioUi';
 import { TarefasFilterBar } from './TarefasFilterBar';
 import { TarefasTable } from './TarefasTable';
 import { TarefasKanban } from './TarefasKanban';
@@ -166,6 +168,9 @@ export function TarefasTab({ records, pf, tarefas, selecionada, onSelecionar, id
   const emAndamento = useMemo(() => rows.filter(r => r.normSt === 'Em andamento').length, [rows]);
   const concluidas = useMemo(() => rows.filter(r => r.normSt === 'Concluída').length, [rows]);
   const criticas = useMemo(() => rows.filter(r => r.gut != null && r.gut >= 100).length, [rows]);
+  // Sem dono, deRisco e livres saem da mesma conta do Painel: o título não pode
+  // contar uma coisa que o Painel chama de outra.
+  const saude = useMemo(() => saudeTrabalho(tasks), [tasks]);
   const avaliacao = useMemo(() => computeAvaliacao(tasks), [tasks]);
 
   const visibleRows = useMemo(() => {
@@ -389,11 +394,18 @@ export function TarefasTab({ records, pf, tarefas, selecionada, onSelecionar, id
         <>
           <div className="page-bar">
             <div>
-              <div className="page-title">Tarefas e ações</div>
+              <div className="page-title">
+                {total === 0 ? 'Tarefas e ações' : (
+                  <>
+                    {atrasadas > 0
+                      ? <em>{plural(atrasadas, 'tarefa atrasada', 'tarefas atrasadas')}</em>
+                      : 'Nenhuma tarefa atrasada'}
+                    {saude.semDono > 0 && `, ${saude.semDono} sem dono`}
+                  </>
+                )}
+              </div>
               <div className="page-subtitle">
-                Tarefas do time e mitigações dos riscos, no mesmo lugar. Tarefa livre prioriza
-                pela Matriz GUT (Gravidade × Urgência × Tendência); mitigação herda a
-                criticidade do risco.
+                {plural(aFazer + emAndamento, 'tarefa aberta', 'tarefas abertas')} · {saude.deRisco} de risco e {saude.livres} livres · prioridade pela nota GUT
               </div>
             </div>
             <div className="actions-row">
@@ -413,8 +425,15 @@ export function TarefasTab({ records, pf, tarefas, selecionada, onSelecionar, id
               sub={`${aFazer} a fazer · ${emAndamento} em andamento · ${concluidas} concluídas de ${total}`}
               acento="brand"
             />
-            <Kpi label="Atrasadas" valor={atrasadas} acento={atrasadas > 0 ? 'critico' : 'baixo'} />
-            <Kpi label="GUT crítico" valor={criticas} acento="critico" />
+            <Kpi
+              label="Atrasadas" valor={atrasadas} sub="prazo vencido, ainda abertas"
+              acento={atrasadas > 0 ? 'critico' : 'baixo'}
+              {...(atrasadas > 0 ? julgar('risco', 'Atrasadas') : {})}
+            />
+            <Kpi
+              label="GUT crítico" valor={criticas} sub="faixa mais alta da nota" acento="critico"
+              {...(criticas > 0 ? julgar('risco', 'Crítico') : {})}
+            />
             <Kpi
               label="Avaliadas (GUT)"
               valor={`${avaliacao}%`}

@@ -80,8 +80,10 @@ Os `.dc.html` são **referência de design, não código de produção**. Recrie
   componente `SankeyCadeia` não calcula nada. Régua de status e de faixa vem
   de `normTaskStatus`/`scoreTier` — nunca reimplementada.
 - **Uma régua por pergunta:** "quantos riscos eu mapeei" conta linhas COM
-  descrição, no Painel, no Registro, na Análise e nas lacunas de risco de
-  `cadeiaQuebrada`. Linha em branco é como se adiciona uma, não é risco — e
+  descrição, no Painel, no Registro, na Análise, no Rastro e nas lacunas de risco
+  de `cadeiaQuebrada` (o Rastro listava as 62 linhas e dizia "38 sem tratamento"
+  onde as outras diziam 20). "Criticidade crítica" é o score (P × I) acima de 14,
+  na tabela e na Análise — a priorização é outra pergunta. Linha em branco é como se adiciona uma, não é risco — e
   a lista de atenção não cobra tratamento dela. O nome das faixas sai de `ROTULO_TIER`
   (`calculations.ts`) — havia quatro cópias de "Crítico/Alto/Médio/Baixo".
 - **`useTasks` mora no `App`**, como `usePortfolio`: o Painel precisa contar
@@ -205,11 +207,22 @@ decisão própria do produto. Consequências, todas em `tokens.css`:
 - **Juízo do KPI é um só:** `julgar(kind, rotulo)` (`lib/portfolioUi.ts`) devolve
   acento + etiqueta escrita e vale para Painel, Objetivos e Iniciativas. O tile
   que carrega `status` não deita no celular (a pílula cortava).
-- **Cabeçalho de tabela azul** (`--brand-core` + `--ink-on-brand-core`) já vale
-  na lista de Objetivos, no resumo por recurso da Priorização e na trilha de
-  marcos (`.marcos-tabela`). A lista de Iniciativas fica com cabeçalho claro por
-  grupo (repetir faixa azul a cada grupo pesa mais que informa). O `thead`
-  global e `.tabela-simples` seguem para a etapa de Riscos/Tarefas/Pessoas.
+- **Cabeçalho de tabela é azul** (`--brand-core` + `--ink-on-brand-core`) em
+  TODA tabela: a base de `<table>` mora em `table.css` (vale para a tabela sem
+  classe própria) e as tabelas com classe (`.risk-table`, `.desc-table`,
+  `.tabela-simples`, `.marcos-tabela`) só ajustam o que lhes é próprio. Na tabela
+  de riscos a coluna "Riscos" mantém o acento, em `--coral-claro` sobre o azul.
+  Lista em grid de `div` (Objetivos, Rastro) leva o cabeçalho azul por regra
+  própria; a lista de Iniciativas fica com cabeçalho claro por grupo (repetir
+  faixa azul a cada grupo pesa mais que informa).
+- **Título das seis telas do Lote D** (Riscos ×3, Tarefas, Pessoas, Triagem)
+  afirma o achado: "20 riscos sem tratamento, 8 deles críticos", "4 tarefas
+  atrasadas, 55 sem dono", "Paulo Mendes está 75% acima da capacidade", "5 itens
+  do plano antigo esperam destino". Cada um sai de uma regra que já existe
+  (`riscosSemTratamento`, `saudeTrabalho`, `cargaPorPessoa`, a fila da Triagem) —
+  o título e o KPI nunca contam a mesma coisa por duas contas.
+- **Triagem usa `.page-bar` e `<KpiRow>`** como as outras abas; os KPIs continuam
+  clicando para filtrar (`.kpi-strip button.kpi-card`, em `triagem.css`).
 - **Visões salvas de Iniciativas** mostram a contagem (`Em risco 5`); filtro e
   contagem usam a MESMA regra (`naVisao`).
 - **Paleta de comando** (`common/PaletaComando.tsx`, Ctrl/⌘+K): o listener mora
@@ -222,7 +235,9 @@ decisão própria do produto. Consequências, todas em `tokens.css`:
   uma vez inverteria quem ganha, às vezes só numa largura de tela. Cada mudança
   que toca um componente leva o bloco dele para a folha canônica e funde as
   propriedades na regra que já existe (foi assim com `.card`, `.kpi-*`, a
-  faixa de KPI, a cifra, o rail, o header e a barra inferior). **Nunca nasce uma segunda camada final sobre ela.**
+  faixa de KPI, a cifra, o rail, o header, a barra inferior, as tabelas, o Kanban,
+  o Rastro e a Triagem). Hoje sobram nela só o gaveta/modal e a faixa 761–820 —
+  o Lote dos modais a esvazia. **Nunca nasce uma segunda camada final sobre ela.**
 
 - **Nenhum hex literal fora de `tokens.css`.** Nenhum espaçamento fora da escala
   `--sp-*`; nenhum tamanho de fonte fora de `--fs-*`. Altura de controle vem de
@@ -370,7 +385,9 @@ decisão própria do produto. Consequências, todas em `tokens.css`:
   tier aparece junto do número ou do rótulo. Isso não é decoração: a escada
   semáforo verde→amarelo→laranja→vermelho não passa nos limites de daltonismo
   por matiz (médio `#B8901F` × alto `#D97706` medem ΔE 1.1 em deuteranopia).
-- Célula vazia do heatmap mostra o `0`, não texto transparente.
+- Célula vazia do heatmap mostra o `0`, não texto transparente. A célula cheia é
+  TINGIDA (24% da faixa) com contorno inset da faixa, o número a 18px e a
+  pontuação P × I escrita embaixo: a faixa nunca viaja só por cor.
 - O **Sankey da cadeia** (`PainelTab/SankeyCadeia.tsx`) é SVG inline sem lib.
   A altura de cada coluna cresce com a **raiz quadrada** do total — três
   objetivos e sessenta tarefas na mesma tela é a forma normal do domínio, e em

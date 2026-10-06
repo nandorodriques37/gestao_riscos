@@ -86,6 +86,14 @@
     overflow-x: auto;
   }
 
+  .kanban-board {
+    scroll-snap-type: x proximity;
+  }
+
+  .kanban-column {
+    scroll-snap-align: start;
+  }
+
   .ranked-list-panel {
     max-height: 520px;
   }

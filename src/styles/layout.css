@@ -385,8 +385,7 @@
 /* O título AFIRMA o achado, com número ("21 elos soltos travam a cadeia"). O
    trecho que carrega o alerta vai em <em> — um por título, no máximo — e é o
    único coral da página; se nada está em alerta, o título inteiro é azul. */
-.page-title,
-[data-tab='triagem'] .tab-page > .section-header-row:first-child .section-title {
+.page-title {
   margin: 0;
   font-size: clamp(var(--fs-2xl), 2.25vw, var(--fs-num-lg));
   font-weight: var(--fw-heavy);

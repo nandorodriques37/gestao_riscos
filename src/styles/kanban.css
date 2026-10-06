@@ -5,8 +5,9 @@
    coluna é uma pilha de três zonas — cabeçalho e rodapé fixos, corpo rolável no
    meio. É o que mantém o "+ Adicionar tarefa" sempre à mão numa coluna longa.
 
-   O card em repouso é hairline puro. Sombra só quando ele de fato flutua: o card
-   levantado durante o arraste (--elev-2) e o menu Mover (--elev-2).
+   O card em repouso leva hairline e a sombra curta do cartão (--elev-1), como
+   todo cartão do app; sobe a --elev-2 só quando de fato flutua: a cópia levantada
+   durante o arraste e o menu Mover.
    ========================================================================= */
 
 .kanban-board {
@@ -15,9 +16,10 @@
   --kanban-offset: 350px;
   display: flex;
   align-items: flex-start;
-  gap: var(--sp-3);
+  gap: var(--sp-4);
   overflow-x: auto;
-  padding-bottom: var(--sp-3);
+  /* Respiro para a sombra do card não ser cortada pelo overflow do quadro. */
+  padding-block: var(--sp-1) var(--sp-3);
 }
 
 /* ---------- Coluna ---------- */
@@ -38,7 +40,7 @@
   height: var(--kanban-col-h);
   max-height: var(--kanban-col-h);
   background: var(--bg-sunken);
-  border: 1px solid var(--line-hairline);
+  border: 1px solid var(--line-border);
   border-radius: var(--r-card);
 }
 
@@ -51,8 +53,8 @@
 }
 
 .kanban-column-label {
-  font-size: var(--fs-sm);
-  font-weight: var(--fw-semibold);
+  font-size: var(--fs-md);
+  font-weight: var(--fw-heavy);
   color: var(--ink-1);
 }
 
@@ -146,6 +148,7 @@
   background: var(--bg-surface);
   border: 1px solid var(--line-border);
   border-radius: var(--r-card);
+  box-shadow: var(--elev-1);
   cursor: pointer;
   text-align: left;
   transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);

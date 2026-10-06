@@ -676,6 +676,10 @@ tr[data-tier='null'] { --c: var(--tier-null); }
   border-bottom: 1px solid var(--line-hairline);
 }
 
+.gut-guide-title-faixas {
+  margin-top: var(--sp-4);
+}
+
 .gut-guide-faixas {
   display: flex;
   flex-wrap: wrap;

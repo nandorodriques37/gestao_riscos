@@ -323,7 +323,7 @@
      A conta é o corpo (5 cards + 4 vãos) mais o cromo da coluna: cabeçalho 40px,
      padding de baixo do rodapé e do corpo (8 + 8) e o botão "+ Adicionar tarefa",
      que lê --control-h e cresce no toque. */
-  --kanban-col-h: calc(var(--kanban-visible-cards) * var(--kanban-card-h) + 4 * var(--sp-2) + var(--control-h) + 56px);
+  --kanban-col-h: calc(var(--kanban-visible-cards) * var(--kanban-card-h) + 4 * var(--sp-2) + var(--control-h) + var(--sp-7) + var(--sp-2));
 
   /* ---------- Controles ----------
      Altura de botão/campo e alvo mínimo de toque. São a ÚNICA porta de entrada

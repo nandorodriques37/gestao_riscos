@@ -31,7 +31,9 @@ export function GutGuide() {
             <button className="modal-close" onClick={() => setOpen(false)}>×</button>
           </div>
           <p className="gut-guide-intro">
-            Pontue cada tarefa de 1 a 5 nos três critérios. GUT = G × U × T (mín. 1, máx. 125). Quanto maior, mais prioritário.
+            Tarefa livre prioriza pela Matriz GUT (Gravidade × Urgência × Tendência): pontue
+            cada uma de 1 a 5 nos três critérios. GUT = G × U × T (mín. 1, máx. 125). Quanto
+            maior, mais prioritário. A mitigação herda a faixa de criticidade do risco, marcada com *.
           </p>
           <table className="gut-guide-table">
             <thead>
@@ -53,7 +55,7 @@ export function GutGuide() {
               ))}
             </tbody>
           </table>
-          <div className="gut-guide-title" style={{ marginTop: 'var(--sp-4)' }}>Faixas de prioridade</div>
+          <div className="gut-guide-title gut-guide-title-faixas">Faixas de prioridade</div>
           <div className="gut-guide-faixas">
             {FAIXAS.map(f => (
               <span key={f.label} className="tier-chip" data-tier={f.tier}>

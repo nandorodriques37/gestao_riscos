@@ -1829,23 +1829,30 @@ button.objetivo-nome:hover {
   background: var(--surface-1);
   border: 1px solid var(--line-border);
   border-radius: var(--r-card);
-  padding: 0 var(--sp-5) var(--sp-4);
+  box-shadow: var(--elev-1);
 }
 
 .tabela-simples {
   min-width: 760px;
 }
 
+/* A tabela dentro do envelope começa na borda dele: o respiro de cima é da
+   tabela solta (marcos), não da que leva cabeçalho azul de ponta a ponta. */
+.tabela-simples-wrap .tabela-simples {
+  margin-top: 0;
+}
+
+/* Cabeçalho é estrutura: azul da marca, texto branco, nos dois temas. */
 .tabela-simples th,
 .marcos-tabela th {
   font-size: var(--fs-2xs);
-  font-weight: var(--fw-medium);
-  letter-spacing: 0.04em;
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.07em;
   text-transform: uppercase;
-  color: var(--ink-4);
+  color: var(--ink-on-brand-core);
+  background: var(--brand-core);
   text-align: left;
-  padding: 0 var(--sp-3) var(--sp-2) 0;
-  border-bottom: 1px solid var(--line-border);
+  padding: var(--sp-2) var(--sp-3);
   white-space: nowrap;
 }
 
@@ -1853,7 +1860,7 @@ button.objetivo-nome:hover {
 .tabela-simples td {
   font-size: var(--fs-xs);
   color: var(--ink-2);
-  padding: var(--sp-2) var(--sp-3) var(--sp-2) 0;
+  padding: var(--sp-2) var(--sp-3);
   border-bottom: 1px solid var(--line-hairline);
   vertical-align: top;
 }
@@ -1873,18 +1880,26 @@ button.objetivo-nome:hover {
   border-bottom: none;
 }
 
-/* Cabeçalho da trilha de marcos: estrutura em azul da marca. A tabela
-   simples de Pessoas fica como está até a etapa dela. */
-.marcos-tabela th {
-  padding: var(--sp-2) var(--sp-3);
-  color: var(--ink-on-brand-core);
-  background: var(--brand-core);
-  border-bottom: 0;
-}
-
 .marcos-tabela th:first-child { border-top-left-radius: var(--r-control); }
 .marcos-tabela th:last-child { border-top-right-radius: var(--r-control); }
-.marcos-tabela td { padding-left: var(--sp-3); }
+
+.tabela-simples .col-acao {
+  width: 72px;
+}
+
+/* Aviso de ficha repetida: borda em tom de atenção, sem cor nova. */
+.pessoas-duplicadas {
+  border-color: color-mix(in oklab, var(--tier-alto) 34%, transparent);
+}
+
+.pessoas-nota {
+  max-width: 80ch;
+}
+
+/* O espaçamento entre blocos da aba vem do gap dela. */
+.pessoas-aviso {
+  margin-top: 0;
+}
 
 /* Inativo continua legível, só recua: ele ainda é o dono histórico de coisas. */
 .tabela-simples tr[data-inativo] {
@@ -1921,6 +1936,7 @@ button.objetivo-nome:hover {
 @media (max-width: 760px) {
   .tabela-simples-wrap {
     padding: var(--sp-2) var(--sp-3) var(--sp-3);
+    box-shadow: none;
   }
 
   .tabela-simples,
