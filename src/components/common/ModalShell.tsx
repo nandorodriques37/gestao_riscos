@@ -42,7 +42,9 @@ export function ModalShell({ titulo, subtitulo, onClose, children, rodape, largo
   }, []);
 
   function handleKeyDown(e: KeyboardEvent) {
-    if (e.key === 'Escape') { e.preventDefault(); onClose(); return; }
+    // stopPropagation: um diálogo dentro de outro (a confirmação sobre o editor)
+    // não pode entregar o Esc ao pai pela árvore do React, portal ou não.
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); onClose(); return; }
     if (e.key !== 'Tab' || !cardRef.current) return;
     const itens = Array.from(cardRef.current.querySelectorAll<HTMLElement>(FOCUSABLE))
       .filter(el => el.offsetParent !== null);

@@ -22,10 +22,10 @@ export function RiskDescriptionTable({ riskList, count }: RiskDescriptionTablePr
         <table className="desc-table">
           <thead>
             <tr>
-              <th>Risco</th>
-              <th style={{ width: 180 }}>Área · Categoria</th>
-              <th className="center" style={{ width: 70 }}>Score</th>
-              <th className="center" style={{ width: 130 }}>Status</th>
+              <th className="col-risco">Risco</th>
+              <th>Área · Categoria</th>
+              <th className="center col-score">Score</th>
+              <th className="center col-status">Status</th>
             </tr>
           </thead>
           <tbody>

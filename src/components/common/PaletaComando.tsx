@@ -42,6 +42,11 @@ const ROTULO_TIPO: Record<TipoItemPaleta, string> = {
 const ORDEM_TIPO: TipoItemPaleta[] = ['objetivo', 'iniciativa', 'risco', 'tarefa', 'pessoa'];
 const POR_TIPO = 6;
 
+/** A camada da cadeia de cada grupo: o quadradinho do item usa a cor dela. */
+const CAMADA_DO_GRUPO: Record<string, string> = {
+  Objetivos: 'objetivo', Iniciativas: 'iniciativa', Riscos: 'risco', 'Tarefas e ações': 'trabalho',
+};
+
 type Resultado =
   | { chave: string; grupo: string; rotulo: string; sub?: string; acao: () => void };
 
@@ -122,7 +127,10 @@ export function PaletaComando({ aberta, onFechar, grupos, itens, onIrPara, onAbr
         />
         <ul className="paleta-lista" id="paleta-lista" role="listbox">
           {resultados.length === 0 && (
-            <li className="paleta-vazio">Nada com "{busca}". Tente outra palavra, ou uma seção.</li>
+            <li className="paleta-vazio">
+              <strong>Nada com “{busca}”</strong>
+              <span>A busca olha nome, área e responsável. Tente outra palavra, ou escolha uma seção.</span>
+            </li>
           )}
           {resultados.map((r, i) => {
             const cabecalho = r.grupo !== grupoAnterior ? r.grupo : null;
@@ -136,6 +144,7 @@ export function PaletaComando({ aberta, onFechar, grupos, itens, onIrPara, onAbr
                   aria-selected={i === ativo}
                   className="paleta-item"
                   data-ativo={i === ativo || undefined}
+                  data-camada={CAMADA_DO_GRUPO[r.grupo]}
                   onMouseEnter={() => setAtivo(i)}
                   onClick={() => executar(r)}
                 >

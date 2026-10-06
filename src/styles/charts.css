@@ -44,6 +44,7 @@
 /* ---------- Heatmap ---------- */
 
 .heatmap-row {
+  --heat-h: 60px;
   display: flex;
   gap: var(--sp-2);
 }
@@ -57,9 +58,14 @@
 
 .heatmap-ylabel {
   width: 14px;
-  height: 44px;
+  height: var(--heat-h);
   display: grid;
   place-items: center;
+}
+
+/* Altura da linha de rótulos do eixo X, para a coluna Y fechar com a grade. */
+.heatmap-ylabels-gap {
+  height: var(--sp-5);
 }
 
 .heatmap-grid-wrap {
@@ -78,15 +84,19 @@
 
 .heatmap-cell {
   --c: var(--tier-null);
-  height: 44px;
-  border-radius: var(--r-xs);
+  height: var(--heat-h);
+  border-radius: var(--r-control);
   display: grid;
-  place-items: center;
-  font-weight: var(--fw-semibold);
-  font-size: var(--fs-md);
+  place-content: center;
+  justify-items: center;
+  font-weight: var(--fw-heavy);
+  font-size: var(--fs-card);
   font-variant-numeric: tabular-nums;
-  background: var(--c);
-  color: var(--ink-on-solid);
+  /* Tingida, não chapada: a faixa vem do contorno e do rótulo da célula, e o
+     número fica em tinta legível nos dois temas. */
+  background: color-mix(in srgb, var(--c) 24%, var(--bg-surface));
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--c) 70%, transparent);
+  color: var(--ink-1);
   transition: transform var(--dur-fast) var(--ease), outline-color var(--dur-fast) var(--ease);
 }
 
@@ -99,9 +109,16 @@
    obrigando o leitor a inferir a diferença entre "nenhum risco" e "não medido". */
 .heatmap-cell[data-empty='true'] {
   background: var(--bg-sunken);
-  color: var(--ink-4);
+  color: var(--ink-3);
   font-weight: var(--fw-regular);
   box-shadow: inset 0 0 0 1px var(--line-hairline);
+}
+
+/* A pontuação P × I da célula, escrita: a faixa nunca viaja só por cor. */
+.heatmap-score {
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  color: var(--ink-3);
 }
 
 .heatmap-cell[role='button'] {
@@ -443,10 +460,18 @@
 /* ---------- Priorização: filtro de status ---------- */
 
 .prio-filter-row {
+  position: sticky;
+  z-index: 10;
+  top: calc(var(--header-h) + var(--sp-2));
   display: flex;
   align-items: center;
   gap: var(--sp-2);
   flex-wrap: wrap;
+  padding: var(--sp-2);
+  border: 1px solid var(--line-border);
+  border-radius: var(--r-card);
+  background: var(--bg-surface);
+  box-shadow: var(--elev-1);
 }
 
 .prio-filter-label {
@@ -463,15 +488,22 @@
 
 .matrix-layout {
   display: grid;
-  grid-template-columns: minmax(380px, 7fr) minmax(300px, 5fr);
-  gap: var(--sp-5);
-  align-items: stretch;
+  grid-template-columns: minmax(0, 3fr) minmax(340px, 2fr);
+  gap: var(--sp-4);
+  align-items: start;
 }
 
 .matrix-plot-row {
+  position: sticky;
+  top: calc(var(--header-h) + 68px);
+  align-self: start;
   display: flex;
   gap: var(--sp-2);
   min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--line-border);
+  border-radius: var(--r-card);
+  background: var(--bg-surface);
 }
 
 .matrix-plot-col {
@@ -483,7 +515,7 @@
   position: relative;
   aspect-ratio: 1 / 0.85;
   border: 1px solid var(--line-border);
-  border-radius: var(--r-card);
+  border-radius: 0;
   overflow: hidden;
   background: var(--bg-surface);
 }
@@ -498,7 +530,7 @@
   background: color-mix(in oklab, var(--c) 6%, transparent);
 }
 
-.quad-tint-qw { --c: var(--quad-qw); left: 0; top: 0; }
+.quad-tint-qw { --c: var(--quad-qw); left: 0; top: 0; background: var(--brand-soft); }
 .quad-tint-ga { --c: var(--quad-ga); right: 0; top: 0; }
 .quad-tint-bp { --c: var(--quad-bp); left: 0; bottom: 0; }
 .quad-tint-rv { --c: var(--quad-rv); right: 0; bottom: 0; }
@@ -557,7 +589,7 @@
   margin-top: 1px;
 }
 
-.qp-qw { --c: var(--quad-qw); }
+.qp-qw { --c: var(--quad-qw); color: var(--brand-text); }
 .qp-ga { --c: var(--quad-ga); }
 .qp-bp { --c: var(--quad-bp); }
 .qp-rv { --c: var(--quad-rv); }
@@ -595,7 +627,6 @@
 }
 
 .matrix-tick {
-  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   font-size: var(--fs-2xs);
   color: var(--ink-4);
@@ -681,6 +712,7 @@
   flex-direction: column;
   overflow: hidden;
   min-height: 0;
+  max-height: min(650px, calc(100dvh - var(--header-h) - 116px));
 }
 
 .ranked-list-header {
@@ -717,7 +749,9 @@
 
 .ranked-list-body {
   overflow-y: auto;
+  overscroll-behavior: contain;
   flex: 1;
+  min-height: 0;
 }
 
 .ranked-item {
@@ -731,6 +765,7 @@
   text-align: left;
   padding: var(--sp-2) var(--sp-3);
   border-bottom: 1px solid var(--line-hairline);
+  border-radius: 0;
   transition: background var(--dur-fast) var(--ease);
 }
 
@@ -836,6 +871,28 @@
 
 .priority-group-table-wrap {
   overflow-x: auto;
+}
+
+/* Cabeçalho de tabela é estrutura: azul da marca, texto branco. */
+.priority-group thead th {
+  background: var(--brand-core);
+  color: var(--ink-on-brand-core);
+  border-bottom: 0;
+}
+
+/* Larguras de coluna: geometria da tabela, não decisão visual. */
+.priority-group th.col-contexto { width: 190px; }
+.priority-group th.col-num { width: 72px; }
+.priority-group th.col-grav { width: 84px; }
+.priority-group th.col-prio { width: 96px; }
+
+/* O subtítulo da matriz fecha o cabeçalho; sem margem sobrando abaixo dele. */
+.priority-workspace .section-header-row .section-subtitle {
+  margin-bottom: 0;
+}
+
+.priority-workspace .section-header-row .actions-row {
+  padding-top: var(--sp-1);
 }
 
 /* Legenda de marca redonda (bolhas da matriz). O formato vem por atributo,

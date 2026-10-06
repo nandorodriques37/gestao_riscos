@@ -40,7 +40,7 @@ export function ObjetivoModal({ objetivo, pessoas, onSalvar, onExcluir, onClose,
   const initial = useRef(JSON.stringify(d));
   const busy = useRef(false);
   const [falha, setFalha] = useState('');
-  const fechar = useDraftGuard(JSON.stringify(d) !== initial.current, salvando, onClose);
+  const [fechar, dialogoDescarte] = useDraftGuard(JSON.stringify(d) !== initial.current, salvando, onClose);
 
   const set = <K extends keyof typeof d>(k: K, v: (typeof d)[K]) => setD(p => ({ ...p, [k]: v }));
 
@@ -58,6 +58,7 @@ export function ObjetivoModal({ objetivo, pessoas, onSalvar, onExcluir, onClose,
   const podeSalvar = d.descricao.trim().length > 0 && !salvando;
 
   return (
+    <>
     <ModalShell
       titulo={objetivo ? 'Editar objetivo' : 'Novo objetivo'}
       subtitulo="O porquê do portfólio. Poucos e ativos — três a seis dão conta de um ano."
@@ -151,5 +152,7 @@ export function ObjetivoModal({ objetivo, pessoas, onSalvar, onExcluir, onClose,
         />
       </div>
     </ModalShell>
+    {dialogoDescarte}
+    </>
   );
 }

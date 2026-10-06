@@ -54,7 +54,7 @@ export function IniciativaModal({
   const initial = useRef(JSON.stringify(d));
   const busy = useRef(false);
   const [falha, setFalha] = useState('');
-  const fechar = useDraftGuard(JSON.stringify(d) !== initial.current, salvando, onClose);
+  const [fechar, dialogoDescarte] = useDraftGuard(JSON.stringify(d) !== initial.current, salvando, onClose);
 
   const set = <K extends keyof typeof d>(k: K, v: (typeof d)[K]) => setD(p => ({ ...p, [k]: v }));
 
@@ -81,6 +81,7 @@ export function IniciativaModal({
   const podeSalvar = d.nome.trim().length > 0 && d.objetivo_id != null && !semMarco && !salvando;
 
   return (
+    <>
     <ModalShell
       largo
       titulo={iniciativa ? 'Editar iniciativa' : 'Nova iniciativa'}
@@ -283,5 +284,7 @@ export function IniciativaModal({
       <CampoArea label="Observações" valor={d.obs} onChange={v => set('obs', v)} linhas={2} />
       </details>
     </ModalShell>
+    {dialogoDescarte}
+    </>
   );
 }

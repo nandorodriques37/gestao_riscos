@@ -28,14 +28,24 @@ it('falha mantém rascunho e versão-base; reenvio conserva a chave da operaçã
   await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Salvar' })));
   expect(p.onCommit.mock.calls[0][0].chave).toBe(p.onCommit.mock.calls[1][0].chave);
 });
-it('Cancelar permite continuar editando ou descartar, sem salvamento oculto', () => {
-  const p = props(), confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+it('Cancelar permite continuar editando ou descartar, sem salvamento oculto', async () => {
+  const p = props(), confirm = vi.spyOn(window, 'confirm');
   render(<EditModal {...p} />);
   fireEvent.change(screen.getByDisplayValue('Falha original'), { target: { value: 'Rascunho' } });
-  fireEvent.click(screen.getByRole('button', { name: 'Cancelar' })); expect(p.onClose).not.toHaveBeenCalled();
-  confirm.mockReturnValue(true);
-  fireEvent.click(screen.getByRole('button', { name: 'Cancelar' })); expect(p.onClose).toHaveBeenCalledOnce();
-  expect(p.onCommit).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Continuar editando' }));
+  expect(p.onClose).not.toHaveBeenCalled(); expect(screen.getByDisplayValue('Rascunho')).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
+  await act(async () => fireEvent.click(await screen.findByRole('button', { name: 'Descartar rascunho' })));
+  expect(p.onClose).toHaveBeenCalledOnce();
+  expect(p.onCommit).not.toHaveBeenCalled(); expect(confirm).not.toHaveBeenCalled();
+});
+it('Cancelar sem alteração fecha direto, sem diálogo', async () => {
+  const p = props();
+  render(<EditModal {...p} />);
+  await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Cancelar' })));
+  expect(p.onClose).toHaveBeenCalledOnce();
+  expect(screen.queryByRole('button', { name: 'Continuar editando' })).toBeNull();
 });
 it('vincula iniciativa existente junto com a nova ação e bloqueia duplo salvamento', async () => {
   const p = props(); let finish!: (value: RiscoSalvo | null) => void;

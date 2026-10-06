@@ -8,6 +8,7 @@ import { AnexosEditor } from './AnexosEditor';
 import { useBloqueioDeRolagem } from '../../hooks/useBloqueioDeRolagem';
 
 import { useDraftGuard } from '../../hooks/useDraftGuard';
+import { useConfirmacao } from '../common/Confirmacao';
 
 const FOCUSABLE = 'a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])';
 
@@ -103,9 +104,15 @@ export function TarefaEditModal({
     } catch (err) { setFalha(err instanceof Error ? err.message : 'Falha ao salvar.'); return false; }
     finally { busy.current = false; setSalvando(false); }
   }
-  const requestClose = useDraftGuard(dirty, salvando, onClose);
-  function recarregar() {
-    if (dirty && !window.confirm('Descartar este rascunho e carregar a versão atual?')) return;
+  const [requestClose, dialogoDescarte] = useDraftGuard(dirty, salvando, onClose);
+  const [confirmarRecarga, dialogoRecarregar] = useConfirmacao();
+  async function recarregar() {
+    if (dirty && !(await confirmarRecarga({
+      titulo: 'Recarregar a versão atual?',
+      consequencia: 'Seu rascunho será descartado e substituído pela versão salva por outra pessoa.',
+      rotuloConfirmar: 'Descartar e recarregar',
+      rotuloManter: 'Continuar editando',
+    }))) return;
     setDraft(task); setBaseTask(task); setDonoNome(dono); setBaseDono(dono); setBaseVersion(version); setDirty(false); setFalha('');
   }
 
@@ -143,10 +150,11 @@ export function TarefaEditModal({
   // removida lá; o portal impede que a próxima propriedade de pintura que
   // alguém acrescentar a um contêiner de página reabra o mesmo buraco calado.
   return createPortal((
+    <>
     <div className="modal-overlay" onClick={requestClose}>
       <div
         ref={cardRef}
-        className="modal-card"
+        className="modal-card modal-card--editor"
         role="dialog"
         aria-modal="true"
         aria-label="Editar tarefa"
@@ -166,7 +174,7 @@ export function TarefaEditModal({
         </div>
 
         <div className="modal-body">
-          {(error || falha) && <div className="form-aviso" role="alert">{error || falha}<button className="btn btn-ghost" onClick={recarregar} disabled={salvando}>Recarregar versão atual</button></div>}
+          {(error || falha) && <div className="form-aviso" role="alert">{error || falha}<button className="btn btn-ghost" onClick={() => { void recarregar(); }} disabled={salvando}>Recarregar versão atual</button></div>}
           <fieldset className="modal-fields" disabled={salvando}>
           <datalist id="dl-tipo">{tipoOptions.map(o => <option key={o} value={o} />)}</datalist>
           <datalist id="dl-responsavel-tarefa">{responsavelOptions.map(o => <option key={o} value={o} />)}</datalist>
@@ -195,11 +203,11 @@ export function TarefaEditModal({
                 <input className="modal-input" list="dl-tipo" value={draft.tipo} onChange={e => setField({ tipo: e.target.value })} />
               </div>
             </div>
-            <div style={{ marginTop: 12 }}>
+            <div className="modal-bloco">
               <div className="modal-field-label">Tarefa</div>
               <textarea className="modal-textarea" rows={2} value={draft.tarefa} onChange={e => setField({ tarefa: e.target.value })} />
             </div>
-            <div style={{ marginTop: 12 }}>
+            <div className="modal-bloco">
               <div className="modal-field-label">Detalhes</div>
               <textarea className="modal-textarea" rows={2} value={draft.detalhes} onChange={e => setField({ detalhes: e.target.value })} />
             </div>
@@ -289,7 +297,7 @@ export function TarefaEditModal({
                 {vinculo?.rotina && <div className="modal-field-hint">Controle contínuo — sem prazo.</div>}
               </div>
             </div>
-            <div style={{ marginTop: 12 }}>
+            <div className="modal-bloco">
               <div className="modal-field-label">Observações</div>
               <textarea className="modal-textarea" rows={2} value={draft.obs} onChange={e => setField({ obs: e.target.value })} />
             </div>
@@ -307,5 +315,8 @@ export function TarefaEditModal({
         </div>
       </div>
     </div>
+    {dialogoDescarte}
+    {dialogoRecarregar}
+    </>
   ), document.body);
 }

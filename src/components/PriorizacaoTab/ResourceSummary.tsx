@@ -1,5 +1,6 @@
 import type { PriorityGroup } from './priorityGroups';
 import { EmptyState } from '../common/EmptyState';
+import { formatarNumero } from '../../lib/portfolioLabels';
 
 interface ResourceSummaryProps {
   groups: PriorityGroup[];
@@ -35,11 +36,11 @@ export function ResourceSummary({
                 <thead>
                   <tr>
                     <th>{singular}</th>
-                    <th style={{ width: 190 }}>{colunaContexto}</th>
-                    <th className="center" style={{ width: 70 }}>Esforço</th>
-                    <th className="center" style={{ width: 70 }}>Impacto</th>
-                    <th className="center" style={{ width: 80 }}>Gravidade</th>
-                    <th className="center" style={{ width: 96 }}>Priorização</th>
+                    <th className="col-contexto">{colunaContexto}</th>
+                    <th className="center col-num">Esforço</th>
+                    <th className="center col-num">Impacto</th>
+                    <th className="center col-grav">Gravidade</th>
+                    <th className="center col-prio">Priorização</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -53,7 +54,7 @@ export function ResourceSummary({
                       <td className="center">
                         <span className="tier-chip" data-tier={act.tier}>
                           <span className="tier-dot" />
-                          {act.prioriz}
+                          {formatarNumero(act.prioriz, 2)}
                         </span>
                       </td>
                     </tr>

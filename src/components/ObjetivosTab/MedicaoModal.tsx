@@ -28,7 +28,7 @@ export function MedicaoModal({ objetivo, medicoes, pf, onClose }: MedicaoModalPr
   const [obs, setObs] = useState('');
   const [salvando, setSalvando] = useState(false);
 
-  const fechar = useDraftGuard(valor !== null || !!obs, salvando || pf.saving, onClose);
+  const [fechar, dialogoDescarte] = useDraftGuard(valor !== null || !!obs, salvando || pf.saving, onClose);
   const progresso = progressoObjetivo(objetivo, medicoes);
   const serie = [...progresso.serie].reverse();
   const unidade = objetivo.unidade ? ` ${objetivo.unidade}` : '';
@@ -108,7 +108,7 @@ export function MedicaoModal({ objetivo, medicoes, pf, onClose }: MedicaoModalPr
           placeholder="De onde saiu o número"
         />
       </div>
-      <div className="actions-row" style={{ marginTop: 'var(--sp-3)' }}>
+      <div className="actions-row modal-bloco">
         <button
           className="btn btn-navy"
           onClick={() => { void registrar(); }}
@@ -138,7 +138,7 @@ export function MedicaoModal({ objetivo, medicoes, pf, onClose }: MedicaoModalPr
               <th>Data</th>
               <th className="num">Valor</th>
               <th>Observação</th>
-              <th style={{ width: 64 }} />
+              <th className="col-acao" />
             </tr>
           </thead>
           <tbody>
@@ -157,6 +157,7 @@ export function MedicaoModal({ objetivo, medicoes, pf, onClose }: MedicaoModalPr
       )}
     </ModalShell>
     {dialogoConfirmacao}
+    {dialogoDescarte}
     </>
   );
 }

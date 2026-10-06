@@ -1,9 +1,9 @@
 import { useSessionState } from '../../hooks/useSessionState';
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { Iniciativa, Marco, StoredRiskRecord } from '../../types';
 import type { UsePortfolio } from '../../hooks/usePortfolio';
 import { computePrioriz, round2 } from '../../lib/calculations';
-import { portfolioPorOrigem, iniciativaAtiva, saudeIniciativas, hojeISO } from '../../lib/portfolioMetrics';
+import { portfolioPorOrigem, iniciativaAtiva, saudeIniciativas, zumbis, hojeISO } from '../../lib/portfolioMetrics';
 import { estadoDoMarco } from '../../lib/marcos';
 import { lerAutor } from '../../lib/autor';
 import { chaveDoNome } from '../../lib/nomes';
@@ -13,7 +13,7 @@ import {
 } from '../../lib/portfolioLabels';
 import { proximoMarco, dataPlanoMarco } from './iniciativasUi';
 import './iniciativas.css';
-import { OBJETIVO_BALDE } from '../../lib/portfolioUi';
+import { OBJETIVO_BALDE, julgar } from '../../lib/portfolioUi';
 import { EmptyState } from '../common/EmptyState';
 import { Kpi, KpiRow } from '../common/Kpi';
 import { useConfirmacao } from '../common/Confirmacao';
@@ -123,6 +123,9 @@ export function IniciativasTab({
   const saude = useMemo(() => saudeIniciativas(iniciativas, marcos), [iniciativas, marcos]);
 
   const atencao = useMemo(() => new Set([...saude.semMarco, ...saude.atrasadas].map(i => i.id)), [saude]);
+  // Parada é a mesma régua do Painel (`zumbis`): o título não pode contar uma
+  // coisa que o KPI de lá chama de outra.
+  const paradas = useMemo(() => zumbis(iniciativas, marcos, new Date()), [iniciativas, marcos]);
   const proximos = useMemo(() => new Map(iniciativas.map(i => [i.id, proximoMarco(marcos, i.id)])), [iniciativas, marcos]);
 
   /** Marcos de cada iniciativa, na ordem do plano — é o que o stepper desenha. */
@@ -158,17 +161,24 @@ export function IniciativasTab({
     return m;
   }, [acoes_risco]);
 
+  /** A mesma regra serve ao filtro e à contagem do chip: duas cópias divergiriam. */
+  const naVisao = useCallback((i: Iniciativa, chave: Exclude<Visao, ''>) => {
+    if (chave === 'minhas') return i.dono_id === minhaPessoa;
+    if (chave === 'em_risco') return atencao.has(i.id);
+    if (chave === 'sem_dono') return !i.dono_id;
+    const fim = i.fim_plano_atual ?? i.fim_plano_original;
+    return !!fim && fim >= trimestre.ini && fim <= trimestre.fim;
+  }, [minhaPessoa, atencao, trimestre.ini, trimestre.fim]);
+  const contagemVisoes = useMemo(
+    () => Object.fromEntries(VISOES.map(v => [v.chave, iniciativas.filter(i => naVisao(i, v.chave)).length])) as Record<Exclude<Visao, ''>, number>,
+    [iniciativas, naVisao],
+  );
+
   const filtradas = useMemo(() => {
     const q = busca.toLowerCase().trim();
     return iniciativas.filter(i => {
       if (idsDoRecorte && !idsDoRecorte.has(i.id)) return false;
-      if (visao === 'minhas' && i.dono_id !== minhaPessoa) return false;
-      if (visao === 'em_risco' && !atencao.has(i.id)) return false;
-      if (visao === 'sem_dono' && i.dono_id) return false;
-      if (visao === 'trimestre') {
-        const fim = i.fim_plano_atual ?? i.fim_plano_original;
-        if (!fim || fim < trimestre.ini || fim > trimestre.fim) return false;
-      }
+      if (visao && !naVisao(i, visao)) return false;
       if (situacao === 'ativas' && !iniciativaAtiva(i)) return false;
       if (situacao === 'atencao' && !atencao.has(i.id)) return false;
       if (situacao !== 'todas' && situacao !== 'ativas' && situacao !== 'atencao' && i.status !== situacao) return false;
@@ -179,7 +189,7 @@ export function IniciativasTab({
       const dono = i.dono_id ? pessoaPorId.get(i.dono_id) ?? '' : '';
       return [i.nome, i.descricao, i.recurso, obj, dono].join(' ').toLowerCase().includes(q);
     });
-  }, [iniciativas, idsDoRecorte, busca, situacao, objetivoFiltro, donoFiltro, atencao, objetivoPorId, pessoaPorId, visao, minhaPessoa, trimestre.ini, trimestre.fim]);
+  }, [iniciativas, idsDoRecorte, busca, situacao, objetivoFiltro, donoFiltro, atencao, objetivoPorId, pessoaPorId, visao, naVisao]);
 
   /** Grupos da lista. A ordem interna é sempre a da priorização — o que decide primeiro fica em cima. */
   const grupos = useMemo(() => {
@@ -280,7 +290,15 @@ export function IniciativasTab({
 
       <div className="page-bar" hidden={!!selecionada}>
         <div>
-          <div className="page-title">Iniciativas</div>
+          <div className="page-title">
+            {iniciativas.length === 0 ? 'Iniciativas' : atencao.size === 0 ? 'Nenhuma iniciativa pede atenção' : (
+              <>
+                <em>{plural(atencao.size, 'iniciativa', 'iniciativas')}</em>
+                {' '}{atencao.size === 1 ? 'pede' : 'pedem'} atenção
+                {paradas.length > 0 && `, ${paradas.length} ${paradas.length === 1 ? 'está parada' : 'estão paradas'}`}
+              </>
+            )}
+          </div>
           <div className="page-subtitle">
             {origem.deRisco.iniciativas} nasceram de risco · {origem.deOportunidade.iniciativas} de
             oportunidade · {plural(iniciativas.filter(iniciativaAtiva).length, 'ativa', 'ativas')}
@@ -304,8 +322,8 @@ export function IniciativasTab({
         <KpiRow colunas={4}>
           <Kpi label="No portfólio" valor={saude.total} onClick={() => setSituacao('todas')} ativo={situacao === 'todas'} />
           <Kpi label="Ativas" valor={saude.ativas} sub="Aprovadas, em execução ou pausadas" acento="brand" onClick={() => setSituacao('ativas')} ativo={situacao === 'ativas'} />
-          <Kpi label="Precisam de atenção" valor={atencao.size} sub="Ativas sem marco ou com marco vencido" acento="alto" onClick={() => setSituacao('atencao')} ativo={situacao === 'atencao'} />
-          <Kpi label="Concluídas" valor={saude.concluidas} acento="baixo" onClick={() => setSituacao('concluida')} ativo={situacao === 'concluida'} />
+          <Kpi label="Precisam de atenção" valor={atencao.size} sub="Ativas sem marco ou com marco vencido" acento="alto" {...(atencao.size > 0 ? julgar('atencao', 'Atenção') : {})} onClick={() => setSituacao('atencao')} ativo={situacao === 'atencao'} />
+          <Kpi label="Concluídas" valor={saude.concluidas} acento="baixo" {...(saude.concluidas > 0 ? julgar('ok', 'Entregue') : {})} onClick={() => setSituacao('concluida')} ativo={situacao === 'concluida'} />
         </KpiRow>
       )}
 
@@ -352,6 +370,7 @@ export function IniciativasTab({
                     onClick={() => setVisao(visao === v.chave ? '' : v.chave)}
                   >
                     {v.label}
+                    {!semAutor && <b className="ini-visao-n tabular">{contagemVisoes[v.chave]}</b>}
                   </button>
                 );
               })}

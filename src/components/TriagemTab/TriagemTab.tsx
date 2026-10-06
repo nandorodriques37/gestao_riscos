@@ -3,7 +3,9 @@ import type { AcaoRisco, DestinoTriagem, StoredRiskRecord } from '../../types';
 import type { UsePortfolio } from '../../hooks/usePortfolio';
 import { sugerirDestino, ROTULO_DESTINO, type DestinoSugerido } from '../../lib/triagem';
 import { EmptyState } from '../common/EmptyState';
-import { Kpi } from '../common/Kpi';
+import { Kpi, KpiRow } from '../common/Kpi';
+import { plural } from '../../lib/portfolioLabels';
+import { julgar } from '../../lib/portfolioUi';
 
 interface TriagemTabProps {
   records: StoredRiskRecord[];
@@ -212,12 +214,19 @@ export function TriagemTab({ records, pf }: TriagemTabProps) {
         </div>
       )}
 
-      <div className="section-header-row" style={{ marginBottom: 'var(--sp-4)' }}>
+      <div className="page-bar">
         <div>
-          <div className="section-title">Triagem do plano de ação</div>
-          <div className="section-subtitle">
-            Cada ação que estava dentro de um risco precisa de um destino. Nada foi apagado —
-            o plano continua no registro até você validar tudo.
+          <div className="page-title">
+            {portfolio.acoes_risco.length === 0 ? 'Triagem do plano de ação' : pendentes.length === 0 ? 'Fila de triagem vazia' : (
+              <>
+                <em>{plural(pendentes.length, 'item', 'itens')}</em> do plano antigo{' '}
+                {pendentes.length === 1 ? 'espera' : 'esperam'} destino
+              </>
+            )}
+          </div>
+          <div className="page-subtitle">
+            Aba temporária da migração · some quando a fila zerar. Nada foi apagado: o plano
+            continua no registro até você validar tudo.
           </div>
         </div>
       </div>
@@ -241,11 +250,12 @@ export function TriagemTab({ records, pf }: TriagemTabProps) {
               ele passa a filtrar a lista — que é a pergunta que o número
               levanta ("quais são essas?"). A decisão continua sendo dos
               botões de cada linha. */}
-          <div className="triagem-resumo" style={{ marginBottom: 'var(--sp-4)' }}>
+          <KpiRow colunas={4}>
             <Kpi
               label="Na fila"
               valor={pendentes.length}
               acento={pendentes.length > 0 ? 'alto' : 'baixo'}
+              {...(pendentes.length > 0 ? julgar('atencao', 'Atenção') : {})}
               ativo={naFila}
               onClick={() => filtrar('fila')}
               title="Mostra as ações que ainda não têm destino"
@@ -261,26 +271,17 @@ export function TriagemTab({ records, pf }: TriagemTabProps) {
                 title={`Mostra as ações classificadas como "${ROTULO_DESTINO[d]}"`}
               />
             ))}
-          </div>
+          </KpiRow>
 
           {(resumoMigracao || resumoAceite) && (
-            <div className="card" style={{ marginBottom: 'var(--sp-4)' }}>
-              {resumoMigracao && (
-                <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--ink-2)' }}>{resumoMigracao}</div>
-              )}
-              {resumoAceite && (
-                <div style={{
-                  fontSize: 'var(--fs-sm)', color: 'var(--ink-2)',
-                  marginTop: resumoMigracao ? 'var(--sp-2)' : 0,
-                }}>
-                  {resumoAceite}
-                </div>
-              )}
+            <div className="card">
+              {resumoMigracao && <div className="triagem-nota">{resumoMigracao}</div>}
+              {resumoAceite && <div className="triagem-nota">{resumoAceite}</div>}
             </div>
           )}
 
           {(paraPromover > 0 || jaPromovidas > 0 || resumoPromocao) && (
-            <div className="card triagem-promover" style={{ marginBottom: 'var(--sp-4)' }}>
+            <div className="card triagem-promover">
               <div className="section-header-row">
                 <div>
                   <div className="section-title">
@@ -288,7 +289,7 @@ export function TriagemTab({ records, pf }: TriagemTabProps) {
                       ? `${paraPromover} ${paraPromover === 1 ? 'ação pronta' : 'ações prontas'} para virar iniciativa`
                       : 'Nada esperando promoção'}
                   </div>
-                  <div className="section-subtitle" style={{ marginBottom: 0 }}>
+                  <div className="section-subtitle">
                     Cada uma vira uma iniciativa sob <strong>A CLASSIFICAR</strong>, herdando esforço,
                     impacto, gravidade, recurso e dono do risco de origem. Nasce como <strong>não priorizada</strong> —
                     sem marco não se declara execução.
@@ -304,18 +305,12 @@ export function TriagemTab({ records, pf }: TriagemTabProps) {
                 </button>
               </div>
               {resumoPromocao && (
-                <div style={{
-                  marginTop: 'var(--sp-3)', paddingTop: 'var(--sp-3)',
-                  borderTop: '1px solid var(--line-hairline)',
-                  fontSize: 'var(--fs-sm)', color: 'var(--ink-2)', lineHeight: 1.55,
-                }}>
-                  {resumoPromocao}
-                </div>
+                <div className="triagem-nota triagem-resultado">{resumoPromocao}</div>
               )}
             </div>
           )}
 
-          <div className="filter-pills" style={{ marginBottom: 'var(--sp-3)' }}>
+          <div className="filter-pills">
             <button
               className={`filter-pill${naFila ? ' active' : ''}`}
               onClick={() => setFiltro('fila')}
@@ -328,7 +323,7 @@ export function TriagemTab({ records, pf }: TriagemTabProps) {
             >
               Já classificadas · {decididas.length}
             </button>
-            <div style={{ marginLeft: 'auto', display: 'flex', gap: 'var(--sp-2)' }}>
+            <div className="triagem-barra-acoes">
               {pendentes.length > 0 && (
                 <button
                   className="btn btn-outline-navy"
@@ -353,8 +348,9 @@ export function TriagemTab({ records, pf }: TriagemTabProps) {
           {listaVisivel.length === 0 ? (
             <div className="card" ref={listaRef}>
               <EmptyState
+                contexto={naFila ? 'Triagem concluída' : undefined}
                 message={naFila
-                  ? 'Fila vazia — tudo classificado'
+                  ? 'A fila está vazia'
                   : filtro === 'decididas' ? 'Nada classificado ainda'
                     : `Nenhuma ação em "${ROTULO_DESTINO[filtro]}"`}
                 hint={naFila
@@ -449,11 +445,9 @@ export function TriagemTab({ records, pf }: TriagemTabProps) {
             </div>
           )}
 
-          <div style={{
-            marginTop: 'var(--sp-4)', fontSize: 'var(--fs-xs)', color: 'var(--ink-4)', lineHeight: 1.6,
-          }}>
-            <strong style={{ color: 'var(--ink-3)', fontWeight: 'var(--fw-semibold)' }}>Rotina</strong> apenas
-            sinaliza que a ação é um controle contínuo — nada é criado na aba Tarefas automaticamente.
+          <div className="triagem-rodape">
+            <strong>Rotina</strong> apenas sinaliza que a ação é um controle contínuo — nada é
+            criado na aba Tarefas automaticamente.
           </div>
         </>
       )}

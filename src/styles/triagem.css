@@ -7,19 +7,12 @@
    nenhuma outra tela.
    ========================================================================= */
 
-.triagem-resumo {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: var(--sp-3);
-}
-
 /* Aqui o contador CLICA — é a exceção à regra do .kpi-card inerte, e por um
    motivo: os três cartões levam o nome exato dos destinos da triagem, então
    são onde a mão vai primeiro. Ganham por isso a affordance que o resto dos
    KPIs não tem, e a barra de acento do próprio cartão (--c) é quem pinta o
-   estado — nada de cor nova. */
-.triagem-resumo .kpi-card {
-  display: block;
+   estado — nada de cor nova. A faixa em si é o <KpiRow> de sempre. */
+.kpi-strip button.kpi-card {
   width: 100%;
   text-align: left;
   font: inherit;
@@ -28,17 +21,17 @@
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .triagem-resumo .kpi-card {
+  .kpi-strip button.kpi-card {
     transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease);
   }
 }
 
-.triagem-resumo .kpi-card:hover {
+.kpi-strip button.kpi-card:hover {
   border-color: color-mix(in oklab, var(--c) 40%, var(--line-border));
   background: color-mix(in oklab, var(--c) 4%, var(--bg-surface));
 }
 
-.triagem-resumo .kpi-card[aria-pressed='true'] {
+.kpi-strip button.kpi-card[aria-pressed='true'] {
   border-color: color-mix(in oklab, var(--c) 55%, transparent);
   background: color-mix(in oklab, var(--c) 8%, var(--bg-surface));
 }
@@ -46,13 +39,13 @@
 /* Cartão da ação a classificar: o risco de origem em cima, pequeno, e a ação
    embaixo em tinta cheia — é a ação que está sendo decidida, não o risco. */
 .triagem-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+  overflow: hidden;
   background: var(--bg-surface);
   border: 1px solid var(--line-border);
   border-radius: var(--r-card);
-  padding: var(--sp-4);
-  display: flex;
-  gap: var(--sp-5);
-  align-items: flex-start;
+  box-shadow: var(--elev-1);
 }
 
 .triagem-item + .triagem-item {
@@ -60,8 +53,8 @@
 }
 
 .triagem-corpo {
-  flex: 1;
   min-width: 0;
+  padding: var(--sp-4);
 }
 
 .triagem-origem {
@@ -70,7 +63,7 @@
   gap: var(--sp-2);
   flex-wrap: wrap;
   font-size: var(--fs-2xs);
-  color: var(--ink-4);
+  color: var(--ink-3);
 }
 
 /* Faixa vertical do mesmo acento da coluna "Riscos" na tabela — liga
@@ -110,20 +103,23 @@
   flex-wrap: wrap;
   margin-top: var(--sp-2);
   font-size: var(--fs-xs);
-  color: var(--ink-4);
+  color: var(--ink-3);
 }
 
-/* Lado da decisão. Largura fixa para os botões alinharem entre cartões. */
+/* Lado da decisão: coluna própria, em fundo rebaixado, que acompanha a altura
+   do corpo. A largura mínima mantém os botões alinhados entre cartões. */
 .triagem-decisao {
-  width: 300px;
-  flex: none;
   display: flex;
   flex-direction: column;
   gap: var(--sp-2);
+  align-self: stretch;
+  padding: var(--sp-4);
+  border-left: 1px solid var(--line-border);
+  background: var(--bg-sunken);
 }
 
 .triagem-sugestao {
-  background: var(--bg-sunken);
+  background: var(--bg-surface);
   border: 1px solid var(--line-hairline);
   border-radius: var(--r-card);
   padding: var(--sp-2) var(--sp-3);
@@ -134,7 +130,7 @@
   font-weight: var(--fw-medium);
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--ink-4);
+  color: var(--ink-3);
 }
 
 .triagem-motivo {
@@ -193,13 +189,74 @@
   font-weight: var(--fw-regular);
 }
 
-@media (max-width: 1100px) {
+/* Texto de apoio do cartão de resumo e do painel de promoção. */
+.triagem-nota {
+  font-size: var(--fs-sm);
+  line-height: 1.55;
+  color: var(--ink-2);
+}
+
+.triagem-nota + .triagem-nota {
+  margin-top: var(--sp-2);
+}
+
+.triagem-resultado {
+  margin-top: var(--sp-3);
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--line-hairline);
+}
+
+.triagem-barra-acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin-left: auto;
+}
+
+.triagem-rodape {
+  font-size: var(--fs-xs);
+  line-height: 1.6;
+  color: var(--ink-3);
+}
+
+.triagem-rodape strong {
+  font-weight: var(--fw-semibold);
+}
+
+/* A faixa de abas da fila acompanha a rolagem, como a barra de filtros das
+   outras telas. */
+[data-tab='triagem'] .filter-pills {
+  position: sticky;
+  z-index: 12;
+  top: calc(var(--header-h) + var(--sp-2));
+  padding: var(--sp-2);
+  border: 1px solid var(--line-border);
+  border-radius: var(--r-card);
+  background: var(--bg-surface);
+  box-shadow: var(--elev-1);
+}
+
+@media (max-width: 900px) {
   .triagem-item {
-    flex-direction: column;
-    gap: var(--sp-3);
+    grid-template-columns: 1fr;
   }
 
   .triagem-decisao {
-    width: 100%;
+    border-top: 1px solid var(--line-border);
+    border-left: 0;
+  }
+}
+
+@media (max-width: 760px) {
+  [data-tab='triagem'] .filter-pills {
+    position: relative;
+    top: auto;
+    flex-wrap: wrap;
+  }
+
+  /* Sem espaço lateral, as ações descem para a própria linha. */
+  .triagem-barra-acoes {
+    flex: 1 1 100%;
+    margin-left: 0;
   }
 }

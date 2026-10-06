@@ -34,7 +34,7 @@ export function MarcoModal({
   const initial = useRef(JSON.stringify(d));
   const busy = useRef(false);
   const [falha, setFalha] = useState('');
-  const fechar = useDraftGuard(JSON.stringify(d) !== initial.current, salvando, onClose);
+  const [fechar, dialogoDescarte] = useDraftGuard(JSON.stringify(d) !== initial.current, salvando, onClose);
 
   const set = <K extends keyof typeof d>(k: K, v: (typeof d)[K]) => setD(p => ({ ...p, [k]: v }));
 
@@ -75,6 +75,7 @@ export function MarcoModal({
   const podeSalvar = d.nome.trim().length > 0 && !faltaMotivo && !salvando;
 
   return (
+    <>
     <ModalShell
       titulo={marco ? 'Editar marco' : 'Novo marco'}
       subtitulo={iniciativaNome}
@@ -116,7 +117,7 @@ export function MarcoModal({
         {originalTravada ? (
           <div className="form-campo">
             <div className="modal-field-label">Plano original</div>
-            <div className="modal-input" style={{ display: 'flex', alignItems: 'center', color: 'var(--ink-3)' }}>
+            <div className="modal-input modal-input-leitura">
               <span className="tabular">{formatarDataLonga(marco?.data_plano_original)}</span>
             </div>
             <div className="campo-ajuda">Congelada. É a régua contra a qual o atraso é medido.</div>
@@ -178,5 +179,7 @@ export function MarcoModal({
         </>
       )}
     </ModalShell>
+    {dialogoDescarte}
+    </>
   );
 }

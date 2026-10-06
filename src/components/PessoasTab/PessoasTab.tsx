@@ -6,6 +6,8 @@ import {
 } from '../../lib/portfolioMetrics';
 import { chaveDoNome } from '../../lib/planoDeAcao';
 import { formatarNumero, plural } from '../../lib/portfolioLabels';
+import { julgar } from '../../lib/portfolioUi';
+import { Kpi, KpiRow } from '../common/Kpi';
 import { EmptyState } from '../common/EmptyState';
 import { onActivateKey } from '../../lib/a11y';
 import { useConfirmacao } from '../common/Confirmacao';
@@ -80,7 +82,40 @@ export function PessoasTab({ pf, onIrPara }: PessoasTabProps) {
     return [...lista].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
   }, [pessoas, mostrarInativos]);
 
-  const inativos = pessoas.length - pessoas.filter(p => p.ativo).length;
+  const ativas = useMemo(() => pessoas.filter(p => p.ativo), [pessoas]);
+  const inativos = pessoas.length - ativas.length;
+
+  /*
+   * Capacidade e carga, só de quem está ativo e declarou teto: somar a carga de
+   * quem não tem teto contra o teto dos outros inflaria o "alocado". `carga`
+   * já vem ordenada, e `acimaDaCapacidade` já exige capacidade declarada.
+   */
+  const ativasPorId = useMemo(() => new Set(ativas.map(p => p.id)), [ativas]);
+  const capacidadeTotal = useMemo(
+    () => ativas.reduce((soma, p) => soma + (p.dias_projeto_mes ?? 0), 0),
+    [ativas],
+  );
+  const cargaComTeto = useMemo(
+    () => carga.filter(c => ativasPorId.has(c.pessoa.id) && c.capacidade != null && c.capacidade > 0),
+    [carga, ativasPorId],
+  );
+  const alocado = useMemo(
+    () => cargaComTeto.reduce((soma, c) => soma + c.diasNoPeriodo, 0),
+    [cargaComTeto],
+  );
+  const capacidadeComCarga = useMemo(
+    () => cargaComTeto.reduce((soma, c) => soma + (c.capacidade ?? 0), 0),
+    [cargaComTeto],
+  );
+  const acima = useMemo(
+    () => carga.filter(c => c.acimaDaCapacidade && ativasPorId.has(c.pessoa.id))
+      .sort((a, b) => (b.diasNoPeriodo / (b.capacidade ?? 1)) - (a.diasNoPeriodo / (a.capacidade ?? 1))),
+    [carga, ativasPorId],
+  );
+  const maisCarregada = acima[0] ?? null;
+  const pctAcima = maisCarregada
+    ? Math.round(((maisCarregada.diasNoPeriodo / (maisCarregada.capacidade ?? 1)) - 1) * 100)
+    : 0;
   const semCapacidade = pessoas.filter(p => p.ativo && p.dias_projeto_mes == null).length;
   const primeiraSemTeto = pessoas.find(p => p.ativo && p.dias_projeto_mes == null) ?? null;
   const [confirmar, dialogoConfirmacao] = useConfirmacao();
@@ -88,8 +123,8 @@ export function PessoasTab({ pf, onIrPara }: PessoasTabProps) {
   async function excluir(p: Pessoa) {
     const u = uso.find(x => x.pessoa.id === p.id);
     const consequencia = u && u.total > 0
-      ? `${p.nome} é dona de ${plural(u.total, 'item', 'itens')} (${u.objetivos} objetivos, `
-        + `${u.iniciativas} iniciativas, ${u.trabalho} tarefas e ações). Excluir não apaga esses itens — `
+      ? `${p.nome} é dona de ${plural(u.total, 'item', 'itens')} (${plural(u.objetivos, 'objetivo', 'objetivos')}, `
+        + `${plural(u.iniciativas, 'iniciativa', 'iniciativas')}, ${plural(u.trabalho, 'tarefa ou ação', 'tarefas e ações')}). Excluir não apaga esses itens — `
         + 'deixa todos sem dono, e não há como saber depois quem era. Se a pessoa apenas saiu do '
         + 'time, marque como inativa: o histórico fica de pé.'
       : 'A ficha some da lista. Nenhum objetivo, iniciativa ou tarefa depende dela.';
@@ -152,9 +187,16 @@ export function PessoasTab({ pf, onIrPara }: PessoasTabProps) {
 
       <div className="page-bar">
         <div>
-          <div className="page-title">Pessoas</div>
+          <div className="page-title">
+            {ativas.length === 0 ? 'Pessoas' : maisCarregada ? (
+              <>
+                <em>{maisCarregada.pessoa.nome}</em> está {pctAcima}% acima da capacidade
+                {acima.length > 1 && `, e mais ${plural(acima.length - 1, 'pessoa', 'pessoas')}`}
+              </>
+            ) : 'Ninguém acima da capacidade'}
+          </div>
           <div className="page-subtitle">
-            {plural(pessoas.filter(p => p.ativo).length, 'pessoa ativa', 'pessoas ativas')} ·
+            {plural(ativas.length, 'pessoa ativa', 'pessoas ativas')} · carga em dias de projeto por mês ·
             {' '}quem pode ser dono de objetivo, iniciativa ou ação
           </div>
         </div>
@@ -168,14 +210,46 @@ export function PessoasTab({ pf, onIrPara }: PessoasTabProps) {
         </div>
       </div>
 
+      {ativas.length > 0 && (
+        <KpiRow colunas={4}>
+          <Kpi
+            label="Pessoas ativas" valor={ativas.length} acento="brand"
+            sub={inativos > 0 ? plural(inativos, 'inativa', 'inativas') : 'nenhuma inativa'}
+          />
+          <Kpi
+            label="Capacidade por mês"
+            valor={capacidadeTotal > 0 ? `${formatarNumero(capacidadeTotal, 0)} d` : '—'}
+            sub={capacidadeTotal > 0 ? 'dias de projeto somados' : 'ninguém declarou o teto'}
+            acento="brand"
+          />
+          <Kpi
+            label="Alocado"
+            valor={capacidadeComCarga > 0 ? `${Math.round((alocado / capacidadeComCarga) * 100)}%` : '—'}
+            sub={capacidadeComCarga > 0
+              ? `${formatarNumero(alocado, 1)} d de ${formatarNumero(capacidadeComCarga, 0)} d`
+              : 'sem carga contra um teto'}
+            acento="brand"
+            {...(capacidadeComCarga > 0 && alocado > capacidadeComCarga ? julgar('risco', 'Acima') : {})}
+          />
+          <Kpi
+            label="Acima da capacidade" valor={acima.length}
+            sub={maisCarregada
+              ? `${maisCarregada.pessoa.nome}, ${formatarNumero(maisCarregada.diasNoPeriodo, 1)} d de ${maisCarregada.capacidade} d`
+              : 'ninguém passou do teto'}
+            acento={acima.length > 0 ? 'critico' : 'baixo'}
+            {...(acima.length > 0 ? julgar('risco', 'Sobrecarga') : {})}
+          />
+        </KpiRow>
+      )}
+
       {resumoMesclagem && (
-        <div className="card" style={{ marginBottom: 'var(--sp-3)' }}>
-          <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--ink-2)' }}>{resumoMesclagem}</div>
+        <div className="card">
+          <div className="bento-sub">{resumoMesclagem}</div>
         </div>
       )}
 
       {duplicados.length > 0 && (
-        <div className="card" style={{ marginBottom: 'var(--sp-3)', borderColor: 'color-mix(in oklab, var(--tier-alto) 34%, transparent)' }}>
+        <div className="card pessoas-duplicadas">
           <div className="section-title">
             {plural(duplicados.length, 'nome repetido', 'nomes repetidos')}
           </div>
@@ -213,7 +287,7 @@ export function PessoasTab({ pf, onIrPara }: PessoasTabProps) {
       )}
 
       {semCapacidade > 0 && (
-        <div className="form-aviso form-aviso-com-acao" style={{ marginTop: 0, marginBottom: 'var(--sp-3)' }}>
+        <div className="form-aviso form-aviso-com-acao pessoas-aviso">
           <span>
             {plural(semCapacidade, 'pessoa ativa está', 'pessoas ativas estão')} sem capacidade de
             projeto declarada. Sem esse teto, o Painel mostra a carga delas mas não tem régua para
@@ -247,7 +321,7 @@ export function PessoasTab({ pf, onIrPara }: PessoasTabProps) {
                 <th className="num">Trabalho</th>
                 <th className="num">Em execução</th>
                 <th>Carga do mês</th>
-                <th style={{ width: 72 }} />
+                <th className="col-acao" />
               </tr>
             </thead>
             <tbody>
@@ -319,7 +393,7 @@ export function PessoasTab({ pf, onIrPara }: PessoasTabProps) {
         </div>
       )}
 
-      <div className="bento-sub" style={{ marginTop: 'var(--sp-4)', maxWidth: '80ch' }}>
+      <div className="bento-sub pessoas-nota">
         A carga do mês espalha o esforço de cada iniciativa ativa pela janela dela e soma só a
         fatia deste mês. Iniciativa sem esforço ou sem janela não entra —{' '}
         <button className="link-ini" onClick={() => onIrPara('iniciativas')}>preencha lá</button>{' '}

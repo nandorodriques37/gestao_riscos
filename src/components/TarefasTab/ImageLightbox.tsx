@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import type { TaskAttachment } from '../../types';
 import { taskAttachmentUrl } from '../../lib/tasksApi';
 import { formatBytes } from '../../lib/imageAttachments';
@@ -38,7 +39,11 @@ export function ImageLightbox({ taskId, anexos, index, onIndexChange, onClose }:
     else if (e.key === 'ArrowLeft' && total > 1) { e.preventDefault(); irPara(-1); }
   }
 
-  return (
+  // Fora do cartão do modal, no <body>: `position: fixed` dentro de um ancestral
+  // com `transform` mede o ancestral, e o visualizador cobria só o modal em vez
+  // da tela. Os eventos React continuam subindo pela árvore lógica, então o
+  // `stopPropagation` do teclado abaixo segue protegendo o Esc do modal.
+  return createPortal((
     <div
       ref={ref}
       className="lightbox"
@@ -73,5 +78,5 @@ export function ImageLightbox({ taskId, anexos, index, onIndexChange, onClose }:
         )}
       </div>
     </div>
-  );
+  ), document.body);
 }

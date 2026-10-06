@@ -1,10 +1,42 @@
 /* ============================================================================
-   Tabela — compartilhada por Registro e Tarefas.
+   Tabela — base de toda <table> e a tabela de Registro e Tarefas.
 
-   Antes as duas abas tinham vocabulários próprios: a de Tarefas fazia zebra
-   por estilo inline e acento por inset box-shadow, a de Registro tinha
-   cabeçalho navy sólido. Agora as duas saem daqui.
+   Cabeçalho é estrutura, e estrutura é azul: `--brand-core` com texto
+   `--ink-on-brand-core`, nos dois temas. A base abaixo vale para a tabela sem
+   classe própria (resumo por recurso, "Origem × vetor"); as tabelas com classe
+   só ajustam o que lhes é próprio.
    ========================================================================= */
+
+table {
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: var(--fs-xs);
+}
+
+thead th {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  padding: var(--sp-2) var(--sp-3);
+  text-align: left;
+  color: var(--ink-on-brand-core);
+  background: var(--brand-core);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+tbody td {
+  padding: var(--sp-2) var(--sp-3);
+  border-bottom: 1px solid var(--line-hairline);
+  color: var(--ink-1);
+  vertical-align: middle;
+}
+
+tbody tr:last-child td {
+  border-bottom: 0;
+}
 
 .table-wrap,
 .tarefas-table-wrap {
@@ -12,6 +44,7 @@
   background: var(--bg-surface);
   border: 1px solid var(--line-border);
   border-radius: var(--r-card);
+  box-shadow: var(--elev-1);
   overflow: auto;
   max-height: 64vh;
 }
@@ -25,36 +58,26 @@
   color: var(--ink-2);
 }
 
-/* ---------- Cabeçalho ----------
-   Superfície rebaixada com tinta secundária, no lugar do bloco navy sólido.
-   O navy pesado brigava com os chips coloridos das próprias linhas. */
+/* ---------- Cabeçalho ---------- */
 
 .risk-table thead th {
   position: sticky;
-  background: var(--bg-sunken);
-  color: var(--ink-3);
-  font-size: var(--fs-2xs);
-  font-weight: var(--fw-semibold);
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  text-align: left;
   white-space: nowrap;
   padding: 0 var(--sp-3);
   height: var(--control-h);
-  border-bottom: 1px solid var(--line-border);
   top: 0;
   z-index: 4;
 }
 
-/* Faixa de grupo: era uma barra navy de 24px, virou uma linha discreta. */
+/* Faixa de grupo: o mesmo azul, um degrau mais fundo, para separar o grupo
+   do título da coluna sem uma segunda cor. */
 .risk-table .group-row th {
   height: 26px;
   font-size: var(--fs-3xs);
   font-weight: var(--fw-medium);
-  color: var(--ink-4);
-  background: var(--bg-sunken);
-  border-bottom: 1px solid var(--line-hairline);
-  box-shadow: inset 1px 0 0 var(--line-hairline);
+  color: color-mix(in srgb, var(--ink-on-brand-core) 72%, transparent);
+  background: color-mix(in srgb, var(--brand-core) 86%, black);
+  box-shadow: inset 1px 0 0 color-mix(in srgb, var(--ink-on-brand-core) 18%, transparent);
 }
 
 .risk-table .group-row th:empty {
@@ -74,14 +97,18 @@
 }
 
 .risk-table thead th.sortable:hover {
-  color: var(--ink-1);
-  background: var(--bg-hover);
+  background: color-mix(in srgb, var(--brand-core) 82%, white);
 }
 
 /* A coluna "Riscos" é marcada por acento no rótulo e por uma faixa vertical,
-   não por um fundo rosa em toda célula — que competia com os chips. */
+   não por um fundo rosa em toda célula — que competia com os chips. Sobre o
+   azul o acento é o coral claro: o coral cheio perde contraste. */
 .risk-table thead th.th-red {
-  color: var(--risco-accent);
+  color: var(--coral-claro);
+}
+
+.risk-table thead th.th-red::before {
+  background: var(--coral-claro);
 }
 
 .risk-table thead th.th-red::before,
@@ -226,7 +253,7 @@
 .risk-table thead th.sticky-col-left,
 .risk-table thead th.sticky-col-right {
   z-index: 5;
-  background: var(--bg-sunken);
+  background: var(--brand-core);
 }
 
 /* Sombra direcional só quando há conteúdo escondido atrás da coluna fixa. */
@@ -423,6 +450,7 @@
 .desc-table-wrap {
   border: 1px solid var(--line-border);
   border-radius: var(--r-card);
+  box-shadow: var(--elev-1);
   overflow: auto;
   max-height: 380px;
 }
@@ -436,21 +464,15 @@
 }
 
 .desc-table th {
-  position: sticky;
-  top: 0;
   z-index: 2;
-  background: var(--bg-sunken);
-  color: var(--ink-3);
-  font-size: var(--fs-2xs);
-  font-weight: var(--fw-semibold);
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  text-align: left;
   height: var(--control-h);
   padding: 0 var(--sp-3);
-  border-bottom: 1px solid var(--line-border);
   white-space: nowrap;
 }
+
+.desc-table th.col-risco { width: 56%; }
+.desc-table th.col-score { width: 84px; }
+.desc-table th.col-status { width: 136px; }
 
 .desc-table td {
   padding: var(--sp-2) var(--sp-3);
@@ -652,6 +674,10 @@ tr[data-tier='null'] { --c: var(--tier-null); }
 .gut-guide-table td {
   padding: var(--sp-1) var(--sp-2);
   border-bottom: 1px solid var(--line-hairline);
+}
+
+.gut-guide-title-faixas {
+  margin-top: var(--sp-4);
 }
 
 .gut-guide-faixas {

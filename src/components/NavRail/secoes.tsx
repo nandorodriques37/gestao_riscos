@@ -93,6 +93,11 @@ export const TRIAGEM: Secao = { id: 'triagem', label: 'Triagem', icone: ICONES.t
  */
 export const DESTINOS_BARRA: Tab[] = ['painel', 'objetivos', 'registro', 'tarefas'];
 
+/** Grupo ao qual um destino pertence — é a primeira metade da migalha do header. */
+export function grupoDe(id: Tab): string | undefined {
+  return gruposCom(true).find(g => g.itens.some(s => s.id === id))?.titulo;
+}
+
 /** Os grupos, com a Triagem anexada quando a migração ainda tem trabalho. */
 export function gruposCom(mostrarTriagem: boolean): Grupo[] {
   return mostrarTriagem

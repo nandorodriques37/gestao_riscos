@@ -13,9 +13,9 @@
   border: 1px solid var(--line);
   border-radius: var(--r-card);
   padding: var(--sp-5);
-  /* Cartão em repouso é hairline puro — e continua sendo no hover. Sombra é
-     para o que flutua acima da página, e um cartão parado não flutua. */
-  box-shadow: none;
+  /* Cartão em repouso: hairline mais a sombra curta do sistema (--elev-1).
+     Sombra mais forte é para o que flutua acima da página. */
+  box-shadow: var(--elev-1);
 }
 
 .card-col {
@@ -32,8 +32,8 @@
 }
 
 .section-title {
-  font-size: var(--fs-lg);
-  font-weight: var(--fw-semibold);
+  font-size: var(--fs-card);
+  font-weight: var(--fw-bold);
   letter-spacing: var(--tracking-tight);
   color: var(--ink-1);
 }
@@ -46,7 +46,7 @@
 }
 
 .muted {
-  color: var(--ink-4);
+  color: var(--ink-muted);
 }
 
 /* ---------- Botões ---------- */
@@ -56,12 +56,13 @@
   align-items: center;
   justify-content: center;
   gap: var(--sp-2);
-  height: var(--control-h);
-  padding: 0 var(--sp-3);
+  min-height: var(--control-h);
+  padding: 0 var(--sp-4);
   border-radius: var(--r-control);
-  border: 1px solid transparent;
-  font-size: var(--fs-sm);
-  font-weight: var(--fw-medium);
+  border: 1.5px solid transparent;
+  font-size: var(--fs-md);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--tracking-tight);
   white-space: nowrap;
   transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
 }
@@ -74,38 +75,30 @@
   cursor: default;
 }
 
-.btn-ghost {
-  background: var(--bg-surface);
-  color: var(--ink-2);
-  border-color: var(--line-border);
-}
-
-.btn-ghost:hover:not(:disabled) {
-  background: var(--bg-hover);
-  border-color: var(--line-strong);
-}
-
+/* Botão secundário: contorno e texto no azul de texto, fundo do cartão. É o
+   par do primário em toda ação que não é a principal da tela. */
+.btn-ghost,
 .btn-outline-navy {
   background: var(--bg-surface);
-  color: var(--brand);
-  border-color: var(--line-border);
+  color: var(--brand-text);
+  border-color: var(--brand-text);
 }
 
+.btn-ghost:hover:not(:disabled),
 .btn-outline-navy:hover:not(:disabled) {
   background: var(--brand-soft);
-  border-color: var(--brand);
 }
 
 /* Ação primária. Sólida, sem sombra — a sombra aqui só somava ruído, já que o
    contraste do preenchimento basta para marcar a hierarquia. */
 .btn-navy {
+  border-color: var(--brand);
   background: var(--brand);
   color: var(--brand-ink);
-  padding: 0 var(--sp-4);
-  font-weight: var(--fw-semibold);
 }
 
 .btn-navy:hover:not(:disabled) {
+  border-color: var(--brand-hover);
   background: var(--brand-hover);
 }
 
@@ -134,10 +127,19 @@
    (8px) tinham paddings diferentes e não alinhavam na linha. */
 
 .filter-row {
+  position: sticky;
+  z-index: 10;
+  top: calc(var(--header-h) + var(--sp-2));
   display: flex;
   align-items: center;
   gap: var(--sp-2);
   flex-wrap: wrap;
+  min-height: calc(var(--control-h) + var(--sp-3));
+  padding: var(--sp-2);
+  border: 1px solid var(--line-border);
+  border-radius: var(--r-card);
+  background: var(--bg-surface);
+  box-shadow: var(--elev-1);
 }
 
 .search-input {
@@ -147,7 +149,7 @@
   height: var(--control-h);
   padding: 0 var(--sp-3) 0 30px;
   border-radius: var(--r-control);
-  border: 1px solid var(--line-border);
+  border: 1px solid var(--line-strong);
   font-size: var(--fs-field);
   background: var(--bg-surface);
   color: var(--ink-1);
@@ -183,9 +185,9 @@
   height: var(--control-h);
   padding: 0 var(--sp-3);
   border-radius: var(--r-full);
-  border: 1px solid var(--line-border);
-  font-size: var(--fs-xs);
-  font-weight: var(--fw-medium);
+  border: 1.5px solid var(--line-strong);
+  font-size: var(--fs-md);
+  font-weight: var(--fw-bold);
   background: var(--bg-surface);
   color: var(--ink-2);
   transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
@@ -193,7 +195,7 @@
 
 .filter-pill:hover {
   background: var(--bg-hover);
-  border-color: var(--line-strong);
+  border-color: var(--brand-text);
 }
 
 .filter-pill.active {
@@ -206,7 +208,7 @@
   height: var(--control-h);
   padding: 0 28px 0 var(--sp-3);
   border-radius: var(--r-control);
-  border: 1px solid var(--line-border);
+  border: 1px solid var(--line-strong);
   font-size: var(--fs-field);
   font-weight: var(--fw-medium);
   color: var(--ink-2);
@@ -220,7 +222,26 @@
 }
 
 .select-filter:hover {
+  border-color: var(--brand-text);
+}
+
+/* Campo nativo em qualquer lugar: borda de controle (3:1), cantos do papel
+   "controle" e anel de foco sólido. */
+input,
+select,
+textarea {
   border-color: var(--line-strong);
+  border-radius: var(--r-control);
+  background: var(--surface);
+}
+
+input:focus,
+select:focus,
+textarea:focus,
+.search-input:focus-within,
+.select-filter:focus {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 var(--focus-w) var(--focus-ring);
 }
 
 .density-toggle,
@@ -332,12 +353,13 @@
 .btn-danger {
   border-color: var(--danger);
   background: var(--danger);
-  color: var(--brand-ink);
+  color: var(--danger-ink);
 }
 
 .btn-danger:hover {
   filter: brightness(0.92);
 }
+
 
 /* ---------- Vocabulário de vazio ----------
    Duas formas, e só duas. O travessão, em --ink-4, para o campo que NÃO se
@@ -376,11 +398,11 @@
   --c: var(--badge-neutro);
   display: inline-flex;
   align-items: center;
-  height: 20px;
+  height: 22px;
   padding: 0 var(--sp-2);
   border-radius: var(--r-full);
-  font-size: var(--fs-2xs);
-  font-weight: var(--fw-semibold);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
   white-space: nowrap;
   color: var(--c);
   background: color-mix(in oklab, var(--c) 13%, var(--bg-surface));
@@ -408,15 +430,17 @@
   display: inline-flex;
   align-items: center;
   gap: var(--sp-1);
-  height: 20px;
+  height: 22px;
   padding: 0 var(--sp-2);
   border-radius: var(--r-full);
-  font-size: var(--fs-2xs);
-  font-weight: var(--fw-semibold);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
   white-space: nowrap;
-  color: var(--c);
-  background: color-mix(in oklab, var(--c) 13%, var(--bg-surface));
-  border: 1px solid color-mix(in oklab, var(--c) 22%, transparent);
+  /* O número vai em tinta, não na cor da faixa: #B8901F sobre o tingido rende
+     ~3:1 e reprova AA em texto pequeno. A faixa é o ponto e o fundo. */
+  color: var(--ink-1);
+  background: color-mix(in oklab, var(--c) 14%, var(--bg-surface));
+  border: 1px solid color-mix(in oklab, var(--c) 28%, transparent);
 }
 
 .tier-chip[data-tier='baixo'] { --c: var(--tier-baixo); }
@@ -426,8 +450,8 @@
 .tier-chip[data-tier='null'] { --c: var(--tier-null); }
 
 .tier-dot {
-  width: 5px;
-  height: 5px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   background: var(--c);
   flex: none;
@@ -450,10 +474,10 @@
   padding: 0 var(--sp-3);
   border-radius: var(--r-control);
   font-size: var(--fs-md);
-  font-weight: var(--fw-semibold);
-  color: var(--c);
-  background: color-mix(in oklab, var(--c) 11%, var(--bg-surface));
-  border: 1px solid color-mix(in oklab, var(--c) 20%, transparent);
+  font-weight: var(--fw-bold);
+  color: var(--ink-1);
+  background: color-mix(in oklab, var(--c) 12%, var(--bg-surface));
+  border: 1px solid color-mix(in oklab, var(--c) 26%, transparent);
 }
 
 .tier-chip-lg[data-tier='baixo'] { --c: var(--tier-baixo); }
@@ -463,8 +487,8 @@
 .tier-chip-lg[data-tier='null'] { --c: var(--tier-null); }
 
 .tier-chip-lg .tier-dot {
-  width: 7px;
-  height: 7px;
+  width: 10px;
+  height: 10px;
 }
 
 /* ---------- Estado vazio ---------- */
@@ -475,8 +499,20 @@
   align-items: center;
   justify-content: center;
   gap: var(--sp-2);
+  min-height: 220px;
   padding: var(--sp-7) var(--sp-5);
   text-align: center;
+  border: 1px solid var(--line-border);
+  border-radius: var(--r-card);
+  background: var(--bg-surface);
+  box-shadow: var(--elev-1);
+}
+
+/* Dentro de um cartão o vazio é o conteúdo dele: sem segundo cartão por cima. */
+.card .empty-state {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .empty-state-overlay {
@@ -486,30 +522,88 @@
   z-index: 3;
 }
 
+/* O glifo do estado vazio é a rede de decisão, com o nó de risco em coral. */
 .empty-state-icon {
-  width: 40px;
-  height: 40px;
   display: grid;
+  width: 132px;
+  height: 48px;
+  margin-bottom: var(--sp-3);
   place-items: center;
-  border-radius: 50%;
-  background: var(--bg-sunken);
-  color: var(--ink-4);
-  font-size: var(--fs-lg);
-  margin-bottom: var(--sp-1);
+  color: var(--brand-text);
+}
+
+.empty-state-icon svg {
+  width: 132px;
+  height: 48px;
+}
+
+.decision-network path {
+  stroke: var(--brand-text);
+  stroke-width: 2;
+}
+
+.decision-network circle {
+  fill: var(--bg-surface);
+  stroke: var(--brand-text);
+  stroke-width: 2;
+}
+
+.decision-network circle:nth-of-type(3) {
+  fill: var(--brand-red);
+  stroke: var(--brand-red);
+}
+
+.empty-state-contexto {
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--tracking-rotulo);
+  text-transform: uppercase;
+  color: var(--ink-3);
 }
 
 .empty-state-message {
-  font-size: var(--fs-md);
-  font-weight: var(--fw-semibold);
+  font-size: var(--fs-card);
+  font-weight: var(--fw-heavy);
+  letter-spacing: var(--tracking-tight);
   color: var(--ink-1);
 }
 
 .empty-state-hint {
-  font-size: var(--fs-sm);
-  color: var(--ink-3);
+  font-size: var(--fs-md);
+  line-height: 1.5;
+  color: var(--ink-2);
   max-width: 42ch;
 }
 
 .empty-state-action {
   margin-top: var(--sp-2);
+}
+
+/* ---------- Faixa de insight ----------
+   A conclusão da tela. Azul da marca em bloco, texto branco, o número que
+   sustenta a frase em coral claro (o coral escuro não lê sobre azul). A sombra
+   azul é só dela. */
+
+.insight {
+  padding: var(--sp-3) var(--sp-5);
+  border-radius: var(--r-card);
+  background: var(--brand-core);
+  color: var(--ink-on-brand-core);
+  box-shadow: var(--elev-insight);
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-medium);
+  line-height: 1.5;
+  text-align: center;
+}
+
+.insight b {
+  font-weight: var(--fw-heavy);
+  color: var(--coral-claro);
+}
+
+@media (max-width: 760px) {
+  .insight {
+    text-align: left;
+    font-size: var(--fs-md);
+  }
 }

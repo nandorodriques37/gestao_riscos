@@ -5,7 +5,7 @@ import type { UsePortfolio } from '../../hooks/usePortfolio';
 import { computeScore, scoreTier } from '../../lib/calculations';
 import {
   tratamentoDosRiscos, prontosParaFechar, riscosMitigados, exposicaoResidual,
-  riscosSemObjetivo, hojeISO, type EstadoTratamento,
+  riscosSemObjetivo, riscosMapeados, hojeISO, type EstadoTratamento,
 } from '../../lib/portfolioMetrics';
 import {
   ROTULO_SITUACAO, AJUDA_SITUACAO, BADGE_SITUACAO, ROTULO_STATUS_ACAO,
@@ -14,6 +14,7 @@ import {
 import { ROTULO_TRATAMENTO, BADGE_TRATAMENTO, AJUDA_TRATAMENTO } from '../../lib/portfolioUi';
 import { EmptyState } from '../common/EmptyState';
 import { Kpi, KpiRow } from '../common/Kpi';
+import { julgar } from '../../lib/portfolioUi';
 
 interface RastroTabProps {
   records: StoredRiskRecord[];
@@ -23,7 +24,8 @@ interface RastroTabProps {
   onAbrirIniciativa: (id: string) => void;
   onPromoverAcao: (acao: AcaoRisco) => void;
   onIrPara: (tab: Tab) => void;
-  cabecalho: React.ReactNode;
+  /** Barra de título montada pelo `App`; a aba passa o título que ela calcula. */
+  cabecalho: (titulo: React.ReactNode, subtitulo: string) => React.ReactNode;
 }
 
 const FILTROS: { chave: EstadoTratamento | 'todos'; label: string }[] = [
@@ -58,13 +60,17 @@ export function RastroTab({
   const pessoaPorId = useMemo(() => new Map(pessoas.map(p => [p.id, p.nome])), [pessoas]);
   const iniciativaPorId = useMemo(() => new Map(iniciativas.map(i => [i.id, i])), [iniciativas]);
 
+  // Linha em branco não é risco: é como se adiciona uma (ver `riscosMapeados`).
+  // Sem este filtro o rastro listava 62 linhas e dizia "38 sem tratamento"
+  // onde o Painel e a tabela dizem 20 — três números para a mesma pergunta.
+  const mapeados = useMemo(() => riscosMapeados(records), [records]);
   const tratamento = useMemo(
-    () => tratamentoDosRiscos(records, acoes_risco, iniciativas),
-    [records, acoes_risco, iniciativas],
+    () => tratamentoDosRiscos(mapeados, acoes_risco, iniciativas),
+    [mapeados, acoes_risco, iniciativas],
   );
   const prontos = useMemo(
-    () => prontosParaFechar(records, acoes_risco, iniciativas),
-    [records, acoes_risco, iniciativas],
+    () => prontosParaFechar(mapeados, acoes_risco, iniciativas),
+    [mapeados, acoes_risco, iniciativas],
   );
   const mitigados = useMemo(() => riscosMitigados(records, ano), [records, ano]);
   const exposicao = useMemo(() => exposicaoResidual(records), [records]);
@@ -77,6 +83,17 @@ export function RastroTab({
   const semObjetivo = useMemo(
     () => new Set(riscosSemObjetivo(records, acoes_risco, iniciativas).map(r => r.id)),
     [records, acoes_risco, iniciativas],
+  );
+
+  /** Riscos com ao menos uma ação viva ou tratamento entregue: tudo que não é "sem tratamento" nem aceito. */
+  const comTratamento = useMemo(
+    () => tratamento.filter(t => t.estado === 'em_tratamento' || t.estado === 'tratamento_concluido'),
+    [tratamento],
+  );
+  /** Tratados que, mesmo assim, não protegem objetivo nenhum: o elo que o título cobra. */
+  const tratadosSemObjetivo = useMemo(
+    () => comTratamento.filter(t => semObjetivo.has(t.risco.id)).length,
+    [comTratamento, semObjetivo],
   );
 
   const contagem = useMemo(() => {
@@ -108,7 +125,17 @@ export function RastroTab({
 
   return (
     <div className="tab-page-lg">
-      {cabecalho}
+      {cabecalho(
+        tratamento.length === 0 ? 'Rastro de mitigação' : (
+          <>
+            {plural(comTratamento.length, 'risco tem', 'riscos têm')} tratamento
+            {tratadosSemObjetivo > 0 && (
+              <>, <em>{tratadosSemObjetivo === 1 ? '1 não sustenta objetivo' : `${tratadosSemObjetivo} não sustentam objetivo`}</em></>
+            )}
+          </>
+        ),
+        'Cada risco seguido até o objetivo: risco → ação → iniciativa → objetivo',
+      )}
 
       <KpiRow colunas={4}>
         <Kpi
@@ -116,12 +143,14 @@ export function RastroTab({
           valor={mitigados.length}
           sub="confirmados por você, com data"
           acento="baixo"
+          {...(mitigados.length > 0 ? julgar('ok', 'Mitigado') : {})}
         />
         <Kpi
           label="Prontos para fechar"
           valor={prontos.length}
           sub="tratamento entregue, decisão pendente"
           acento="brand"
+          {...(prontos.length > 0 ? julgar('atencao', 'Decisão pendente') : {})}
         />
         <Kpi
           label="Em tratamento"
@@ -134,11 +163,12 @@ export function RastroTab({
           valor={contagem.get('sem_tratamento') ?? 0}
           sub={`${formatarMoeda(exposicao.total)} de exposição aberta no total`}
           acento="critico"
+          {...((contagem.get('sem_tratamento') ?? 0) > 0 ? julgar('risco', 'Sem tratamento') : {})}
         />
       </KpiRow>
 
       {migracaoNaoRodou && (
-        <div className="card" style={{ marginBottom: 'var(--sp-4)' }}>
+        <div className="card">
           <EmptyState
             message="Os planos de ação ainda não foram extraídos"
             hint="Sem as ações em linha própria, o rastro não tem o que seguir: todo risco aparece como sem tratamento. A extração não altera nenhum registro."
@@ -148,7 +178,7 @@ export function RastroTab({
       )}
 
       {prontos.length > 0 && (
-        <div className="card rastro-balde" style={{ marginBottom: 'var(--sp-4)' }}>
+        <div className="card rastro-balde">
           <div className="section-title">
             {plural(prontos.length, 'risco pronto para fechar', 'riscos prontos para fechar')}
           </div>
@@ -163,11 +193,10 @@ export function RastroTab({
                   className="link-ini"
                   onClick={() => onAbrirRisco(t.risco.id)}
                   title={nomeRisco(t.risco)}
-                  style={{ display: 'block' }}
                 >
                   {nomeRisco(t.risco)}
                 </button>
-                <div className="ini-meta" style={{ marginTop: 0 }}>
+                <div className="ini-meta">
                   <span>
                     {[t.risco.area, plural(t.acoes.length, 'ação entregue', 'ações entregues')]
                       .filter(Boolean).join(' · ')}
@@ -194,7 +223,7 @@ export function RastroTab({
         </div>
       )}
 
-      <div className="filter-row" style={{ marginBottom: 'var(--sp-3)' }}>
+      <div className="filter-row">
         <input
           className="search-input"
           placeholder="Buscar risco…"
@@ -216,7 +245,7 @@ export function RastroTab({
         <span className="filter-count">{visiveis.length} de {records.length}</span>
       </div>
 
-      <div className="card">
+      <div className="card rastro-lista">
         {visiveis.length === 0 ? (
           <EmptyState
             message="Nenhum risco com esse recorte"
@@ -242,7 +271,6 @@ export function RastroTab({
                       className="rastro-risco link-ini"
                       onClick={() => onAbrirRisco(t.risco.id)}
                       title={nomeRisco(t.risco)}
-                      style={{ display: 'block', width: '100%' }}
                     >
                       {nomeRisco(t.risco)}
                     </button>
@@ -278,9 +306,7 @@ export function RastroTab({
                         const ini = a.iniciativa_id ? iniciativaPorId.get(a.iniciativa_id) : undefined;
                         return (
                           <div className="rastro-acao" data-em-iniciativa={Boolean(ini)} key={a.id}>
-                            <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--ink-1)', lineHeight: 1.4 }}>
-                              {a.descricao}
-                            </div>
+                            <div className="rastro-acao-texto">{a.descricao}</div>
                             <div className="ini-meta">
                               <span className="badge" data-badge={BADGE_STATUS_ACAO[a.status]}>
                                 {ROTULO_STATUS_ACAO[a.status]}
@@ -318,13 +344,13 @@ export function RastroTab({
                       {ROTULO_TRATAMENTO[t.estado]}
                     </span>
                     {t.estado === 'tratamento_concluido' && !situacao && (
-                      <div className="lista-nota" style={{ marginTop: 'var(--sp-1)' }}>
+                      <div className="lista-nota rastro-espera">
                         Esperando sua confirmação.
                       </div>
                     )}
                     {semObjetivo.has(t.risco.id) && (
                       <div
-                        className="bento-lacuna"
+                        className="bento-lacuna rastro-quebra"
                         title="Nenhuma ação viva deste risco está dentro de uma iniciativa com objetivo. Promover a mitigação a iniciativa, ou vinculá-la a uma, fecha o elo."
                       >
                         <span aria-hidden="true">▲</span> Não sustenta objetivo
@@ -335,7 +361,6 @@ export function RastroTab({
                   <div data-rotulo="Situação declarada">
                     <select
                       className="select-filter"
-                      style={{ width: '100%' }}
                       value={situacao}
                       onChange={e => confirmarSituacao(t.risco.id, e.target.value as SituacaoRisco)}
                       aria-label={`Situação de ${nomeRisco(t.risco)}`}

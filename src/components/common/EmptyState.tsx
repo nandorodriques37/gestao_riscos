@@ -4,12 +4,14 @@
  * e ninguém renderizava.
  */
 interface EmptyStateProps {
+  /** Rótulo de contexto, em caixa alta, acima do título: "Registro novo", "Triagem concluída". */
+  contexto?: string;
   message: string;
   hint?: string;
   action?: { label: string; onClick: () => void };
 }
 
-export function EmptyState({ message, hint, action }: EmptyStateProps) {
+export function EmptyState({ contexto, message, hint, action }: EmptyStateProps) {
   return (
     <div className="empty-state">
       <div className="empty-state-icon" aria-hidden="true">
@@ -21,6 +23,7 @@ export function EmptyState({ message, hint, action }: EmptyStateProps) {
           <circle cx="104" cy="20" r="6" />
         </svg>
       </div>
+      {contexto && <div className="empty-state-contexto">{contexto}</div>}
       <div className="empty-state-message">{message}</div>
       {hint && <div className="empty-state-hint">{hint}</div>}
       {action && (

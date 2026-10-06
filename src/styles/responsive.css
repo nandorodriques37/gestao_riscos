@@ -19,6 +19,11 @@
     display: none;
   }
 
+  .tab-page,
+  .tab-page-lg {
+    padding: var(--sp-5) var(--sp-5) var(--sp-7);
+  }
+
   .kpi-grid-4 {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -28,15 +33,8 @@
     grid-template-columns: 1fr;
   }
 
-  /* Empilhado, o painel volta a ter altura própria em vez de acompanhar a
-     matriz. */
   .matrix-layout {
-    grid-template-columns: 1fr;
-    align-items: start;
-  }
-
-  .ranked-list-panel {
-    max-height: 420px;
+    grid-template-columns: minmax(0, 5fr) minmax(300px, 3fr);
   }
 
   /* Colunas de prioridade baixa saem primeiro — a tabela continua rolando na
@@ -63,7 +61,57 @@
 
 /* ---------- Celular / tablet retrato ---------- */
 
+@media (max-width: 900px) {
+  /* Empilhado, o painel volta a ter altura própria em vez de acompanhar a
+     matriz. */
+  .matrix-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .matrix-plot-row {
+    position: relative;
+    top: auto;
+  }
+
+  .ranked-list-panel {
+    max-height: 560px;
+  }
+}
+
 @media (max-width: 760px) {
+  /* Alvo de toque: em tela estreita todo controle tem 44px, mesmo com ponteiro
+     fino (janela de desktop redimensionada). `pointer: coarse` já cobre o
+     toque real em `tokens.css`; esta é a rede para o resto. */
+  button,
+  input,
+  select,
+  textarea {
+    min-height: 44px;
+  }
+
+  button[aria-label]:not(.bar-row):not(.legend-item) {
+    min-width: 44px;
+  }
+
+  .prio-filter-row,
+  .filter-row {
+    position: relative;
+    top: auto;
+    overflow-x: auto;
+  }
+
+  .kanban-board {
+    scroll-snap-type: x proximity;
+  }
+
+  .kanban-column {
+    scroll-snap-align: start;
+  }
+
+  .ranked-list-panel {
+    max-height: 520px;
+  }
+
   /* O `max()` com o inset lateral é por causa do viewport-fit=cover: em
      paisagem, num aparelho com entalhe, o conteúdo alcançaria a borda física da
      tela e a primeira coluna sumiria embaixo dela. */
@@ -81,8 +129,9 @@
   .tab-page,
   .tab-page-lg,
   .app-loading {
-    padding: var(--sp-3);
+    padding: var(--sp-4) var(--sp-3) var(--sp-5);
     padding-inline: max(var(--sp-3), env(safe-area-inset-left));
+    gap: var(--sp-4);
   }
 
   /* Espaço para a barra inferior não cobrir a última linha de conteúdo. */
@@ -160,8 +209,13 @@
     grid-column: 1 / -1;
   }
 
+  .kpi-card {
+    min-height: 78px;
+    padding: var(--sp-3) var(--sp-3) var(--sp-3) var(--sp-4);
+  }
+
   .kpi-value {
-    font-size: var(--fs-xl);
+    font-size: var(--fs-2xl);
   }
 
   /* ---------- Faixa de KPI compacta ----------
@@ -177,22 +231,28 @@
      cai para ~48px e a faixa inteira para ~230px. Nenhum número sai da tela:
      é a mesma informação, na metade da altura.
 
-     Só o tile SIMPLES deita. Quem carrega barra de progresso, subtítulo ou
-     aviso de lacuna continua em pé, porque essas três coisas moram embaixo do
+     Só o tile SIMPLES deita. Quem carrega barra de progresso, subtítulo, aviso
+     de lacuna ou o juízo escrito (`.kpi-status`) continua em pé, porque essas
+     coisas moram embaixo do
      número e não têm para onde ir numa linha só — e `:has()` é o que permite
      distinguir os dois sem inventar uma variante no componente. */
-  .kpi-card:not(:has(.kpi-progress-track)):not(:has(.kpi-value-sub)):not(:has(.bento-lacuna)):not(:has(.kpi-vazio)) {
+  .kpi-card:not(:has(.kpi-progress-track)):not(:has(.kpi-value-sub)):not(:has(.bento-lacuna)):not(:has(.kpi-vazio)):not(:has(.kpi-status)) {
     padding: var(--sp-3);
   }
 
-  .kpi-card:not(:has(.kpi-progress-track)):not(:has(.kpi-value-sub)):not(:has(.bento-lacuna)):not(:has(.kpi-vazio)) .kpi-body {
-    display: flex;
+  .kpi-card:not(:has(.kpi-progress-track)):not(:has(.kpi-value-sub)):not(:has(.bento-lacuna)):not(:has(.kpi-vazio)):not(:has(.kpi-status)) .kpi-body {
+    flex-direction: row;
     align-items: baseline;
     justify-content: space-between;
     gap: var(--sp-2);
   }
 
-  .kpi-card:not(:has(.kpi-progress-track)):not(:has(.kpi-value-sub)):not(:has(.bento-lacuna)):not(:has(.kpi-vazio)) .kpi-value {
+  .kpi-card:not(:has(.kpi-progress-track)):not(:has(.kpi-value-sub)):not(:has(.bento-lacuna)):not(:has(.kpi-vazio)):not(:has(.kpi-status)) .kpi-label {
+    order: 0;
+    margin-top: 0;
+  }
+
+  .kpi-card:not(:has(.kpi-progress-track)):not(:has(.kpi-value-sub)):not(:has(.bento-lacuna)):not(:has(.kpi-vazio)):not(:has(.kpi-status)) .kpi-value {
     margin-top: 0;
     flex: none;
   }
@@ -294,7 +354,9 @@
 
   /* `dvh` e não `vh`: com a barra de endereço do navegador aberta, `vh` mede a
      tela inteira e empurra o rodapé com "Salvar" para fora dela. */
-  .modal-card {
+  .modal-card,
+  .modal-card[data-largo='true'],
+  .modal-card--editor {
     max-width: none;
     max-height: 94dvh;
     border-radius: var(--r-float) var(--r-float) 0 0;
@@ -371,5 +433,14 @@
 
   .brand-name {
     font-size: var(--fs-sm);
+  }
+}
+
+/* Em 768px as oito abas já não cabem ao lado da marca: a barra inferior entra
+   antes do layout móvel (ver rail.css) e o conteúdo ganha o
+   respiro dela. */
+@media (min-width: 761px) and (max-width: 820px) {
+  .app-conteudo {
+    padding-bottom: calc(var(--nav-bottom-h) + env(safe-area-inset-bottom));
   }
 }

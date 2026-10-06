@@ -11,7 +11,7 @@
 .bento {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
-  gap: var(--sp-3);
+  gap: var(--sp-4);
 }
 
 .bento > [data-span='3'] { grid-column: span 3; }
@@ -132,7 +132,6 @@
    componente, que conhece a fração. No segmento estreito a legenda responde
    sozinha, como sempre respondeu. */
 .stack-seg-rotulo {
-  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   font-size: var(--fs-2xs);
   font-weight: var(--fw-bold);
@@ -351,7 +350,7 @@ button.lista-linha:focus-visible {
 .objetivos-ferramentas .btn[aria-pressed='true'] {
   background: var(--brand-soft);
   border-color: var(--brand);
-  color: var(--brand);
+  color: var(--brand-text);
 }
 
 /* Micro-rótulo: cabeçalho de coluna, rótulo de seção do detalhe, "Ordenar".
@@ -393,8 +392,11 @@ button.lista-linha:focus-visible {
 .objetivos-lista [data-area='tend'] { grid-area: tend; }
 
 .objetivos-colunas {
-  padding-block: var(--sp-2);
-  border-bottom: 1px solid var(--line-hairline);
+  padding-block: var(--sp-3);
+  background: var(--brand-core);
+  color: var(--ink-on-brand-core);
+  font-size: var(--fs-2xs);
+  align-items: end;
 }
 
 .objetivos-colunas [data-area='num'] {
@@ -826,7 +828,7 @@ button.objetivo-nome:hover {
 
 .objetivo-secao-titulo {
   font-size: var(--fs-md);
-  font-weight: var(--fw-semibold);
+  font-weight: var(--fw-bold);
   letter-spacing: var(--tracking-tight);
   color: var(--ink-1);
 }
@@ -1827,23 +1829,30 @@ button.objetivo-nome:hover {
   background: var(--surface-1);
   border: 1px solid var(--line-border);
   border-radius: var(--r-card);
-  padding: 0 var(--sp-5) var(--sp-4);
+  box-shadow: var(--elev-1);
 }
 
 .tabela-simples {
   min-width: 760px;
 }
 
+/* A tabela dentro do envelope começa na borda dele: o respiro de cima é da
+   tabela solta (marcos), não da que leva cabeçalho azul de ponta a ponta. */
+.tabela-simples-wrap .tabela-simples {
+  margin-top: 0;
+}
+
+/* Cabeçalho é estrutura: azul da marca, texto branco, nos dois temas. */
 .tabela-simples th,
 .marcos-tabela th {
   font-size: var(--fs-2xs);
-  font-weight: var(--fw-medium);
-  letter-spacing: 0.04em;
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.07em;
   text-transform: uppercase;
-  color: var(--ink-4);
+  color: var(--ink-on-brand-core);
+  background: var(--brand-core);
   text-align: left;
-  padding: 0 var(--sp-3) var(--sp-2) 0;
-  border-bottom: 1px solid var(--line-border);
+  padding: var(--sp-2) var(--sp-3);
   white-space: nowrap;
 }
 
@@ -1851,7 +1860,7 @@ button.objetivo-nome:hover {
 .tabela-simples td {
   font-size: var(--fs-xs);
   color: var(--ink-2);
-  padding: var(--sp-2) var(--sp-3) var(--sp-2) 0;
+  padding: var(--sp-2) var(--sp-3);
   border-bottom: 1px solid var(--line-hairline);
   vertical-align: top;
 }
@@ -1869,6 +1878,27 @@ button.objetivo-nome:hover {
 
 .tabela-simples tbody tr:last-child td {
   border-bottom: none;
+}
+
+.marcos-tabela th:first-child { border-top-left-radius: var(--r-control); }
+.marcos-tabela th:last-child { border-top-right-radius: var(--r-control); }
+
+.tabela-simples .col-acao {
+  width: 72px;
+}
+
+/* Aviso de ficha repetida: borda em tom de atenção, sem cor nova. */
+.pessoas-duplicadas {
+  border-color: color-mix(in oklab, var(--tier-alto) 34%, transparent);
+}
+
+.pessoas-nota {
+  max-width: 80ch;
+}
+
+/* O espaçamento entre blocos da aba vem do gap dela. */
+.pessoas-aviso {
+  margin-top: 0;
 }
 
 /* Inativo continua legível, só recua: ele ainda é o dono histórico de coisas. */
@@ -1906,6 +1936,7 @@ button.objetivo-nome:hover {
 @media (max-width: 760px) {
   .tabela-simples-wrap {
     padding: var(--sp-2) var(--sp-3) var(--sp-3);
+    box-shadow: none;
   }
 
   .tabela-simples,
@@ -2046,6 +2077,13 @@ button.objetivo-nome:hover {
   background: color-mix(in oklab, var(--brand) 4%, var(--surface-1));
 }
 
+/* A lista é um cartão sem respiro lateral: o cabeçalho azul vai de borda a
+   borda, como na lista de Objetivos, e as linhas trazem o próprio padding. */
+.rastro-lista {
+  padding: 0;
+  overflow: hidden;
+}
+
 .rastro-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -2076,9 +2114,13 @@ button.objetivo-nome:hover {
   display: grid;
   grid-template-columns: minmax(200px, 1.5fr) 76px minmax(200px, 2fr) 148px 150px;
   gap: var(--sp-3);
-  padding: var(--sp-3) 0;
+  padding: var(--sp-3) var(--sp-5);
   border-bottom: 1px solid var(--line-hairline);
   align-items: start;
+}
+
+.rastro-linha .select-filter {
+  width: 100%;
 }
 
 @media (max-width: 900px) {
@@ -2104,8 +2146,15 @@ button.objetivo-nome:hover {
 /* Cabeçalho do rastro: some junto com as colunas quando o grid colapsa —
    rótulo de coluna sem coluna é ruído. */
 .rastro-cabecalho {
-  padding-bottom: var(--sp-2);
-  border-bottom: 1px solid var(--line-border);
+  align-items: center;
+  padding-block: var(--sp-3);
+  border-bottom: 0;
+  background: var(--brand-core);
+  color: var(--ink-on-brand-core);
+}
+
+.rastro-cabecalho .fato-label {
+  color: inherit;
 }
 
 @media (max-width: 900px) {
@@ -2116,6 +2165,9 @@ button.objetivo-nome:hover {
 
 .rastro-risco {
   position: relative;
+  display: block;
+  width: 100%;
+  text-align: left;
   padding-left: var(--sp-3);
   font-size: var(--fs-xs);
   font-weight: var(--fw-medium);
@@ -2148,6 +2200,27 @@ button.objetivo-nome:hover {
   width: 2px;
   border-radius: 2px;
   background: var(--brand);
+}
+
+.rastro-acao-texto {
+  font-size: var(--fs-xs);
+  color: var(--ink-1);
+  line-height: 1.4;
+}
+
+.rastro-espera {
+  margin-top: var(--sp-1);
+}
+
+/* Elo partido: tracejado coral, o mesmo desenho do toco no Sankey do Painel.
+   O texto escrito diz o que falta; a borda só marca onde. */
+.rastro-quebra {
+  margin-top: var(--sp-1);
+  padding: var(--sp-1) var(--sp-2);
+  border: 1.5px dashed var(--brand-red);
+  border-radius: var(--r-control);
+  color: var(--coral-texto);
+  font-weight: var(--fw-bold);
 }
 
 .rastro-acao + .rastro-acao {
@@ -2187,12 +2260,6 @@ button.objetivo-nome:hover {
 .form-grid-2 + .form-grid-2,
 .form-grid-2 + .form-grid-3 {
   margin-top: var(--sp-3);
-}
-
-/* Formulário de duas colunas precisa de mais largura que o modal padrão de
-   780px, senão cada coluna fica abaixo do mínimo legível de um select. */
-.modal-card[data-largo='true'] {
-  max-width: 960px;
 }
 
 .campo-ajuda {
@@ -2457,20 +2524,38 @@ button.objetivo-nome:hover {
   display: inline-flex;
   align-items: center;
   gap: var(--sp-2);
-  height: max(28px, var(--tap-min));
-  padding: 0 var(--sp-3);
+  height: max(32px, var(--tap-min));
+  padding: 0 var(--sp-3) 0 var(--sp-1);
   border-radius: var(--r-full);
-  border: 1px solid var(--line-border);
-  background: var(--bg-surface);
-  font-size: var(--fs-xs);
-  color: var(--ink-2);
+  border: 1px solid var(--line-hairline);
+  background: var(--bg-sunken);
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+  color: var(--ink-1);
   white-space: nowrap;
   transition: border-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
 }
 
 .autor-chip:hover {
   border-color: var(--line-strong);
-  color: var(--ink-1);
+}
+
+/* Iniciais da pessoa num círculo azul — o mesmo marcador que a lista de Pessoas
+   e o cartão do Kanban usam para o dono. */
+.autor-avatar {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--brand);
+  color: var(--brand-ink);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-heavy);
+}
+
+.autor-chip[data-vazio='true'] {
+  padding-left: var(--sp-3);
 }
 
 /* Sem nome, o chip chama atenção: as gravações estão indo para o histórico
@@ -2510,6 +2595,7 @@ button.objetivo-nome:hover {
 }
 
 .cadeia-elo {
+  --c: var(--camada-objetivo);
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -2517,11 +2603,17 @@ button.objetivo-nome:hover {
   min-width: 0;
   padding: var(--sp-3);
   border: 1px solid var(--line-hairline);
+  border-top: 4px solid var(--c);
   border-radius: var(--r-card);
-  background: var(--surface-2);
+  background: var(--surface-1);
+  box-shadow: var(--elev-1);
   text-align: left;
   transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
 }
+
+.cadeia-elo:nth-of-type(2) { --c: var(--camada-iniciativa); }
+.cadeia-elo:nth-of-type(3) { --c: var(--camada-risco); }
+.cadeia-elo:nth-of-type(4) { --c: var(--camada-trabalho); }
 
 .cadeia-elo:hover {
   background: var(--bg-hover);
@@ -2529,9 +2621,9 @@ button.objetivo-nome:hover {
 }
 
 .cadeia-rotulo {
-  font-size: var(--fs-2xs);
-  font-weight: var(--fw-medium);
-  letter-spacing: 0.02em;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--tracking-rotulo);
   text-transform: uppercase;
   color: var(--ink-3);
 }
@@ -2543,12 +2635,11 @@ button.objetivo-nome:hover {
   flex-wrap: wrap;
 }
 
-/* O maior número do app. A Plex Variable auto-hospedada traz o eixo de PESO,
-   não o óptico — pedir 'opsz' aqui era descrever uma fonte que não está
-   carregada. Quem fecha o espacejamento é o tracking de display. */
+/* O maior número do app. Montserrat Variable traz o eixo de PESO; quem fecha o
+   espacejamento é o tracking de display. */
 .cadeia-valor {
   font-size: var(--fs-display);
-  font-weight: var(--fw-bold);
+  font-weight: var(--fw-heavy);
   letter-spacing: var(--tracking-display);
   line-height: 1;
   color: var(--ink-1);
@@ -2665,23 +2756,23 @@ button.objetivo-nome:hover {
 }
 
 .sankey-rotulo {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: var(--fw-bold);
-  letter-spacing: 0.07em;
+  letter-spacing: var(--tracking-rotulo);
   text-transform: uppercase;
-  fill: var(--ink-3);
+  fill: var(--ink-2);
 }
 
 .sankey-total,
 .sankey-n,
 .sankey-solto-n {
-  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
 }
 
 .sankey-total {
-  font-size: 18px;
-  font-weight: var(--fw-semibold);
+  font-size: 20px;
+  font-weight: var(--fw-heavy);
+  letter-spacing: var(--tracking-tighter);
   fill: var(--ink-1);
 }
 
@@ -2699,7 +2790,7 @@ button.objetivo-nome:hover {
 
 .sankey-n {
   font-size: 13px;
-  font-weight: var(--fw-semibold);
+  font-weight: var(--fw-bold);
   fill: var(--ink-1);
 }
 
@@ -2727,15 +2818,15 @@ button.objetivo-nome:hover {
    superfície o segura sobre qualquer preenchimento, e o vão entre colunas
    fica livre para o número da faixa. */
 .sankey-solto-n {
-  font-size: 12px;
-  font-weight: var(--fw-semibold);
-  fill: var(--ink-1);
+  font-size: 13px;
+  font-weight: var(--fw-heavy);
+  fill: var(--coral-texto);
 }
 
 .sankey-solto-nome {
   font-family: var(--font-sans);
   font-weight: var(--fw-regular);
-  fill: var(--ink-3);
+  fill: var(--ink-2);
 }
 
 .sankey-legenda {
@@ -2745,8 +2836,8 @@ button.objetivo-nome:hover {
   margin: var(--sp-2) 0 0;
   padding: 0;
   list-style: none;
-  font-size: var(--fs-2xs);
-  color: var(--ink-3);
+  font-size: var(--fs-xs);
+  color: var(--ink-2);
 }
 
 .sankey-legenda li {
@@ -2786,39 +2877,64 @@ button.objetivo-nome:hover {
    sozinha — o rótulo está sempre escrito ao lado.
    ========================================================================= */
 
+/* A lista ocupa a largura toda do cartão (margem negativa desfaz o padding) e
+   o corte arredondado fica por conta do próprio contêiner. */
 .lacunas {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-2);
-  margin-top: var(--sp-4);
+  margin: var(--sp-4) calc(-1 * var(--sp-5)) calc(-1 * var(--sp-5));
+  border-radius: 0 0 var(--r-card) var(--r-card);
+  overflow: hidden;
 }
 
 .lacuna {
   --c: var(--tier-null);
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: 150px 56px minmax(0, 1fr) auto;
   align-items: center;
-  gap: var(--sp-3);
-  padding: var(--sp-3);
-  border: 1px solid var(--line-hairline);
-  border-left: 3px solid var(--c);
-  border-radius: var(--r-card);
-  background: var(--surface-2);
+  gap: var(--sp-4);
+  padding: var(--sp-3) var(--sp-5);
+  border-top: 1px solid var(--line-hairline);
+}
+
+.lacuna:hover {
+  background: var(--bg-hover);
 }
 
 .lacuna[data-camada='objetivo'] { --c: var(--camada-objetivo); }
 .lacuna[data-camada='iniciativa'] { --c: var(--camada-iniciativa); }
-.lacuna[data-camada='risco'] { --c: var(--risco-accent); }
+.lacuna[data-camada='risco'] { --c: var(--camada-risco); }
 .lacuna[data-camada='trabalho'] { --c: var(--camada-trabalho); }
 
-/* O número é o que se lê primeiro: "quantos estão soltos". Tabular porque
-   várias linhas empilhadas formam uma coluna. */
-.lacuna-n {
-  font-size: var(--fs-xl);
+/* A camada ESCRITA, com o quadradinho na cor dela: a cor sozinha não diz. */
+.lacuna-camada {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: var(--fs-xs);
   font-weight: var(--fw-bold);
-  letter-spacing: var(--tracking-tighter);
-  color: var(--ink-1);
-  min-width: 2.5ch;
+  letter-spacing: var(--tracking-rotulo);
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+
+.lacuna-camada::before {
+  content: '';
+  width: 10px;
+  height: 10px;
+  flex: none;
+  border-radius: 3px;
+  background: var(--c);
+}
+
+/* O número é o que se lê primeiro: "quantos estão soltos". Coral porque elo
+   partido é exatamente o que o coral significa. */
+.lacuna-n {
+  font-size: var(--fs-num);
+  font-weight: var(--fw-heavy);
+  letter-spacing: var(--tracking-display);
+  line-height: 1;
+  color: var(--coral-texto);
   text-align: right;
 }
 
@@ -2830,14 +2946,14 @@ button.objetivo-nome:hover {
 }
 
 .lacuna-titulo {
-  font-size: var(--fs-sm);
-  font-weight: var(--fw-semibold);
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-bold);
   color: var(--ink-1);
 }
 
 .lacuna-ajuda {
-  font-size: var(--fs-xs);
-  color: var(--ink-3);
+  font-size: var(--fs-md);
+  color: var(--ink-2);
   line-height: 1.45;
 }
 
@@ -2848,7 +2964,7 @@ button.objetivo-nome:hover {
   align-items: baseline;
   gap: var(--sp-2);
   margin-top: var(--sp-1);
-  font-size: var(--fs-xs);
+  font-size: var(--fs-sm);
   min-width: 0;
 }
 
@@ -2857,18 +2973,28 @@ button.objetivo-nome:hover {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: var(--ink-4);
+  color: var(--ink-3);
 }
 
 .lacuna-exemplos-resto {
   flex: none;
-  color: var(--ink-4);
+  color: var(--ink-3);
   white-space: nowrap;
 }
 
 @media (max-width: 760px) {
+  .lacunas {
+    margin-inline: calc(-1 * var(--sp-4));
+  }
+
   .lacuna {
-    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-columns: 48px minmax(0, 1fr);
+    padding-inline: var(--sp-4);
+    gap: var(--sp-2) var(--sp-3);
+  }
+
+  .lacuna-camada {
+    grid-column: 1 / -1;
   }
 
   /* O botão desce para a linha de baixo, alinhado ao texto e não ao número. */

@@ -1,5 +1,6 @@
 import type { RankedListItem } from './matrixPoints';
 import { EmptyState } from '../common/EmptyState';
+import { formatarNumero } from '../../lib/portfolioLabels';
 
 interface RankedListProps {
   items: RankedListItem[];
@@ -39,7 +40,7 @@ export function RankedList({ items, title, filterActive, selectedRank, onItemCli
             </div>
             <span className="tier-chip" data-tier={item.tier}>
               <span className="tier-dot" />
-              {item.prioriz}
+              {formatarNumero(item.prioriz, 2)}
             </span>
           </button>
         ))}

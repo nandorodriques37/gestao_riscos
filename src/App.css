@@ -13,9 +13,4 @@
 @import './styles/portfolio.css';
 @import './styles/triagem.css';
 @import './styles/responsive.css';
-
-
 @import './styles/fluidez.css';
-/* Camada final da nova identidade. Mantê-la isolada durante a migração torna a
-   troca reversível e evita misturar regras novas com decisões legadas. */
-@import './styles/redesign.css';

@@ -2,18 +2,19 @@
    Layout — shell, header, páginas de aba, grids, KPIs, banners.
    ========================================================================= */
 
-/* Header em cima, ocupando a largura toda; rail e conteúdo lado a lado
-   embaixo. O grid é declarado aqui e não no rail porque as duas colunas
-   precisam concordar sobre a largura — e ela muda quando o rail colapsa. */
+/* O rail ocupa a altura toda, do topo ao pé, e carrega a marca; o header e o
+   conteúdo dividem a coluna da direita. O grid é declarado aqui e não no rail
+   porque as duas colunas precisam concordar sobre a largura — e ela muda
+   quando o rail colapsa. */
 .app-shell {
   min-height: 100dvh;
   display: grid;
   grid-template-areas:
-    'header header'
-    'rail   conteudo';
+    'rail header'
+    'rail conteudo';
   grid-template-columns: auto minmax(0, 1fr);
-  grid-template-rows: auto minmax(0, 1fr);
-  background: var(--surface-0);
+  grid-template-rows: var(--header-h) minmax(0, 1fr);
+  background: var(--bg);
 }
 
 .app-conteudo {
@@ -34,11 +35,11 @@
 }
 
 /* ---------- Header ----------
-   Claro, hairline, sem gradiente, sem sombra e sem vidro: papel opaco — o
-   conteúdo passa por baixo, não através. O peso visual pertence aos dados,
-   não ao chrome. Ocupa a largura do shell inteiro (o rail mora embaixo dele),
-   e a marca reserva a largura do rail para que o divisor da rota continue a
-   borda dele. */
+   Papel branco opaco, hairline, sem gradiente, sem sombra e sem vidro: o
+   conteúdo passa por baixo, não através. O peso visual pertence aos dados, não
+   ao chrome. Acima de 1100px ele mora à direita do rail — que carrega a marca
+   — e traz a migalha, a busca, o estado de sincronização, o tema e o autor;
+   abaixo disso o rail sai de cena e a marca volta para cá. */
 
 .app-header {
   grid-area: header;
@@ -52,18 +53,24 @@
 
 .app-header-inner {
   height: 100%;
-  padding-inline: var(--sp-4);
+  padding-inline: var(--sp-6);
   display: flex;
   align-items: center;
   gap: var(--sp-4);
 }
 
+/* A marca só aparece aqui quando o rail não aparece. */
 .brand {
-  display: flex;
+  display: none;
   align-items: center;
   gap: var(--sp-2);
-  min-width: calc(var(--rail-w) - 2 * var(--sp-4));
   flex: none;
+}
+
+@media (max-width: 1100px) {
+  .brand {
+    display: flex;
+  }
 }
 
 /* O glifo é a rede de decisão: quatro nós ligados, o de risco em coral — o
@@ -75,7 +82,7 @@
   display: grid;
   place-items: center;
   overflow: hidden;
-  border-radius: var(--r-control);
+  border-radius: var(--r-md);
   background: var(--brand-mark-bg);
 }
 
@@ -91,8 +98,8 @@
 }
 
 .brand-mark .brand-mark-risk {
-  fill: var(--brand-red);
-  stroke: var(--brand-red);
+  fill: var(--coral-claro);
+  stroke: var(--coral-claro);
 }
 
 .brand-copy {
@@ -103,7 +110,7 @@
 
 .brand-name {
   font-size: var(--fs-md);
-  font-weight: var(--fw-bold);
+  font-weight: var(--fw-heavy);
   letter-spacing: var(--tracking-tighter);
   color: var(--ink-1);
   white-space: nowrap;
@@ -118,14 +125,30 @@
   color: var(--ink-3);
 }
 
-/* Rota atual: "Ambiente de gestão / Seção". Some abaixo de 1100px
-   (responsive.css): as abas do topo já dizem onde se está. */
+/* Migalha: "Direção · Painel". Rótulo em caixa alta com o destino no azul de
+   texto. Some abaixo de 1100px (responsive.css): as abas do topo já dizem onde
+   se está. */
 .header-route {
-  display: grid;
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
   min-width: 0;
-  padding-left: var(--sp-4);
-  border-left: 1px solid var(--line-hairline);
-  line-height: 1.1;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--tracking-rotulo);
+  text-transform: uppercase;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+.header-route span::after {
+  content: '·';
+  margin-left: var(--sp-2);
+}
+
+.header-route strong {
+  font-weight: var(--fw-heavy);
+  color: var(--brand-text);
 }
 
 /* Abas sublinhadas. O indicador é um pseudo-elemento na base do botão, para
@@ -150,7 +173,7 @@
   background: none;
   padding: 0;
   font-size: var(--fs-sm);
-  font-weight: var(--fw-medium);
+  font-weight: var(--fw-semibold);
   color: var(--ink-3);
   white-space: nowrap;
   transition: color var(--dur-fast) var(--ease);
@@ -162,8 +185,8 @@
   left: 0;
   right: 0;
   bottom: 0;
-  height: 2px;
-  border-radius: 2px 2px 0 0;
+  height: 3px;
+  border-radius: 3px 3px 0 0;
   background: var(--brand);
   transform: scaleX(0);
   transition: transform var(--dur) var(--ease);
@@ -174,8 +197,8 @@
 }
 
 .nav-tab.active {
-  color: var(--ink-1);
-  font-weight: var(--fw-semibold);
+  color: var(--brand-text);
+  font-weight: var(--fw-bold);
 }
 
 .nav-tab.active::after {
@@ -193,10 +216,10 @@
   margin-left: var(--sp-2);
   padding: 0 5px;
   border-radius: var(--r-full);
-  background: var(--tier-alto);
-  color: var(--ink-on-solid);
+  background: var(--danger);
+  color: var(--danger-ink);
   font-size: var(--fs-2xs);
-  font-weight: var(--fw-semibold);
+  font-weight: var(--fw-bold);
 }
 
 .header-aside {
@@ -204,7 +227,31 @@
   display: flex;
   align-items: center;
   gap: var(--sp-3);
+  min-width: 0;
+}
+
+/* Busca de comandos: um campo que abre a paleta. Encolhe antes de empurrar os
+   vizinhos; o texto cede com reticências e o atalho fica sempre à direita. */
+.header-paleta {
+  flex: 0 1 280px;
+  min-width: 0;
+  justify-content: flex-start;
+  gap: var(--sp-3);
+  color: var(--ink-2);
+  border-color: var(--line-strong);
+  font-weight: var(--fw-semibold);
+}
+
+.header-paleta svg {
+  width: 16px;
+  height: 16px;
   flex: none;
+}
+
+.header-paleta-texto {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Indicador de sincronização. O estado já existia em useRecords, mas só
@@ -215,13 +262,14 @@
   align-items: center;
   gap: var(--sp-2);
   font-size: var(--fs-xs);
-  color: var(--ink-3);
+  font-weight: var(--fw-semibold);
+  color: var(--ink-2);
   white-space: nowrap;
 }
 
 .sync-dot {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   background: var(--success);
   flex: none;
@@ -245,41 +293,43 @@
   50% { opacity: 0.35; }
 }
 
-/* Ícone desenhado em CSS, não por glifo: nenhum dos símbolos de sol/lua/meia-lua
-   existe na Plex, e o fallback rendia um caractere estreito e torto. Círculo
-   vazio = claro, metade = seguindo o sistema, cheio = escuro. */
-.theme-toggle {
-  width: max(var(--control-h), var(--tap-min));
-  height: max(var(--control-h), var(--tap-min));
-  display: grid;
-  place-items: center;
-  border-radius: var(--r-control);
-  border: 1px solid transparent;
-  background: transparent;
-  color: var(--ink-3);
-  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+/* Em notebook estreito o texto do estado cede ao ponto, que continua dizendo
+   verde, âmbar ou vermelho. */
+@media (max-width: 1280px) {
+  .sync-status span:last-child {
+    display: none;
+  }
 }
 
-.theme-toggle::before {
-  content: '';
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  border: 1.5px solid currentColor;
-}
-
-.theme-toggle[data-pref='system']::before {
-  background: linear-gradient(90deg, currentColor 50%, transparent 50%);
-}
-
-.theme-toggle[data-pref='dark']::before {
-  background: currentColor;
-}
-
-.theme-toggle:hover {
+/* Tema: três segmentos escritos, um deles marcado. */
+.seletor-tema {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: var(--r-full);
   background: var(--surface-2);
+  border: 1px solid var(--line-hairline);
+  flex: none;
+}
+
+.seletor-tema-opcao {
+  min-height: max(28px, var(--tap-min));
+  padding: 0 var(--sp-3);
+  border: 0;
+  border-radius: var(--r-full);
+  background: none;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
+  color: var(--ink-2);
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+
+.seletor-tema-opcao:hover:not([aria-checked='true']) {
   color: var(--ink-1);
-  border-color: var(--line-hairline);
+}
+
+.seletor-tema-opcao[aria-checked='true'] {
+  background: var(--brand);
+  color: var(--brand-ink);
 }
 
 /* ---------- Páginas de aba ---------- */
@@ -289,13 +339,9 @@
   max-width: var(--container);
   width: 100%;
   margin-inline: auto;
-  padding: var(--sp-5);
+  padding: var(--sp-6) var(--sp-6) var(--sp-7);
   display: flex;
   flex-direction: column;
-  gap: var(--sp-4);
-}
-
-.tab-page-lg {
   gap: var(--sp-5);
 }
 
@@ -329,26 +375,35 @@
 
 .page-bar {
   display: flex;
-  align-items: flex-end;
+  align-items: flex-start;
   justify-content: space-between;
   gap: var(--sp-4);
   flex-wrap: wrap;
+  min-height: 46px;
 }
 
+/* O título AFIRMA o achado, com número ("21 elos soltos travam a cadeia"). O
+   trecho que carrega o alerta vai em <em> — um por título, no máximo — e é o
+   único coral da página; se nada está em alerta, o título inteiro é azul. */
 .page-title {
-  font-size: var(--fs-2xl);
-  font-weight: var(--fw-semibold);
-  /* Quanto maior o corpo, mais fechado o tracking — e o eixo óptico já entrega
-     um desenho mais compacto neste tamanho, então o par se acompanha. */
-  letter-spacing: var(--tracking-display);
-  line-height: 1.2;
-  color: var(--ink-1);
+  margin: 0;
+  font-size: clamp(var(--fs-2xl), 2.25vw, var(--fs-num-lg));
+  font-weight: var(--fw-heavy);
+  line-height: 1.08;
+  letter-spacing: -0.022em;
+  color: var(--brand-text);
+}
+
+.page-title em {
+  font-style: normal;
+  color: var(--coral-texto);
 }
 
 .page-subtitle {
-  font-size: var(--fs-sm);
-  color: var(--ink-3);
-  margin-top: 2px;
+  margin-top: var(--sp-2);
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-medium);
+  color: var(--ink-2);
 }
 
 /* ---------- Grids ---------- */
@@ -377,16 +432,11 @@
 
 .kpi-strip {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  /* Uma faixa só, e não uma grade de cartões: as células se tocam, separadas
-     por um filete, dentro de um envelope. A camada final forçava QUATRO
-     colunas em toda faixa — era o que empurrava o quinto KPI do Registro e os
-     três últimos de Tarefas para uma segunda linha com um buraco ao lado. */
-  gap: 0;
-  overflow: hidden;
-  border: 1px solid var(--line);
-  border-radius: var(--r-card);
-  background: var(--bg-surface);
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  /* Cartões separados, cada um com a sua sombra curta: o indicador é uma
+     unidade que se lê sozinha. A faixa anterior era um envelope com filetes,
+     que fundia cinco números numa caixa só. */
+  gap: var(--sp-4);
 }
 
 /* Contagem fixa de colunas, quando a faixa tem um número redondo de tiles e
@@ -395,57 +445,77 @@
 .kpi-strip[data-colunas='4'] { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .kpi-strip[data-colunas='5'] { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 
+/* Cinco números de 28px não cabem lado a lado em notebook: abaixo disso a
+   contagem fixa cede e a faixa se acomoda sozinha. */
+@media (max-width: 1360px) {
+  .kpi-strip[data-colunas='4'],
+  .kpi-strip[data-colunas='5'] {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  }
+}
+
+/* O cartão carrega o julgamento: a barra lateral de 6px e o número levam a cor
+   do status (`--c`), e o status também é ESCRITO na etiqueta — a cor nunca
+   viaja sozinha. */
 .kpi-card {
-  --c: var(--brand);
+  --c: var(--brand-text);
   position: relative;
+  min-width: 0;
+  min-height: 88px;
+  padding: var(--sp-3) var(--sp-4) var(--sp-3) calc(var(--sp-5) - var(--sp-1));
   background: var(--bg-surface);
-  border: 1px solid var(--line-border);
+  border: 1px solid var(--line-hairline);
   border-radius: var(--r-card);
-  padding: var(--sp-3) var(--sp-4);
+  box-shadow: var(--elev-1);
   overflow: hidden;
 }
 
 .kpi-card::before {
   content: '';
   position: absolute;
-  left: 0;
-  top: var(--sp-3);
-  bottom: var(--sp-3);
-  width: 3px;
-  border-radius: 0 3px 3px 0;
+  inset: 0 auto 0 0;
+  width: 6px;
   background: var(--c);
 }
 
-.kpi-card[data-accent='brand'] { --c: var(--brand); }
+.kpi-card[data-accent='brand'] { --c: var(--brand-text); }
 .kpi-card[data-accent='baixo'] { --c: var(--tier-baixo); }
 .kpi-card[data-accent='medio'] { --c: var(--tier-medio); }
 .kpi-card[data-accent='alto'] { --c: var(--tier-alto); }
 .kpi-card[data-accent='critico'] { --c: var(--tier-critico); }
 .kpi-card[data-accent='null'] { --c: var(--tier-null); }
 
+/* Número em cima, depois o rótulo, o apoio e a etiqueta de status. No DOM o
+   rótulo vem primeiro (é assim que o leitor de tela lê); a ordem visual sai
+   de `order`. */
 .kpi-body {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
 }
 
+.kpi-body > * { order: 3; }
+.kpi-body > .kpi-value,
+.kpi-body > .kpi-value-row { order: 1; }
+.kpi-body > .kpi-label { order: 2; }
+
 .kpi-label {
-  font-size: var(--fs-3xs);
-  color: var(--ink-3);
+  margin-top: var(--sp-1);
+  font-size: var(--fs-md);
+  color: var(--ink-1);
   font-weight: var(--fw-bold);
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
 }
 
-/* O número do KPI é cifra como qualquer outra e sai em mono (ver a regra de
-   cifra em base.css). O corpo escala com a viewport entre dois degraus da
-   escala; abaixo de 760px a folha responsiva fixa o degrau menor — e agora
-   vale, porque a camada final deixou de atropelá-la. */
+/* O número do KPI é cifra como qualquer outra (ver a regra de cifra em
+   base.css). O corpo escala com a viewport entre dois degraus da escala;
+   abaixo de 760px a folha responsiva fixa o degrau menor. */
 .kpi-value {
-  font-size: clamp(var(--fs-xl), 2vw, var(--fs-num-lg));
-  font-weight: var(--fw-medium);
-  letter-spacing: var(--tracking-tighter);
+  font-size: clamp(var(--fs-xl), 1.9vw, var(--fs-num));
+  font-weight: var(--fw-heavy);
+  letter-spacing: var(--tracking-display);
   line-height: 1;
-  margin-top: var(--sp-2);
-  color: var(--ink-1);
+  color: var(--c);
+  white-space: nowrap;
 }
 
 .kpi-value-row {
@@ -455,14 +525,20 @@
   flex-wrap: wrap;
 }
 
-.kpi-value-row .kpi-value {
-  margin-top: var(--sp-1);
+.kpi-value-sub {
+  margin-top: 1px;
+  font-size: var(--fs-xs);
+  color: var(--ink-2);
+  font-weight: var(--fw-regular);
 }
 
-.kpi-value-sub {
-  font-size: var(--fs-xs);
-  color: var(--ink-3);
-  font-weight: var(--fw-regular);
+.kpi-value-row .kpi-value-sub {
+  margin-top: 0;
+}
+
+.kpi-status {
+  align-self: flex-start;
+  margin-top: var(--sp-1);
 }
 
 .kpi-progress-track {
@@ -478,36 +554,6 @@
   border-radius: var(--r-full);
   background: var(--c);
   transition: width var(--dur) var(--ease);
-}
-
-/* Célula da faixa: sem borda própria nem raio — o envelope é a faixa. A cor
-   do acento aparece duas vezes de propósito, na barra à esquerda (herdada do
-   cartão) e no filete de baixo: em faixa densa a barra lateral some atrás do
-   rótulo, e o filete é o que se lê de longe. */
-.kpi-strip > .kpi-card {
-  min-width: 0;
-  min-height: 88px;
-  padding: var(--sp-3) var(--sp-4);
-  border: 0;
-  border-right: 1px solid var(--line);
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-}
-
-.kpi-strip > .kpi-card:last-child {
-  border-right: 0;
-}
-
-.kpi-strip > .kpi-card::after {
-  position: absolute;
-  right: var(--sp-4);
-  bottom: 0;
-  left: var(--sp-4);
-  height: 2px;
-  background: var(--c);
-  content: '';
-  opacity: 0.78;
 }
 
 /* Tile que clica (filtra a lista): o único com hover e estado. */

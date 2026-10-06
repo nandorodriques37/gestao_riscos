@@ -19,19 +19,67 @@
    affordance falsa.
    ========================================================================= */
 
+/* O rail é o bloco azul da marca e ocupa a altura toda — a marca mora no topo
+   dele, e o header só existe à direita. Fundo `--rail-bg`: #0000BE no claro, o
+   palco no escuro. */
 .nav-rail {
   grid-area: rail;
   position: sticky;
-  top: var(--header-h);
+  top: 0;
   align-self: start;
-  height: calc(100dvh - var(--header-h));
+  height: 100dvh;
   width: var(--rail-w-mini);
   display: flex;
   flex-direction: column;
-  background: color-mix(in srgb, var(--surface-1) 70%, var(--surface-0));
-  border-right: 1px solid var(--line-hairline);
+  background: var(--rail-bg);
+  color: var(--rail-ink);
   overflow: hidden;
-  z-index: 20;
+  z-index: 40;
+}
+
+.rail-brand {
+  flex: none;
+  height: var(--header-h);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: 0 var(--sp-4);
+  border-bottom: 1px solid var(--rail-linha);
+}
+
+.rail-brand .brand-mark {
+  background: var(--rail-ativo);
+}
+
+.rail-brand-copy {
+  min-width: 0;
+  line-height: 1;
+}
+
+.rail-brand-name {
+  font-size: var(--fs-md);
+  font-weight: var(--fw-heavy);
+  letter-spacing: var(--tracking-tighter);
+  white-space: nowrap;
+}
+
+.rail-brand-sig {
+  margin-top: var(--sp-1);
+  font-size: var(--fs-3xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.095em;
+  text-transform: uppercase;
+  color: var(--rail-ink-2);
+  white-space: nowrap;
+}
+
+.nav-rail[data-expandido='false'] .rail-brand {
+  justify-content: center;
+  padding: 0;
+}
+
+.nav-rail[data-expandido='false'] .rail-brand-copy {
+  display: none;
 }
 
 .nav-rail[data-expandido='true'] {
@@ -69,11 +117,15 @@
 .rail-group-label {
   font-size: var(--fs-3xs);
   font-weight: var(--fw-bold);
-  letter-spacing: 0.11em;
+  letter-spacing: var(--tracking-rotulo);
   text-transform: uppercase;
   color: var(--ink-4);
   padding: 0 var(--sp-3) var(--sp-1);
   white-space: nowrap;
+}
+
+.nav-rail .rail-group-label {
+  color: var(--rail-ink-2);
 }
 
 /* Colapsado o rótulo do grupo vira um traço: separa sem ocupar largura que
@@ -83,7 +135,7 @@
   padding: 0;
   margin: var(--sp-2) auto var(--sp-3);
   width: var(--sp-5);
-  background: var(--line-hairline);
+  background: var(--rail-linha);
   overflow: hidden;
   text-indent: -999px;
 }
@@ -94,13 +146,13 @@
   align-items: center;
   gap: var(--sp-3);
   position: relative;
-  height: 36px;
+  height: 40px;
   padding: 0 var(--sp-3);
   border: none;
-  border-radius: var(--r-control);
+  border-radius: var(--r-lg);
   background: none;
-  font-size: var(--fs-xs);
-  font-weight: var(--fw-medium);
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
   color: var(--ink-3);
   white-space: nowrap;
   text-align: left;
@@ -116,7 +168,7 @@
   justify-content: center;
 }
 
-/* Marcador do item ativo: barra de 2px encostada na borda esquerda do rail.
+/* Marcador do item ativo: barra de 4px encostada na borda esquerda do rail.
    O negativo desfaz o padding do `.rail-nav`; colapsado, o item de 40px está
    centrado na largura mini e a conta é outra. */
 .rail-item::before {
@@ -125,8 +177,8 @@
   top: var(--sp-2);
   bottom: var(--sp-2);
   left: calc(-1 * var(--sp-3));
-  width: 2px;
-  border-radius: 0 2px 2px 0;
+  width: 4px;
+  border-radius: 0 4px 4px 0;
   background: transparent;
 }
 
@@ -163,20 +215,41 @@
 @media (hover: hover) {
   .rail-item:hover,
   .rail-toggle:hover {
-    background: color-mix(in srgb, var(--brand) 4%, transparent);
+    background: var(--bg-hover);
     color: var(--ink-1);
+  }
+
+  .nav-rail .rail-item:hover,
+  .nav-rail .rail-toggle:hover {
+    background: var(--rail-ativo);
+    color: var(--rail-ink);
   }
 }
 
-/* Ativo é a marca no texto e a barra na borda, sem preenchimento: o azul é
-   estrutura, não destaque (ver "Identidade Registro" no CLAUDE.md). */
+/* Ativo = texto claro em chip de fundo sutil + a barra de 4px na borda. No rail
+   azul o chip é branco a 16%; na folha "Mais" (que reusa `.rail-item`) é o azul
+   suave do sistema. */
 .rail-item[data-ativo='true'] {
-  color: var(--brand);
-  font-weight: var(--fw-bold);
+  color: var(--brand-text);
+  font-weight: var(--fw-heavy);
+  background: var(--brand-soft);
 }
 
 .rail-item[data-ativo='true']::before {
   background: var(--brand);
+}
+
+.nav-rail .rail-item {
+  color: var(--rail-ink-2);
+}
+
+.nav-rail .rail-item[data-ativo='true'] {
+  color: var(--rail-ink);
+  background: var(--rail-ativo);
+}
+
+.nav-rail .rail-item[data-ativo='true']::before {
+  background: var(--rail-ink);
 }
 
 /* Contador da fila de triagem: número junto do ícone, nunca um ponto solto —
@@ -187,10 +260,10 @@
   height: 18px;
   padding: 0 5px;
   border-radius: var(--r-full);
-  background: var(--tier-alto);
-  color: var(--ink-on-solid);
+  background: var(--danger);
+  color: var(--danger-ink);
   font-size: var(--fs-2xs);
-  font-weight: var(--fw-semibold);
+  font-weight: var(--fw-bold);
   display: grid;
   place-items: center;
 }
@@ -203,13 +276,13 @@
   min-width: 16px;
   height: 16px;
   font-size: var(--fs-3xs);
-  box-shadow: 0 0 0 2px var(--surface-1);
+  box-shadow: 0 0 0 2px var(--rail-bg);
 }
 
 .rail-foot {
   flex: none;
   padding: var(--sp-3);
-  border-top: 1px solid var(--line-hairline);
+  border-top: 1px solid var(--rail-linha);
 }
 
 .nav-rail[data-expandido='false'] .rail-foot {
@@ -217,8 +290,11 @@
 }
 
 .rail-toggle {
-  border-radius: 0;
   color: var(--ink-4);
+}
+
+.nav-rail .rail-toggle {
+  color: var(--rail-ink-2);
 }
 
 /* ============================================================================
@@ -284,7 +360,7 @@
    sozinha não basta: é o mesmo azul da marca em cinco fatias de largura igual,
    e de relance a diferença de saturação some. */
 .nav-bottom-item[data-ativo='true'] {
-  color: var(--brand);
+  color: var(--brand-text);
 }
 
 .nav-bottom-item[data-ativo='true'] .nav-bottom-label {
@@ -315,10 +391,10 @@
   display: grid;
   place-items: center;
   border-radius: var(--r-full);
-  background: var(--tier-alto);
-  color: var(--ink-on-solid);
+  background: var(--danger);
+  color: var(--danger-ink);
   font-size: var(--fs-3xs);
-  font-weight: var(--fw-semibold);
+  font-weight: var(--fw-bold);
 }
 
 /* ---------- Folha "Mais" ----------
@@ -331,7 +407,6 @@
   inset: 0;
   z-index: 50;
   background: var(--bg-overlay);
-  backdrop-filter: blur(3px);
   display: flex;
   align-items: flex-end;
 }
@@ -361,7 +436,7 @@
   }
 
   .nav-sheet {
-    animation: sheet-in var(--dur) var(--ease) both;
+    animation: sheet-in var(--dur) var(--ease) backwards;
   }
 
   @keyframes sheet-in {
@@ -374,9 +449,9 @@
 .nav-sheet-alca {
   flex: none;
   align-self: center;
-  width: 36px;
+  width: 40px;
   height: 4px;
-  margin-bottom: var(--sp-1);
+  margin-bottom: var(--sp-2);
   border-radius: var(--r-full);
   background: var(--line-strong);
 }
@@ -387,8 +462,11 @@
   gap: 2px;
 }
 
+/* Alvo de toque de 48px e texto de 16px: quem abre "Mais" está com o polegar. */
 .nav-sheet .rail-item {
-  height: max(36px, var(--tap-min));
+  height: max(48px, var(--tap-min));
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-semibold);
 }
 
 /* Autor e tema: os dois moradores do header que não cabem no celular. */
@@ -427,6 +505,19 @@
 @media (min-width: 1101px) {
   .app-header .nav-tabs {
     display: none;
+  }
+}
+
+/* Entre 761 e 820px as oito abas já não cabem ao lado da marca. A navegação
+   inferior entra antes do layout móvel, para que Pessoas, Triagem e Priorização
+   nunca desapareçam por recorte do header em tablets estreitos. */
+@media (min-width: 761px) and (max-width: 820px) {
+  .app-header .nav-tabs {
+    display: none;
+  }
+
+  .nav-bottom {
+    display: flex;
   }
 }
 

@@ -607,6 +607,19 @@ export function tratamentoDosRiscos(
 }
 
 /**
+ * Riscos abertos sem nenhuma ação viva — e que não foram aceitos. É a regra de
+ * "sem tratamento" da saúde do registro e do título da aba Riscos: uma conta
+ * só, para o número do KPI e o da frase não discordarem.
+ */
+export function riscosSemTratamento(
+  riscos: RiscoComId[], acoes: AcaoRisco[], iniciativas: Iniciativa[],
+): RiscoComTratamento[] {
+  return tratamentoDosRiscos(riscos, acoes, iniciativas).filter(t => (
+    t.estado === 'sem_tratamento' && !SITUACOES_FINAIS.has(t.risco.situacao ?? '')
+  ));
+}
+
+/**
  * Riscos cujo tratamento terminou mas que ninguém fechou ainda. É a fila de
  * trabalho do gestor: o sistema provou a entrega, falta a decisão de que a
  * ameaça de fato caiu.
@@ -944,10 +957,7 @@ export function saudeRiscos(
     contagem.set(t, (contagem.get(t) ?? 0) + 1);
   }
 
-  const tratamento = tratamentoDosRiscos(mapeados, acoes, iniciativas);
-  const semTratamento = tratamento.filter(t => (
-    t.estado === 'sem_tratamento' && !SITUACOES_FINAIS.has(t.risco.situacao ?? '')
-  )).length;
+  const semTratamento = riscosSemTratamento(mapeados, acoes, iniciativas).length;
 
   return {
     total: mapeados.length,

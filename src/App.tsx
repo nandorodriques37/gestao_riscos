@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { ModoRisco, RiskRecord, StoredRiskRecord, Tab } from './types';
 import { MODOS_RISCO } from './types';
 import { TopBar } from './components/TopBar/TopBar';
@@ -40,15 +40,6 @@ const POLL_INTERVAL = 15000;
 const UNDO_TIMEOUT = 8000;
 const MODO_RISCO_KEY = 'riskMatrix.modoRisco.v1';
 
-// Claro é o padrão, então o primeiro toque tem que levar a algum lugar:
-// a ordem sai de onde o usuário está, não de um alfabeto.
-const THEME_CYCLE: ThemePref[] = ['light', 'dark', 'system'];
-const THEME_LABEL: Record<ThemePref, string> = {
-  system: 'Tema: seguindo o sistema',
-  light: 'Tema: claro',
-  dark: 'Tema: escuro',
-};
-
 function App() {
   const { route, navigate } = useAppNavigation();
   const tab = route.tab;
@@ -82,10 +73,6 @@ function App() {
   const [confirmar, dialogoConfirmacao] = useConfirmacao();
 
   useEffect(() => { applyThemePref(theme); }, [theme]);
-
-  const cycleTheme = useCallback(() => {
-    setTheme(t => THEME_CYCLE[(THEME_CYCLE.indexOf(t) + 1) % THEME_CYCLE.length]);
-  }, []);
 
   /**
    * O nome vai junto de cada gravação e aparece no histórico. Não autentica
@@ -143,8 +130,8 @@ function App() {
   useEffect(() => { writePref(MODO_RISCO_KEY, modoRisco); }, [modoRisco]);
 
   /** Troca de seção com cross-fade onde o navegador suportar. */
-  const irPara = useCallback((destino: Tab, recorte?: string) => {
-    if (!canNavigate()) return;
+  const irPara = useCallback(async (destino: Tab, recorte?: string) => {
+    if (!(await canNavigate())) return;
     if (destino === 'registro' && recorte) setModoRisco('tabela');
     trocarComTransicao(() => navigate({ ...readRoute(''), tab: destino, recorte: recorte ?? null }));
   }, [navigate]);
@@ -304,7 +291,7 @@ function App() {
    * recebem este, para as três terem a mesma barra e o mesmo alternador —
    * antes a análise era uma aba que começava direto num filtro, sem título.
    */
-  function cabecalhoRisco(titulo: string, subtitulo: string) {
+  function cabecalhoRisco(titulo: ReactNode, subtitulo: string) {
     return (
       <div className="page-bar">
         <div>
@@ -343,8 +330,7 @@ function App() {
         autor={autor}
         onPedirNome={pedirNome}
         theme={theme}
-        onCycleTheme={cycleTheme}
-        themeLabel={THEME_LABEL[theme]}
+        onTheme={setTheme}
         onAbrirPaleta={() => setPaletaAberta(true)}
       />
 
@@ -367,8 +353,7 @@ function App() {
         autor={autor}
         onPedirNome={pedirNome}
         theme={theme}
-        onCycleTheme={cycleTheme}
-        themeLabel={THEME_LABEL[theme]}
+        onTheme={setTheme}
       />
 
       <div className="app-conteudo">
@@ -427,6 +412,8 @@ function App() {
           {tab === 'registro' && modoRisco === 'tabela' && (
             <RegistroTab idsDoRecorte={idsDoRecorte}
               records={records}
+              acoes={pf.portfolio.acoes_risco}
+              iniciativas={pf.portfolio.iniciativas}
               onOpenEdit={handleOpenEdit}
               onDeleteRow={handleDeleteRow}
               onAddRow={handleAddRow}
@@ -448,22 +435,14 @@ function App() {
               onAbrirIniciativa={abrirIniciativa}
               onPromoverAcao={acao => setPromovendoId(acao.id)}
               onIrPara={irPara}
-              cabecalho={cabecalhoRisco(
-                'Rastro de mitigação',
-                'Os mesmos riscos, lidos pelo tratamento: o que foi feito, onde foi feito '
-                + 'e o que já pode ser fechado',
-              )}
+              cabecalho={cabecalhoRisco}
             />
           )}
 
           {tab === 'registro' && modoRisco === 'analise' && (
             <GraficosTab
               records={records}
-              cabecalho={cabecalhoRisco(
-                'Análise de riscos',
-                'Os mesmos riscos, lidos pela distribuição: onde a exposição se concentra '
-                + 'por probabilidade, impacto, área, rotina e recurso',
-              )}
+              cabecalho={cabecalhoRisco}
             />
           )}
 

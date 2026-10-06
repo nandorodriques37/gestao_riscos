@@ -1,5 +1,10 @@
 /* ============================================================================
-   Modal — compartilhado por EditModal e TarefaEditModal.
+   Modal — compartilhado por EditModal, TarefaEditModal e ModalShell.
+
+   É um diálogo centralizado sobre scrim, não uma gaveta: o formulário de risco
+   e o de tarefa pedem largura para dois blocos lado a lado, e a gaveta de 720px
+   os espremia. Abaixo de 760px vira folha inferior (ver `responsive.css`).
+   Sem vidro: o scrim é uma cor só, nos dois temas.
    ========================================================================= */
 
 .modal-overlay {
@@ -7,7 +12,6 @@
   inset: 0;
   z-index: 60;
   background: var(--bg-overlay);
-  backdrop-filter: blur(3px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -19,7 +23,7 @@
    "Salvar" cai fora dela. No desktop os dois valores coincidem. */
 .modal-card {
   width: 100%;
-  max-width: 780px;
+  max-width: 640px;
   max-height: 88dvh;
   display: flex;
   flex-direction: column;
@@ -30,13 +34,37 @@
   overflow: hidden;
 }
 
+/* Formulário de duas colunas precisa de mais largura que o modal padrão, senão
+   cada coluna fica abaixo do mínimo legível de um select. */
+.modal-card[data-largo='true'] {
+  max-width: 960px;
+}
+
+/* Os editores de risco e de tarefa: plano de ação e campos G/U/T lado a lado. */
+.modal-card--editor {
+  max-width: 1040px;
+}
+
+/* Confirmação: curta, centralizada, nunca cobre a tela. */
+.modal-card[data-compact='true'] {
+  width: min(440px, calc(100% - var(--sp-5) * 2));
+  max-width: none;
+  height: auto;
+  max-height: calc(100dvh - var(--sp-6));
+  margin: auto;
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .modal-overlay {
     animation: overlay-in var(--dur-fast) var(--ease) both;
   }
 
+  /* `backwards`, nunca `both`: com `both` o último quadro fica aplicado depois
+     da animação, e um `transform` residual no cartão o torna o bloco recipiente
+     de todo `position: fixed` de dentro — o visualizador de imagem passava a
+     medir o cartão em vez da tela. Os keyframes só declaram o ponto de partida. */
   .modal-card {
-    animation: modal-in var(--dur) var(--ease) both;
+    animation: modal-in var(--dur) var(--ease) backwards;
   }
 
   @keyframes overlay-in {
@@ -46,7 +74,7 @@
   @keyframes modal-in {
     from {
       opacity: 0;
-      transform: translateY(8px) scale(0.98);
+      transform: translateY(var(--sp-2));
     }
   }
 }
@@ -58,22 +86,22 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--sp-3);
-  padding: var(--sp-4) var(--sp-5);
+  padding: var(--sp-5) var(--sp-6) var(--sp-4);
   border-bottom: 1px solid var(--line-border);
   flex: none;
 }
 
 .modal-title {
-  font-size: var(--fs-lg);
-  font-weight: var(--fw-semibold);
-  letter-spacing: -0.01em;
-  color: var(--ink-1);
+  font-size: var(--fs-xl);
+  font-weight: var(--fw-heavy);
+  letter-spacing: var(--tracking-tight);
+  color: var(--brand-text);
 }
 
 .modal-subtitle {
-  font-size: var(--fs-xs);
+  font-size: var(--fs-sm);
   color: var(--ink-3);
-  margin-top: 2px;
+  margin-top: var(--sp-1);
 }
 
 .modal-subtitle-saving { color: var(--tier-alto); }
@@ -105,7 +133,7 @@
 
 .modal-body {
   overflow-y: auto;
-  padding: var(--sp-5);
+  padding: var(--sp-5) var(--sp-6);
   display: flex;
   flex-direction: column;
   gap: var(--sp-5);
@@ -280,6 +308,101 @@ select.modal-input {
   color: var(--ink-1);
 }
 
+/* ---------- Abas do registro de risco ----------
+   Sublinhado azul no ativo: aba é navegação, e navegação é azul. Seguem
+   `aria-pressed` num grupo de botões (e não `role=tab`) porque é o contrato que
+   o teste do modal consulta. */
+
+.detail-context {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-4) var(--sp-6);
+  background: var(--bg-surface);
+  color: var(--ink-1);
+}
+
+.detail-context strong {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: var(--fs-md);
+}
+
+.detail-context span {
+  color: var(--ink-3);
+  font-size: var(--fs-sm);
+}
+
+.detail-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1);
+  padding: 0 var(--sp-6);
+  border-bottom: 1px solid var(--line-border);
+}
+
+.detail-tabs button {
+  margin-bottom: -1px;
+  padding: var(--sp-3) var(--sp-4);
+  border: 0;
+  border-bottom: 3px solid transparent;
+  background: transparent;
+  color: var(--ink-2);
+  font: inherit;
+  font-weight: var(--fw-bold);
+  cursor: pointer;
+}
+
+.detail-tabs button:hover {
+  color: var(--ink-1);
+}
+
+.detail-tabs button[aria-pressed='true'] {
+  border-bottom-color: var(--brand);
+  color: var(--brand-text);
+}
+
+/* Dentro do `ModalShell` as abas já estão no corpo, que tem o próprio respiro. */
+.modal-body .detail-tabs {
+  padding-inline: 0;
+}
+
+/* ---------- Blocos dentro do corpo ---------- */
+
+/* Bloco que segue outro dentro do mesmo campo: o respiro vem da escala. */
+.modal-card .modal-bloco {
+  margin-top: var(--sp-3);
+}
+
+/* Bloco que abre a seção: o respiro de cima é da seção, o de baixo é dele. */
+.modal-card .modal-bloco-topo {
+  margin-top: 0;
+  margin-bottom: var(--sp-3);
+}
+
+.modal-pilha {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+/* Valor só para leitura, com a altura e a borda de um campo. */
+.modal-input-leitura {
+  display: flex;
+  align-items: center;
+  color: var(--ink-3);
+}
+
+.modal-rotulo-clicavel {
+  cursor: pointer;
+}
+
+.modal-card .col-acao {
+  width: 64px;
+}
+
 /* ---------- Rodapé ---------- */
 
 .modal-footer {
@@ -287,7 +410,7 @@ select.modal-input {
   align-items: center;
   justify-content: space-between;
   gap: var(--sp-3);
-  padding: var(--sp-3) var(--sp-5);
+  padding: var(--sp-4) var(--sp-6);
   border-top: 1px solid var(--line-border);
   background: var(--bg-sunken);
   flex: none;
@@ -504,7 +627,6 @@ select.modal-input {
   inset: 0;
   z-index: 70;
   background: var(--scrim);
-  backdrop-filter: blur(3px);
   display: flex;
   flex-direction: column;
   padding: var(--sp-4);
@@ -649,11 +771,26 @@ select.modal-input {
    Diálogo de confirmação e paleta de comando
    ========================================================================= */
 
+/* A consequência em números é o que se lê: tinta cheia nos `<b>`, 14px. */
 .confirmacao-texto {
   margin: 0;
-  font-size: var(--fs-sm);
-  line-height: 1.55;
+  font-size: var(--fs-md);
+  line-height: 1.5;
   color: var(--ink-2);
+}
+
+.confirmacao-texto b,
+.confirmacao-texto strong {
+  color: var(--ink-1);
+  font-weight: var(--fw-bold);
+}
+
+.modal-card[data-compact='true'] .modal-title {
+  font-size: var(--fs-card);
+}
+
+.modal-card[data-compact='true'] .modal-footer {
+  justify-content: flex-end;
 }
 
 .paleta-overlay {
@@ -661,15 +798,15 @@ select.modal-input {
   inset: 0;
   z-index: 60;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: center;
-  padding: 12dvh var(--sp-4) var(--sp-4);
+  padding: var(--sp-4);
   background: var(--bg-overlay);
 }
 
 .paleta {
-  width: min(640px, 100%);
-  max-height: 76dvh;
+  width: min(680px, 100%);
+  max-height: min(76dvh, 560px);
   display: flex;
   flex-direction: column;
   border: 1px solid var(--line-border);
@@ -687,7 +824,15 @@ select.modal-input {
   border-bottom: 1px solid var(--line);
   background: transparent;
   color: var(--ink-1);
-  font-size: var(--fs-lg);
+  font-size: var(--fs-field);
+  font-weight: var(--fw-semibold);
+  outline: none;
+}
+
+/* O foco da paleta é o item destacado da lista (aria-activedescendant); o anel
+   de 2px em volta do campo, dentro de um cartão arredondado, só duplicava o
+   sinal e cortava nos cantos. */
+.paleta .paleta-campo:focus-visible {
   outline: none;
 }
 
@@ -703,10 +848,10 @@ select.modal-input {
 }
 
 .paleta-grupo {
-  padding: var(--sp-2) var(--sp-3) var(--sp-1);
-  font-size: var(--fs-3xs);
+  padding: var(--sp-3) var(--sp-3) var(--sp-1);
+  font-size: var(--fs-xs);
   font-weight: var(--fw-bold);
-  letter-spacing: 0.07em;
+  letter-spacing: var(--tracking-rotulo);
   text-transform: uppercase;
   color: var(--ink-3);
 }
@@ -715,18 +860,37 @@ select.modal-input {
   display: flex;
   align-items: baseline;
   gap: var(--sp-3);
-  min-height: var(--control-h);
+  min-height: max(44px, var(--control-h));
   padding: var(--sp-2) var(--sp-3);
   border-radius: var(--r-control);
-  font-size: var(--fs-sm);
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
   color: var(--ink-1);
   cursor: pointer;
 }
 
+/* Selecionado: tinta azul de fundo e a barra lateral da marca — a mesma
+   linguagem do item ativo do rail e da linha selecionada de Iniciativas. */
 .paleta-item[data-ativo] {
   background: var(--brand-soft);
-  color: var(--brand);
+  box-shadow: inset 3px 0 0 var(--brand);
+  color: var(--brand-text);
 }
+
+.paleta-item[data-camada]::before {
+  content: '';
+  flex: none;
+  align-self: center;
+  width: 10px;
+  height: 10px;
+  border-radius: var(--r-xs);
+  background: var(--c);
+}
+
+.paleta-item[data-camada='objetivo'] { --c: var(--camada-objetivo); }
+.paleta-item[data-camada='iniciativa'] { --c: var(--camada-iniciativa); }
+.paleta-item[data-camada='risco'] { --c: var(--camada-risco); }
+.paleta-item[data-camada='trabalho'] { --c: var(--camada-trabalho); }
 
 .paleta-rotulo {
   min-width: 0;
@@ -747,17 +911,28 @@ select.modal-input {
 }
 
 .paleta-vazio {
-  padding: var(--sp-4) var(--sp-3);
-  font-size: var(--fs-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  padding: var(--sp-5) var(--sp-3);
+  font-size: var(--fs-md);
+  line-height: 1.5;
+  text-align: center;
   color: var(--ink-3);
+}
+
+.paleta-vazio strong {
+  color: var(--ink-1);
+  font-weight: var(--fw-bold);
 }
 
 .paleta-dica {
   display: flex;
   gap: var(--sp-4);
-  padding: var(--sp-2) var(--sp-4);
+  padding: var(--sp-3) var(--sp-4);
   border-top: 1px solid var(--line);
-  font-size: var(--fs-2xs);
+  background: var(--bg-sunken);
+  font-size: var(--fs-xs);
   color: var(--ink-3);
 }
 
@@ -770,7 +945,6 @@ select.modal-input {
   border: 1px solid var(--line-border);
   border-bottom-width: 2px;
   border-radius: var(--r-xs);
-  font-family: var(--font-mono);
   font-size: var(--fs-3xs);
   line-height: 1.6;
   text-align: center;
@@ -779,5 +953,5 @@ select.modal-input {
 }
 
 .header-paleta kbd {
-  margin: 0 0 0 var(--sp-1);
+  margin: 0 0 0 auto;
 }

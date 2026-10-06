@@ -17,6 +17,7 @@ import { useBloqueioDeRolagem } from '../../hooks/useBloqueioDeRolagem';
 import { Historico } from '../common/Historico';
 
 import { useDraftGuard } from '../../hooks/useDraftGuard';
+import { useConfirmacao } from '../common/Confirmacao';
 import type { RiscoSalvo, SalvarRiscoPedido } from '../../lib/portfolioApi';
 
 const FOCUSABLE = 'a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])';
@@ -150,14 +151,20 @@ export function EditModal({
     } catch (err) { setErrosPlano([err instanceof Error ? err.message : 'Não foi possível salvar.']); return false; }
     finally { savingRef.current = false; setSalvandoPlano(false); }
   }
-  const requestClose = useDraftGuard(dirty, salvandoPlano, onClose);
+  const [requestClose, dialogoDescarte] = useDraftGuard(dirty, salvandoPlano, onClose);
   async function abrirIniciativa(id: string) { if (await commit()) onAbrirIniciativa(id); }
   async function criarIniciativa(linha: LinhaPlano) {
     const index = linhas.filter(l => !l.nova || l.descricao.trim()).findIndex(l => l.id === linha.id);
     if (index >= 0 && await commit()) onPromoverAcao(savedLines.current[index]?.id ?? linha.id);
   }
-  function recarregar() {
-    if (dirty && !window.confirm('Descartar este rascunho e carregar a versão atual?')) return;
+  const [confirmarRecarga, dialogoRecarregar] = useConfirmacao();
+  async function recarregar() {
+    if (dirty && !(await confirmarRecarga({
+      titulo: 'Recarregar a versão atual?',
+      consequencia: 'Seu rascunho será descartado e substituído pela versão salva por outra pessoa.',
+      rotuloConfirmar: 'Descartar e recarregar',
+      rotuloManter: 'Continuar editando',
+    }))) return;
     setBaseRecord(record); setDraft(record);
     const atuais = paraLinhas(acoesVinculadas, pessoas);
     setBaseLinhas(atuais); setLinhas(atuais); savedLines.current = atuais;
@@ -199,10 +206,11 @@ export function EditModal({
   // removida lá; o portal impede que a próxima propriedade de pintura que
   // alguém acrescentar a um contêiner de página reabra o mesmo buraco calado.
   return createPortal((
+    <>
     <div className="modal-overlay" onClick={() => { void requestClose(); }}>
       <div
         ref={cardRef}
-        className="modal-card"
+        className="modal-card modal-card--editor"
         role="dialog"
         aria-modal="true"
         aria-label="Editar registro de risco"
@@ -229,7 +237,7 @@ export function EditModal({
         </div>
         <div className="modal-body">
           {(error || errosPlano.length > 0) && <div className="form-aviso" role="alert">{error || errosPlano.join(' ')}
-            <button type="button" className="btn btn-ghost" disabled={salvandoPlano} onClick={recarregar}>Recarregar versão atual</button>
+            <button type="button" className="btn btn-ghost" disabled={salvandoPlano} onClick={() => { void recarregar(); }}>Recarregar versão atual</button>
           </div>}
           <fieldset className="modal-fields" disabled={salvandoPlano}>
           <datalist id="dl-area">{areaOptions.map(o => <option key={o} value={o} />)}</datalist>
@@ -261,7 +269,7 @@ export function EditModal({
                 <input className="modal-input" list="dl-categoria" value={draft.categoria} onChange={e => setField({ categoria: e.target.value })} />
               </div>
             </div>
-            <div style={{ marginTop: 12 }}>
+            <div className="modal-bloco">
               <div className="modal-field-label">Risco</div>
               <textarea className="modal-textarea" rows={2} value={draft.risco} onChange={e => setField({ risco: e.target.value })} />
             </div>
@@ -344,13 +352,13 @@ export function EditModal({
               </div>
               <div>
                 <div className="modal-field-label">Desde</div>
-                <div className="modal-input" style={{ display: 'flex', alignItems: 'center', color: 'var(--ink-3)' }}>
+                <div className="modal-input modal-input-leitura">
                   <span className="tabular">{formatarDataLonga(draft.data_situacao)}</span>
                 </div>
                 <div className="campo-ajuda">Gravada junto com a situação.</div>
               </div>
             </div>
-            <div style={{ marginTop: 12 }}>
+            <div className="modal-bloco">
               <div className="modal-field-label">Causa raiz</div>
               <textarea
                 className="modal-textarea" rows={2}
@@ -367,7 +375,7 @@ export function EditModal({
             {/* O estado é derivado das linhas e das iniciativas que as executam.
                 Fica junto do editor porque é ele que explica por que o risco
                 está onde está. */}
-            <div className="ini-meta" style={{ marginTop: 0, marginBottom: 'var(--sp-3)' }}>
+            <div className="ini-meta modal-bloco-topo">
               <span className="badge" data-badge={BADGE_TRATAMENTO[estado]}>
                 {ROTULO_TRATAMENTO[estado]}
               </span>
@@ -375,14 +383,14 @@ export function EditModal({
             </div>
 
             {legado && linhas.length > 0 && (
-              <div className="form-aviso" style={{ marginTop: 0, marginBottom: 'var(--sp-3)' }}>
+              <div className="form-aviso modal-bloco-topo">
                 Este plano ainda está só dentro do registro. Salvar traz estas {linhas.length}{' '}
                 {linhas.length === 1 ? 'ação' : 'ações'} para o rastro — até lá, o risco aparece
                 como sem tratamento.
               </div>
             )}
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div className="modal-pilha">
               <div>
                 {/* Sem rótulo "Ações": o título da seção e o cabeçalho de colunas já nomeiam a lista. */}
                 <AcoesEditor
@@ -471,7 +479,7 @@ export function EditModal({
                 </select>
               </div>
             </div>
-            <div style={{ marginTop: 12 }}>
+            <div className="modal-bloco">
               <div className="modal-field-label">Observação</div>
               <textarea className="modal-textarea" rows={2} value={draft.obs} onChange={e => setField({ obs: e.target.value })} />
             </div>
@@ -501,5 +509,8 @@ export function EditModal({
         </div>
       </div>
     </div>
+    {dialogoDescarte}
+    {dialogoRecarregar}
+    </>
   ), document.body);
 }

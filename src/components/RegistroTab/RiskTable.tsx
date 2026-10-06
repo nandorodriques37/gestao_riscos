@@ -17,6 +17,7 @@ interface RiskTableProps {
   onOpenEdit: (idx: number) => void;
   onDeleteRow: (idx: number) => void;
   emptyMessage?: string;
+  emptyHint?: string;
   emptyAction?: { label: string; onClick: () => void };
   density: Density;
 }
@@ -39,7 +40,7 @@ function startColResize(e: React.MouseEvent, id: string, startWidth: number, onW
   window.addEventListener('mouseup', onUp);
 }
 
-export function RiskTable({ rows, colWidths, onColWidthChange, sortKey, sortDir, onSort, onOpenEdit, onDeleteRow, emptyMessage, emptyAction, density }: RiskTableProps) {
+export function RiskTable({ rows, colWidths, onColWidthChange, sortKey, sortDir, onSort, onOpenEdit, onDeleteRow, emptyMessage, emptyHint, emptyAction, density }: RiskTableProps) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const isEmpty = rows.length === 0 && !!emptyMessage;
 
@@ -114,7 +115,7 @@ export function RiskTable({ rows, colWidths, onColWidthChange, sortKey, sortDir,
       {/* Mobile: um cartão por registro (ver App.css — escondida em telas largas). */}
       <RiskCardList rows={rows} onOpen={onOpenEdit} onDelete={onDeleteRow} />
 
-      {isEmpty && <EmptyState message={emptyMessage} action={emptyAction} />}
+      {isEmpty && <EmptyState message={emptyMessage} hint={emptyHint} action={emptyAction} />}
     </>
   );
 }

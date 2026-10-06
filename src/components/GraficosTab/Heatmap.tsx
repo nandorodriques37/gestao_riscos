@@ -29,7 +29,7 @@ export function Heatmap({ records, onCellClick }: HeatmapProps) {
         <div className="heatmap-yaxis-label"><span>IMPACTO →</span></div>
         <div className="heatmap-ylabels">
           {IMPACT_ROWS.map(im => <div key={im} className="heatmap-ylabel">{im}</div>)}
-          <div style={{ height: 15 }} />
+          <div className="heatmap-ylabels-gap" />
         </div>
         <div className="heatmap-grid-wrap">
           <div className="heatmap-grid" role="group" aria-label="Mapa de calor de probabilidade por impacto, grade 5 por 5">
@@ -53,6 +53,7 @@ export function Heatmap({ records, onCellClick }: HeatmapProps) {
                       `transparent`, o que apagava a diferença entre "nenhum
                       risco aqui" e "faixa não avaliada". */}
                   {count}
+                  <small className="heatmap-score tabular">{prob * imp}</small>
                 </div>
               );
             })}
