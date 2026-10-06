@@ -20,10 +20,13 @@ body,
    pilha do sistema, não para um serif que ninguém escolheu. */
 html {
   font-family: var(--font-sans);
+  background: var(--bg);
+  scrollbar-color: var(--line-strong) transparent;
 }
 
 body {
   margin: 0;
+  min-width: 320px;
   font-family: var(--font-sans);
   font-size: var(--fs-md);
   font-weight: var(--fw-regular);
@@ -32,23 +35,26 @@ body {
   background: var(--bg-canvas);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  /* cv05: "l" com cauda, evita confundir com "1" em coluna numérica.
-     As demais são o desenho alternativo da Plex para a, g e l. Precisam estar
-     na MESMA declaração: font-feature-settings não acumula, e enquanto o
-     :root pedia ss01/cv02/cv03/cv04 e o body pedia cv05, só o cv05 valia. */
-  font-feature-settings: 'cv05' 1, 'ss01' 1, 'cv02' 1, 'cv03' 1, 'cv04' 1;
+  text-rendering: optimizeLegibility;
   /* Sem peso sintético: sem isto o navegador finge um semibold engordando o
-     traço quando o eixo não é aplicado, e o resultado é sujo ao lado do real. */
+     traço quando o eixo não é aplicado, e o resultado é sujo ao lado do real.
+     Nenhuma `font-feature-settings` aqui: as alternativas estilísticas que o
+     app pedia (cv05, ss01…) eram da IBM Plex e não existem em Montserrat. */
   font-synthesis: none;
+}
+
+::selection {
+  color: var(--ink-on-brand-core);
+  background: var(--brand-core);
 }
 
 /* ---------- Cifra ----------
    Todo número que informa — score, GUT, prazo, percentual, valor, contagem,
-   o número grande do KPI e o do centro do donut — sai em Plex Mono. Não é
-   ornamento: em tabela densa o número proporcional não alinha, e um painel
-   que alinha número lê como instrumento, não como template. Mono já é
-   tabular por construção; o `tabular-nums` fica para o caso de a fonte cair
-   no fallback do sistema.
+   o número grande do KPI e o do centro do donut — sai com algarismos
+   TABULARES, na mesma família do texto. Não é ornamento: em tabela densa o
+   número proporcional não alinha, e um painel que alinha número lê como
+   instrumento, não como template. A cifra deixou de ser mono quando a
+   identidade passou a Montserrat, que tem algarismos tabulares de verdade.
 
    A lista é de CLASSE DE CIFRA, não de tudo que contém dígito: `.lista-nota`
    às vezes traz prosa, `.acao-prazo` é o contêiner de um campo de data e
@@ -86,7 +92,6 @@ td.num,
 .objetivo-det-valor,
 .objetivo-ini-valor,
 .lista-valor {
-  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   letter-spacing: var(--tracking-tighter);
 }

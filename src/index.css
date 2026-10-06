@@ -1,6 +1,4 @@
-/* Tipografia auto-hospedada da identidade Rede de Decisão. IBM Plex Sans dá
-   autoridade editorial sem perder legibilidade em tabelas densas; Plex Mono é
-   reservado a scores, datas, ids e medidas técnicas. */
-@import '@fontsource-variable/ibm-plex-sans/wght.css';
-@import '@fontsource/ibm-plex-mono/400.css';
-@import '@fontsource/ibm-plex-mono/500.css';
+/* Tipografia auto-hospedada do sistema visual Pague Menos: Montserrat Variable
+   (eixo de peso) para interface, prosa e cifra. Uma família só; os algarismos
+   tabulares vêm de `font-variant-numeric: tabular-nums`. */
+@import '@fontsource-variable/montserrat/wght.css';

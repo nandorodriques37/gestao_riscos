@@ -595,7 +595,6 @@
 }
 
 .matrix-tick {
-  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   font-size: var(--fs-2xs);
   color: var(--ink-4);

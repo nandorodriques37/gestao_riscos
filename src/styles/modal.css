@@ -770,7 +770,6 @@ select.modal-input {
   border: 1px solid var(--line-border);
   border-bottom-width: 2px;
   border-radius: var(--r-xs);
-  font-family: var(--font-mono);
   font-size: var(--fs-3xs);
   line-height: 1.6;
   text-align: center;

@@ -110,52 +110,60 @@ O visual é governado por **tokens**, não por hex soltos. Fonte da verdade:
 `src/styles/tokens.css`. Os demais arquivos de `src/styles/` são importados por `App.css`; `fluidez.css` complementa os formulários e
 vínculos após as regras existentes.
 
-### Identidade "Registro" (redesign de 09/2026)
+### Identidade Pague Menos (redesign de 10/2026)
 A tese: o app é um **registro de governança** — guarda decisões, cobra donos e
-mede promessa contra entrega — e deve parecer um documento técnico vivo, não um
-painel de telemetria. Consequências, todas em `tokens.css`:
+mede promessa contra entrega — com a linguagem visual do sistema Pague Menos:
+**azul é estrutura, coral é alerta**, Montserrat, cantos arredondados como o
+símbolo da marca, cartão com sombra curta, composição plana e **títulos que
+afirmam o achado** ("21 elos soltos travam a cadeia"). A fonte de design é o
+canvas "Gestão de Riscos — redesenho" (Claude Design) e o design system
+"Pague Menos"; o app **não usa o logo da Pague Menos** — o glifo é a rede de
+decisão própria do produto. Consequências, todas em `tokens.css`:
 
-- **Papel, não tela preta.** O tema **claro é o padrão**, e é decisão medida:
-  a cor oficial da marca, `#0000BE`, rende 12,0:1 sobre o papel quente
-  `#FBFAF8` e 1,6:1 sobre um canvas navy. O padrão é declarado no CSS
-  (`:root { color-scheme: light }`), não no JS, para o primeiro frame já pintar
-  claro. Os **três** estados do tema são marcados no `<html>`
-  (`data-theme="light|dark|system"`), 'system' inclusive — regra presa a
-  `[data-theme='dark']` fica muda para quem segue um sistema escuro, então
+- **Claro é o padrão** (`#0000BE` rende 12,0:1 sobre o papel e 1,6:1 sobre navy).
+  O padrão é declarado no CSS (`:root { color-scheme: light }`), não no JS, para
+  o primeiro frame já pintar claro. Os **três** estados do tema são marcados no
+  `<html>` (`data-theme="light|dark|system"`), 'system' inclusive — regra presa
+  a `[data-theme='dark']` fica muda para quem segue um sistema escuro, então
   refinamento de tema vira token `light-dark()`, nunca seletor de atributo.
-  Neutros são **quentes** (pedra), no claro e no escuro; o escuro é grafite
-  neutro, nunca navy. O chrome fixo — header, rail, barra inferior — é papel
-  opaco sobre hairline, **sem vidro** (nada de superfície translúcida com
-  `backdrop-filter`): o conteúdo passa por baixo, não através.
-- **Cor é semáforo, nunca decoração.** Azul da marca (`--brand`) é estrutura:
-  navegação, link, foco, estado ativo, marcador do item ativo e barra do título.
-  **Coral (`--brand-red`) só onde significa ameaça, atraso ou perda** — o nó de
-  risco do glifo, o elo "Riscos", `.rastro-risco`, a série "evitar perda", o
-  toco de elo partido no Sankey. Nunca como destaque. Texto corrido de ameaça
-  em fundo claro usa `--coral-texto` (`#D3102C`, 5,2:1); `#FF2342` reprova AA
-  abaixo de 18px e fica para preenchimento, ícone e cifra grande. Verde só onde
-  algo foi concluído ou está dentro do limite.
+  Neutros **azulados** (página `#F6F7FB`, cartão branco); o escuro é o **navy**
+  do sistema (palco `#070A1F`, cartão `#10163A`). O chrome fixo — header, rail,
+  barra inferior — é opaco, **sem vidro** (nada de `backdrop-filter`).
+- **Dois azuis:** `--brand` preenche controle (botão, aba ativa, seleção;
+  `#0000BE` no claro, `#5250F5` no escuro, texto branco por cima) e
+  `--brand-text` é o azul COMO TEXTO (título, link, número neutro; `#0000BE` /
+  `#A5A8FF`). `--brand-core` (`#0000BE` fixo) é o bloco de estrutura: rail,
+  cabeçalho de tabela, faixa de insight. Nunca `--brand` como cor de texto no
+  escuro.
+- **Cor é semáforo, nunca decoração.** Azul é estrutura: navegação, link,
+  foco, estado ativo, rail, cabeçalho de tabela. **Coral (`--brand-red`) só onde
+  significa ameaça, atraso, perda ou elo partido** — o nó de risco do glifo,
+  `.rastro-risco`, a série "evitar perda", o toco no Sankey. Nunca como
+  destaque; se nada está em alerta, a tela não tem coral. A **camada de risco da
+  cadeia é roxa** (`--camada-risco`), justamente para o toco coral do Sankey não
+  se confundir com ela. Texto de ameaça usa `--coral-texto` (`#C80027`, ≥5:1);
+  `#FF2342` reprova AA abaixo de 18px e fica para preenchimento, ícone e cifra
+  grande. Verde só onde algo foi concluído ou está dentro do limite.
 - **Etiqueta tem quatro papéis, não sete cores:** `BadgeKind = 'neutro' |
   'atencao' | 'ok' | 'risco'`. Só três recebem croma; `neutro` é texto sobre
   hairline. Categoria (origem, vetor, resposta padrão, status inicial, situação
-  do risco) é neutra; croma é para estado. Os três com cor reaproveitam os
-  degraus de criticidade de propósito (atenção = médio, ok = baixo, risco =
-  crítico): um segundo verde a poucos ΔE do primeiro seria o problema que o
-  redesign veio desfazer. "Mitigar" nem vira etiqueta — repetia o mesmo pill
+  do risco) é neutra; croma é para estado. A tinta dos três com cor
+  vem dos degraus `-texto` do sistema (`--badge-atencao/-ok/-risco`, ≥4,5:1
+  sobre o próprio fundo tingido); os degraus de criticidade (`--tier-*`) passam
+  3:1 e servem à marca gráfica, não ao texto. "Mitigar" nem vira etiqueta — repetia o mesmo pill
   tela abaixo; só a exceção (evitar, aceitar, transferir) é etiqueta
   (`RegistroTab/Resposta.tsx`). As quatro camadas da cadeia têm família
   própria, `--camada-objetivo/-iniciativa/-risco/-trabalho`, usada pela lista
   de lacunas e pelo Sankey.
-- **Raio diz o papel:** `--r-control` (4px) em botão, campo e chip;
-  `--r-card` (8px) em cartão e envelope; `--r-row` (0) em linha de tabela;
-  `--r-float` (12px) no que flutua — modal, gaveta, popover, folha, snackbar.
-  Quando tudo tinha o mesmo arredondamento médio, tudo virava cartão.
-- **Toda cifra sai em Plex Mono** por uma regra só em `base.css` (score, GUT,
-  prazo, percentual, valor, contagem, o número grande do KPI e o do centro do
-  donut). A lista é de CLASSE DE CIFRA, não de tudo que tem dígito:
-  `.lista-nota` às vezes é prosa, `.acao-prazo` é o contêiner de um campo de
-  data, `.marco-num` são glifos. Isso substituiu a doutrina de "número grande
-  em figuras proporcionais": mono já é tabular por construção.
+- **Raio diz o papel:** `--r-control` e `--r-card` (14px) em botão, campo e
+  cartão; `--r-row` (0) em linha de tabela; `--r-float` (22px) no que flutua —
+  modal, gaveta, popover, folha, snackbar; chips e pílulas usam `--r-full`.
+- **Toda cifra sai com algarismos tabulares** (`font-variant-numeric:
+  tabular-nums`) por uma regra só em `base.css` (score, GUT, prazo, percentual,
+  valor, contagem, o número grande do KPI e o do centro do donut), na mesma
+  família do texto: não há mais fonte mono. A lista é de CLASSE DE CIFRA, não de
+  tudo que tem dígito: `.lista-nota` às vezes é prosa, `.acao-prazo` é o
+  contêiner de um campo de data, `.marco-num` são glifos. Texto de tabela é 14px.
 - **Anel de foco sólido**, 2px com vão de 2px (`--focus-w`, `--focus-offset`),
   em todo interativo. O anterior era alpha de 24–32%, invisível sobre papel.
 - **Texto ≤13px nunca abaixo de `--ink-3`** (5,5:1 no claro, 6,8–7,6:1 no
@@ -200,22 +208,22 @@ painel de telemetria. Consequências, todas em `tokens.css`:
 - **Tema**: cada token declara claro e escuro numa linha via `light-dark()`. O
   `color-scheme` do `:root` decide; `[data-theme]` no `<html>` força um lado
   (botão no header, persistido em `riskMatrix.theme.v1`).
-- **Elevação significa "flutua acima"**: cartão em repouso é hairline puro, sem
-  sombra. `--elev-1` sticky/hover · `--elev-2` popover · `--elev-3` modal.
-- Marca no azul oficial `--brand` (`#0000BE` no claro; no escuro a rampa desce
-  para `#7280FF` porque o núcleo não sustenta fundo escuro); header claro com
-  abas sublinhadas; conteúdo limitado a `--container` (1600px). O glifo da marca
-  é a rede de decisão própria do produto, com o nó de risco em coral — não o
-  logo da Pague Menos, e o wordmark nunca é recriado em fonte.
+- **Elevação:** cartão em repouso leva borda de hairline mais `--elev-1` (sombra
+  curta do sistema); `--elev-2` popover e menu · `--elev-3` modal ·
+  `--elev-insight` só na faixa de insight. Sem cartão dentro de cartão e sem
+  degradê em tela de trabalho.
+- Marca no azul oficial (`#0000BE` no claro); conteúdo limitado a `--container`
+  (1600px). O glifo da marca é a rede de decisão própria do produto, com o nó
+  de risco em coral — não o logo da Pague Menos, e o wordmark nunca é recriado
+  em fonte.
 - Coluna "Riscos": acento no rótulo do header e faixa vertical de 2px — não mais
   fundo rosa em toda célula.
-- Tipografia: **IBM Plex Sans Variable** (eixo de peso, `@fontsource-variable/ibm-plex-sans/wght.css`)
-  para interface e prosa, **IBM Plex Mono** para cifra, auto-hospedadas. Sem
-  serif e sem eixo óptico — pedir `opsz` numa fonte carregada só com `wght` era
-  descrever uma fonte que não está aqui. A família fica no `<html>`, não só no
-  `<body>`: sem isso o elemento-raiz caía em serif de sistema. As `font-feature-settings`
-  ficam numa declaração só no `body` (a propriedade não acumula; um `:root`
-  pedindo `ss01` e um `body` pedindo `cv05` deixavam só o `cv05` valendo).
+- Tipografia: **Montserrat Variable** (eixo de peso, `@fontsource-variable/montserrat/wght.css`)
+  para interface, prosa e cifra, auto-hospedada. Sem serif e sem eixo óptico.
+  A família fica no `<html>`, não só no `<body>`: sem isso o elemento-raiz caía
+  em serif de sistema. Título de página 800, rótulo em caixa alta 700 com
+  tracking `--tracking-rotulo`. Montserrat é ~10% mais larga que a Plex que
+  substituiu: confira tabela densa a 1280px antes de apertar coluna.
   `font-synthesis: none`, porque peso sintético suja o traço ao lado do real.
   Nenhum tamanho de fonte fora de `--fs-*`; o degrau `--fs-3xs` (10px) existe
   só para micro-rótulo em caixa alta com tracking aberto, nunca para prosa.
@@ -229,7 +237,9 @@ painel de telemetria. Consequências, todas em `tokens.css`:
   o quinto KPI para uma segunda linha com um buraco ao lado. A barra empilhada
   tem 28px (`--viz-bar-h`) e escreve o valor dentro do segmento que tem
   largura para ele; a legenda continua, porque é ela que identifica. Cabeçalho
-  é sempre `.page-bar` + `.page-title`, e toda aba tem um.
+  é sempre `.page-bar` + `.page-title`, e toda aba tem um. O título **afirma o
+  achado com número**, calculado dos dados (`cadeiaQuebrada`, `saudeObjetivos`…),
+  com texto fixo de reserva no estado vazio.
 - Sem ícones externos: glifos Unicode (↓ + × ▲ ▼ ‹ ›) ou desenho em CSS/SVG inline
   (ver `AnexosBadge`). Sem emojis. Cuidado: o Inter **não** tem ☀ ☾ ◐ — glifos
   assim caem em fallback torto.

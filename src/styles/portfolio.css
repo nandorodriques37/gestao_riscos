@@ -132,7 +132,6 @@
    componente, que conhece a fração. No segmento estreito a legenda responde
    sozinha, como sempre respondeu. */
 .stack-seg-rotulo {
-  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   font-size: var(--fs-2xs);
   font-weight: var(--fw-bold);
@@ -2675,7 +2674,6 @@ button.objetivo-nome:hover {
 .sankey-total,
 .sankey-n,
 .sankey-solto-n {
-  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
 }
 
