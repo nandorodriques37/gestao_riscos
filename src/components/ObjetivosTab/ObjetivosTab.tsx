@@ -7,6 +7,7 @@ import {
   type CriterioObjetivos,
 } from '../../lib/ordemObjetivos';
 import { formatarMoeda, formatarMoedaCheia, formatarPct, plural } from '../../lib/portfolioLabels';
+import { julgar } from '../../lib/portfolioUi';
 import { EmptyState } from '../common/EmptyState';
 import { Kpi, KpiRow, type KpiProps } from '../common/Kpi';
 import { Composicao, type Fatia } from '../common/Composicao';
@@ -357,6 +358,12 @@ export function ObjetivosTab({
         acento: pendentesDeNumero > 0 ? 'medio' : 'null',
       };
 
+  // Melhorar é o estado saudável; só escreve o juízo quando há indicador à vista.
+  const juizIndicadores = totais.ativos === 0 ? {}
+    : totais.melhorando === totais.ativos ? julgar('ok', 'Melhorando')
+      : totais.melhorando > 0 ? julgar('atencao', 'Parcial')
+        : julgar('atencao', 'Sem avanço');
+
   /* ---------------- Composição do impacto ---------------- */
 
   const comprometido = totais.entregue + totais.emJogo;
@@ -415,7 +422,14 @@ export function ObjetivosTab({
 
       <div className="page-bar">
         <div>
-          <div className="page-title">Objetivos</div>
+          <div className="page-title">
+            {totais.ativos === 0 ? 'Objetivos' : (
+              <>
+                {totais.melhorando} de {totais.ativos} {totais.ativos === 1 ? 'indicador' : 'indicadores'} melhorando
+                {entregueDeclarado && `, ${formatarMoeda(totais.entregue)} entregues`}
+              </>
+            )}
+          </div>
           <div className="page-subtitle">
             {plural(ativosNoPortfolio, 'objetivo ativo', 'objetivos ativos')} ·
             {' '}{plural(atingidos, 'atingido', 'atingidos')} ·
@@ -437,7 +451,7 @@ export function ObjetivosTab({
           <Kpi label="Impacto entregue" acento="baixo" {...kpiEntregue} />
           <Kpi label="Em jogo" acento="brand" {...kpiEmJogo} />
           <Kpi label="Riscos neutralizados" acento="baixo" {...kpiRiscos} />
-          <Kpi label="Indicadores melhorando" {...kpiIndicadores} />
+          <Kpi label="Indicadores melhorando" {...kpiIndicadores} {...juizIndicadores} />
         </KpiRow>
       )}
 

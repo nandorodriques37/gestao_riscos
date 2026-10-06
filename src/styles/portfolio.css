@@ -350,7 +350,7 @@ button.lista-linha:focus-visible {
 .objetivos-ferramentas .btn[aria-pressed='true'] {
   background: var(--brand-soft);
   border-color: var(--brand);
-  color: var(--brand);
+  color: var(--brand-text);
 }
 
 /* Micro-rótulo: cabeçalho de coluna, rótulo de seção do detalhe, "Ordenar".
@@ -392,8 +392,11 @@ button.lista-linha:focus-visible {
 .objetivos-lista [data-area='tend'] { grid-area: tend; }
 
 .objetivos-colunas {
-  padding-block: var(--sp-2);
-  border-bottom: 1px solid var(--line-hairline);
+  padding-block: var(--sp-3);
+  background: var(--brand-core);
+  color: var(--ink-on-brand-core);
+  font-size: var(--fs-2xs);
+  align-items: end;
 }
 
 .objetivos-colunas [data-area='num'] {
@@ -825,7 +828,7 @@ button.objetivo-nome:hover {
 
 .objetivo-secao-titulo {
   font-size: var(--fs-md);
-  font-weight: var(--fw-semibold);
+  font-weight: var(--fw-bold);
   letter-spacing: var(--tracking-tight);
   color: var(--ink-1);
 }
@@ -1869,6 +1872,19 @@ button.objetivo-nome:hover {
 .tabela-simples tbody tr:last-child td {
   border-bottom: none;
 }
+
+/* Cabeçalho da trilha de marcos: estrutura em azul da marca. A tabela
+   simples de Pessoas fica como está até a etapa dela. */
+.marcos-tabela th {
+  padding: var(--sp-2) var(--sp-3);
+  color: var(--ink-on-brand-core);
+  background: var(--brand-core);
+  border-bottom: 0;
+}
+
+.marcos-tabela th:first-child { border-top-left-radius: var(--r-control); }
+.marcos-tabela th:last-child { border-top-right-radius: var(--r-control); }
+.marcos-tabela td { padding-left: var(--sp-3); }
 
 /* Inativo continua legível, só recua: ele ainda é o dono histórico de coisas. */
 .tabela-simples tr[data-inativo] {

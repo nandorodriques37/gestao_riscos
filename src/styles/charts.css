@@ -443,10 +443,18 @@
 /* ---------- Priorização: filtro de status ---------- */
 
 .prio-filter-row {
+  position: sticky;
+  z-index: 10;
+  top: calc(var(--header-h) + var(--sp-2));
   display: flex;
   align-items: center;
   gap: var(--sp-2);
   flex-wrap: wrap;
+  padding: var(--sp-2);
+  border: 1px solid var(--line-border);
+  border-radius: var(--r-card);
+  background: var(--bg-surface);
+  box-shadow: var(--elev-1);
 }
 
 .prio-filter-label {
@@ -463,15 +471,22 @@
 
 .matrix-layout {
   display: grid;
-  grid-template-columns: minmax(380px, 7fr) minmax(300px, 5fr);
-  gap: var(--sp-5);
-  align-items: stretch;
+  grid-template-columns: minmax(0, 3fr) minmax(340px, 2fr);
+  gap: var(--sp-4);
+  align-items: start;
 }
 
 .matrix-plot-row {
+  position: sticky;
+  top: calc(var(--header-h) + 68px);
+  align-self: start;
   display: flex;
   gap: var(--sp-2);
   min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--line-border);
+  border-radius: var(--r-card);
+  background: var(--bg-surface);
 }
 
 .matrix-plot-col {
@@ -483,7 +498,7 @@
   position: relative;
   aspect-ratio: 1 / 0.85;
   border: 1px solid var(--line-border);
-  border-radius: var(--r-card);
+  border-radius: 0;
   overflow: hidden;
   background: var(--bg-surface);
 }
@@ -498,7 +513,7 @@
   background: color-mix(in oklab, var(--c) 6%, transparent);
 }
 
-.quad-tint-qw { --c: var(--quad-qw); left: 0; top: 0; }
+.quad-tint-qw { --c: var(--quad-qw); left: 0; top: 0; background: var(--brand-soft); }
 .quad-tint-ga { --c: var(--quad-ga); right: 0; top: 0; }
 .quad-tint-bp { --c: var(--quad-bp); left: 0; bottom: 0; }
 .quad-tint-rv { --c: var(--quad-rv); right: 0; bottom: 0; }
@@ -557,7 +572,7 @@
   margin-top: 1px;
 }
 
-.qp-qw { --c: var(--quad-qw); }
+.qp-qw { --c: var(--quad-qw); color: var(--brand-text); }
 .qp-ga { --c: var(--quad-ga); }
 .qp-bp { --c: var(--quad-bp); }
 .qp-rv { --c: var(--quad-rv); }
@@ -680,6 +695,7 @@
   flex-direction: column;
   overflow: hidden;
   min-height: 0;
+  max-height: min(650px, calc(100dvh - var(--header-h) - 116px));
 }
 
 .ranked-list-header {
@@ -716,7 +732,9 @@
 
 .ranked-list-body {
   overflow-y: auto;
+  overscroll-behavior: contain;
   flex: 1;
+  min-height: 0;
 }
 
 .ranked-item {
@@ -730,6 +748,7 @@
   text-align: left;
   padding: var(--sp-2) var(--sp-3);
   border-bottom: 1px solid var(--line-hairline);
+  border-radius: 0;
   transition: background var(--dur-fast) var(--ease);
 }
 
@@ -835,6 +854,28 @@
 
 .priority-group-table-wrap {
   overflow-x: auto;
+}
+
+/* Cabeçalho de tabela é estrutura: azul da marca, texto branco. */
+.priority-group thead th {
+  background: var(--brand-core);
+  color: var(--ink-on-brand-core);
+  border-bottom: 0;
+}
+
+/* Larguras de coluna: geometria da tabela, não decisão visual. */
+.priority-group th.col-contexto { width: 190px; }
+.priority-group th.col-num { width: 72px; }
+.priority-group th.col-grav { width: 84px; }
+.priority-group th.col-prio { width: 96px; }
+
+/* O subtítulo da matriz fecha o cabeçalho; sem margem sobrando abaixo dele. */
+.priority-workspace .section-header-row .section-subtitle {
+  margin-bottom: 0;
+}
+
+.priority-workspace .section-header-row .actions-row {
+  padding-top: var(--sp-1);
 }
 
 /* Legenda de marca redonda (bolhas da matriz). O formato vem por atributo,

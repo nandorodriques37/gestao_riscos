@@ -14,12 +14,12 @@ import {
   ROTULO_VETOR, ROTULO_FONTE, formatarMoeda, formatarMoedaCheia,
   formatarNumero, formatarPct, nomeRisco, plural,
 } from '../../lib/portfolioLabels';
-import { LACUNAS, OBJETIVO_BALDE, ROTULO_CAMADA } from '../../lib/portfolioUi';
-import { ROTULO_TIER, type BadgeKind } from '../../lib/calculations';
+import { LACUNAS, OBJETIVO_BALDE, ROTULO_CAMADA, julgar } from '../../lib/portfolioUi';
+import { ROTULO_TIER } from '../../lib/calculations';
 import { baixarPortfolioCSV, baixarBackup } from '../../lib/portfolioCsv';
 import { EmptyState } from '../common/EmptyState';
 import { Composicao, type Fatia } from '../common/Composicao';
-import { Kpi, KpiRow, type AcentoKpi, type KpiProps } from '../common/Kpi';
+import { Kpi, KpiRow, type KpiProps } from '../common/Kpi';
 import { Insight } from '../common/Insight';
 import { SankeyCadeia } from './SankeyCadeia';
 import { Historico } from '../common/Historico';
@@ -305,14 +305,10 @@ export function PainelTab({
   const nLacuna = (chave: ChaveLacuna) => lacunasAbertas.find(l => l.chave === chave)?.n ?? 0;
 
   /**
-   * O julgamento de cada KPI, escrito e em cor. A régua de prazo é a do
-   * produto: 90% ou mais é no prazo, de 70% a 90% pede atenção, abaixo disso é
-   * fora do prazo.
+   * A régua de prazo é a do produto: 90% ou mais é no prazo, de 70% a 90% pede
+   * atenção, abaixo disso é fora do prazo. O julgamento em si (`julgar`) é
+   * compartilhado com as outras abas.
    */
-  const julgar = (kind: BadgeKind, rotulo: string): { acento: AcentoKpi; status: { rotulo: string; kind: BadgeKind } } => ({
-    acento: kind === 'ok' ? 'baixo' : kind === 'atencao' ? 'medio' : kind === 'risco' ? 'critico' : 'brand',
-    status: { rotulo, kind },
-  });
   const juizPrazo = prazo.pct == null
     ? undefined
     : prazo.pct >= 0.9 ? julgar('ok', 'No prazo')

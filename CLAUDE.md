@@ -196,8 +196,22 @@ decisão própria do produto. Consequências, todas em `tokens.css`:
   valor → rótulo → apoio → `status`. `<Kpi status={{ rotulo, kind }}>` escreve
   o juízo em pílula ("Fora do prazo"): a barra colorida sozinha não diz nada.
 - **Faixa de insight** (`common/Insight.tsx`, `.insight`): uma frase calculada
-  que fecha o cartão do Sankey — o que fazer primeiro, com o número. Uma por
-  tela, no máximo; texto fixo nunca.
+  que fecha o visual dominante da tela — o que fazer primeiro, com o número. No
+  Painel fecha o Sankey; na Priorização, a matriz ("N iniciativas de alto
+  impacto e baixo esforço lideram a fila. Comece por X, com prioridade 8,00").
+  Uma por tela, no máximo; texto fixo nunca. O quadrante de alto impacto e
+  baixo esforço continua se chamando **Ganho rápido** (não "Fazer agora") e é o
+  único em azul na matriz.
+- **Juízo do KPI é um só:** `julgar(kind, rotulo)` (`lib/portfolioUi.ts`) devolve
+  acento + etiqueta escrita e vale para Painel, Objetivos e Iniciativas. O tile
+  que carrega `status` não deita no celular (a pílula cortava).
+- **Cabeçalho de tabela azul** (`--brand-core` + `--ink-on-brand-core`) já vale
+  na lista de Objetivos, no resumo por recurso da Priorização e na trilha de
+  marcos (`.marcos-tabela`). A lista de Iniciativas fica com cabeçalho claro por
+  grupo (repetir faixa azul a cada grupo pesa mais que informa). O `thead`
+  global e `.tabela-simples` seguem para a etapa de Riscos/Tarefas/Pessoas.
+- **Visões salvas de Iniciativas** mostram a contagem (`Em risco 5`); filtro e
+  contagem usam a MESMA regra (`naVisao`).
 - **Paleta de comando** (`common/PaletaComando.tsx`, Ctrl/⌘+K): o listener mora
   no `App`, indexa os destinos de `NavRail/secoes.tsx` e os registros das
   camadas, e **não abre enquanto há outro `[role="dialog"]`** — o foco preso do

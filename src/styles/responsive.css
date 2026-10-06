@@ -33,15 +33,8 @@
     grid-template-columns: 1fr;
   }
 
-  /* Empilhado, o painel volta a ter altura própria em vez de acompanhar a
-     matriz. */
   .matrix-layout {
-    grid-template-columns: 1fr;
-    align-items: start;
-  }
-
-  .ranked-list-panel {
-    max-height: 420px;
+    grid-template-columns: minmax(0, 5fr) minmax(300px, 3fr);
   }
 
   /* Colunas de prioridade baixa saem primeiro — a tabela continua rolando na
@@ -68,7 +61,34 @@
 
 /* ---------- Celular / tablet retrato ---------- */
 
+@media (max-width: 900px) {
+  /* Empilhado, o painel volta a ter altura própria em vez de acompanhar a
+     matriz. */
+  .matrix-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .matrix-plot-row {
+    position: relative;
+    top: auto;
+  }
+
+  .ranked-list-panel {
+    max-height: 560px;
+  }
+}
+
 @media (max-width: 760px) {
+  .prio-filter-row {
+    position: relative;
+    top: auto;
+    overflow-x: auto;
+  }
+
+  .ranked-list-panel {
+    max-height: 520px;
+  }
+
   /* O `max()` com o inset lateral é por causa do viewport-fit=cover: em
      paisagem, num aparelho com entalhe, o conteúdo alcançaria a borda física da
      tela e a primeira coluna sumiria embaixo dela. */
@@ -188,27 +208,28 @@
      cai para ~48px e a faixa inteira para ~230px. Nenhum número sai da tela:
      é a mesma informação, na metade da altura.
 
-     Só o tile SIMPLES deita. Quem carrega barra de progresso, subtítulo ou
-     aviso de lacuna continua em pé, porque essas três coisas moram embaixo do
+     Só o tile SIMPLES deita. Quem carrega barra de progresso, subtítulo, aviso
+     de lacuna ou o juízo escrito (`.kpi-status`) continua em pé, porque essas
+     coisas moram embaixo do
      número e não têm para onde ir numa linha só — e `:has()` é o que permite
      distinguir os dois sem inventar uma variante no componente. */
-  .kpi-card:not(:has(.kpi-progress-track)):not(:has(.kpi-value-sub)):not(:has(.bento-lacuna)):not(:has(.kpi-vazio)) {
+  .kpi-card:not(:has(.kpi-progress-track)):not(:has(.kpi-value-sub)):not(:has(.bento-lacuna)):not(:has(.kpi-vazio)):not(:has(.kpi-status)) {
     padding: var(--sp-3);
   }
 
-  .kpi-card:not(:has(.kpi-progress-track)):not(:has(.kpi-value-sub)):not(:has(.bento-lacuna)):not(:has(.kpi-vazio)) .kpi-body {
+  .kpi-card:not(:has(.kpi-progress-track)):not(:has(.kpi-value-sub)):not(:has(.bento-lacuna)):not(:has(.kpi-vazio)):not(:has(.kpi-status)) .kpi-body {
     flex-direction: row;
     align-items: baseline;
     justify-content: space-between;
     gap: var(--sp-2);
   }
 
-  .kpi-card:not(:has(.kpi-progress-track)):not(:has(.kpi-value-sub)):not(:has(.bento-lacuna)):not(:has(.kpi-vazio)) .kpi-label {
+  .kpi-card:not(:has(.kpi-progress-track)):not(:has(.kpi-value-sub)):not(:has(.bento-lacuna)):not(:has(.kpi-vazio)):not(:has(.kpi-status)) .kpi-label {
     order: 0;
     margin-top: 0;
   }
 
-  .kpi-card:not(:has(.kpi-progress-track)):not(:has(.kpi-value-sub)):not(:has(.bento-lacuna)):not(:has(.kpi-vazio)) .kpi-value {
+  .kpi-card:not(:has(.kpi-progress-track)):not(:has(.kpi-value-sub)):not(:has(.bento-lacuna)):not(:has(.kpi-vazio)):not(:has(.kpi-status)) .kpi-value {
     margin-top: 0;
     flex: none;
   }

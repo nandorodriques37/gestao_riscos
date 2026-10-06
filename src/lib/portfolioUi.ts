@@ -1,7 +1,7 @@
 // Constantes e mapas que só a interface do portfólio usa. Ficam fora de
 // `portfolioMetrics.ts` de propósito: aquele arquivo é de funções puras de
 // domínio, e não deve conhecer nome de balde de migração nem cor de badge.
-import type { BadgeKind } from './calculations';
+import type { BadgeKind, TierKind } from './calculations';
 import type { ChaveLacuna, EstadoAmeaca, EstadoTratamento } from './portfolioMetrics';
 import type { Tab } from '../types';
 
@@ -161,3 +161,19 @@ export const LACUNAS: Record<ChaveLacuna, RotuloLacuna> = {
     destino: 'tarefas', acao: 'Abrir as tarefas', camada: 'trabalho', entidade: 'trabalho',
   },
 };
+
+/**
+ * O julgamento de um KPI, escrito e em cor: a etiqueta diz a palavra, o acento
+ * da barra repete o recado. Fica aqui para o Painel, Objetivos e Iniciativas
+ * julgarem com a mesma régua — cada um com a sua cópia, "atenção" viraria três
+ * cores diferentes.
+ */
+export function julgar(
+  kind: BadgeKind,
+  rotulo: string,
+): { acento: 'brand' | TierKind; status: { rotulo: string; kind: BadgeKind } } {
+  return {
+    acento: kind === 'ok' ? 'baixo' : kind === 'atencao' ? 'medio' : kind === 'risco' ? 'critico' : 'brand',
+    status: { rotulo, kind },
+  };
+}

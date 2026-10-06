@@ -4,11 +4,13 @@ import { normStatus } from '../../lib/calculations';
 import { buildActionable, buildActionableDeIniciativas } from './actionable';
 import { buildMatrixPoints, buildRankedList } from './matrixPoints';
 import { buildPriorityGroups } from './priorityGroups';
-import { QUADRANT_NAMES } from './quadrant';
+import { QUADRANT_NAMES, quadrantOf } from './quadrant';
 import { QuadrantMatrix } from './QuadrantMatrix';
 import { RankedList } from './RankedList';
 import { ResourceSummary } from './ResourceSummary';
 import { TierColorLegend } from '../GraficosTab/TierColorLegend';
+import { Insight } from '../common/Insight';
+import { formatarNumero, plural } from '../../lib/portfolioLabels';
 
 interface PriorizacaoTabProps {
   records: RiskRecord[];
@@ -84,6 +86,16 @@ export function PriorizacaoTab({
     ? ranked[selectedRank]?.iniciativaId ?? null
     : null;
 
+  // Ganho rápido = alto impacto, baixo esforço. É o que o título afirma e o
+  // que o insight manda fazer primeiro; os dois leem da mesma conta.
+  const ganhosRapidos = useMemo(
+    () => ranked.filter(x => x.item.esforco != null && x.item.impacto2 != null
+      && quadrantOf(x.item.esforco, x.item.impacto2) === 'qw').length,
+    [ranked],
+  );
+  const lider = ranked[0];
+  const unidade = fonteEfetiva === 'riscos' ? 'ação' : 'iniciativa';
+
   const priorityGroups = useMemo(() => buildPriorityGroups(actionable), [actionable]);
 
   function handleRankClick(rankIndex: number) {
@@ -107,7 +119,11 @@ export function PriorizacaoTab({
           filtro — sem dizer o que era nem o que estava rankeando. */}
       <div className="page-bar">
         <div>
-          <div className="page-title">Priorização</div>
+          <div className="page-title">
+            {ranked.length === 0 ? 'Priorização' : ganhosRapidos === 0
+              ? `Nenhuma ${unidade} é ganho rápido`
+              : `${ganhosRapidos} ${ganhosRapidos === 1 ? unidade : substantivo} ${ganhosRapidos === 1 ? 'rende' : 'rendem'} mais com menos esforço`}
+          </div>
           <div className="page-subtitle">
             {fonteEfetiva === 'iniciativas'
               ? 'O que fazer primeiro no portfólio: impacto ÷ esforço + gravidade, '
@@ -156,11 +172,11 @@ export function PriorizacaoTab({
         <div className="section-header-row">
           <div>
             <div className="section-title">Matriz Esforço × Impacto</div>
-            <div className="section-subtitle" style={{ marginBottom: 0 }}>
+            <div className="section-subtitle">
               Número = ranking de priorização · Tamanho = gravidade · Cor = nível de priorização · Clique para destacar
             </div>
           </div>
-          <div className="actions-row" style={{ paddingTop: 4 }}>
+          <div className="actions-row">
             {iniciativaSelecionada && (
               <button
                 className="btn btn-outline-navy"
@@ -194,6 +210,13 @@ export function PriorizacaoTab({
           />
         </div>
       </div>
+
+      {lider && (
+        <Insight>
+          {ganhosRapidos > 0 && <><b>{plural(ganhosRapidos, `${unidade} de alto impacto e baixo esforço`, `${substantivo} de alto impacto e baixo esforço`)}</b> {ganhosRapidos === 1 ? 'lidera' : 'lideram'} a fila. </>}
+          Comece por <b>{lider.item.rotulo}</b>, com prioridade <b>{formatarNumero(lider.prioriz, 2)}</b>.
+        </Insight>
+      )}
 
       <ResourceSummary
         groups={priorityGroups}
