@@ -120,6 +120,9 @@
      e cifra grande, e reprova AA em texto pequeno. Para texto de ameaça existe
      o degrau escurecido (5,2:1 no claro). */
   --brand-red: #FF2342;
+  /* Coral CLARO: ênfase e glifo sobre o azul da marca (rail, faixa de insight),
+     onde #FF2342 rende só ~1,9:1. */
+  --coral-claro: #FF8DA0;
   --coral-texto: light-dark(#C80027, #FF6B82);
 
   /* ---------- Foco ----------
@@ -252,6 +255,8 @@
   --fs-sm: 13px;
   --fs-md: 14px;
   --fs-lg: 16px;
+  /* Título de cartão e de seção. */
+  --fs-card: 18px;
   --fs-xl: 20px;
   /* Título de página. O degrau faltava: `--fs-xl` (20px) servia ao mesmo tempo
      de título de página e de subtítulo grande, e as duas hierarquias

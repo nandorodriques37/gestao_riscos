@@ -778,5 +778,5 @@ select.modal-input {
 }
 
 .header-paleta kbd {
-  margin: 0 0 0 var(--sp-1);
+  margin: 0 0 0 auto;
 }

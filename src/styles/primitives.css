@@ -32,8 +32,8 @@
 }
 
 .section-title {
-  font-size: var(--fs-lg);
-  font-weight: var(--fw-semibold);
+  font-size: var(--fs-card);
+  font-weight: var(--fw-bold);
   letter-spacing: var(--tracking-tight);
   color: var(--ink-1);
 }
@@ -46,7 +46,7 @@
 }
 
 .muted {
-  color: var(--ink-4);
+  color: var(--ink-muted);
 }
 
 /* ---------- Botões ---------- */
@@ -490,8 +490,12 @@ textarea:focus,
   align-items: center;
   justify-content: center;
   gap: var(--sp-2);
-  padding: var(--sp-7) var(--sp-5);
+  min-height: 220px;
+  padding: var(--sp-6) var(--sp-5);
   text-align: center;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--r-card);
+  background: color-mix(in srgb, var(--surface) 64%, transparent);
 }
 
 .empty-state-overlay {
@@ -501,16 +505,57 @@ textarea:focus,
   z-index: 3;
 }
 
+/* O glifo do estado vazio é a rede de decisão, com o nó de risco em coral. */
 .empty-state-icon {
-  width: 40px;
-  height: 40px;
   display: grid;
+  width: 132px;
+  height: 48px;
+  margin-bottom: var(--sp-4);
   place-items: center;
-  border-radius: 50%;
-  background: var(--bg-sunken);
-  color: var(--ink-4);
+  color: var(--brand-text);
+}
+
+.empty-state-icon svg {
+  width: 132px;
+  height: 48px;
+}
+
+.decision-network-line {
+  stroke: var(--brand-text);
+  stroke-width: 2;
+}
+
+.decision-network-node {
+  fill: var(--surface);
+  stroke: var(--brand-text);
+  stroke-width: 2;
+}
+
+.decision-network-node-risk {
+  fill: var(--brand-red);
+  stroke: var(--brand-red);
+}
+
+.decision-network path {
+  stroke: var(--brand-text);
+  stroke-width: 2;
+}
+
+.decision-network circle {
+  fill: var(--surface);
+  stroke: var(--brand-text);
+  stroke-width: 2;
+}
+
+.decision-network circle:nth-of-type(3) {
+  fill: var(--brand-red);
+  stroke: var(--brand-red);
+}
+
+.empty-state-title {
+  color: var(--ink);
   font-size: var(--fs-lg);
-  margin-bottom: var(--sp-1);
+  font-weight: var(--fw-bold);
 }
 
 .empty-state-message {
@@ -527,4 +572,33 @@ textarea:focus,
 
 .empty-state-action {
   margin-top: var(--sp-2);
+}
+
+/* ---------- Faixa de insight ----------
+   A conclusão da tela. Azul da marca em bloco, texto branco, o número que
+   sustenta a frase em coral claro (o coral escuro não lê sobre azul). A sombra
+   azul é só dela. */
+
+.insight {
+  padding: var(--sp-3) var(--sp-5);
+  border-radius: var(--r-card);
+  background: var(--brand-core);
+  color: var(--ink-on-brand-core);
+  box-shadow: var(--elev-insight);
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-medium);
+  line-height: 1.5;
+  text-align: center;
+}
+
+.insight b {
+  font-weight: var(--fw-heavy);
+  color: var(--coral-claro);
+}
+
+@media (max-width: 760px) {
+  .insight {
+    text-align: left;
+    font-size: var(--fs-md);
+  }
 }

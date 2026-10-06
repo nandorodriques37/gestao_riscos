@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Tab } from '../../types';
 import type { ThemePref } from '../../lib/uiPrefs';
+import { SeletorTema } from '../common/SeletorTema';
 import { useBloqueioDeRolagem } from '../../hooks/useBloqueioDeRolagem';
 import { DESTINOS_BARRA, GRUPOS, ICONES, gruposCom, type Secao } from '../NavRail/secoes';
 
@@ -34,13 +35,12 @@ interface NavBottomProps {
   autor: string;
   onPedirNome: () => void;
   theme: ThemePref;
-  onCycleTheme: () => void;
-  themeLabel: string;
+  onTheme: (pref: ThemePref) => void;
 }
 
 export function NavBottom({
   tab, onChangeTab, mostrarTriagem, triagemPendente,
-  autor, onPedirNome, theme, onCycleTheme, themeLabel,
+  autor, onPedirNome, theme, onTheme,
 }: NavBottomProps) {
   const [folhaAberta, setFolhaAberta] = useState(false);
   const maisRef = useRef<HTMLButtonElement>(null);
@@ -181,14 +181,7 @@ export function NavBottom({
               <button className="autor-chip" data-vazio={autor ? undefined : 'true'} onClick={onPedirNome}>
                 {autor || 'Quem é você?'}
               </button>
-              {/* O ícone é desenhado em CSS a partir do data-pref (ver layout.css). */}
-              <button
-                className="theme-toggle"
-                data-pref={theme}
-                onClick={onCycleTheme}
-                aria-label={themeLabel}
-                title={themeLabel}
-              />
+              <SeletorTema theme={theme} onTheme={onTheme} />
             </div>
           </nav>
         </div>

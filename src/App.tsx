@@ -40,15 +40,6 @@ const POLL_INTERVAL = 15000;
 const UNDO_TIMEOUT = 8000;
 const MODO_RISCO_KEY = 'riskMatrix.modoRisco.v1';
 
-// Claro é o padrão, então o primeiro toque tem que levar a algum lugar:
-// a ordem sai de onde o usuário está, não de um alfabeto.
-const THEME_CYCLE: ThemePref[] = ['light', 'dark', 'system'];
-const THEME_LABEL: Record<ThemePref, string> = {
-  system: 'Tema: seguindo o sistema',
-  light: 'Tema: claro',
-  dark: 'Tema: escuro',
-};
-
 function App() {
   const { route, navigate } = useAppNavigation();
   const tab = route.tab;
@@ -82,10 +73,6 @@ function App() {
   const [confirmar, dialogoConfirmacao] = useConfirmacao();
 
   useEffect(() => { applyThemePref(theme); }, [theme]);
-
-  const cycleTheme = useCallback(() => {
-    setTheme(t => THEME_CYCLE[(THEME_CYCLE.indexOf(t) + 1) % THEME_CYCLE.length]);
-  }, []);
 
   /**
    * O nome vai junto de cada gravação e aparece no histórico. Não autentica
@@ -343,8 +330,7 @@ function App() {
         autor={autor}
         onPedirNome={pedirNome}
         theme={theme}
-        onCycleTheme={cycleTheme}
-        themeLabel={THEME_LABEL[theme]}
+        onTheme={setTheme}
         onAbrirPaleta={() => setPaletaAberta(true)}
       />
 
@@ -367,8 +353,7 @@ function App() {
         autor={autor}
         onPedirNome={pedirNome}
         theme={theme}
-        onCycleTheme={cycleTheme}
-        themeLabel={THEME_LABEL[theme]}
+        onTheme={setTheme}
       />
 
       <div className="app-conteudo">

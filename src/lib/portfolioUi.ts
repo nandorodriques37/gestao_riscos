@@ -110,6 +110,14 @@ export interface RotuloLacuna {
  * conviviam "Ver tarefas", "Reatribuir" e "Cadastrar marcos", cada um com
  * uma gramática, para o mesmo gesto.
  */
+/** O nome escrito de cada camada — a cor da camada nunca aparece sem ele. */
+export const ROTULO_CAMADA: Record<RotuloLacuna['camada'], string> = {
+  objetivo: 'Objetivo',
+  iniciativa: 'Iniciativa',
+  risco: 'Risco',
+  trabalho: 'Trabalho',
+};
+
 export const LACUNAS: Record<ChaveLacuna, RotuloLacuna> = {
   objetivo_sem_iniciativa: {
     titulo: 'Objetivo ativo sem iniciativa ativa',

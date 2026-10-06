@@ -18,88 +18,6 @@
    Nada aqui define token: cor, medida e tipografia vêm de `tokens.css`.
    ========================================================================= */
 
-/* ── App shell and masthead ─────────────────────────────────────────────── */
-
-.app-shell {
-  min-height: 100dvh;
-  background:
-    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px),
-    var(--bg);
-  background-size: min(8.333vw, 120px) 100%;
-}
-
-/* ── Page hierarchy ─────────────────────────────────────────────────────── */
-
-.tab-page {
-  width: 100%;
-  max-width: 1600px;
-  margin: 0 auto;
-  padding: 26px 32px 48px;
-  gap: 22px;
-}
-
-.page-bar {
-  align-items: flex-start;
-  min-height: 46px;
-  gap: 16px;
-}
-
-.page-title {
-  position: relative;
-  margin: 0;
-  padding-left: 14px;
-  color: var(--ink);
-  font-size: clamp(24px, 2.25vw, 32px);
-  font-weight: 680;
-  line-height: 1.05;
-  letter-spacing: -0.045em;
-}
-
-.page-title::before {
-  position: absolute;
-  top: 3px;
-  bottom: 3px;
-  left: 0;
-  width: 3px;
-  border-radius: 1px;
-  background: var(--brand);
-  content: '';
-}
-
-.page-subtitle,
-.section-subtitle,
-.muted {
-  color: var(--ink-muted);
-}
-
-.section-title {
-  color: var(--ink);
-  font-size: var(--fs-lg);
-  font-weight: 680;
-  letter-spacing: -0.02em;
-}
-
-[data-tab='triagem'] .tab-page > .section-header-row:first-child .section-title {
-  position: relative;
-  padding-left: 14px;
-  color: var(--ink);
-  font-size: clamp(24px, 2.25vw, 32px);
-  font-weight: 680;
-  line-height: 1.05;
-  letter-spacing: -0.045em;
-}
-
-[data-tab='triagem'] .tab-page > .section-header-row:first-child .section-title::before {
-  position: absolute;
-  top: 3px;
-  bottom: 3px;
-  left: 0;
-  width: 3px;
-  border-radius: 1px;
-  background: var(--brand);
-  content: '';
-}
-
 /* ── Context / command bars ────────────────────────────────────────────── */
 
 .filter-row,
@@ -134,163 +52,6 @@
   border-bottom: 1px solid var(--line);
   color: var(--ink-muted);
   font-size: var(--fs-2xs);
-}
-
-/* ── Empty states and decision chain ───────────────────────────────────── */
-
-.empty-state {
-  min-height: 220px;
-  padding: 36px 24px;
-  border: 1px dashed var(--line-strong);
-  border-radius: var(--r-card);
-  background: color-mix(in srgb, var(--surface) 64%, transparent);
-}
-
-.empty-state-icon {
-  display: grid;
-  width: 132px;
-  height: 48px;
-  margin-bottom: 18px;
-  place-items: center;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  color: var(--brand);
-}
-
-.empty-state-icon svg {
-  width: 132px;
-  height: 48px;
-}
-
-.decision-network-line {
-  stroke: var(--brand);
-  stroke-width: 2;
-}
-
-.decision-network-node {
-  fill: var(--surface);
-  stroke: var(--brand);
-  stroke-width: 2;
-}
-
-.decision-network-node-risk {
-  fill: var(--brand-red);
-  stroke: var(--brand-red);
-}
-
-.decision-network path {
-  stroke: var(--brand);
-  stroke-width: 2;
-}
-
-.decision-network circle {
-  fill: var(--surface);
-  stroke: var(--brand);
-  stroke-width: 2;
-}
-
-.decision-network circle:nth-of-type(3) {
-  fill: var(--brand-red);
-  stroke: var(--brand-red);
-}
-
-.empty-state-title {
-  color: var(--ink);
-  font-size: var(--fs-lg);
-  font-weight: 680;
-}
-
-.cadeia {
-  position: relative;
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0;
-  overflow: hidden;
-  border: 1px solid var(--line);
-  border-radius: var(--r-card);
-  background: var(--surface);
-}
-
-.cadeia::before {
-  position: absolute;
-  z-index: 0;
-  top: 29px;
-  right: 12.5%;
-  left: 12.5%;
-  height: 1px;
-  background: var(--brand);
-  content: '';
-  opacity: 0.35;
-}
-
-.cadeia-elo {
-  position: relative;
-  z-index: 1;
-  min-width: 0;
-  padding: 16px;
-  border: 0;
-  border-right: 1px solid var(--line);
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-}
-
-.cadeia-elo:last-child {
-  border-right: 0;
-}
-
-.cadeia-elo::before {
-  display: block;
-  width: 10px;
-  height: 10px;
-  margin: 8px auto 14px;
-  border: 3px solid var(--surface);
-  border-radius: 50%;
-  background: var(--brand);
-  box-shadow: 0 0 0 1px var(--brand);
-  content: '';
-}
-
-.cadeia-elo:nth-of-type(3)::before {
-  background: var(--brand-red);
-  box-shadow: 0 0 0 1px var(--brand-red);
-}
-
-.cadeia-seta {
-  display: none;
-}
-
-/* ── Executive dashboard ───────────────────────────────────────────────── */
-
-.bento {
-  display: grid;
-  gap: 16px;
-}
-
-.bento > .card,
-.grid-2 > .card,
-.grid-heat > .card,
-.chart-card {
-  border-top: 2px solid var(--line-strong);
-  border-radius: var(--r-card);
-}
-
-.bento > .card:first-child {
-  border-top-color: var(--brand);
-}
-
-.card-header {
-  min-height: 42px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid var(--line);
-}
-
-.insight-title,
-.chart-title {
-  color: var(--ink);
-  font-weight: 680;
-  letter-spacing: -0.02em;
 }
 
 /* ── Structured portfolio rows ─────────────────────────────────────────── */
@@ -757,27 +518,8 @@ tbody tr:hover td {
 /* ── Responsive grids ──────────────────────────────────────────────────── */
 
 @media (max-width: 1100px) {
-  .tab-page {
-    padding: 22px 22px 40px;
-  }
-
   .matrix-layout {
     grid-template-columns: minmax(0, 5fr) minmax(300px, 3fr);
-  }
-
-  .metric-strip.kpi-strip,
-  .kpi-strip {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .metric-item.kpi-card:nth-child(2),
-  .kpi-strip > .kpi-card:nth-child(2) {
-    border-right: 0;
-  }
-
-  .metric-item.kpi-card:nth-child(-n + 2),
-  .kpi-strip > .kpi-card:nth-child(-n + 2) {
-    border-bottom: 1px solid var(--line);
   }
 }
 
@@ -817,30 +559,9 @@ tbody tr:hover td {
     display: flex;
   }
 
-  .tab-page {
-    padding-bottom: calc(var(--nav-bottom-h) + 28px + env(safe-area-inset-bottom));
-  }
 }
 
 @media (max-width: 760px) {
-  .app-shell {
-    background: var(--bg);
-  }
-
-  .tab-page {
-    padding: 18px 12px calc(var(--nav-bottom-h) + 28px + env(safe-area-inset-bottom));
-    gap: 16px;
-  }
-
-  .page-bar {
-    min-height: 40px;
-  }
-
-  .page-title {
-    padding-left: 11px;
-    font-size: var(--fs-2xl);
-  }
-
   button,
   input,
   select,
@@ -848,7 +569,6 @@ tbody tr:hover td {
     min-height: 44px;
   }
 
-  .theme-toggle,
   .icon-btn,
   button[aria-label]:not(.bar-row):not(.legend-item) {
     min-width: 44px;
@@ -871,37 +591,6 @@ tbody tr:hover td {
     position: relative;
     top: auto;
     flex-wrap: wrap;
-  }
-
-  .metric-item.kpi-card,
-  .kpi-strip > .kpi-card {
-    min-height: 78px;
-    padding: 12px;
-  }
-
-  .kpi-value {
-    font-size: var(--fs-2xl);
-  }
-
-  .cadeia {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .cadeia::before {
-    display: none;
-  }
-
-  .cadeia-elo {
-    border-right: 1px solid var(--line);
-    border-bottom: 1px solid var(--line);
-  }
-
-  .cadeia-elo:nth-child(2n) {
-    border-right: 0;
-  }
-
-  .cadeia-elo:nth-last-child(-n + 2) {
-    border-bottom: 0;
   }
 
   .modal-card,
@@ -927,23 +616,6 @@ tbody tr:hover td {
 
   .kanban-column {
     scroll-snap-align: start;
-  }
-}
-
-@media (max-width: 420px) {
-  .metric-strip.kpi-strip,
-  .kpi-strip {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .metric-item.kpi-card,
-  .kpi-strip > .kpi-card {
-    border-right: 1px solid var(--line);
-  }
-
-  .metric-item.kpi-card:nth-child(2n),
-  .kpi-strip > .kpi-card:nth-child(2n) {
-    border-right: 0;
   }
 }
 

@@ -1,5 +1,6 @@
 import type { Tab } from '../../types';
 import { gruposCom, type Grupo, type Secao } from './secoes';
+import { Marca } from '../common/Marca';
 
 /**
  * Navegação lateral. Substitui as abas do topo, que já quebravam linha em
@@ -54,6 +55,14 @@ export function NavRail({
 
   return (
     <aside className="nav-rail" data-expandido={expandido}>
+      <div className="rail-brand">
+        <Marca />
+        <div className="rail-brand-copy">
+          <div className="rail-brand-name">Matriz de Risco</div>
+          <div className="rail-brand-sig">Rede de decisão</div>
+        </div>
+      </div>
+
       <nav className="rail-nav" aria-label="Seções">
         {grupos.map(g => (
           <div className="rail-group" key={g.titulo}>

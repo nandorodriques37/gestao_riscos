@@ -184,6 +184,20 @@ decisão própria do produto. Consequências, todas em `tokens.css`:
   em números ("Os 5 marcos vão junto") e nomeia os dois botões — o verbo, e
   "Manter". Vale para excluir risco, iniciativa, objetivo, pessoa, tarefa,
   mitigação e medição, e para juntar fichas e declarar atingido.
+- **Shell:** o rail azul (`--rail-bg`) vai de ponta a ponta e leva a marca
+  (`common/Marca.tsx`) no topo; o header é só da direita (migalha `Grupo ·
+  Seção`, busca "Buscar ou ir para…", sync, tema, autor). Com o rail fora
+  (≤1100px) a marca volta ao header. As regras de cor do rail são escopadas em
+  `.nav-rail` porque a folha "Mais" reusa `.rail-item` e continua clara. **Tema
+  é `SeletorTema`** — três segmentos escritos (Claro, Escuro, Sistema), nunca um
+  botão que cicla. A barra inferior vale até 820px (a 768 as oito abas não
+  cabem ao lado da marca).
+- **Faixa de KPI = cartões separados**, barra lateral de 6px na cor do estado,
+  valor → rótulo → apoio → `status`. `<Kpi status={{ rotulo, kind }}>` escreve
+  o juízo em pílula ("Fora do prazo"): a barra colorida sozinha não diz nada.
+- **Faixa de insight** (`common/Insight.tsx`, `.insight`): uma frase calculada
+  que fecha o cartão do Sankey — o que fazer primeiro, com o número. Uma por
+  tela, no máximo; texto fixo nunca.
 - **Paleta de comando** (`common/PaletaComando.tsx`, Ctrl/⌘+K): o listener mora
   no `App`, indexa os destinos de `NavRail/secoes.tsx` e os registros das
   camadas, e **não abre enquanto há outro `[role="dialog"]`** — o foco preso do

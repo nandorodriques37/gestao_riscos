@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import type { TierKind } from '../../lib/calculations';
+import type { BadgeKind, TierKind } from '../../lib/calculations';
 
 /**
  * O tile de indicador do app inteiro.
@@ -49,12 +49,18 @@ export interface KpiProps {
    */
   largo?: boolean;
   title?: string;
+  /**
+   * O julgamento ESCRITO ("Atenção", "Crítico", "Dentro da meta"). A cor da
+   * barra e do número diz o mesmo, mas cor sozinha não informa — a etiqueta é
+   * o que garante o recado para quem não distingue os matizes.
+   */
+  status?: { rotulo: string; kind: BadgeKind };
 }
 
 export function Kpi({
-  label, valor, sub, acento = 'brand', progresso, alerta, vazio, onClick, ativo, largo, title,
+  label, valor, sub, acento = 'brand', progresso, alerta, vazio, onClick, ativo, largo, title, status,
 }: KpiProps) {
-  const classe = largo ? 'metric-item kpi-card wide' : 'metric-item kpi-card';
+  const classe = largo ? 'kpi-card wide' : 'kpi-card';
   const corpo = (
     <div className="kpi-body">
       <div className="kpi-label">{label}</div>
@@ -87,6 +93,9 @@ export function Kpi({
             style={{ width: `${Math.round(Math.max(0, Math.min(1, progresso)) * 100)}%` }}
           />
         </div>
+      )}
+      {status && (
+        <span className="badge kpi-status" data-badge={status.kind}>{status.rotulo}</span>
       )}
       {alerta != null && (
         <div className="bento-lacuna">
@@ -135,7 +144,7 @@ interface KpiRowProps {
 /** Faixa de KPIs. Uma grade só, para as abas pararem de inventar a sua. */
 export function KpiRow({ children, colunas }: KpiRowProps) {
   return (
-    <div className="metric-strip kpi-strip" data-colunas={colunas}>
+    <div className="kpi-strip" data-colunas={colunas}>
       {children}
     </div>
   );

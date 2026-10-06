@@ -14,12 +14,13 @@ import {
   ROTULO_VETOR, ROTULO_FONTE, formatarMoeda, formatarMoedaCheia,
   formatarNumero, formatarPct, nomeRisco, plural,
 } from '../../lib/portfolioLabels';
-import { LACUNAS, OBJETIVO_BALDE } from '../../lib/portfolioUi';
-import { ROTULO_TIER } from '../../lib/calculations';
+import { LACUNAS, OBJETIVO_BALDE, ROTULO_CAMADA } from '../../lib/portfolioUi';
+import { ROTULO_TIER, type BadgeKind } from '../../lib/calculations';
 import { baixarPortfolioCSV, baixarBackup } from '../../lib/portfolioCsv';
 import { EmptyState } from '../common/EmptyState';
 import { Composicao, type Fatia } from '../common/Composicao';
-import { Kpi, KpiRow, type KpiProps } from '../common/Kpi';
+import { Kpi, KpiRow, type AcentoKpi, type KpiProps } from '../common/Kpi';
+import { Insight } from '../common/Insight';
 import { SankeyCadeia } from './SankeyCadeia';
 import { Historico } from '../common/Historico';
 
@@ -294,6 +295,30 @@ export function PainelTab({
     return c;
   }, [tratamento]);
 
+  /**
+   * Quantos elos soltos há no total — a soma das lacunas abertas, a mesma
+   * régua do Sankey e da lista. É o que o título afirma. Um item pode aparecer
+   * em duas lacunas (a iniciativa sem marco que também está parada), e aqui
+   * cada lacuna conta uma vez, como na lista.
+   */
+  const elosSoltos = lacunasAbertas.reduce((soma, l) => soma + l.n, 0);
+  const nLacuna = (chave: ChaveLacuna) => lacunasAbertas.find(l => l.chave === chave)?.n ?? 0;
+
+  /**
+   * O julgamento de cada KPI, escrito e em cor. A régua de prazo é a do
+   * produto: 90% ou mais é no prazo, de 70% a 90% pede atenção, abaixo disso é
+   * fora do prazo.
+   */
+  const julgar = (kind: BadgeKind, rotulo: string): { acento: AcentoKpi; status: { rotulo: string; kind: BadgeKind } } => ({
+    acento: kind === 'ok' ? 'baixo' : kind === 'atencao' ? 'medio' : kind === 'risco' ? 'critico' : 'brand',
+    status: { rotulo, kind },
+  });
+  const juizPrazo = prazo.pct == null
+    ? undefined
+    : prazo.pct >= 0.9 ? julgar('ok', 'No prazo')
+      : prazo.pct >= 0.7 ? julgar('atencao', 'Atenção')
+        : julgar('risco', 'Fora do prazo');
+
   const maiorWip = wip[0];
   const sobrecarregados = wip.filter(w => w.acimaDoLimite).length;
   const ativasN = useMemo(() => iniciativas.filter(iniciativaAtiva).length, [iniciativas]);
@@ -378,7 +403,14 @@ export function PainelTab({
     <div className="tab-page-lg">
       <div className="page-bar">
         <div>
-          <div className="page-title">Painel</div>
+          <div className="page-title">
+            {elosSoltos > 0 ? (
+              <>
+                <em>{plural(elosSoltos, 'elo solto', 'elos soltos')}</em>{' '}
+                {elosSoltos === 1 ? 'trava' : 'travam'} a cadeia
+              </>
+            ) : 'Nenhum elo solto na cadeia'}
+          </div>
           <div className="page-subtitle">
             {plural(iniciativas.length, 'iniciativa', 'iniciativas')} ·{' '}
             {plural(objetivos.length, 'objetivo', 'objetivos')} ·{' '}
@@ -439,7 +471,7 @@ export function PainelTab({
           alerta={slip.replanejados > 0
             ? `${plural(slip.replanejados, 'marco replanejado', 'marcos replanejados')} · +${formatarNumero(slip.diasMedioDosReplanejados, 0)} dias em média`
             : undefined}
-          acento="brand"
+          {...(juizPrazo ?? { acento: 'brand' as const })}
         />
         <Kpi
           label="Quem está mais carregado"
@@ -448,15 +480,20 @@ export function PainelTab({
           alerta={sobrecarregados > 0
             ? `${plural(sobrecarregados, 'pessoa acima', 'pessoas acima')} de ${LIMITE_WIP} em execução`
             : undefined}
-          acento={sobrecarregados > 0 ? 'alto' : 'brand'}
+          {...(sobrecarregados > 0 ? julgar('risco', 'Sobrecarga') : { acento: 'brand' as const })}
         />
         <Kpi
           label="Iniciativas paradas"
           valor={parados.length}
           sub={`Sem marco movimentado há mais de ${DIAS_PARA_ZUMBI} dias`}
-          acento={parados.length > 0 ? 'alto' : 'null'}
+          {...(parados.length > 0 ? julgar('atencao', 'Atenção') : { acento: 'null' as const })}
         />
-        <Kpi label="Exposição ainda aberta" acento="brand" {...exposicaoAberta} />
+        <Kpi
+          label="Exposição ainda aberta"
+          acento="brand"
+          {...exposicaoAberta}
+          {...(exposicao.riscos > 0 && exposicao.total > 0 ? julgar('risco', 'Em aberto') : {})}
+        />
       </KpiRow>
 
       <div className="bento">
@@ -465,12 +502,17 @@ export function PainelTab({
         <div className="card" data-span="12">
           <div className="section-header-row">
             <div style={{ maxWidth: '78ch' }}>
-              <div className="section-title">O que precisa de atenção</div>
+              <div className="section-title">Onde a cadeia quebra</div>
               <div className="bento-sub">
                 Todo elo solto num lugar só. Nenhum destes é erro de sistema — são
                 decisões que ninguém tomou ainda, e cada linha leva a quem as toma.
               </div>
             </div>
+            {elosSoltos > 0 && (
+              <span className="badge" data-badge="risco">
+                {plural(elosSoltos, 'elo solto', 'elos soltos')}
+              </span>
+            )}
           </div>
 
           {lacunasAbertas.length === 0 ? (
@@ -489,6 +531,7 @@ export function PainelTab({
                   });
                 return (
                   <div className="lacuna" key={l.chave} data-camada={r.camada}>
+                    <span className="lacuna-camada">{ROTULO_CAMADA[r.camada]}</span>
                     <span className="lacuna-n tabular">{l.n}</span>
                     <div className="lacuna-corpo">
                       <div className="lacuna-titulo">{r.titulo}</div>
@@ -616,6 +659,32 @@ export function PainelTab({
             />
           </div>
         </div>
+
+        {/* A conclusão, uma frase, logo depois do visual dominante. Só afirma o
+            que a lista já provou: o que é mais urgente, e quanto de exposição
+            continua aberta — sem ligar uma coisa à outra por causa. */}
+        {(() => {
+          const urgentes = [
+            nLacuna('risco_sem_tratamento') > 0 && (
+              <b key="r">{plural(nLacuna('risco_sem_tratamento'), 'risco sem tratamento', 'riscos sem tratamento')}</b>
+            ),
+            nLacuna('objetivo_sem_iniciativa') > 0 && (
+              <b key="o">{plural(nLacuna('objetivo_sem_iniciativa'), 'objetivo sem iniciativa', 'objetivos sem iniciativa')}</b>
+            ),
+          ].filter(Boolean);
+          if (urgentes.length === 0) return null;
+          const comExposicao = exposicao.riscos > 0 && exposicao.total > 0;
+          return (
+            <div data-span="12">
+              <Insight>
+                {urgentes.length === 2
+                  ? <>Os {urgentes[0]} e {urgentes[1]} são os elos mais urgentes. </>
+                  : <>O elo mais urgente: {urgentes[0]}. </>}
+                {comExposicao && <>A exposição ainda aberta soma <b>{formatarMoeda(exposicao.total)}</b>.</>}
+              </Insight>
+            </div>
+          );
+        })()}
 
         {/* ---- Mix e cobertura de objetivo ---- */}
 
