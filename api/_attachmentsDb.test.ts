@@ -3,7 +3,8 @@ import { PGlite } from '@electric-sql/pglite';
 import { ensureTasksSchema, createTask, listTasks, deleteTaskById, type Sql } from './_tasksDb.js';
 import {
   createAttachment, listAttachments, getAttachment, deleteAttachment,
-  base64Bytes, contentDisposition, MAX_ATTACHMENT_BYTES,
+  base64Bytes, contentDisposition, validarImagem, nomeComExtensao, assinaturaConfere,
+  MAX_ATTACHMENT_BYTES, MSG_ASSINATURA_ERRADA,
 } from './_attachmentsDb.js';
 
 // Mesma abordagem de `_tasksDb.test.ts`: Postgres de verdade (pglite), para que
@@ -14,6 +15,20 @@ let sql: Sql;
 
 /** PNG 1x1 transparente — menor imagem válida possível. */
 const PNG_1X1 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+
+/** O começo de um arquivo de cada formato, com corpo de enchimento — o servidor só lê a assinatura. */
+const b64 = (...partes: Array<number[] | string>) =>
+  Buffer.concat(partes.map(p => (typeof p === 'string' ? Buffer.from(p, 'latin1') : Buffer.from(p)))).toString('base64');
+const CORPO = new Array(40).fill(0);
+const JPEG = b64([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10], 'JFIF', CORPO);
+const GIF = b64('GIF89a', [0x01, 0x00, 0x01, 0x00], CORPO);
+const WEBP = b64('RIFF', [0x24, 0, 0, 0], 'WEBPVP8 ', CORPO);
+/** Caixa `ftyp` de 28 bytes: marca principal `avif`, compatíveis `avif mif1 miaf`. */
+const AVIF = b64([0, 0, 0, 0x1c], 'ftypavif', [0, 0, 0, 0], 'avifmif1miaf', CORPO);
+/** HEIF genérico com `avis` só entre as compatíveis (sequência AVIF). */
+const AVIS = b64([0, 0, 0, 0x18], 'ftypmif1', [0, 0, 0, 0], 'mif1avis', CORPO);
+/** Uma planilha (zip) rotulada de imagem. */
+const ZIP = b64('PK', [0x03, 0x04], CORPO);
 
 beforeAll(async () => {
   pg = new PGlite();
@@ -49,11 +64,77 @@ describe('contentDisposition', () => {
   });
 });
 
+describe('validarImagem', () => {
+  it('a mensagem de formato acompanha a lista aceita', () => {
+    expect(validarImagem({ mime: 'image/bmp', dados: PNG_1X1 })).toEqual({ ok: false, message: 'Formato não suportado — envie PNG, JPEG, WebP, GIF ou AVIF.' });
+    expect(validarImagem({ mime: 'image/avif', dados: PNG_1X1 }, ['image/png', 'image/jpeg'])).toEqual({ ok: false, message: 'Formato não suportado — envie PNG ou JPEG.' });
+  });
+
+  it('normaliza nome, mime e tamanho da imagem aceita', () => {
+    expect(validarImagem({ nome: '  print.png ', mime: 'IMAGE/PNG', dados: ` ${PNG_1X1} ` })).toEqual({
+      ok: true, imagem: { nome: 'print.png', mime: 'image/png', dados: PNG_1X1, tamanho: base64Bytes(PNG_1X1) },
+    });
+    const semNome = validarImagem({ mime: 'image/png', dados: PNG_1X1 });
+    expect(semNome.ok && semNome.imagem.nome).toBe('imagem.png');
+  });
+
+  it('aceita cada formato cujos bytes batem com o MIME declarado', () => {
+    const casos: Array<[string, string]> = [
+      ['image/png', PNG_1X1], ['image/jpeg', JPEG], ['image/gif', GIF], ['image/webp', WEBP], ['image/avif', AVIF], ['image/avif', AVIS],
+    ];
+    for (const [mime, dados] of casos) {
+      expect(assinaturaConfere(mime, dados), mime).toBe(true);
+      expect(validarImagem({ nome: 'foto', mime, dados }).ok, mime).toBe(true);
+    }
+  });
+
+  it('recusa o arquivo cujos bytes não são do formato declarado', () => {
+    const trocados: Array<[string, string]> = [
+      ['image/gif', ZIP], ['image/png', JPEG], ['image/jpeg', PNG_1X1], ['image/webp', GIF], ['image/avif', WEBP],
+      ['image/webp', b64('RIFF', [0, 0, 0, 0], 'WAVEfmt ', CORPO)],
+      ['image/avif', b64([0, 0, 0, 0x18], 'ftypheic', [0, 0, 0, 0], 'mif1heic', CORPO)],
+    ];
+    for (const [mime, dados] of trocados) {
+      expect(validarImagem({ nome: 'Planilha Q3.xlsm', mime, dados }), mime).toEqual({ ok: false, message: MSG_ASSINATURA_ERRADA });
+    }
+  });
+
+  it('o nome guardado leva a extensão do formato', () => {
+    const gif = validarImagem({ nome: 'Planilha Q3.xlsm', mime: 'image/gif', dados: GIF });
+    expect(gif.ok && gif.imagem.nome).toBe('Planilha Q3.gif');
+    const jpeg = validarImagem({ nome: 'foto.JPEG', mime: 'image/jpeg', dados: JPEG });
+    expect(jpeg.ok && jpeg.imagem.nome).toBe('foto.JPEG');
+    expect(nomeComExtensao('print', 'image/webp')).toBe('print.webp');
+    expect(nomeComExtensao('.png', 'image/png')).toBe('imagem.png');
+    expect(nomeComExtensao('foto.jpg', 'image/jpeg')).toBe('foto.jpg');
+    // O teto de 200 caracteres vale com a extensão, que nunca é cortada.
+    const longo = nomeComExtensao('x'.repeat(300) + '.exe', 'image/png');
+    expect(longo).toHaveLength(200);
+    expect(longo.endsWith('.png')).toBe(true);
+  });
+});
+
+describe('contentDisposition com o formato', () => {
+  it('troca a extensão pela do MIME, também em linha gravada antes da regra', () => {
+    const header = contentDisposition('Planilha Q3.xlsm', 'image/gif');
+    expect(header).toContain('filename="Planilha Q3.gif"');
+    expect(header).toContain(encodeURIComponent('Planilha Q3.gif'));
+    expect(header).not.toContain('xlsm');
+  });
+});
+
 describe('createAttachment — validação', () => {
   it('recusa formato que não é imagem suportada', async () => {
     const task = await createTask(sql, { tarefa: 'com anexo' });
     const result = await createAttachment(sql, task.id, { nome: 'a.pdf', mime: 'application/pdf', dados: PNG_1X1 });
     expect(result.status).toBe('invalid');
+  });
+
+  it('recusa o arquivo de outro tipo rotulado de imagem, sem gravar nada', async () => {
+    const task = await createTask(sql, { tarefa: 'com anexo' });
+    const result = await createAttachment(sql, task.id, { nome: 'Planilha Q3.xlsm', mime: 'image/gif', dados: ZIP });
+    expect(result).toEqual({ status: 'invalid', message: MSG_ASSINATURA_ERRADA });
+    expect(await listAttachments(sql, task.id)).toEqual([]);
   });
 
   it('recusa conteúdo ausente ou fora do formato base64', async () => {

@@ -1,0 +1,611 @@
+/* ============================================================================
+   Aba Anotações — o corpo do editor (TipTap/ProseMirror).
+
+   Dono: a etapa do editor do Lote 2 (EditorNota, nó de imagem, envio de
+   imagens, visualizador). Página, lista e cabeçalho moram em notas.css. Só
+   tokens: o destaque usa --marca-texto com --on-marca-texto por cima, nunca
+   coral.
+
+   As margens laterais do documento são as da página (`--nota-margem-esq` e
+   `--nota-margem-dir`, declaradas em notas.css em `.notas-pagina`): o texto
+   alinha com o título em toda largura sem repetir os breakpoints aqui. Os
+   valores de reserva valem para o editor montado fora da página (teste).
+   ========================================================================= */
+
+/* ---------- Base do ProseMirror ----------
+   O TipTap injetaria estas regras numa <style> própria, com o cursor de
+   lacuna em preto fixo — ilegível no escuro. Saem daqui, com token
+   (`injectCSS: false` no EditorNota). */
+.nota-doc {
+  position: relative;
+  word-wrap: break-word;
+  white-space: pre-wrap;
+  white-space: break-spaces;
+  font-variant-ligatures: none;
+  font-feature-settings: 'liga' 0;
+}
+
+.nota-doc [contenteditable='false'] {
+  white-space: normal;
+}
+
+.nota-doc [contenteditable='false'] [contenteditable='true'] {
+  white-space: pre-wrap;
+}
+
+.nota-doc img.ProseMirror-separator {
+  display: inline !important;
+  border: none !important;
+  margin: 0 !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+.nota-doc .ProseMirror-gapcursor {
+  display: none;
+  pointer-events: none;
+  position: absolute;
+  margin: 0;
+}
+
+.nota-doc .ProseMirror-gapcursor::after {
+  content: '';
+  display: block;
+  position: absolute;
+  top: calc(var(--sp-1) / -2);
+  width: var(--sp-5);
+  border-top: 1px solid var(--ink-1);
+  animation: nota-cursor-pisca 1.1s steps(2, start) infinite;
+}
+
+@keyframes nota-cursor-pisca {
+  to { visibility: hidden; }
+}
+
+.nota-doc.ProseMirror-focused .ProseMirror-gapcursor {
+  display: block;
+}
+
+.nota-doc.ProseMirror-hideselection *::selection {
+  background: transparent;
+}
+
+.nota-doc.ProseMirror-hideselection * {
+  caret-color: transparent;
+}
+
+/* ---------- Documento que este editor não lê ----------
+   Bloco ou marca fora do esquema: a página abre só para leitura, sem
+   salvamento armado. Âmbar (atenção), não coral: nada se perdeu e nada foi
+   gravado. Alinhada com o texto pelas mesmas margens do documento. */
+.nota-ilegivel {
+  max-width: 72ch;
+  margin:
+    0
+    var(--nota-margem-dir, calc(var(--sp-6) + var(--sp-2)))
+    var(--sp-3)
+    var(--nota-margem-esq, calc(var(--sp-7) + var(--sp-5)));
+  padding: var(--sp-3) var(--sp-4);
+  border: 1px solid var(--badge-atencao);
+  border-radius: var(--r-card);
+  background: color-mix(in oklab, var(--badge-atencao) 8%, var(--bg-surface));
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+  line-height: 1.45;
+  color: var(--ink-1);
+}
+
+/* ---------- Documento ---------- */
+
+.nota-doc {
+  --nota-recuo: calc(var(--sp-5) + var(--sp-1));
+  min-height: calc(var(--sp-7) * 4);
+  padding:
+    var(--sp-2)
+    var(--nota-margem-dir, calc(var(--sp-6) + var(--sp-2)))
+    calc(var(--sp-6) + var(--sp-2))
+    var(--nota-margem-esq, calc(var(--sp-7) + var(--sp-5)));
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-regular);
+  line-height: 1.6;
+  color: var(--ink-1);
+  overflow-wrap: break-word;
+}
+
+/* O cursor piscando é o foco de um documento, como em todo editor de texto: o
+   anel do `:focus-visible` global contornaria a página inteira a cada tecla.
+   Os controles DENTRO do documento (barra da imagem, caixa de tarefa,
+   botões do envio) continuam com o anel. */
+.nota-doc:focus-visible {
+  outline: none;
+}
+
+/* Teto da medida de leitura, também na tela larga. `ch` é a largura do zero,
+   mais larga que a letra média da Montserrat: 72ch dão ~90 caracteres de
+   texto corrido, não 72. */
+.nota-doc > * {
+  max-width: 72ch;
+}
+
+.nota-doc > :first-child {
+  margin-top: 0;
+}
+
+.nota-doc p {
+  margin: 0;
+}
+
+.nota-doc h1,
+.nota-doc h2,
+.nota-doc h3 {
+  color: var(--ink-1);
+  font-weight: var(--fw-heavy);
+  text-wrap: pretty;
+}
+
+/* Três degraus da escala, abaixo do título da página (--fs-num). */
+.nota-doc h1 {
+  margin: calc(var(--sp-5) + var(--sp-1)) 0 var(--sp-1);
+  font-size: var(--fs-2xl);
+  line-height: 1.25;
+  letter-spacing: var(--tracking-tighter);
+}
+
+.nota-doc h2 {
+  margin: var(--sp-5) 0 var(--sp-1);
+  font-size: var(--fs-xl);
+  line-height: 1.3;
+  letter-spacing: var(--tracking-tight);
+}
+
+.nota-doc h3 {
+  margin: calc(var(--sp-4) + var(--sp-1)) 0 var(--sp-1);
+  font-size: var(--fs-card);
+  line-height: 1.35;
+}
+
+.nota-doc ol,
+.nota-doc ul {
+  margin: 0;
+  padding: 0 0 0 var(--nota-recuo);
+}
+
+.nota-doc li > p {
+  margin: 0;
+}
+
+.nota-doc ol > li::marker {
+  color: var(--ink-2);
+  font-weight: var(--fw-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+.nota-doc ul > li::marker {
+  color: var(--ink-2);
+}
+
+.nota-doc blockquote {
+  margin: var(--sp-1) 0;
+  padding: 0 0 0 var(--sp-4);
+  border-left: 3px solid var(--ink-1);
+}
+
+.nota-doc hr {
+  height: 0;
+  margin: var(--sp-3) 0;
+  border: 0;
+  border-top: 1px solid var(--line-hairline);
+}
+
+.nota-doc hr.ProseMirror-selectednode {
+  outline: var(--focus-w) solid var(--focus);
+  outline-offset: var(--focus-offset);
+}
+
+.nota-doc strong {
+  font-weight: var(--fw-bold);
+}
+
+.nota-doc u {
+  text-decoration-thickness: 1px;
+  text-underline-offset: var(--sp-1);
+}
+
+.nota-doc s {
+  text-decoration-thickness: 1.5px;
+}
+
+.nota-doc a {
+  color: var(--brand-text);
+  font-weight: var(--fw-semibold);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: var(--sp-1);
+}
+
+/* ---------- Destaque (marca-texto) ----------
+   Ênfase de quem escreveu, não alerta: amarelo próprio, nunca coral. A tinta
+   por cima é sempre --on-marca-texto, inclusive em link dentro do destaque
+   (o azul de texto do escuro sobre o oliva reprova AA). */
+.nota-doc mark {
+  margin: 0 calc(var(--sp-1) / -2);
+  padding: 0 calc(var(--sp-1) / 2);
+  border-radius: var(--r-xs);
+  background: var(--marca-texto);
+  color: var(--on-marca-texto);
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+.nota-doc mark a,
+.nota-doc a mark {
+  color: var(--on-marca-texto);
+}
+
+/* ---------- Lista de tarefas ----------
+   O TipTap desenha <li data-checked><label><input></label><div>…</div></li>
+   dentro de <ul data-type="taskList">. O `data-type="taskItem"` só sai no HTML
+   serializado: o node view do editor vivo não o escreve, então a regra se
+   ancora na lista. */
+.nota-doc ul[data-type='taskList'] {
+  list-style: none;
+  padding-left: 0;
+}
+
+.nota-doc ul[data-type='taskList'] > li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-2);
+}
+
+.nota-doc ul[data-type='taskList'] > li > label {
+  flex: none;
+  display: flex;
+  align-items: center;
+  height: 1lh;
+}
+
+.nota-doc ul[data-type='taskList'] > li > label > input {
+  width: 1.125em;
+  height: 1.125em;
+  margin: 0;
+  accent-color: var(--brand);
+  cursor: pointer;
+}
+
+.nota-doc ul[data-type='taskList'] > li > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.nota-doc ul[data-type='taskList'] > li[data-checked='true'] > div > p {
+  color: var(--ink-2);
+  text-decoration: line-through;
+  text-decoration-thickness: 1.5px;
+}
+
+/* ---------- Texto-fantasma do bloco vazio ---------- */
+.nota-doc .nota-placeholder::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  color: var(--ink-3);
+  pointer-events: none;
+}
+
+/* ---------- Imagem: um bloco do documento ----------
+   O documento guarda só o endereço; os bytes saem da rota da imagem. Remover é
+   edição comum (Ctrl+Z desfaz): sem confirmação e sem cor de alerta. Coral,
+   aqui, só na imagem que não subiu. */
+.nota-doc .nota-imagem {
+  position: relative;
+  width: fit-content;
+  max-width: 100%;
+  margin: var(--sp-3) 0;
+}
+
+.nota-imagem-quadro {
+  display: block;
+  overflow: hidden;
+  border: 1px solid var(--line-hairline);
+  border-radius: var(--r-card);
+  background: var(--bg-sunken);
+  cursor: zoom-in;
+}
+
+/* Sem ampliar além do tamanho real: um print pequeno esticado vira borrão.
+   `width`/`height` no <img> reservam a proporção antes de carregar. */
+.nota-imagem-quadro > img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+/* Selecionada (clique, setas): o anel do foco. Delete remove. */
+.nota-imagem[data-selecionada] > .nota-imagem-quadro {
+  outline: var(--focus-w) solid var(--focus);
+  outline-offset: var(--focus-offset);
+}
+
+.nota-imagem-barra {
+  position: absolute;
+  z-index: 2;
+  top: var(--sp-2);
+  right: var(--sp-2);
+  display: flex;
+  align-items: center;
+  gap: calc(var(--sp-1) / 2);
+  padding: var(--sp-1);
+  background: var(--bg-surface);
+  border: 1px solid var(--line-hairline);
+  border-radius: var(--r-full);
+  box-shadow: var(--elev-2);
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease);
+}
+
+.nota-imagem:hover > .nota-imagem-barra,
+.nota-imagem:focus-within > .nota-imagem-barra,
+.nota-imagem[data-selecionada] > .nota-imagem-barra {
+  opacity: 1;
+}
+
+/* Sem mouse não há hover: a barra fica sempre à vista (idioma de .anexo-remover). */
+@media (hover: none) {
+  .nota-imagem-barra { opacity: 1; }
+}
+
+.nota-imagem-btn {
+  display: grid;
+  place-items: center;
+  width: max(var(--control-h), var(--tap-min));
+  height: max(var(--control-h), var(--tap-min));
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-full);
+  background: none;
+  color: var(--ink-1);
+  text-decoration: none;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease);
+}
+
+.nota-imagem-btn:hover {
+  background: var(--bg-hover);
+}
+
+/* O alvo do clique é o botão, nunca o traço do ícone (o ProseMirror lê o alvo). */
+.nota-imagem-btn svg {
+  pointer-events: none;
+}
+
+.nota-imagem-sep {
+  flex: none;
+  width: 1px;
+  height: var(--sp-5);
+  margin: 0 calc(var(--sp-1) / 2);
+  background: var(--line-hairline);
+}
+
+/* A imagem saiu do banco (24 h fora da página) ou não carregou. */
+.nota-imagem-indisponivel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  padding: var(--sp-4);
+  border: 1px dashed var(--line-border);
+  border-radius: var(--r-card);
+  background: var(--bg-sunken);
+}
+
+/* ---------- Envio de imagem (marcador fora do documento) ---------- */
+
+/* Contêiner do widget: um bloco entre dois blocos do documento. */
+.nota-doc .nota-upload {
+  margin: var(--sp-3) 0;
+  white-space: normal;
+}
+
+.nota-upload-bloco {
+  margin: 0;
+}
+
+.nota-upload-espera {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  box-sizing: border-box;
+  max-width: 100%;
+  min-width: min(100%, calc(var(--sp-7) * 6));
+  aspect-ratio: 16 / 9;
+  padding: var(--sp-5);
+  border: 1px solid var(--line-hairline);
+  border-radius: var(--r-card);
+  background: var(--bg-sunken);
+  text-align: center;
+  cursor: progress;
+}
+
+.nota-upload-espera > svg {
+  color: var(--brand-text);
+}
+
+.nota-upload-titulo {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin: 0;
+  font-size: var(--fs-md);
+  font-weight: var(--fw-bold);
+  line-height: 1.4;
+  color: var(--ink-1);
+}
+
+.nota-upload-titulo > svg {
+  flex: none;
+}
+
+.nota-upload-motivo {
+  margin: 0;
+  font-size: var(--fs-md);
+  font-weight: var(--fw-medium);
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+
+.nota-upload-arquivo {
+  margin: 0;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  line-height: 1.5;
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+
+.nota-upload-acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin-top: var(--sp-2);
+}
+
+.nota-upload-progresso {
+  width: min(calc(var(--sp-7) * 6), 70%);
+  height: var(--sp-1);
+  overflow: hidden;
+  border-radius: var(--r-full);
+  background: var(--line-hairline);
+}
+
+.nota-upload-progresso > i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--brand);
+  transition: width var(--dur) var(--ease);
+}
+
+/* Ainda reduzindo, sem tamanho final: barra indeterminada. */
+.nota-upload-progresso[data-indeterminado] > i {
+  width: 32%;
+  animation: nota-upload-vai 1.4s ease-in-out infinite;
+}
+
+@keyframes nota-upload-vai {
+  from { margin-left: -32%; }
+  to { margin-left: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nota-upload-progresso[data-indeterminado] > i {
+    width: 100%;
+    animation: none;
+    opacity: 0.5;
+  }
+}
+
+/* Não subiu: coral, porque até subir a imagem existe só nesta tela. */
+.nota-upload-falha {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--sp-4);
+  padding: var(--sp-4);
+  border: 1px solid var(--danger);
+  border-radius: var(--r-card);
+  background: var(--danger-soft);
+}
+
+.nota-upload-bloco[data-fase='erro'] .nota-upload-titulo {
+  color: var(--coral-texto);
+}
+
+/* Formato não aceito (ou grande demais): âmbar, não coral. É regra, não
+   perda: nada foi enviado. */
+.nota-upload-bloco[data-fase='recusada'] .nota-upload-falha {
+  border-color: var(--badge-atencao);
+  background: color-mix(in oklab, var(--badge-atencao) 8%, var(--bg-surface));
+}
+
+.nota-upload-bloco[data-fase='recusada'] .nota-upload-titulo {
+  color: var(--badge-atencao);
+}
+
+.nota-upload-falha-texto {
+  flex: 1 1 calc(var(--sp-7) * 4);
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+
+/* Miniatura da cópia local, no idioma do .anexo das tarefas. */
+.nota-upload-mini {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: calc(var(--sp-7) * 2 + var(--sp-4));
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border: 1px solid var(--line-hairline);
+  border-radius: var(--r-md);
+  background: var(--bg-surface);
+  color: var(--ink-2);
+}
+
+.nota-upload-mini > img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* ---------- Arrastando um arquivo sobre a página ---------- */
+
+.nota-upload-zona {
+  position: relative;
+}
+
+/* Contorno tracejado translúcido: o traço de onde a imagem entra (o cursor
+   de soltar) continua visível por baixo. */
+.nota-upload-zona[data-soltando]::after {
+  content: '';
+  position: absolute;
+  z-index: 2;
+  inset: var(--sp-2);
+  border: 2px dashed var(--brand);
+  border-radius: var(--r-lg);
+  background: color-mix(in oklab, var(--brand-soft) 55%, transparent);
+  pointer-events: none;
+}
+
+.nota-upload-soltar {
+  position: absolute;
+  z-index: 3;
+  top: var(--sp-7);
+  left: 50%;
+  translate: -50% 0;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin: 0;
+  padding: var(--sp-3) var(--sp-5);
+  border: 1.5px solid var(--brand);
+  border-radius: var(--r-full);
+  background: var(--bg-surface);
+  box-shadow: var(--elev-2);
+  color: var(--brand-text);
+  font-size: var(--fs-md);
+  font-weight: var(--fw-bold);
+  line-height: 1.3;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* O traço de onde a imagem (ou o bloco arrastado) entra. A cor vem daqui:
+   o Dropcursor está com `color: false`. */
+.nota-upload-cursor {
+  border-radius: var(--r-xs);
+  background: var(--brand);
+}

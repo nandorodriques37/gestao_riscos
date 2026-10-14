@@ -14,3 +14,9 @@
 @import './styles/triagem.css';
 @import './styles/responsive.css';
 @import './styles/fluidez.css';
+@import './styles/notas.css';
+@import './styles/notas-editor.css';
+@import './styles/notas-barra.css';
+@import './styles/notas-bolha.css';
+@import './styles/notas-alca.css';
+@import './styles/notas-movel.css';

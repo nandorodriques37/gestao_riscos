@@ -14,19 +14,23 @@ const PriorizacaoTab = lazy(() => import('./components/PriorizacaoTab/Priorizaca
 const TarefasTab = lazy(() => import('./components/TarefasTab/TarefasTab').then(m => ({ default: m.TarefasTab })));
 const PessoasTab = lazy(() => import('./components/PessoasTab/PessoasTab').then(m => ({ default: m.PessoasTab })));
 const TriagemTab = lazy(() => import('./components/TriagemTab/TriagemTab').then(m => ({ default: m.TriagemTab })));
+// O editor (TipTap) só desce com a aba: nenhuma outra tela paga por ele.
+const AnotacoesTab = lazy(() => import('./components/AnotacoesTab/AnotacoesTab').then(m => ({ default: m.AnotacoesTab })));
 import { EditModal } from './components/EditModal/EditModal';
 import { ModoRiscoToggle } from './components/common/ModoRiscoToggle';
 import { PromoverAcaoModal } from './components/RegistroTab/PromoverAcaoModal';
-import { PaletaComando, type ItemPaleta } from './components/common/PaletaComando';
+import { PaletaComando, type AberturaPorTipo, type ItemPaleta } from './components/common/PaletaComando';
 import { useConfirmacao } from './components/common/Confirmacao';
 import { gruposCom } from './components/NavRail/secoes';
 import { nomeRisco, plural } from './lib/portfolioLabels';
 import { prontosParaFechar, cadeiaQuebrada } from './lib/portfolioMetrics';
 import { useAppNavigation } from './hooks/useAppNavigation';
-import { canNavigate, readRoute } from './lib/navigation';
+import { readRoute, type AppRoute } from './lib/navigation';
 import { AREAS, ROTINAS, CATEGORIAS, RECURSOS, RESPONSAVEIS } from './data/RiskData';
 import { useRecords } from './hooks/useRecords';
 import { useTasks } from './hooks/useTasks';
+import { useNotas } from './hooks/useNotas';
+import { ordenarNotas, trechoDaNota } from './lib/notas';
 import { usePortfolio } from './hooks/usePortfolio';
 import { downloadRecordsCSV } from './lib/csv';
 import {
@@ -41,7 +45,7 @@ const UNDO_TIMEOUT = 8000;
 const MODO_RISCO_KEY = 'riskMatrix.modoRisco.v1';
 
 function App() {
-  const { route, navigate } = useAppNavigation();
+  const { route, navigate, perguntar, emEspera } = useAppNavigation();
   const tab = route.tab;
   const editingId = route.risco;
   const iniciativaSel = route.iniciativa;
@@ -62,9 +66,8 @@ function App() {
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Tema e identidade autodeclarada. Moravam dentro do `TopBar`; subiram porque
-  // abaixo de 760px o header perde as abas para a barra inferior e os dois
-  // passam a aparecer TAMBÉM na folha "Mais". Um `useState` em cada componente
-  // daria duas verdades sobre o mesmo tema.
+  // abaixo de 760px os dois aparecem TAMBÉM na folha "Mais" da barra inferior.
+  // Um `useState` em cada componente daria duas verdades sobre o mesmo tema.
   const [theme, setTheme] = useState<ThemePref>(readThemePref);
   const [autor, setAutor] = useState(lerAutor);
   const [paletaAberta, setPaletaAberta] = useState(false);
@@ -105,6 +108,9 @@ function App() {
   // conseguia contar tarefa nenhuma — a aba Tarefas não está montada quando o
   // Painel está. Uma instância só, aqui, e as duas telas leem a mesma lista.
   const tarefas = useTasks();
+  // As páginas da aba Anotações moram aqui pelo mesmo motivo e por mais um: o
+  // salvamento automático pendente não pode morrer quando a aba desmonta.
+  const notas = useNotas();
   const idsDoRecorte = useMemo(() => {
     if (!route.recorte) return null;
     const lacunas = cadeiaQuebrada({ ...pf.portfolio, riscos: records, acoes: pf.portfolio.acoes_risco, trabalho: tarefas.tasks });
@@ -116,8 +122,9 @@ function App() {
   const promocaoPendente = pf.portfolio.acoes_risco
     .filter(a => a.triagem === 'iniciativa' && !a.iniciativa_id).length;
   const migracaoIniciada = pf.portfolio.acoes_risco.length > 0;
-  // Uma regra só, lida pelo rail e pela barra do topo: a Triagem é aba de
-  // mudança, fica enquanto há trabalho e some sozinha quando a migração acaba.
+  // Uma regra só, lida pelo rail, pela barra inferior (e a folha "Mais") e pela
+  // paleta: a Triagem é aba de mudança, fica enquanto há trabalho e some
+  // sozinha quando a migração acaba.
   const mostrarTriagem = tab === 'triagem'
     || !migracaoIniciada
     || triagemPendente > 0
@@ -129,13 +136,44 @@ function App() {
 
   useEffect(() => { writePref(MODO_RISCO_KEY, modoRisco); }, [modoRisco]);
 
-  /** Troca de seção com cross-fade onde o navegador suportar. */
+  /**
+   * Troca de seção com cross-fade onde o navegador suportar. Todas as trocas
+   * que o app inicia perguntam aos guards por `perguntar` (e não pelo
+   * `canNavigate` cru): a espera conta, e a correção automática da URL não
+   * passa por cima dela (ver `useAppNavigation`).
+   */
   const irPara = useCallback(async (destino: Tab, recorte?: string) => {
-    if (!(await canNavigate())) return;
+    if (!(await perguntar())) return;
     if (destino === 'registro' && recorte) setModoRisco('tabela');
     trocarComTransicao(() => navigate({ ...readRoute(''), tab: destino, recorte: recorte ?? null }));
-  }, [navigate]);
-  const abrirIniciativa = useCallback((id: string) => navigate({ ...readRoute(''), tab: 'iniciativas', iniciativa: id }), [navigate]);
+  }, [navigate, perguntar]);
+  /**
+   * Troca de aba por um atalho (paleta, link para a iniciativa, criar
+   * iniciativa a partir do objetivo). Passa pelos guards como `irPara`: a aba
+   * que sai desmonta, e o guard que mora numa página — texto recusado na aba
+   * Anotações, imagem subindo — não abre diálogo que impeça o atalho.
+   */
+  const navegarGuardado = useCallback(async (destino: AppRoute) => {
+    if (!(await perguntar())) return false;
+    return navigate(destino);
+  }, [navigate, perguntar]);
+  const abrirIniciativa = useCallback((id: string) => {
+    void navegarGuardado({ ...readRoute(''), tab: 'iniciativas', iniciativa: id });
+  }, [navegarGuardado]);
+  /**
+   * Abre uma página (ou volta à lista, com null). Passa pelos guards: trocar de
+   * página desmonta o editor, e um envio de imagem em andamento pergunta antes.
+   *
+   * `substituir` é a escolha automática (a primeira página, a vizinha da que
+   * saiu): com outra troca esperando os guards — um Voltar com diálogo aberto —
+   * ela nem pergunta. Perguntar de novo abriria um segundo diálogo, que
+   * responderia "ficar" pelo primeiro, e o destino pedido sumiria.
+   */
+  const selecionarNota = useCallback(async (id: string | null, opcoes?: { substituir?: boolean }) => {
+    if (opcoes?.substituir && emEspera()) return false;
+    if (!(await perguntar())) return false;
+    return navigate({ ...readRoute(''), tab: 'anotacoes', nota: id }, opcoes?.substituir);
+  }, [navigate, perguntar, emEspera]);
   const abrirRisco = useCallback((id: string) => navigate({ ...route, risco: id }), [navigate, route]);
 
   // Ctrl/⌘+K abre a paleta — menos quando já há um diálogo aberto, que tem o
@@ -151,6 +189,17 @@ function App() {
     return () => window.removeEventListener('keydown', onKey);
   }, [paletaAberta]);
 
+  // As páginas entram na paleta só com ela aberta: o trecho percorre o
+  // documento, e a lista muda a cada salvamento automático de quem digita —
+  // ninguém precisa reindexar páginas para uma paleta fechada. Fixadas e
+  // recentes primeiro, como na aba: a paleta mostra só as seis primeiras.
+  const paginasPaleta = useMemo<ItemPaleta[]>(() => (paletaAberta
+    ? ordenarNotas(notas.notas).map(n => ({
+      tipo: 'nota' as const, id: n.id, rotulo: n.titulo.trim() || 'Sem título',
+      sub: trechoDaNota(n, 80) || undefined,
+    }))
+    : []), [paletaAberta, notas.notas]);
+
   /** O que a paleta indexa: os registros das camadas, com o mínimo para reconhecer. */
   const itensPaleta = useMemo<ItemPaleta[]>(() => {
     const objetivoPorId = new Map(pf.portfolio.objetivos.map(o => [o.id, o.descricao]));
@@ -163,16 +212,20 @@ function App() {
       ...records.filter(r => r.risco.trim()).map(r => ({ tipo: 'risco' as const, id: r.id, rotulo: nomeRisco(r), sub: r.area || undefined })),
       ...tarefas.tasks.map(t => ({ tipo: 'tarefa' as const, id: t.id, rotulo: t.tarefa || 'Tarefa sem título', sub: t.tipo || undefined })),
       ...pf.portfolio.pessoas.map(p => ({ tipo: 'pessoa' as const, id: p.id, rotulo: p.nome, sub: p.papel || undefined })),
+      ...paginasPaleta,
     ];
-  }, [pf.portfolio.objetivos, pf.portfolio.iniciativas, pf.portfolio.pessoas, records, tarefas.tasks]);
+  }, [pf.portfolio.objetivos, pf.portfolio.iniciativas, pf.portfolio.pessoas, records, tarefas.tasks, paginasPaleta]);
 
-  const abrirDaPaleta = useCallback((item: ItemPaleta) => {
-    if (item.tipo === 'risco') abrirRisco(item.id);
-    else if (item.tipo === 'iniciativa') abrirIniciativa(item.id);
-    else if (item.tipo === 'tarefa') navigate({ ...readRoute(''), tab: 'tarefas', tarefa: item.id });
-    else if (item.tipo === 'objetivo') irPara('objetivos');
-    else irPara('pessoas');
-  }, [abrirRisco, abrirIniciativa, navigate, irPara]);
+  /** Um destino por tipo: tipo sem destino não compila, e nenhum cai no de outro. */
+  const abrirDaPaleta = useMemo<AberturaPorTipo>(() => ({
+    objetivo: () => { void irPara('objetivos'); },
+    iniciativa: abrirIniciativa,
+    // O risco abre o modal sobre a aba atual: nada desmonta, nada a perguntar.
+    risco: abrirRisco,
+    tarefa: id => { void navegarGuardado({ ...readRoute(''), tab: 'tarefas', tarefa: id }); },
+    pessoa: () => { void irPara('pessoas'); },
+    nota: id => { void selecionarNota(id); },
+  }), [irPara, abrirIniciativa, abrirRisco, navegarGuardado, selecionarNota]);
 
   /** Excluir um risco desvincula as mitigações — não as apaga. O diálogo diz quantas. */
   function pedidoExcluirRisco(rec: StoredRiskRecord) {
@@ -226,6 +279,20 @@ function App() {
   const tarefasPendentes = tarefas.hasPendingWrites;
   const foraDoQuadro = tab !== 'tarefas';
   const portfolioRefresh = pf.refresh;
+  // As páginas ficam fora desse relógio: o texto é longo, e relê-lo a cada 15s
+  // em todas as abas pesaria à toa. Relê ao entrar na aba e quando a janela
+  // volta ao foco com a aba aberta — o próprio hook pula a leitura enquanto há
+  // gravação pendente, então o texto de quem digita nunca é sobrescrito.
+  const notasRefresh = notas.refresh;
+  const naAnotacoes = tab === 'anotacoes';
+  useEffect(() => {
+    if (!naAnotacoes) return;
+    void notasRefresh();
+    const aoFocar = () => { if (!document.hidden) void notasRefresh(); };
+    window.addEventListener('focus', aoFocar);
+    return () => window.removeEventListener('focus', aoFocar);
+  }, [naAnotacoes, notasRefresh]);
+
   useEffect(() => {
     const canSync = () => !document.hidden && !hasPendingWrites();
     const sync = () => {
@@ -284,6 +351,9 @@ function App() {
 
   const editingRecord = editingId != null ? records.find(r => r.id === editingId) ?? null : null;
   const showLoading = loading && records.length === 0;
+  // Abas que não leem o registro de risco: o aviso de erro e o esqueleto de
+  // carregamento dele não são delas.
+  const semRegistro = tab === 'tarefas' || tab === 'anotacoes';
 
   /**
    * Cabeçalho das leituras do risco que não trazem o seu. A tabela monta o
@@ -323,10 +393,7 @@ function App() {
     <div className="app-shell" data-tab={tab}>
       <TopBar
         tab={tab}
-        onChangeTab={irPara}
         sync={sync}
-        mostrarTriagem={mostrarTriagem}
-        triagemPendente={triagemPendente}
         autor={autor}
         onPedirNome={pedirNome}
         theme={theme}
@@ -343,8 +410,9 @@ function App() {
         triagemPendente={triagemPendente}
       />
 
-      {/* As três formas de navegação ficam no DOM ao mesmo tempo; quem aparece
-          em cada faixa é decidido em styles/rail.css, num lugar só. */}
+      {/* As duas formas de navegação — o rail (expandido ou recolhido) e a
+          barra inferior — ficam no DOM ao mesmo tempo; quem aparece em cada
+          faixa é decidido em styles/rail.css, num lugar só. */}
       <NavBottom
         tab={tab}
         onChangeTab={irPara}
@@ -358,7 +426,7 @@ function App() {
 
       <div className="app-conteudo">
       {route.recorte && <div className="context-banner" role="status"><span>Itens que precisam de atenção: {idsDoRecorte?.size ?? 0}</span><button className="btn btn-ghost" onClick={() => navigate({ ...route, recorte: null }, true)}>Limpar recorte</button></div>}
-      {tab !== 'tarefas' && error && (
+      {!semRegistro && error && (
         <div className="error-banner">
           <span>{error}</span>
           <button onClick={() => { clearError(); void refresh(); }}>Tentar novamente</button>
@@ -366,7 +434,7 @@ function App() {
         </div>
       )}
 
-      {tab !== 'tarefas' && showLoading ? (
+      {!semRegistro && showLoading ? (
         <div className="app-loading" role="status" aria-label="Carregando matriz de risco…">
           <div className="skeleton-kpis">
             {Array.from({ length: 5 }).map((_, i) => <div key={i} className="skeleton-kpi" />)}
@@ -389,7 +457,7 @@ function App() {
           )}
 
           {tab === 'objetivos' && (
-            <ObjetivosTab idsDoRecorte={idsDoRecorte} onCriarIniciativa={objetivo => navigate({ ...readRoute(''), tab: 'iniciativas', objetivo })}
+            <ObjetivosTab idsDoRecorte={idsDoRecorte} onCriarIniciativa={objetivo => { void navegarGuardado({ ...readRoute(''), tab: 'iniciativas', objetivo }); }}
               riscos={records}
               pf={pf}
               onIrPara={irPara}
@@ -461,6 +529,16 @@ function App() {
           {tab === 'pessoas' && <PessoasTab pf={pf} onIrPara={irPara} />}
 
           {tab === 'triagem' && <TriagemTab records={records} pf={pf} />}
+
+          {tab === 'anotacoes' && (
+            <AnotacoesTab
+              notas={notas}
+              autor={autor}
+              onPedirNome={pedirNome}
+              selecionada={route.nota}
+              onSelecionar={selecionarNota}
+            />
+          )}
         </Suspense>
       )}
       </div>
@@ -504,7 +582,7 @@ function App() {
         grupos={gruposCom(mostrarTriagem)}
         itens={itensPaleta}
         onIrPara={irPara}
-        onAbrir={abrirDaPaleta}
+        abrir={abrirDaPaleta}
       />
       {dialogoConfirmacao}
 

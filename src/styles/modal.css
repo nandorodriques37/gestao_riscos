@@ -695,6 +695,28 @@ select.modal-input {
   background: var(--bg-hover);
 }
 
+.lightbox-acoes {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+/* Baixar é escrito, não só ícone: é a única ação da barra que não fecha nada. */
+.lightbox-baixar {
+  display: inline-flex;
+  gap: var(--sp-2);
+  width: auto;
+  padding: 0 var(--sp-4);
+  font-size: var(--fs-md);
+  font-weight: var(--fw-bold);
+  text-decoration: none;
+}
+
+.lightbox-baixar svg {
+  flex: none;
+}
+
 .lightbox-palco {
   flex: 1;
   min-height: 0;

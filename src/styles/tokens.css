@@ -125,6 +125,14 @@
   --coral-claro: #FF8DA0;
   --coral-texto: light-dark(#C80027, #FF6B82);
 
+  /* ---------- Marca-texto (destaque da aba Anotações) ----------
+     Amarelo próprio, NUNCA coral: destaque é ênfase de quem escreveu, não
+     alerta. A tinta por cima é sempre --on-marca-texto (a --ink-1): 15,2:1
+     no claro e 7,7:1 no escuro. Link ou texto azul dentro do destaque herda
+     essa tinta — #A5A8FF sobre o oliva fica em 3,9:1 e reprova AA. */
+  --marca-texto: light-dark(#FFF0A3, #5B4B12);
+  --on-marca-texto: var(--ink-1);
+
   /* ---------- Foco ----------
      Anel SÓLIDO, nunca translúcido. A espessura e o vão são tokens porque o
      anel aparece em cinco folhas diferentes. */

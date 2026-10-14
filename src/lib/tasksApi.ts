@@ -72,10 +72,12 @@ export function taskAttachmentUrl(taskId: string, anexoId: string): string {
 }
 
 export async function uploadTaskAttachmentApi(taskId: string, anexo: PreparedAttachment): Promise<TaskAttachment> {
+  // Só o que a API grava: as dimensões do preparo são da tela, não do anexo.
+  const { nome, mime, dados } = anexo;
   return parse(await fetch(anexosBase(taskId), {
     method: 'POST',
     headers: cabecalhosDeEscrita(),
-    body: JSON.stringify(anexo),
+    body: JSON.stringify({ nome, mime, dados }),
   }));
 }
 

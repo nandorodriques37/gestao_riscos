@@ -3,7 +3,8 @@
  * coral. É desenho próprio do produto — não o logo da Pague Menos.
  *
  * Mora em um componente porque aparece em dois lugares que nunca aparecem juntos:
- * no topo do rail (≥1101px) e no header (≤1100px, quando o rail sai de cena).
+ * no topo do rail (≥761px, expandido ou recolhido) e no header (≤760px, quando
+ * o rail sai de cena).
  */
 export function Marca() {
   return (

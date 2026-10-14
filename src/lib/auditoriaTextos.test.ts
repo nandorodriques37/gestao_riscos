@@ -19,6 +19,8 @@ describe('descreverEvento', () => {
       .toBe('Criou iniciativa');
     expect(descreverEvento(linha({ acao: 'excluiu', tabela: 'marcos' })))
       .toBe('Excluiu marco');
+    expect(descreverEvento(linha({ acao: 'excluiu', tabela: 'notas' })))
+      .toBe('Excluiu página');
   });
 
   it('distingue definir, limpar e mudar', () => {

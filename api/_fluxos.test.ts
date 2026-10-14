@@ -7,7 +7,8 @@ import { ensureTudo } from './_schema.js';
 import { acoesRisco, objetivos, iniciativas, listPortfolio } from './_portfolioDb.js';
 import { salvarRiscoCompleto, criarIniciativaDaAcao, type SalvarRiscoPedido, type CriarIniciativaPedido } from './_operacoes.js';
 import { linhaVazia, paraLinhas } from '../src/lib/planoDeAcao.js';
-import type { StoredTask, TaskAttachment, Iniciativa, PortfolioBundle } from '../src/types.js';
+import type { StoredTask, TaskAttachment, Iniciativa, PortfolioBundle, Nota, NotaImagem } from '../src/types.js';
+import { notaImagemUrl } from '../src/lib/notaImagens.js';
 import router from './_router.js';
 
 let pg: PGlite;
@@ -169,6 +170,59 @@ describe('roteador que serve desenvolvimento e produção', () => {
     expect((await request('DELETE', url)).status).toBe(200);
     expect((await request('GET', url)).status).toBe(404);
     expect((await request('POST', '/api/restore')).status).toBe(409);
+  });
+
+  it('serve páginas pela rota do portfólio e as imagens delas pela rota própria', async () => {
+    const doc = (...content: unknown[]) => JSON.stringify({ type: 'doc', content });
+    const criada = await request<Nota>('POST', '/api/portfolio/notas', { titulo: 'Triagem', conteudo: doc(), autor: 'Teste' });
+    expect(criada.status).toBe(201);
+    const nota = criada.data;
+
+    const subida = await request<NotaImagem>('POST', '/api?__route=notas/' + nota.id + '/imagens', { nome: 'print.png', mime: 'image/png', dados: PNG });
+    expect(subida.status).toBe(201);
+    expect(subida.data).not.toHaveProperty('dados');
+    const src = notaImagemUrl(nota.id, subida.data.id);
+
+    const bytes = await request<Buffer>('GET', '/api?__route=' + src.slice('/api/'.length));
+    expect(bytes.status).toBe(200);
+    expect(bytes.data.toString('base64')).toBe(PNG);
+    expect(bytes.headers['Content-Type']).toBe('image/png');
+    expect(bytes.headers['Cache-Control']).toContain('immutable');
+    expect(bytes.headers['X-Content-Type-Options']).toBe('nosniff');
+
+    const outra = (await request<Nota>('POST', '/api/portfolio/notas', { titulo: 'Outra' })).data;
+    expect((await request('GET', notaImagemUrl(outra.id, subida.data.id))).status).toBe(404);
+    expect((await request('GET', src + '/extra')).status).toBe(404);
+    expect((await request('GET', '/api/notas/x/imagens/y')).status).toBe(404);
+    expect((await request('POST', '/api/notas/' + outra.id + '/imagens', { mime: 'image/avif', dados: PNG })).status).toBe(400);
+    expect((await request('POST', '/api/notas/11111111-2222-4333-8444-555555555555/imagens', { mime: 'image/png', dados: PNG })).status).toBe(404);
+    expect((await request('POST', '/api/notas/' + nota.id + '/imagens', '{quebrado')).status).toBe(400);
+    const listar = await request('GET', '/api/notas/' + nota.id + '/imagens');
+    expect([listar.status, listar.headers.Allow]).toEqual([405, 'POST']);
+    const apagar = await request('DELETE', src);
+    expect([apagar.status, apagar.headers.Allow]).toEqual([405, 'GET']);
+    expect((await request('POST', '/api/notas/' + nota.id + '/imagens?imagemId=' + subida.data.id, { mime: 'image/png', dados: PNG })).status).toBe(201);
+
+    const comImagem = doc({ type: 'image', attrs: { src, alt: 'print.png' } });
+    const salva = await request<Nota>('PATCH', '/api/portfolio/notas/' + nota.id, { conteudo: comImagem, editado_por: 'Teste', expectedVersion: nota.version });
+    expect(salva.status).toBe(200);
+    const remota = doc({ type: 'image', attrs: { src: 'https://exemplo.com/a.png' } });
+    expect((await request('PATCH', '/api/portfolio/notas/' + nota.id, { conteudo: remota })).status).toBe(400);
+    expect((await request('PATCH', '/api/portfolio/notas/' + outra.id, { conteudo: comImagem })).status).toBe(400);
+    const atrasada = await request<Nota>('PATCH', '/api/portfolio/notas/' + nota.id, { titulo: 'Velha', expectedVersion: nota.version });
+    expect(atrasada.status).toBe(409);
+    expect(atrasada.data.conteudo).toBe(comImagem);
+
+    const semBytes = await request<{ notas: Nota[]; nota_imagens: Record<string, unknown>[] }>('GET', '/api/portfolio/backup');
+    expect(semBytes.data.notas.some(n => n.id === nota.id)).toBe(true);
+    expect(semBytes.data.nota_imagens.find(i => i.id === subida.data.id)).not.toHaveProperty('dados');
+    const comBytes = await request<{ nota_imagens: Record<string, unknown>[] }>('GET', '/api/portfolio/backup?anexos=1');
+    expect(comBytes.data.nota_imagens.find(i => i.id === subida.data.id)?.dados).toBe(PNG);
+
+    expect((await request('DELETE', '/api/portfolio/notas/' + nota.id)).status).toBe(200);
+    expect((await request('GET', src)).status).toBe(404);
+    const trilha = await request<{ acao: string; rotulo: string }[]>('GET', '/api/portfolio/auditoria?tabela=notas&registro_id=' + nota.id);
+    expect(trilha.data.map(l => [l.acao, l.rotulo])).toEqual(expect.arrayContaining([['criou', 'Triagem'], ['excluiu', 'Triagem']]));
   });
 
   it('reenvia criação comum com a mesma chave sem duplicar', async () => {

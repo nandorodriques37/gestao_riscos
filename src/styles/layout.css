@@ -5,7 +5,8 @@
 /* O rail ocupa a altura toda, do topo ao pé, e carrega a marca; o header e o
    conteúdo dividem a coluna da direita. O grid é declarado aqui e não no rail
    porque as duas colunas precisam concordar sobre a largura — e ela muda
-   quando o rail colapsa. */
+   quando o rail recolhe (pelo botão acima de 1100px, à força entre 761 e
+   1100). A coluna é `auto`: acompanha a largura que o rail tiver. */
 .app-shell {
   min-height: 100dvh;
   display: grid;
@@ -22,10 +23,10 @@
   min-width: 0;
 }
 
-/* Sem rail (telas estreitas), o conteúdo assume a linha inteira. O que o
-   header perde nessa faixa (respiro, rota) está em responsive.css, que vem
-   depois das regras base dele. */
-@media (max-width: 1100px) {
+/* Sem rail (celular, ≤760px — ver rail.css), o conteúdo assume a linha
+   inteira. O que o header perde nessa faixa (respiro, rota) está em
+   responsive.css, que vem depois das regras base dele. */
+@media (max-width: 760px) {
   .app-shell {
     grid-template-areas:
       'header'
@@ -37,9 +38,10 @@
 /* ---------- Header ----------
    Papel branco opaco, hairline, sem gradiente, sem sombra e sem vidro: o
    conteúdo passa por baixo, não através. O peso visual pertence aos dados, não
-   ao chrome. Acima de 1100px ele mora à direita do rail — que carrega a marca
-   — e traz a migalha, a busca, o estado de sincronização, o tema e o autor;
-   abaixo disso o rail sai de cena e a marca volta para cá. */
+   ao chrome. Acima de 760px ele mora à direita do rail — que carrega a marca,
+   expandido ou recolhido — e traz a migalha, a busca, o estado de
+   sincronização, o tema e o autor; abaixo disso o rail sai de cena e a marca
+   volta para cá. O header não navega: não há fita de abas em faixa nenhuma. */
 
 .app-header {
   grid-area: header;
@@ -59,18 +61,13 @@
   gap: var(--sp-4);
 }
 
-/* A marca só aparece aqui quando o rail não aparece. */
+/* A marca só aparece aqui quando o rail não aparece — a regra que a acende
+   mora com as outras de visibilidade, no fim de rail.css. */
 .brand {
   display: none;
   align-items: center;
   gap: var(--sp-2);
   flex: none;
-}
-
-@media (max-width: 1100px) {
-  .brand {
-    display: flex;
-  }
 }
 
 /* O glifo é a rede de decisão: quatro nós ligados, o de risco em coral — o
@@ -126,13 +123,15 @@
 }
 
 /* Migalha: "Direção · Painel". Rótulo em caixa alta com o destino no azul de
-   texto. Some abaixo de 1100px (responsive.css): as abas do topo já dizem onde
-   se está. */
+   texto. Com o rail recolhido (761–1100px) é o único lugar ESCRITO que diz onde
+   se está, e por isso não encolhe: quem cede espaço é a busca, cujo texto já
+   corta com reticências. Some abaixo de 760px (responsive.css), onde a marca
+   ocupa o lugar e a barra inferior marca o destino. */
 .header-route {
   display: flex;
   align-items: baseline;
   gap: var(--sp-2);
-  min-width: 0;
+  flex: none;
   font-size: var(--fs-xs);
   font-weight: var(--fw-bold);
   letter-spacing: var(--tracking-rotulo);
@@ -149,77 +148,6 @@
 .header-route strong {
   font-weight: var(--fw-heavy);
   color: var(--brand-text);
-}
-
-/* Abas sublinhadas. O indicador é um pseudo-elemento na base do botão, para
-   que a largura acompanhe o rótulo sem cálculo em JS. */
-.nav-tabs {
-  display: flex;
-  align-items: stretch;
-  gap: var(--sp-4);
-  height: 100%;
-  min-width: 0;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-
-.nav-tabs::-webkit-scrollbar {
-  display: none;
-}
-
-.nav-tab {
-  position: relative;
-  border: none;
-  background: none;
-  padding: 0;
-  font-size: var(--fs-sm);
-  font-weight: var(--fw-semibold);
-  color: var(--ink-3);
-  white-space: nowrap;
-  transition: color var(--dur-fast) var(--ease);
-}
-
-.nav-tab::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 3px;
-  border-radius: 3px 3px 0 0;
-  background: var(--brand);
-  transform: scaleX(0);
-  transition: transform var(--dur) var(--ease);
-}
-
-.nav-tab:hover {
-  color: var(--ink-1);
-}
-
-.nav-tab.active {
-  color: var(--brand-text);
-  font-weight: var(--fw-bold);
-}
-
-.nav-tab.active::after {
-  transform: scaleX(1);
-}
-
-/* Contador da aba temporária de Triagem: número junto do rótulo, não um ponto
-   solto — identidade nunca só por cor. */
-.nav-tab-count {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 18px;
-  height: 18px;
-  margin-left: var(--sp-2);
-  padding: 0 5px;
-  border-radius: var(--r-full);
-  background: var(--danger);
-  color: var(--danger-ink);
-  font-size: var(--fs-2xs);
-  font-weight: var(--fw-bold);
 }
 
 .header-aside {
@@ -249,6 +177,32 @@
 }
 
 .header-paleta-texto {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* A tecla desenhada não encolhe. Item flex com `min-width` próprio, ela cedia
+   antes do texto: com a migalha de "Anotações" a 761px, o "K" de "Ctrl K"
+   saía da tecla. */
+.header-paleta kbd {
+  flex: none;
+}
+
+/* Chip de autor no header: o nome cede com reticências. Sem teto, um nome de
+   40 letras espremia a busca até a tecla sair dela e, a 901 e a 1101px,
+   empurrava o seletor de tema para fora da tela (a página rolava de lado). O
+   nome inteiro continua no `title` e no nome acessível do botão. */
+.app-header .autor-chip {
+  max-width: 200px;
+}
+
+/* Com o teto, quem cede é só o nome — o círculo das iniciais não amassa. */
+.app-header .autor-avatar {
+  flex: none;
+}
+
+.app-header .autor-nome {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;

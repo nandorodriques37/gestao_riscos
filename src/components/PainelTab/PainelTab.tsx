@@ -960,7 +960,7 @@ export function PainelTab({
         <div className="card" data-span="12">
           <div className="section-title">Atividade recente</div>
           <div className="bento-sub">
-            As últimas mudanças em riscos, objetivos, iniciativas, marcos, ações e pessoas.
+            As últimas mudanças em riscos, objetivos, iniciativas, marcos, ações e pessoas, e as páginas de anotação criadas ou excluídas.
             O nome é o que cada um digitou no cabeçalho — serve para saber a quem perguntar,
             não para autorizar ninguém.
           </div>

@@ -4,9 +4,10 @@ Instruções persistentes para implementar e evoluir este projeto.
 
 ## O que é
 App web de página única para **direção e execução**, organizado pela cadeia
-**objetivo → iniciativa → risco → tarefa**. Oito destinos no trilho, em três
-grupos: Direção (Painel, Objetivos, Iniciativas, Priorização), Risco (Riscos) e
-Execução (Tarefas, Pessoas), mais a Triagem temporária da migração.
+**objetivo → iniciativa → risco → tarefa**. Nove destinos no trilho: oito em
+três grupos — Direção (Painel, Objetivos, Iniciativas, Priorização), Risco
+(Riscos) e Execução (Tarefas, Pessoas, Anotações) — mais a Triagem temporária
+da migração.
 
 O **Painel** abre com uma faixa de cinco números sob o título (valor em jogo,
 marcos no prazo, quem está mais carregado, iniciativas paradas, exposição ainda
@@ -32,6 +33,59 @@ Os `.dc.html` são **referência de design, não código de produção**. Recrie
 - **Salvamento e sincronização:** os formulários usam rascunho e confirmação explícita, preservam a versão da abertura e mantêm o texto em caso de erro. `useStoredCollection` concentra cache, leituras protegidas contra respostas antigas e a fila de debounce por registro das edições rápidas. `usePortfolio` confirma cada alteração antes de atualizar a coleção. `dataSync` invalida riscos, tarefas e portfólio entre si. Cache local nunca equivale a confirmação do servidor.
 - **Operações compostas:** `api/_operacoes.ts` salva risco + plano e cria iniciativa + vínculo em transações idempotentes, com chave e assinatura em `operacoes_app`. A mesma chave só pode repetir o mesmo pedido; a resposta confirmada é reutilizada. A validação das versões e a auditoria fazem parte da transação. Uma falha não pode confirmar só metade do formulário.
 - **Anexos de imagem (tarefas):** tabela própria `task_attachments` (`api/_attachmentsDb.ts`), nunca coluna em `tasks` — a aba faz polling e os bytes não podem viajar no `GET /api/tasks`, que carrega só o metadado (`anexos`). Os bytes saem por `GET /api/tasks/:id/anexos/:anexoId`, com cache imutável, e vão direto no `src` de um `<img>`. O cliente reduz a imagem antes de subir (`src/lib/imageAttachments.ts`: teto de 1600px e 3 MB, re-encode em WebP); o servidor revalida formato e tamanho. Anexo **não** é campo de `Task`: entra e sai por endpoint próprio, fora do PATCH com debounce.
+- **Anotações (páginas em blocos):** `notas` é entidade da fábrica, servida por
+  `/api/portfolio/notas` com versão e 409, mas fica **fora** do
+  `PortfolioBundle` — texto longo não vai no polling de 15s. Mora em
+  `api/_notasDb.ts`; a regra entra em `validarNota`, chamada por
+  `validarEntidade`. `conteudo` é o JSON do editor serializado; busca e trecho
+  derivam dele, sem coluna paralela. Imagem colada é nó do documento com `src`
+  **relativo à própria página** (`/api/notas/:id/imagens/:imagemId`, regra pura
+  em `src/lib/notaImagens.ts`): nunca `data:`, `blob:`, URL de fora ou de outra
+  página — o servidor recusa. Os bytes ficam em `nota_imagens` (cascade com a
+  página), entram por `POST` e saem por `GET` com cache imutável e `nosniff`
+  (`api/_notaImagensRoute.ts`), como os anexos. Não há DELETE: remover o bloco é
+  edição desfazível, então a imagem só sai pela varredura (`varrerImagensOrfas`,
+  a cada gravação com `conteudo`) depois de **24 h fora do documento** —
+  contadas de quando saiu (`orfa_desde`), nunca do upload, senão a imagem
+  colada anteontem morre na mesma gravação que a removeu e o Ctrl+Z volta vazio. Documento
+  vazio ou ilegível nunca varre. A validação de formato e teto é uma só
+  (`validarImagem`), com a lista de cada lado: notas sem AVIF. O cliente reduz
+  com o mesmo `prepareAttachment` dos anexos, mas a 2400px e WebP 0,9 (letra
+  miúda de print).
+- **Aba Anotações:** `useNotas` mora no `App`, como `useTasks` (gravação
+  pendente não morre quando a aba desmonta), e fica **fora** do relógio de
+  15s: relê ao entrar na aba e quando a janela volta ao foco. O editor é
+  documento, não formulário — **salvamento automático**: `onChange` no máximo a
+  cada 300 ms, gravação ~600 ms depois, em série por página. O editor
+  (`key={nota.id}`) lê `nota.conteudo` só ao montar e no "Carregar a dela";
+  **nunca se recarrega sozinho** com a versão do servidor, senão um 409 apagaria
+  o texto de quem digita. O 409 vira a faixa "Outra pessoa editou esta página"
+  (Manter a minha / Carregar a dela). Texto recusado (409, 404, 400) sai da fila
+  mas fica em `naoSalvas`, no `App` — inclusive o de página já fechada —, e o
+  guard de saída e o `beforeunload` perguntam antes de perdê-lo. 4xx definitivo
+  (fora 408/409/429) não é reenviado: a tela mostra a mensagem do servidor, e o
+  404 oferece "Recriar com o meu texto". O cache das notas guarda **só o que o
+  servidor confirmou** (`confirmedCache`). Link direto para página que a tela
+  ainda não leu relê a lista uma vez antes de dizer "Esta página não existe
+  mais". Lista e página lado a lado só a partir de 961px (`DUAS_COLUNAS`, o
+  mesmo corte de `notas.css`): abaixo disso a coluna de texto ficava com ~33
+  caracteres por linha, e vale lista → página com "‹ Páginas". O título é um
+  `<textarea>` que cresce e nunca corta.
+- **Editor das Anotações:** TipTap **3.31.4 exato em todo `@tiptap/*`** — um
+  só `@tiptap/core` no `npm ls`; versão solta duplica o núcleo. A alça "+ ⋮⋮"
+  é própria (`AlcaBloco`, `moverBloco.ts`) porque o drag-handle oficial puxa
+  `yjs`. Os blocos do menu "/" são uma lista só, `src/lib/blocosNota.ts`, que a
+  barra de formato do toque também lê. Quem formata é a bolha sobre a seleção
+  (`BolhaFormato`) ou, na faixa de toque (`FAIXA_TOQUE`, a mesma do bloco de
+  `tokens.css`), a barra acima do teclado (`BarraFormatoMovel`) — nunca as
+  duas. A barra segue o `visualViewport` e, enquanto aparece, tira a
+  `.nav-bottom` por `:has()`, empurra o snackbar para cima dela
+  (`--nota-formato-topo`) e limita o menu "/" (`janelaVisivel`); é o único
+  lugar que muda as margens de rolagem do ProseMirror. O que vira `<a href>` é
+  `src/lib/links.ts` (só http(s) e mailto), lido pelo editor e pela bolha.
+  Imagens: o item acima. Remover o bloco de imagem **não** pede confirmação — é
+  a exceção a `useConfirmacao`, porque o Ctrl+Z o traz de volta (é para isso
+  que a varredura espera 24 h).
 - **Portfólio (objetivo → iniciativa → marco):** seis entidades (`pessoas`, `objetivos`, `medicoes`, `iniciativas`, `marcos`, `acoes_risco`) sobre a fábrica genérica `api/_table.ts`, atendidas por `api/_portfolioRoute.ts` através do roteador único. Não recriar uma entrada de função por profundidade: os antigos PATCH/DELETE que falhavam na borda agora mantêm a URL pública via rewrite, sem catch-all de arquivos. O front lê o pacote por `GET /api/portfolio` e `usePortfolio`; as métricas são funções puras em `src/lib/portfolioMetrics.ts`. Regra de integridade nova entra em **`validarEntidade`** (`api/_portfolioDb.ts`), compartilhada pelos dois ambientes.
 - **Marco tem três campos de texto, e eles não se substituem:**
   `criterio_aceite` (como se verifica a entrega), `motivo_replanejamento` (por
@@ -186,17 +240,21 @@ decisão própria do produto. Consequências, todas em `tokens.css`:
   em números ("Os 5 marcos vão junto") e nomeia os dois botões — o verbo, e
   "Manter". Vale para excluir risco, iniciativa, objetivo, pessoa, tarefa,
   mitigação e medição, e para juntar fichas e declarar atingido. Também vale
-  para descartar rascunho, recarregar a versão do servidor, remover imagem,
-  excluir marco e desvincular ação: `window.confirm` não existe mais no app
-  (só o `beforeunload` do navegador, que não é substituível).
+  para descartar rascunho, recarregar a versão do servidor, remover anexo de
+  imagem da tarefa, excluir marco e desvincular ação: `window.confirm` não
+  existe mais no app (só o `beforeunload` do navegador, que não é
+  substituível). Única exceção, sem diálogo nenhum: o bloco de imagem da nota,
+  que o Ctrl+Z desfaz.
 - **Shell:** o rail azul (`--rail-bg`) vai de ponta a ponta e leva a marca
   (`common/Marca.tsx`) no topo; o header é só da direita (migalha `Grupo ·
-  Seção`, busca "Buscar ou ir para…", sync, tema, autor). Com o rail fora
-  (≤1100px) a marca volta ao header. As regras de cor do rail são escopadas em
-  `.nav-rail` porque a folha "Mais" reusa `.rail-item` e continua clara. **Tema
-  é `SeletorTema`** — três segmentos escritos (Claro, Escuro, Sistema), nunca um
-  botão que cicla. A barra inferior vale até 820px (a 768 as oito abas não
-  cabem ao lado da marca).
+  Seção`, busca "Buscar ou ir para…", sync, tema, autor) e **não navega** — a
+  fita de abas saiu: com nove destinos ela não cabia. A marca volta ao header
+  só ≤760px, onde o rail sai. Entre 761 e 900px o chip de autor vira o círculo
+  das iniciais (nome no `title` e no nome acessível): a folha "Mais", onde ele
+  mora no celular, não existe nessa faixa. As regras de cor do rail são
+  escopadas em `.nav-rail` porque a folha "Mais" reusa `.rail-item` e continua
+  clara. **Tema é `SeletorTema`** — três segmentos escritos (Claro, Escuro,
+  Sistema), nunca um botão que cicla.
 - **Faixa de KPI = cartões separados**, barra lateral de 6px na cor do estado,
   valor → rótulo → apoio → `status`. `<Kpi status={{ rotulo, kind }}>` escreve
   o juízo em pílula ("Fora do prazo"): a barra colorida sozinha não diz nada.
@@ -229,9 +287,10 @@ decisão própria do produto. Consequências, todas em `tokens.css`:
 - **Visões salvas de Iniciativas** mostram a contagem (`Em risco 5`); filtro e
   contagem usam a MESMA regra (`naVisao`).
 - **Paleta de comando** (`common/PaletaComando.tsx`, Ctrl/⌘+K): o listener mora
-  no `App`, indexa os destinos de `NavRail/secoes.tsx` e os registros das
-  camadas, e **não abre enquanto há outro `[role="dialog"]`** — o foco preso do
-  modal brigaria com ela. `/` foca a busca da aba Iniciativas.
+  no `App`, indexa os destinos de `NavRail/secoes.tsx`, os registros das
+  camadas e as páginas de Anotações (tipo "Página", para a nota "Triagem" não
+  se confundir com a aba), e **não abre enquanto há outro `[role="dialog"]`** —
+  o foco preso do modal brigaria com ela. `/` foca a busca da aba Iniciativas.
 - **Modal é diálogo centralizado, não gaveta.** `modal.css` é a única dona:
   `.modal-card` 640px (`data-largo` 960px, `.modal-card--editor` 1040px para risco
   e tarefa, `data-compact` 440px na confirmação), `--r-float`, `--elev-3`, scrim de
@@ -345,6 +404,12 @@ decisão própria do produto. Consequências, todas em `tokens.css`:
   devolve Promise e para no primeiro "não"; `useAppNavigation` restaura o hash
   na hora no Voltar e só o reaplica se o usuário confirmar e nada mais navegou
   no meio. `irPara` é `async`. Não salvar implicitamente ao fechar.
+- **Enquanto uma navegação guardada espera, o destino pedido tem a vez.** Quem
+  navega depois dos guards chama `perguntar()` (o `canNavigate` que conta como
+  espera), nunca `canNavigate()` direto. Correção automática da URL é
+  `navigate(..., true)` e é **descartada** durante a espera (devolve `false`);
+  sem isso a escolha automática da primeira página trocava o hash no meio do
+  diálogo e o Voltar sumia calado. Navegação explícita mais nova ainda ganha.
 - `useSessionState` preserva busca, filtros e ordenação das listas principais
   na sessão. Os atalhos do Painel levam os IDs da lacuna ao destino e oferecem
   limpeza explícita do recorte.
@@ -355,9 +420,11 @@ decisão própria do produto. Consequências, todas em `tokens.css`:
   da iniciativa ficam em seção recolhível. Os campos e fórmulas continuam os mesmos.
 
 ### Mobile
-- **Três formas de navegação, uma lista de destinos.** `NavRail/secoes.tsx` é a
-  fonte única (ícones, grupos, ordem); `NavRail` (≥1101px), as abas do `TopBar`
-  (761–1100) e `NavBottom` (≤760) leem de lá. As três regras de visibilidade
+- **Três faixas de navegação, uma lista de destinos.** `NavRail/secoes.tsx` é a
+  fonte única (ícones, grupos, ordem), lida pelo `NavRail`, pela `NavBottom` e
+  pela paleta: rail pela preferência gravada (≥1101px), rail **recolhido à
+  força** e sem o botão "Recolher" (761–1100, `FAIXA_RECOLHIDA`, nome no
+  `title` e no `aria-label`) e barra inferior (≤760). As regras de visibilidade
   ficam juntas no fim de `styles/rail.css` — separadas, duas formas aparecem ao
   mesmo tempo numa faixa que ninguém olhou. A barra inferior tem 4 destinos
   fixos (um por camada da cadeia) + "Mais", que abre a folha com os grupos
@@ -366,8 +433,10 @@ decisão própria do produto. Consequências, todas em `tokens.css`:
 - **A adaptação a toque é um bloco só** — `@media (pointer: coarse) and
   (max-width: 1100px)` em `tokens.css`, que troca três valores. Todo controle já
   lê o token, então não existe (e não deve nascer) regra de toque por
-  componente. `--tap-min` é PISO, não tamanho: botão de ícone declara
-  `max(<repouso>, var(--tap-min))`, e no desktop o piso é zero.
+  componente. A única coisa que muda de COMPORTAMENTO na mesma faixa é a
+  bolha de formato das Anotações, que cede à barra acima do teclado
+  (`FAIXA_TOQUE`, a mesma consulta). `--tap-min` é PISO, não tamanho: botão de
+  ícone declara `max(<repouso>, var(--tap-min))`, e no desktop o piso é zero.
 - **16px em campo não é gosto:** abaixo disso o Safari do iOS amplia a viewport
   ao focar e não volta. É o que `--fs-field` resolve.
 - **Tabela de riscos: o nome vem primeiro e é a coluna congelada**, em até duas
@@ -394,9 +463,11 @@ decisão própria do produto. Consequências, todas em `tokens.css`:
   isso o primeiro cartão da aba Tarefas nascia a 850px.
 - **Iniciativas é lista → detalhe** a ≤760px. A escolha automática da primeira
   iniciativa é gated por `matchMedia`: sem isso o botão "‹ Todas" vira no-op,
-  porque zerar a seleção redispara o efeito.
+  porque zerar a seleção redispara o efeito. Anotações também ("‹ Páginas"),
+  mas a ≤960px (`DUAS_COLUNAS`; o porquê está em "Aba Anotações").
 - `viewport-fit=cover` no `index.html` e `env(safe-area-inset-*)` em tudo que é
-  fixo na base (barra, rodapé de modal, folhas, snackbar).
+  fixo na base (barra, barra de formato das Anotações, rodapé de modal, folhas,
+  snackbar).
 
 ### Data viz (regras do skill `dataviz`)
 - Vão de 2px de superfície (`--viz-gap`) entre preenchimentos adjacentes: células

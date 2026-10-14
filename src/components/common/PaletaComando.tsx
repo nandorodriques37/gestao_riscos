@@ -8,17 +8,19 @@ import { useBloqueioDeRolagem } from '../../hooks/useBloqueioDeRolagem';
 /**
  * Paleta de comando: Ctrl/⌘+K.
  *
- * Um app com sete seções, dezenas de iniciativas, sessenta riscos e mais de
- * cem tarefas não tinha busca global — cada aba tinha a sua, e ir de um risco
- * a uma iniciativa era três cliques. A paleta indexa os destinos (a mesma
- * lista do trilho) e os registros das quatro camadas, e abre qualquer um.
+ * Um app com oito destinos (nove enquanto a Triagem da migração existe),
+ * dezenas de iniciativas, sessenta riscos e mais de cem tarefas não tinha
+ * busca global — cada aba tinha a sua, e ir de um risco a uma iniciativa era
+ * três cliques. A paleta indexa os destinos (a mesma lista do trilho,
+ * `NavRail/secoes.tsx`), os registros das quatro camadas, as pessoas e as
+ * páginas da aba Anotações, e abre qualquer um.
  *
  * Portal no <body>, `role="dialog"`, foco no campo ao abrir e devolvido ao
  * fechar, ↑↓ navegam, Enter abre, Esc fecha. Não usa o ModalShell porque a
  * paleta não é um formulário: é um campo e uma lista, e o cabeçalho com
  * título seria peso.
  */
-export type TipoItemPaleta = 'risco' | 'iniciativa' | 'objetivo' | 'tarefa' | 'pessoa';
+export type TipoItemPaleta = 'risco' | 'iniciativa' | 'objetivo' | 'tarefa' | 'pessoa' | 'nota';
 
 export interface ItemPaleta {
   tipo: TipoItemPaleta;
@@ -27,30 +29,75 @@ export interface ItemPaleta {
   sub?: string;
 }
 
+/**
+ * Para onde cada tipo vai: um destino por tipo, sem "senão". A versão anterior
+ * recebia uma função só e terminava em `else irPara('pessoas')` — todo tipo
+ * novo caía em Pessoas calado, e uma página escolhida na paleta abriria a aba
+ * errada. Com um destino declarado por tipo, o `App` não compila esquecendo um.
+ */
+export type AberturaPorTipo = Record<TipoItemPaleta, (id: string) => void>;
+
 interface PaletaComandoProps {
   aberta: boolean;
   onFechar: () => void;
   grupos: Grupo[];
   itens: ItemPaleta[];
   onIrPara: (tab: Tab) => void;
-  onAbrir: (item: ItemPaleta) => void;
+  abrir: AberturaPorTipo;
 }
 
-const ROTULO_TIPO: Record<TipoItemPaleta, string> = {
-  risco: 'Riscos', iniciativa: 'Iniciativas', objetivo: 'Objetivos', tarefa: 'Tarefas e ações', pessoa: 'Pessoas',
+interface ApresentacaoTipo {
+  /** Cabeçalho do grupo na lista. */
+  grupo: string;
+  /** A camada da cadeia: o quadradinho do item usa a cor dela. Sem camada, sem quadradinho. */
+  camada?: 'objetivo' | 'iniciativa' | 'risco' | 'trabalho';
+  /** O tipo escrito no item, para quando o nome sozinho se confunde com uma seção. */
+  etiqueta?: string;
+}
+
+const TIPOS: Record<TipoItemPaleta, ApresentacaoTipo> = {
+  objetivo: { grupo: 'Objetivos', camada: 'objetivo' },
+  iniciativa: { grupo: 'Iniciativas', camada: 'iniciativa' },
+  risco: { grupo: 'Riscos', camada: 'risco' },
+  tarefa: { grupo: 'Tarefas e ações', camada: 'trabalho' },
+  pessoa: { grupo: 'Pessoas' },
+  // Página não é camada da cadeia: sem quadradinho, como Pessoas. E o título é
+  // texto livre que repete nome de seção (a página "Triagem" e a aba Triagem):
+  // o cabeçalho do grupo é só visual, então o item leva o tipo escrito — que
+  // também entra no nome acessível da opção.
+  nota: { grupo: 'Páginas', etiqueta: 'Página' },
 };
-const ORDEM_TIPO: TipoItemPaleta[] = ['objetivo', 'iniciativa', 'risco', 'tarefa', 'pessoa'];
+const ORDEM_TIPO: TipoItemPaleta[] = ['objetivo', 'iniciativa', 'risco', 'tarefa', 'pessoa', 'nota'];
 const POR_TIPO = 6;
 
-/** A camada da cadeia de cada grupo: o quadradinho do item usa a cor dela. */
-const CAMADA_DO_GRUPO: Record<string, string> = {
-  Objetivos: 'objetivo', Iniciativas: 'iniciativa', Riscos: 'risco', 'Tarefas e ações': 'trabalho',
-};
+/** Exaustividade: um tipo novo em `TipoItemPaleta` sem `case` abaixo não compila. */
+function semDestino(tipo: never): never {
+  throw new Error(`A paleta não sabe abrir itens do tipo "${String(tipo)}".`);
+}
 
-type Resultado =
-  | { chave: string; grupo: string; rotulo: string; sub?: string; acao: () => void };
+function abrirItem(item: ItemPaleta, abrir: AberturaPorTipo) {
+  switch (item.tipo) {
+    case 'objetivo': abrir.objetivo(item.id); return;
+    case 'iniciativa': abrir.iniciativa(item.id); return;
+    case 'risco': abrir.risco(item.id); return;
+    case 'tarefa': abrir.tarefa(item.id); return;
+    case 'pessoa': abrir.pessoa(item.id); return;
+    case 'nota': abrir.nota(item.id); return;
+    default: semDestino(item.tipo);
+  }
+}
 
-export function PaletaComando({ aberta, onFechar, grupos, itens, onIrPara, onAbrir }: PaletaComandoProps) {
+interface Resultado {
+  chave: string;
+  grupo: string;
+  rotulo: string;
+  sub?: string;
+  camada?: ApresentacaoTipo['camada'];
+  etiqueta?: string;
+  acao: () => void;
+}
+
+export function PaletaComando({ aberta, onFechar, grupos, itens, onIrPara, abrir }: PaletaComandoProps) {
   const [busca, setBusca] = useState('');
   const [ativo, setAtivo] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -77,9 +124,12 @@ export function PaletaComando({ aberta, onFechar, grupos, itens, onIrPara, onAbr
     const registros: Resultado[] = ORDEM_TIPO.flatMap(tipo => itens
       .filter(i => i.tipo === tipo && (bate(i.rotulo) || (i.sub ? bate(i.sub) : false)))
       .slice(0, POR_TIPO)
-      .map(i => ({ chave: `${i.tipo}:${i.id}`, grupo: ROTULO_TIPO[tipo], rotulo: i.rotulo, sub: i.sub, acao: () => onAbrir(i) })));
+      .map(i => ({
+        chave: `${i.tipo}:${i.id}`, grupo: TIPOS[tipo].grupo, rotulo: i.rotulo, sub: i.sub,
+        camada: TIPOS[tipo].camada, etiqueta: TIPOS[tipo].etiqueta, acao: () => abrirItem(i, abrir),
+      })));
     return [...destinos, ...registros];
-  }, [busca, grupos, itens, onIrPara, onAbrir]);
+  }, [busca, grupos, itens, onIrPara, abrir]);
 
   useEffect(() => { setAtivo(0); }, [busca]);
 
@@ -116,7 +166,7 @@ export function PaletaComando({ aberta, onFechar, grupos, itens, onIrPara, onAbr
           className="paleta-campo"
           value={busca}
           onChange={e => setBusca(e.target.value)}
-          placeholder="Buscar risco, iniciativa, objetivo, tarefa, pessoa — ou ir para uma seção"
+          placeholder="Buscar risco, iniciativa, objetivo, tarefa, pessoa, página — ou ir para uma seção"
           aria-label="Buscar e navegar"
           role="combobox"
           aria-expanded="true"
@@ -129,7 +179,7 @@ export function PaletaComando({ aberta, onFechar, grupos, itens, onIrPara, onAbr
           {resultados.length === 0 && (
             <li className="paleta-vazio">
               <strong>Nada com “{busca}”</strong>
-              <span>A busca olha nome, área e responsável. Tente outra palavra, ou escolha uma seção.</span>
+              <span>A busca olha nome, área, responsável e o começo das páginas. Tente outra palavra, ou escolha uma seção.</span>
             </li>
           )}
           {resultados.map((r, i) => {
@@ -144,11 +194,12 @@ export function PaletaComando({ aberta, onFechar, grupos, itens, onIrPara, onAbr
                   aria-selected={i === ativo}
                   className="paleta-item"
                   data-ativo={i === ativo || undefined}
-                  data-camada={CAMADA_DO_GRUPO[r.grupo]}
+                  data-camada={r.camada}
                   onMouseEnter={() => setAtivo(i)}
                   onClick={() => executar(r)}
                 >
                   <span className="paleta-rotulo">{r.rotulo}</span>
+                  {r.etiqueta && <span className="badge" data-badge="neutro">{r.etiqueta}</span>}
                   {r.sub && <span className="paleta-sub">{r.sub}</span>}
                 </div>
               </li>

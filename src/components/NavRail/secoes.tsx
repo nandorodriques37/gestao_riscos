@@ -4,11 +4,12 @@ import type { Tab } from '../../types';
 /**
  * Os destinos do app, em UMA lista.
  *
- * Moram aqui, e não dentro do `NavRail`, porque a navegação tem três formas —
- * rail lateral acima de 1100px, abas do topo entre 761 e 1100, barra inferior
- * abaixo de 760 — e as três precisam concordar sobre quais destinos existem, em
- * que ordem e sob que grupo. Duas listas derivariam exatamente como a regra da
- * Triagem derivou entre `App` e `TopBar` antes de virar um booleano só.
+ * Moram aqui, e não dentro do `NavRail`, porque mais de um componente desenha
+ * a navegação — o rail lateral acima de 760px (recolhido à força entre 761 e
+ * 1100), a barra inferior e a folha "Mais" abaixo disso, a migalha do header e a
+ * paleta de comando — e todos precisam concordar sobre quais destinos existem,
+ * em que ordem e sob que grupo. Duas listas derivariam exatamente como a regra
+ * da Triagem derivou entre `App` e `TopBar` antes de virar um booleano só.
  *
  * Os ícones são SVG traçado em grade de 24: sem lib e sem emoji, como o resto do
  * app.
@@ -39,6 +40,8 @@ export const ICONES = {
   tarefas: svg(<><rect x="3" y="3" width="18" height="18" rx="3" /><polyline points="8 12.4 11 15.4 16.4 9" /></>),
   pessoas: svg(<><circle cx="9" cy="8" r="3.2" /><path d="M3.5 19.5c0-3 2.5-5 5.5-5s5.5 2 5.5 5" /><path d="M16.5 5.4a3.2 3.2 0 0 1 0 5.2" /><path d="M17.5 14.9c2 .6 3.2 2.3 3.2 4.6" /></>),
   triagem: svg(<><path d="M4 5h16" /><path d="M7 12h10" /><path d="M10 19h4" /></>),
+  /** Folha com o canto dobrado e duas linhas de texto: a página da aba Anotações. */
+  anotacoes: svg(<><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z" /><path d="M14 3v5h5" /><path d="M9 13h6" /><path d="M9 17h4" /></>),
   /** Só a barra inferior usa: abre a folha com o resto dos destinos. */
   mais: svg(<><circle cx="5" cy="12" r="1.4" fill="currentColor" stroke="none" /><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none" /><circle cx="19" cy="12" r="1.4" fill="currentColor" stroke="none" /></>),
 };
@@ -74,6 +77,7 @@ export const GRUPOS: Grupo[] = [
     itens: [
       { id: 'tarefas', label: 'Tarefas', icone: ICONES.tarefas },
       { id: 'pessoas', label: 'Pessoas', icone: ICONES.pessoas },
+      { id: 'anotacoes', label: 'Anotações', icone: ICONES.anotacoes },
     ],
   },
 ];
@@ -84,7 +88,7 @@ export const TRIAGEM: Secao = { id: 'triagem', label: 'Triagem', icone: ICONES.t
 /**
  * Os quatro destinos fixos da barra inferior: um por camada da cadeia
  * (objetivo → iniciativa → risco → trabalho), que é o próprio princípio
- * organizador do app. O resto — Iniciativas, Priorização, Pessoas, Triagem —
+ * organizador do app. O resto — Iniciativas, Priorização, Pessoas, Anotações, Triagem —
  * vive atrás do botão "Mais", com os grupos inteiros e os mesmos rótulos do
  * rail.
  *

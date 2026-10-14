@@ -1,10 +1,14 @@
 import type { Tab } from '../types';
-const tabs: Tab[] = ['painel', 'objetivos', 'iniciativas', 'registro', 'priorizacao', 'tarefas', 'pessoas', 'triagem'];
-export interface AppRoute { tab: Tab; risco: string | null; iniciativa: string | null; tarefa: string | null; objetivo: string | null; recorte: string | null }
+const tabs: Tab[] = ['painel', 'objetivos', 'iniciativas', 'registro', 'priorizacao', 'tarefas', 'pessoas', 'anotacoes', 'triagem'];
+/**
+ * Destino e seleção, na URL. `nota` é a página aberta da aba Anotações — o
+ * link direto para uma página, como `tarefa` é para um card do quadro.
+ */
+export interface AppRoute { tab: Tab; risco: string | null; iniciativa: string | null; tarefa: string | null; objetivo: string | null; recorte: string | null; nota: string | null }
 export function readRoute(hash: string): AppRoute {
   const q = new URLSearchParams(hash.replace(/^#/, ''));
   const tab = q.get('tab') as Tab;
-  return { tab: tabs.includes(tab) ? tab : 'painel', risco: q.get('risco'), iniciativa: q.get('iniciativa'), tarefa: q.get('tarefa'), objetivo: q.get('objetivo'), recorte: q.get('recorte') };
+  return { tab: tabs.includes(tab) ? tab : 'painel', risco: q.get('risco'), iniciativa: q.get('iniciativa'), tarefa: q.get('tarefa'), objetivo: q.get('objetivo'), recorte: q.get('recorte'), nota: q.get('nota') };
 }
 export function routeHash(route: Partial<AppRoute>) {
   const q = new URLSearchParams();

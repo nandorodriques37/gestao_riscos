@@ -5,32 +5,21 @@ import { Marca } from '../common/Marca';
 import { SeletorTema } from '../common/SeletorTema';
 
 interface TopBarProps {
+  /**
+   * Destino atual, só para a migalha. O header não navega: entre 761 e 1100px
+   * quem navega é o rail recolhido, e abaixo disso a barra inferior.
+   */
   tab: Tab;
-  onChangeTab: (tab: Tab) => void;
   /** Estado de sincronização com o servidor, exibido à direita do header. */
   sync?: { state: 'idle' | 'saving' | 'error'; label: string };
   /**
-   * Se a aba Triagem entra na lista. Vem PRONTO do `App`.
-   *
-   * A regra ("fica enquanto há fila, promoção pendente, ou a extração nem
-   * rodou") já morava lá, e estava escrita aqui uma segunda vez, idêntica —
-   * duas cópias de uma regra de negócio que decidiam a mesma coisa em dois
-   * lugares. Quem tem a fonte é o `App`; aqui basta o booleano.
-   */
-  mostrarTriagem?: boolean;
-  /**
-   * Ações do plano de ação ainda esperando classificação — só para o contador
-   * ao lado do rótulo.
-   */
-  triagemPendente?: number;
-  /**
    * Identidade autodeclarada e tema. O estado dos dois SUBIU para o `App`.
    *
-   * Não por gosto: abaixo de 760px o header perde as abas para a barra
-   * inferior, e o chip de autor e o botão de tema passam a morar na folha
-   * "Mais". Dois componentes com um `useState` cada dariam duas verdades sobre
-   * o mesmo tema — trocar no header não mexeria no que a folha mostra. É o
-   * mesmo argumento que já tirou `useTasks` da aba Tarefas.
+   * Não por gosto: abaixo de 760px quem navega é a barra inferior, e o chip
+   * de autor e o botão de tema passam a morar na folha "Mais". Dois
+   * componentes com um `useState` cada dariam duas verdades sobre o mesmo
+   * tema — trocar no header não mexeria no que a folha mostra. É o mesmo
+   * argumento que já tirou `useTasks` da aba Tarefas.
    */
   autor: string;
   onPedirNome: () => void;
@@ -44,23 +33,19 @@ interface TopBarProps {
 const TECLA_PALETA = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘K' : 'Ctrl K';
 
 export function TopBar({
-  tab, onChangeTab, sync, mostrarTriagem = false, triagemPendente = 0,
-  autor, onPedirNome, theme, onTheme, onAbrirPaleta,
+  tab, sync, autor, onPedirNome, theme, onTheme, onAbrirPaleta,
 }: TopBarProps) {
-  // Os mesmos destinos do rail e da barra inferior, achatados em uma fita.
-  // Esta lista era escrita à mão aqui, com os rótulos repetidos — e a fita só
-  // aparece entre 761 e 1100px, a faixa que ninguém abre para conferir. Um
-  // destino novo entrava no rail e faltava aqui.
-  const secoes = gruposCom(mostrarTriagem).flatMap(g => g.itens);
-  const atual = secoes.find(s => s.id === tab);
+  // A migalha lê os mesmos destinos do rail e da barra inferior. Com a Triagem
+  // sempre incluída: se a aba está aberta, ela existe, e o rótulo tem de vir.
+  const atual = gruposCom(true).flatMap(g => g.itens).find(s => s.id === tab);
   const grupo = grupoDe(tab);
   const iniciais = autor.trim().charAt(0).toUpperCase();
 
   return (
     <header className="app-header">
       <div className="app-header-inner">
-        {/* A marca mora no topo do rail; aqui ela só aparece quando o rail some
-            (≤1100px), senão apareceria duas vezes. */}
+        {/* A marca mora no topo do rail — expandido ou recolhido —; aqui ela só
+            aparece quando o rail some (≤760px), senão apareceria duas vezes. */}
         <div className="brand">
           <Marca />
           <div className="brand-copy">
@@ -73,27 +58,6 @@ export function TopBar({
           {grupo && <span>{grupo}</span>}
           <strong>{atual?.label}</strong>
         </div>
-
-        <nav className="nav-tabs" aria-label="Seções">
-          {secoes.map(s => {
-            const contador = s.id === 'triagem' && triagemPendente > 0 ? triagemPendente : null;
-            return (
-              <button
-                key={s.id}
-                className={`nav-tab${tab === s.id ? ' active' : ''}`}
-                aria-current={tab === s.id ? 'page' : undefined}
-                onClick={() => onChangeTab(s.id)}
-              >
-                {s.label}
-                {contador != null && (
-                  <span className="nav-tab-count tabular" aria-label={`${contador} na fila`}>
-                    {contador}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </nav>
 
         <div className="header-aside">
           {onAbrirPaleta && (
@@ -120,7 +84,10 @@ export function TopBar({
               : 'Diga quem é você — sem isso as alterações entram no histórico como "não identificado".'}
           >
             {iniciais && <span className="autor-avatar" aria-hidden="true">{iniciais}</span>}
-            {autor || 'Quem é você?'}
+            {/* Em elemento próprio para poder ceder: com reticências quando o
+                nome é longo, e fora da vista (mas no nome acessível) entre 761 e
+                900px, onde o chip vira só o círculo (layout.css, responsive.css). */}
+            <span className="autor-nome">{autor || 'Quem é você?'}</span>
           </button>
           {sync && (
             <div className="sync-status" data-state={sync.state} role="status" aria-live="polite">

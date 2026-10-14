@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
   base64Bytes, comExtensaoDe, formatBytes, isImageFile, scaledSize, MAX_IMAGE_DIMENSION,
+  ACCEPT_IMAGE_MIMES, ACCEPT_IMAGEM_NOTA, MAX_IMAGE_DIMENSION_NOTA, QUALIDADE_NOTA,
+  ImagemRecusadaError, arquivoDeDataUrl, listaDeFormatos, prepareAttachment,
 } from './imageAttachments';
 
 // Só a lógica pura: o preparo em si depende de canvas e FileReader, que não
@@ -57,5 +59,60 @@ describe('comExtensaoDe', () => {
     expect(comExtensaoDe('foto.png', 'image/webp')).toBe('foto.webp');
     expect(comExtensaoDe('foto.HEIC', 'image/jpeg')).toBe('foto.jpg');
     expect(comExtensaoDe('sem-extensao', 'image/webp')).toBe('sem-extensao.webp');
+  });
+});
+
+describe('imagens de página (aba Anotações)', () => {
+  it('constantes da nota: 2400px, qualidade 0,9 e sem AVIF', () => {
+    expect(MAX_IMAGE_DIMENSION_NOTA).toBe(2400);
+    expect(QUALIDADE_NOTA).toBe(0.9);
+    expect(ACCEPT_IMAGEM_NOTA).toBe('image/png,image/jpeg,image/webp,image/gif');
+  });
+
+  it('o teto da nota reduz um print 4K pelo maior lado', () => {
+    expect(scaledSize(3840, 2160, MAX_IMAGE_DIMENSION_NOTA)).toEqual({ width: 2400, height: 1350 });
+  });
+
+  it('isImageFile segue a lista recebida; sem lista, a das tarefas', () => {
+    expect(isImageFile({ type: 'image/avif' })).toBe(true);
+    expect(isImageFile({ type: 'image/avif' }, ACCEPT_IMAGEM_NOTA)).toBe(false);
+    expect(isImageFile({ type: 'image/gif' }, ACCEPT_IMAGEM_NOTA)).toBe(true);
+    expect(isImageFile({ type: 'image/svg+xml' }, ACCEPT_IMAGEM_NOTA)).toBe(false);
+  });
+
+  it('serve direto de filtro: o índice do .filter não vira lista', () => {
+    const arquivos = [{ type: 'image/avif' }, { type: 'application/pdf' }, { type: 'image/png' }];
+    expect(arquivos.filter(isImageFile)).toEqual([{ type: 'image/avif' }, { type: 'image/png' }]);
+  });
+
+  it('a mensagem de formato sai da lista, sem citar o que a lista não tem', async () => {
+    expect(listaDeFormatos(ACCEPT_IMAGEM_NOTA)).toBe('PNG, JPG, WebP ou GIF');
+    expect(listaDeFormatos(ACCEPT_IMAGE_MIMES)).toBe('PNG, JPG, WebP, GIF ou AVIF');
+    const heic = new File([new Uint8Array([1, 2, 3])], 'IMG_2048.heic', { type: 'image/heic' });
+    const erro = await prepareAttachment(heic, { aceitos: ACCEPT_IMAGEM_NOTA }).catch(e => e);
+    expect(erro).toBeInstanceOf(ImagemRecusadaError);
+    expect(erro.motivo).toBe('formato');
+    expect(erro.message).toBe('Formato não aceito. Use PNG, JPG, WebP ou GIF.');
+    const avif = new File([new Uint8Array([1])], 'foto.avif', { type: 'image/avif' });
+    expect((await prepareAttachment(avif, { aceitos: ACCEPT_IMAGEM_NOTA }).catch(e => e)).message).not.toMatch(/AVIF|anexar/);
+  });
+});
+
+describe('arquivoDeDataUrl', () => {
+  it('decodifica base64 com o MIME do próprio dado', async () => {
+    const f = arquivoDeDataUrl('data:image/png;base64,QUJD', 'colada.png');
+    expect(f.name).toBe('colada.png');
+    expect(f.type).toBe('image/png');
+    expect(new Uint8Array(await f.arrayBuffer())).toEqual(new Uint8Array([65, 66, 67]));
+  });
+
+  it('aceita dado percent-encoded (sem base64)', async () => {
+    const f = arquivoDeDataUrl('data:text/plain,ol%C3%A1', 'x.txt');
+    expect(await f.text()).toBe('olá');
+  });
+
+  it('recusa o que não é data URL ou não decodifica', () => {
+    expect(() => arquivoDeDataUrl('https://exemplo.com/a.png', 'a.png')).toThrow(ImagemRecusadaError);
+    expect(() => arquivoDeDataUrl('data:image/png;base64,@@@', 'a.png')).toThrow(ImagemRecusadaError);
   });
 });

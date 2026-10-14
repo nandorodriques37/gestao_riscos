@@ -1,0 +1,161 @@
+/* ============================================================================
+   Aba Anotações — menu "/" de blocos.
+
+   Dono: a etapa do menu "/" do Lote 3 (`menuBarra.ts`, `MenuBarraView.tsx`). O
+   menu é um popover num portal no <body>: `position: fixed`, posição e altura
+   disponível calculadas pelo componente a partir do "/consulta" (abre embaixo
+   quando cabe, senão em cima; a altura disponível chega em
+   `--nota-menu-espaco` e a lista rola por dentro). Só tokens. Coral não
+   aparece: nada aqui é alerta.
+   ========================================================================= */
+
+.nota-menu {
+  position: fixed;
+  /* Acima do cabeçalho fixo (30) e do trilho (40); abaixo da folha "Mais" e
+     do snackbar (50) e dos modais (60). */
+  z-index: 45;
+  width: min(320px, calc(100vw - 2 * var(--sp-4)));
+  max-height: var(--nota-menu-espaco, none);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--sp-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-float);
+  /* O plano que sobe acima do cartão: no escuro um degrau acima do cartão da
+     página, senão o menu só se separaria dele pela sombra. */
+  background: var(--surface-3);
+  box-shadow: var(--elev-2);
+  color: var(--ink-1);
+  font-family: var(--font-sans);
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+  line-height: 1.3;
+}
+
+.nota-menu-grupo {
+  margin: 0;
+  padding: var(--sp-2) var(--sp-3) var(--sp-1);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--tracking-rotulo);
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+
+.nota-menu-lista {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.nota-menu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-height: max(calc(var(--control-h) + var(--sp-1)), var(--tap-min));
+  padding: var(--sp-1) var(--sp-3);
+  border-radius: var(--r-control);
+  cursor: pointer;
+  user-select: none;
+}
+
+.nota-menu-item:hover {
+  background: var(--bg-hover);
+}
+
+/* O item ativo é o foco visível do menu (o foco de verdade fica no editor,
+   via aria-activedescendant): a mesma linguagem do item ativo da paleta e
+   da lista de páginas — tinta azul de fundo e a barra lateral da marca. */
+.nota-menu-item[aria-selected='true'] {
+  background: var(--brand-soft);
+  box-shadow: inset 3px 0 0 var(--brand);
+}
+
+.nota-menu-icone {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: calc(var(--sp-5) + var(--sp-1));
+  height: calc(var(--sp-5) + var(--sp-1));
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--bg-sunken);
+  color: var(--ink-2);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-heavy);
+  letter-spacing: var(--tracking-tight);
+}
+
+.nota-menu-nome {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* O atalho de markdown que faz o mesmo bloco ao digitar. */
+.nota-menu-atalho {
+  flex: none;
+  margin-left: auto;
+  padding: 0 var(--sp-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--bg-sunken);
+  color: var(--ink-2);
+  font-family: inherit;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
+  line-height: 1.6;
+  white-space: nowrap;
+}
+
+/* Bloco sem tecla ("Imagem"): uma dica escrita no lugar do atalho. */
+.nota-menu-dica {
+  flex: none;
+  margin-left: auto;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+.nota-menu-vazio {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  margin: 0;
+  padding: var(--sp-1) var(--sp-3) var(--sp-3);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+
+.nota-menu-vazio strong {
+  font-size: var(--fs-md);
+  font-weight: var(--fw-bold);
+  color: var(--ink-1);
+  overflow-wrap: anywhere;
+}
+
+/* Contraste forçado (Windows): fundo e sombra somem, o contorno fica. */
+@media (forced-colors: active) {
+  .nota-menu-item[aria-selected='true'] {
+    outline: var(--focus-w) solid Highlight;
+    outline-offset: calc(var(--focus-w) * -1);
+  }
+}
+
+/* ---------- O "/consulta" no texto ----------
+   A decoração do plugin envolve a barra e o que vem depois dela. Com a barra
+   sozinha, o texto-fantasma do canvas ("Digite para filtrar") aparece depois
+   do cursor; ele vem do atributo que o plugin escreve, não daqui. */
+.nota-menu-gatilho--vazio::after {
+  content: attr(data-decoration-content);
+  color: var(--ink-3);
+  pointer-events: none;
+  user-select: none;
+}

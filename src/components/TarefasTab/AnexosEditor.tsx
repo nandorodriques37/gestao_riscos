@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { TaskAttachment } from '../../types';
 import { taskAttachmentUrl } from '../../lib/tasksApi';
 import { ACCEPT_IMAGE_MIMES, formatBytes, isImageFile } from '../../lib/imageAttachments';
-import { ImageLightbox } from './ImageLightbox';
+import { ImageLightbox } from '../common/ImageLightbox';
 import { useConfirmacao } from '../common/Confirmacao';
 
 interface AnexosEditorProps {
@@ -164,8 +164,7 @@ export function AnexosEditor({ taskId, anexos, onAdd, onRemove }: AnexosEditorPr
 
       {visualizando != null && anexos.length > 0 && (
         <ImageLightbox
-          taskId={taskId}
-          anexos={anexos}
+          imagens={anexos.map(a => ({ id: a.id, nome: a.nome, src: taskAttachmentUrl(taskId, a.id), tamanho: a.tamanho }))}
           index={Math.min(visualizando, anexos.length - 1)}
           onIndexChange={setVisualizando}
           onClose={() => setVisualizando(null)}
