@@ -131,6 +131,13 @@
   margin-top: 0;
 }
 
+/* O cursor de lacuna no topo (a página que abre com divisor ou imagem) é um
+   widget escondido, mas é o primeiro filho: sem isto o bloco de cima ganha a
+   margem e a página pula quando a lacuna sai. */
+.nota-doc > .ProseMirror-gapcursor:first-child + * {
+  margin-top: 0;
+}
+
 .nota-doc p {
   margin: 0;
 }
@@ -352,19 +359,33 @@
 
 /* Sem mouse não há hover: a barra fica sempre à vista (idioma de .anexo-remover),
    mas FORA da imagem — por cima, ela cobria quase metade do topo de cada print.
-   Logo abaixo, à direita, só os ícones: sem cartão, sem sombra. */
+   Fica logo abaixo, à direita, só os ícones (sem cartão, sem sombra), no espaço
+   da margem de baixo da figura. Fora da figura e sem eventos na faixa vazia: um
+   toque ao lado dos ícones cai no texto, como antes, e não seleciona a imagem
+   (a tecla seguinte a apagaria). */
 @media (hover: none) {
+  .nota-doc .nota-imagem:not([data-indisponivel]) {
+    margin-bottom: calc(var(--sp-3) + max(var(--control-h), var(--tap-min)));
+  }
+
   .nota-imagem-barra {
-    position: static;
+    top: 100%;
+    right: auto;
+    left: 0;
+    min-width: 100%;
     justify-content: flex-end;
     padding: 0;
     background: none;
     border: 0;
     box-shadow: none;
     opacity: 1;
+    pointer-events: none;
   }
 
-  .nota-imagem-barra > .nota-imagem-btn { color: var(--ink-3); }
+  .nota-imagem-barra > .nota-imagem-btn {
+    color: var(--ink-3);
+    pointer-events: auto;
+  }
 }
 
 .nota-imagem-btn {
@@ -382,8 +403,11 @@
   transition: background var(--dur-fast) var(--ease);
 }
 
-.nota-imagem-btn:hover {
-  background: var(--bg-hover);
+/* Só com mouse: no toque o :hover gruda no botão depois do toque. */
+@media (hover: hover) {
+  .nota-imagem-btn:hover {
+    background: var(--bg-hover);
+  }
 }
 
 /* O alvo do clique é o botão, nunca o traço do ícone (o ProseMirror lê o alvo). */
@@ -416,6 +440,14 @@
 .nota-doc .nota-upload {
   margin: var(--sp-3) 0;
   white-space: normal;
+}
+
+/* No toque a imagem pronta reserva embaixo a linha da barra: o envio reserva
+   o mesmo, e o texto abaixo não pula quando a imagem chega. */
+@media (hover: none) {
+  .nota-doc .nota-upload {
+    margin-bottom: calc(var(--sp-3) + max(var(--control-h), var(--tap-min)));
+  }
 }
 
 .nota-upload-bloco {
