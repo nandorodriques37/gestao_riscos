@@ -63,14 +63,20 @@ export function useNotas() {
   }, [mudar]);
 
   const c = useStoredCollection<Nota, NotaPatch>(adapter, { confirmedCache: true, onRefused });
-  const { remove: removerNoServidor } = c;
+  const { remove: removerNoServidor, discardRefused } = c;
 
-  const descartarTexto = useCallback((id: string) => mudar(m => {
-    if (!m.has(id)) return m;
-    const next = new Map(m);
-    next.delete(id);
-    return next;
-  }), [mudar]);
+  // O texto sai daqui E da lista: a recusa definitiva (400, 404) deixava a
+  // edição otimista na lista, e reabrir a página mostrava o texto descartado
+  // como se fosse dela — e gravava-o na próxima tecla.
+  const descartarTexto = useCallback((id: string) => {
+    mudar(m => {
+      if (!m.has(id)) return m;
+      const next = new Map(m);
+      next.delete(id);
+      return next;
+    });
+    discardRefused(id);
+  }, [mudar, discardRefused]);
   const guardarTexto = useCallback((id: string, texto: Partial<Pick<Nota, 'titulo' | 'conteudo'>>) => mudar(m => {
     const atual = m.get(id);
     return atual ? new Map(m).set(id, { ...atual, nota: { ...atual.nota, ...texto } }) : m;

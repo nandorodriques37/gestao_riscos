@@ -93,7 +93,10 @@ export function TopBar({
               : 'Diga quem é você — sem isso as alterações entram no histórico como "não identificado".'}
           >
             {iniciais && <span className="autor-avatar" aria-hidden="true">{iniciais}</span>}
-            {autor || 'Quem é você?'}
+            {/* Em elemento próprio para poder ceder: com reticências quando o
+                nome é longo, e fora da vista (mas no nome acessível) entre 761 e
+                900px, onde o chip vira só o círculo (layout.css, responsive.css). */}
+            <span className="autor-nome">{autor || 'Quem é você?'}</span>
           </button>
           {sync && (
             <div className="sync-status" data-state={sync.state} role="status" aria-live="polite">

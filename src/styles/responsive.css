@@ -58,6 +58,42 @@
   }
 }
 
+/* ---------- 761–900: o chip de autor vira só o círculo ----------
+   portfolio.css tira o chip do header a ≤900px, do tempo em que a fita de abas
+   disputava a linha. Abaixo de 761 ele mora na folha "Mais", mas a folha só
+   existe com a barra inferior: entre 761 e 900 o nome que vai para o histórico
+   não aparecia em lugar nenhum, nem dava para trocá-lo. Volta como o círculo
+   das iniciais (ou "?", sem nome), que cabe ao lado da migalha mais longa; o
+   nome segue no `title` e no nome acessível do botão. */
+@media (min-width: 761px) and (max-width: 900px) {
+  .app-header .autor-chip {
+    display: inline-flex;
+    position: relative;
+    justify-content: center;
+    width: max(32px, var(--tap-min));
+    padding: 0;
+    gap: 0;
+    flex: none;
+  }
+
+  .app-header .autor-nome {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  /* Sem nome não há iniciais: o "?" ocupa o círculo, na tinta de atenção que o
+     chip vazio já usa. Fica fora do nome acessível (o `/ ''`), que já diz
+     "Quem é você?". */
+  .app-header .autor-chip[data-vazio='true']::before {
+    content: '?';
+    content: '?' / '';
+    font-weight: var(--fw-heavy);
+  }
+}
+
 /* ---------- Celular / tablet retrato ---------- */
 
 @media (max-width: 900px) {

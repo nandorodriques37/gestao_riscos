@@ -256,6 +256,25 @@ it('com o cursor num parágrafo vazio, a imagem ocupa o lugar dele', async () =>
   expect(editor.getText()).toContain('Depois');
 });
 
+it('a imagem que ocupa o parágrafo vazio do cursor não fica selecionada: a próxima tecla (a legenda) vai para depois dela', async () => {
+  // Página nova (corpo vazio) e Enter no fim do texto: nos dois, a imagem fica por último.
+  for (const conteudo of ['', doc('Texto', '')]) {
+    const { container, unmount } = render(<EditorNota nota={nota(conteudo)} recarregar={0} onChange={vi.fn()} />);
+    await aposCriar();
+    const editor = editorDe(container);
+    if (conteudo) cursorEm(editor, '');
+    else act(() => { editor.commands.focus('end'); });
+    await colarPrintEEnviar(editor);
+    await waitFor(() => expect(JSON.stringify(editor.getJSON())).toContain(IMG_ID));
+    expect(editor.state.selection.empty).toBe(true);
+    act(() => { editor.commands.insertContent('Legenda'); });
+    const blocos = (editor.getJSON().content ?? []).map(b => (b.type === 'paragraph' ? `p:${(b.content ?? []).map(t => (t as { text?: string }).text ?? '').join('')}` : b.type));
+    expect(blocos).toEqual(conteudo ? ['p:Texto', 'image', 'p:Legenda'] : ['image', 'p:Legenda']);
+    unmount();
+    envio.resolver = null;
+  }
+});
+
 it('quem continua escrevendo enquanto a imagem sobe não a desloca', async () => {
   const { container } = render(<EditorNota nota={nota(doc('Primeiro', 'Segundo'))} recarregar={0} onChange={vi.fn()} />);
   await aposCriar();

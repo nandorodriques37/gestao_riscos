@@ -703,6 +703,34 @@ it('recusa do servidor (limite de tamanho) mostra a mensagem dele e não tenta d
   expect(screen.queryByRole('alert')).toBeNull();
 });
 
+it('Descartar e sair depois de uma recusa (400) descarta de verdade: reabrir mostra o texto do servidor, sem "Sem conexão", e a próxima edição não sobe o descartado', async () => {
+  localStorage.clear();
+  const srv = servidorDeNotas([paginaNoServidor(ID_A, 'Pagina A', 'linha original A'), paginaNoServidor(ID_B, 'Pagina B', 'linha B')]);
+  montarComHook(ID_A);
+  await abertaCom('linha original A');
+
+  srv.estado.recusa = { status: 400, error: 'A página passou do limite de tamanho. Divida o texto em duas páginas.' };
+  fireEvent.change(editor(), { target: { value: 'linha original A\nTEXTO RECUSADO' } });
+  await screen.findByText(/Divida o texto em duas páginas/, {}, { timeout: 3000 });
+
+  fireEvent.click(itemDaLista(ID_B));
+  const dialogo = await screen.findByRole('dialog', { name: 'Sair sem salvar o seu texto?' });
+  fireEvent.click(within(dialogo).getByRole('button', { name: 'Descartar e sair' }));
+  await waitFor(() => expect(tituloDaPagina()).toBe('Pagina B'));
+  srv.estado.recusa = null;
+  // A lista não anuncia o texto descartado.
+  expect(itemDaLista(ID_A).textContent).not.toContain('TEXTO RECUSADO');
+
+  fireEvent.click(itemDaLista(ID_A));
+  await abertaCom('linha original A');
+  expect(estado().textContent).toBe('Salvo');
+  expect(screen.queryByRole('alert')).toBeNull();
+
+  fireEvent.change(editor(), { target: { value: 'linha original A\nNOVO' } });
+  await waitFor(() => expect(srv.linhas.get(ID_A)!.version).toBe(2), { timeout: 3000 });
+  expect(srv.linhas.get(ID_A)!.conteudo).toBe(docDeTexto('linha original A\nNOVO'));
+});
+
 it('erro do servidor que passa sozinho (500) mostra a mensagem dele, não "Sem conexão", e segue tentando', async () => {
   localStorage.clear();
   const srv = servidorDeNotas([paginaNoServidor(ID_A, 'Pagina A', 'linha original A'), paginaNoServidor(ID_B, 'Pagina B', 'linha B')]);

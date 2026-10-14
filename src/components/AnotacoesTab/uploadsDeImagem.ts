@@ -15,7 +15,7 @@
 // o envio seguiria sem ter onde cair.
 import { Extension } from '@tiptap/react';
 import { Fragment, Slice, type Node as NoPM, type NodeType } from '@tiptap/pm/model';
-import { NodeSelection, Plugin, PluginKey, type EditorState, type Transaction } from '@tiptap/pm/state';
+import { NodeSelection, Plugin, PluginKey, TextSelection, type EditorState, type Transaction } from '@tiptap/pm/state';
 import { canSplit, dropPoint } from '@tiptap/pm/transform';
 import { Decoration, DecorationSet, type EditorView } from '@tiptap/pm/view';
 
@@ -202,11 +202,35 @@ function inserirBloco(tr: Transaction, pos: number, no: NoPM): void {
  * A transação que troca o marcador pela imagem. É COMUM — entra no
  * salvamento automático e no Ctrl+Z — e não mexe na seleção de quem continua
  * escrevendo em outro ponto da página.
+ *
+ * A exceção é o cursor que estava no parágrafo vazio que a imagem ocupou
+ * (página nova, ou Enter e colar no fim): o ProseMirror o mapeia para a
+ * própria imagem, selecionada, e a próxima tecla — a legenda — a apagava. Uma
+ * seleção do nó recém-criado só pode ter vindo desse mapeamento; o cursor vai
+ * para o texto logo depois da imagem.
  */
 export function trocarMarcadorPorImagem(state: EditorState, id: string, tipo: NodeType, attrs: Record<string, unknown>): Transaction {
+  const no = tipo.create(attrs);
+  const tr = montarTroca(state, id, tipo, no);
+  if (tr.selection instanceof NodeSelection && tr.selection.node === no) {
+    const fim = tr.selection.to;
+    let depois = TextSelection.findFrom(tr.doc.resolve(fim), 1, true);
+    // A imagem ficou por último: o parágrafo que viria depois (o TrailingNode
+    // o acrescenta só no fim da transação) entra já aqui, com o cursor nele.
+    const paragrafo = state.schema.nodes.paragraph;
+    const $fim = tr.doc.resolve(fim);
+    if (!depois && paragrafo && $fim.parent.canReplaceWith($fim.index(), $fim.index(), paragrafo)) {
+      tr.insert(fim, paragrafo.create());
+      depois = TextSelection.create(tr.doc, fim + 1);
+    }
+    if (depois) tr.setSelection(depois);
+  }
+  return tr;
+}
+
+function montarTroca(state: EditorState, id: string, tipo: NodeType, no: NoPM): Transaction {
   const tr = state.tr.setMeta(chaveUploads, { remover: id } satisfies Acao);
   const marcador = marcadorDe(state, id);
-  const no = tipo.create(attrs);
   if (!marcador) {
     inserirBloco(tr, state.doc.content.size, no);
     return tr;

@@ -136,8 +136,16 @@ function alternarMarca(editor: Editor, marca: Marca, focar: boolean): void {
   }
 }
 
+/**
+ * Lido no render da `Bolha`. Numa renderização fatiada, o `useEditor` do
+ * TipTap pode destruir a instância (o relógio de 1 ms de quem ainda não
+ * montou) entre a conferência do `BolhaFormato` e o render da `Bolha`: aí o
+ * `extensionManager` já é `null`, e o erro derrubava a renderização inteira
+ * (o React refazia tudo de forma síncrona). A passada seguinte vem com o
+ * editor novo.
+ */
 function temExtensao(editor: Editor, nome: string): boolean {
-  return editor.extensionManager.extensions.some(e => e.name === nome);
+  return !editor.isDestroyed && editor.extensionManager.extensions.some(e => e.name === nome);
 }
 
 // ---------- Link ----------

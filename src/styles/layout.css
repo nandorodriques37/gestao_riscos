@@ -182,6 +182,32 @@
   text-overflow: ellipsis;
 }
 
+/* A tecla desenhada não encolhe. Item flex com `min-width` próprio, ela cedia
+   antes do texto: com a migalha de "Anotações" a 761px, o "K" de "Ctrl K"
+   saía da tecla. */
+.header-paleta kbd {
+  flex: none;
+}
+
+/* Chip de autor no header: o nome cede com reticências. Sem teto, um nome de
+   40 letras espremia a busca até a tecla sair dela e, a 901 e a 1101px,
+   empurrava o seletor de tema para fora da tela (a página rolava de lado). O
+   nome inteiro continua no `title` e no nome acessível do botão. */
+.app-header .autor-chip {
+  max-width: 200px;
+}
+
+/* Com o teto, quem cede é só o nome — o círculo das iniciais não amassa. */
+.app-header .autor-avatar {
+  flex: none;
+}
+
+.app-header .autor-nome {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* Indicador de sincronização. O estado já existia em useRecords, mas só
    aparecia dentro do modal — num app de dados compartilhados ele pertence ao
    chrome. */

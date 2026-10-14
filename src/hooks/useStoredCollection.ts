@@ -206,6 +206,19 @@ export function useStoredCollection<T extends Stored, P extends object>(api: Ada
   }, [api, commit, confirm, flushOne]);
   /** Lista que veio do servidor por outro caminho (restauração): na tela e no cache confirmado. */
   const commitConfirmed = useCallback((next: T[]) => { commit(next); confirm(() => next); }, [commit, confirm]);
+  /**
+   * Só com `confirmedCache`: quem recebeu o texto recusado (`onRefused`)
+   * descartou-o. A lista volta à versão que o servidor confirmou e o estado de
+   * gravação sai de 'error' — sem isso, o texto descartado reaparecia ao
+   * reabrir o registro, com "tentando de novo" sem nada na fila, e subia na
+   * próxima edição. Com gravação deste registro na fila, não mexe em nada.
+   */
+  const discardRefused = useCallback((id: string) => {
+    if (!opts.current.confirmedCache || hasPendingWrite(id)) return;
+    const base = confirmed.current.find(r => r.id === id);
+    if (base && state.current.some(r => r.id === id && r !== base)) commit(state.current.map(r => r.id === id ? base : r));
+    setSaveStatus(s => (s[id] === 'error' || s[id] === 'conflict' ? { ...s, [id]: 'saved' } : s));
+  }, [commit, hasPendingWrite]);
   const clearError = useCallback(() => setError(null), []);
   useEffect(() => {
     mounted.current = true;
@@ -221,6 +234,6 @@ export function useStoredCollection<T extends Stored, P extends object>(api: Ada
   }, [hasPendingWrites]);
   return {
     items, loading, error, saveStatus, hasPendingWrites, hasPendingWrite,
-    update, saveNow, add, remove, refresh, flushPending, clearError, accept, commit: commitConfirmed,
+    update, saveNow, add, remove, refresh, flushPending, clearError, accept, commit: commitConfirmed, discardRefused,
   };
 }
