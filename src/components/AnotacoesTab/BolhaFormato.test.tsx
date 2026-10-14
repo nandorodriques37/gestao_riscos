@@ -11,7 +11,7 @@ import { BolhaFormato, MSG_LINK_RECUSADO } from './BolhaFormato';
 // tem lista própria, e é isso que o teste do link confere.
 import { linkPermitidoNoEditor } from '../../lib/links';
 
-const TEXTO = 'Polviztra no CD04 - Atrasado a 28 dias';
+const TEXTO = 'Relatório do depósito - Atrasado a 28 dias';
 
 let editorAtual: Editor | null = null;
 
@@ -25,7 +25,7 @@ function Banco() {
       }),
       Highlight.configure({ multicolor: false }),
     ],
-    content: `<p>${TEXTO}</p><hr><p>Ruptura FQM Farma</p>`,
+    content: `<p>${TEXTO}</p><hr><p>Falta de etiquetas</p>`,
     injectCSS: false,
   });
   editorAtual = editor;
@@ -43,7 +43,7 @@ function ed(): Editor {
   return editorAtual;
 }
 
-/** Foca o editor e seleciona "Polviztra" (posições 1–10). */
+/** Foca o editor e seleciona "Relatório" (posições 1–10). */
 async function selecionar(from = 1, to = 10) {
   await act(async () => {
     ed().view.focus();
@@ -112,7 +112,7 @@ it('Negrito liga e desliga a marca, e o aria-pressed acompanha', async () => {
 
   fireEvent.click(negrito);
   expect(ed().isActive('bold')).toBe(true);
-  expect(ed().getHTML()).toContain('<strong>Polviztra</strong>');
+  expect(ed().getHTML()).toContain('<strong>Relatório</strong>');
   await waitFor(() => expect(negrito.getAttribute('aria-pressed')).toBe('true'));
 
   fireEvent.click(negrito);
@@ -127,7 +127,7 @@ it('Destaque usa o marca-texto (Ctrl+Shift+H) e marca o botão', async () => {
   const destaque = screen.getByRole('button', { name: 'Destaque (Ctrl+Shift+H)' });
   expect(destaque.getAttribute('aria-keyshortcuts')).toBe('Control+Shift+H');
   fireEvent.click(destaque);
-  expect(ed().getHTML()).toContain('<mark>Polviztra</mark>');
+  expect(ed().getHTML()).toContain('<mark>Relatório</mark>');
   await waitFor(() => expect(destaque.getAttribute('aria-pressed')).toBe('true'));
 });
 
@@ -155,7 +155,7 @@ it('o campo do link recusa javascript: e aceita "www.exemplo.com" como https', a
   await usuario.type(campo, 'www.exemplo.com{Enter}');
   expect(screen.queryByRole('textbox', { name: 'Endereço do link' })).toBeNull();
   expect(ed().getHTML()).toContain('href="https://www.exemplo.com"');
-  expect(ed().state.doc.textBetween(1, 10)).toBe('Polviztra');
+  expect(ed().state.doc.textBetween(1, 10)).toBe('Relatório');
 
   // Seleção dentro do link: endereço legível, Abrir e Remover link.
   await esperarBarra();

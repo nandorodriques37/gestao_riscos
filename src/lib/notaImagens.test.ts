@@ -47,7 +47,7 @@ describe('imagens do documento', () => {
   const doc = {
     type: 'doc',
     content: [
-      { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'Pysha' }] },
+      { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'Projeto' }] },
       { type: 'image', attrs: { src: notaImagemUrl(NOTA, IMG), alt: 'print.png' } },
       {
         type: 'bulletList',

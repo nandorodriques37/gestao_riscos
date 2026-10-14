@@ -192,7 +192,7 @@ describe('menu "/"', () => {
     expect(editor.getJSON().content?.[0].type).toBe('orderedList');
     expect(texto(editor)).toBe('um ');
 
-    const titulo = montar('<h1>Hugo</h1>');
+    const titulo = montar('<h1>Ana</h1>');
     digitar(titulo.editor, ' /h1');
     tecla(titulo.dom, 'Enter');
     expect(titulo.editor.getJSON().content?.[0]).toMatchObject({ type: 'heading', attrs: { level: 1 } });

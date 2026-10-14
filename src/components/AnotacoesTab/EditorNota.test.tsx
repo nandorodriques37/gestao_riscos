@@ -79,11 +79,11 @@ afterEach(() => { cleanup(); vi.useRealTimers(); });
 it('abrir a página não chama onChange, nem pela normalização do documento', async () => {
   const onChange = vi.fn();
   // Termina num título: o TipTap acrescenta o parágrafo final ao abrir.
-  const conteudo = JSON.stringify({ type: 'doc', content: [{ type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'Hugo Braga' }] }] });
+  const conteudo = JSON.stringify({ type: 'doc', content: [{ type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'Rafael Costa' }] }] });
   const { container } = render(<EditorNota nota={nota(conteudo)} recarregar={0} onChange={onChange} />);
   await aposCriar();
   const editor = editorDe(container);
-  expect(editor.getText()).toContain('Hugo Braga');
+  expect(editor.getText()).toContain('Rafael Costa');
   editor.commands.focus('end');
   editor.commands.blur();
   await act(async () => { await new Promise(r => setTimeout(r, 350)); });
