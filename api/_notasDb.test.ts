@@ -38,9 +38,18 @@ async function subir(notaId: string): Promise<NotaImagem> {
   return r.imagem;
 }
 
-/** Faz a imagem parecer antiga o bastante para a varredura. */
-async function envelhecer(id: string, horas = 25) {
+/** Faz a imagem parecer fora do documento há `horas`. */
+async function foraHa(id: string, horas = 25) {
+  await sql(`update nota_imagens set orfa_desde = now() - make_interval(hours => $2) where id = $1`, [id, horas]);
+}
+
+/** Faz o upload parecer antigo — não pode, sozinho, condenar a imagem. */
+async function subiuHa(id: string, horas: number) {
   await sql(`update nota_imagens set created_at = now() - make_interval(hours => $2) where id = $1`, [id, horas]);
+}
+
+async function existe(notaId: string, id: string) {
+  return (await lerImagemNota(sql, notaId, id)) !== null;
 }
 
 describe('notas — a entidade', () => {
@@ -131,51 +140,81 @@ describe('imagens da página', () => {
 });
 
 describe('varredura de imagens sem citação', () => {
-  it('apaga só a órfã antiga; mantém a citada, a recente e as de outra página', async () => {
+  it('o prazo corre desde que a imagem saiu do documento, não desde o upload', async () => {
+    const n = await novaNota();
+    const img = await subir(n.id);
+    await subiuHa(img.id, 48);
+    const comImagem = await notas.update(sql, n.id, { conteudo: doc(imagem(n.id, img.id)) });
+    expect(comImagem.status).toBe('ok');
+    // Removida agora (colada anteontem): continua guardada para o Ctrl+Z.
+    await notas.update(sql, n.id, { conteudo: doc(paragrafo('sem imagem')) });
+    expect(await existe(n.id, img.id)).toBe(true);
+    // Ctrl+Z: volta a ser citada e o relógio zera.
+    await notas.update(sql, n.id, { conteudo: doc(imagem(n.id, img.id)) });
+    const linha = await sql('select orfa_desde from nota_imagens where id = $1', [img.id]);
+    expect(linha[0].orfa_desde).toBeNull();
+    expect(await existe(n.id, img.id)).toBe(true);
+  });
+
+  it('apaga só o que está fora do documento há mais de um dia, e só desta página', async () => {
     const n = await novaNota();
     const outra = await novaNota('Outra');
     const citada = await subir(n.id);
-    const orfaVelha = await subir(n.id);
-    const orfaNova = await subir(n.id);
+    const foraVelha = await subir(n.id);
+    const foraNova = await subir(n.id);
     const deOutra = await subir(outra.id);
-    await envelhecer(citada.id);
-    await envelhecer(orfaVelha.id);
-    await envelhecer(deOutra.id);
+    await varrerImagensOrfas(sql, n.id, doc(imagem(n.id, citada.id)));
+    await foraHa(foraVelha.id);
+    await foraHa(deOutra.id);
 
-    const apagadas = await varrerImagensOrfas(sql, n.id, doc(imagem(n.id, citada.id)));
-    expect(apagadas).toBe(1);
-    const restantes = (await sql('select id from nota_imagens where nota_id in ($1, $2)', [n.id, outra.id])).map(r => r.id);
-    expect(restantes.sort()).toEqual([citada.id, orfaNova.id, deOutra.id].sort());
+    expect(await varrerImagensOrfas(sql, n.id, doc(imagem(n.id, citada.id)))).toBe(1);
+    expect(await existe(n.id, citada.id)).toBe(true);
+    expect(await existe(n.id, foraVelha.id)).toBe(false);
+    expect(await existe(n.id, foraNova.id)).toBe(true);
+    expect(await existe(outra.id, deOutra.id)).toBe(true);
   });
 
-  it('documento vazio ou ilegível não apaga nada', async () => {
+  it('documento vazio ou ilegível não mexe em nada', async () => {
     const n = await novaNota();
     const img = await subir(n.id);
-    await envelhecer(img.id);
+    await foraHa(img.id);
     expect(await varrerImagensOrfas(sql, n.id, '')).toBe(0);
     expect(await varrerImagensOrfas(sql, n.id, 'lixo')).toBe(0);
-    expect(await lerImagemNota(sql, n.id, img.id)).not.toBeNull();
+    expect(await existe(n.id, img.id)).toBe(true);
+    const nova = await subir(n.id);
+    await varrerImagensOrfas(sql, n.id, '');
+    expect((await sql('select orfa_desde from nota_imagens where id = $1', [nova.id]))[0].orfa_desde).toBeNull();
   });
 
   it('roda quando a gravação traz o documento, e só então', async () => {
     const n = await novaNota();
     const img = await subir(n.id);
-    await envelhecer(img.id);
     const soFixar = await notas.update(sql, n.id, { fixada: true }, n.version);
     expect(soFixar.status).toBe('ok');
-    expect(await lerImagemNota(sql, n.id, img.id)).not.toBeNull();
-    const semImagem = await notas.update(sql, n.id, { conteudo: doc(paragrafo('sem imagem')) });
-    expect(semImagem.status).toBe('ok');
-    expect(await lerImagemNota(sql, n.id, img.id)).toBeNull();
+    expect((await sql('select orfa_desde from nota_imagens where id = $1', [img.id]))[0].orfa_desde).toBeNull();
+    await notas.update(sql, n.id, { conteudo: doc(paragrafo('sem imagem')) });
+    expect(await existe(n.id, img.id)).toBe(true);
+    await foraHa(img.id);
+    await notas.update(sql, n.id, { conteudo: doc(paragrafo('ainda sem imagem')) });
+    expect(await existe(n.id, img.id)).toBe(false);
   });
 
   it('conflito de versão não varre', async () => {
     const n = await novaNota();
     const img = await subir(n.id);
-    await envelhecer(img.id);
+    await foraHa(img.id);
     await notas.update(sql, n.id, { fixada: true }, n.version);
     const r = await notas.update(sql, n.id, { conteudo: doc(paragrafo('x')) }, n.version);
     expect(r.status).toBe('conflict');
-    expect(await lerImagemNota(sql, n.id, img.id)).not.toBeNull();
+    expect(await existe(n.id, img.id)).toBe(true);
+  });
+
+  it('usa o id da linha: uuid sem hífens na URL não descarta as citadas', async () => {
+    const n = await novaNota();
+    const img = await subir(n.id);
+    await foraHa(img.id);
+    const r = await notas.update(sql, n.id.replace(/-/g, ''), { conteudo: doc(imagem(n.id, img.id)) });
+    expect(r.status).toBe('ok');
+    expect(await existe(n.id, img.id)).toBe(true);
   });
 });

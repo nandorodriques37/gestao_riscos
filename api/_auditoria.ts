@@ -123,7 +123,8 @@ function rotuloDe(tabela: string, registro: Registro | null): string {
     const v = ler(registro, c);
     if (typeof v === 'string' && v.trim()) return v.trim().slice(0, 120);
   }
-  return '';
+  // Página nasce sem título; "excluiu página · " não diria qual.
+  return tabela === 'notas' ? 'Sem título' : '';
 }
 
 /** Valor como texto, para caber numa coluna só sem perder o sentido. */

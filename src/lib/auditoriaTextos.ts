@@ -44,6 +44,7 @@ export const ROTULO_TABELA: Record<string, string> = {
   marcos: 'marco',
   acoes_risco: 'ação',
   pessoas: 'pessoa',
+  notas: 'página',
 };
 
 /** Campos em reais. Aqui vai o valor cheio: o resumido ("R$ 1,2 mi") não serve

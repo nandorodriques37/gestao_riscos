@@ -44,7 +44,9 @@ Os `.dc.html` são **referência de design, não código de produção**. Recrie
   página), entram por `POST` e saem por `GET` com cache imutável e `nosniff`
   (`api/_notaImagensRoute.ts`), como os anexos. Não há DELETE: remover o bloco é
   edição desfazível, então a imagem só sai pela varredura (`varrerImagensOrfas`,
-  a cada gravação com `conteudo`) depois de **24 h** sem citação. Documento
+  a cada gravação com `conteudo`) depois de **24 h fora do documento** —
+  contadas de quando saiu (`orfa_desde`), nunca do upload, senão a imagem
+  colada anteontem morre na mesma gravação que a removeu e o Ctrl+Z volta vazio. Documento
   vazio ou ilegível nunca varre. A validação de formato e teto é uma só
   (`validarImagem`), com a lista de cada lado: notas sem AVIF.
 - **Portfólio (objetivo → iniciativa → marco):** seis entidades (`pessoas`, `objetivos`, `medicoes`, `iniciativas`, `marcos`, `acoes_risco`) sobre a fábrica genérica `api/_table.ts`, atendidas por `api/_portfolioRoute.ts` através do roteador único. Não recriar uma entrada de função por profundidade: os antigos PATCH/DELETE que falhavam na borda agora mantêm a URL pública via rewrite, sem catch-all de arquivos. O front lê o pacote por `GET /api/portfolio` e `usePortfolio`; as métricas são funções puras em `src/lib/portfolioMetrics.ts`. Regra de integridade nova entra em **`validarEntidade`** (`api/_portfolioDb.ts`), compartilhada pelos dois ambientes.

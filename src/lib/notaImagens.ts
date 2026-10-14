@@ -67,16 +67,21 @@ export interface ImagemDoDoc {
   alt: unknown;
 }
 
-/** Imagens na ordem em que aparecem no documento, inclusive dentro de listas. */
+/**
+ * Imagens na ordem em que aparecem no documento, inclusive dentro de listas.
+ * Pilha explícita, sem recursão: um documento aninhado de propósito estouraria
+ * a pilha do servidor bem abaixo do teto de tamanho e viraria 500.
+ */
 export function imagensDoDoc(doc: NoDoc | null): ImagemDoDoc[] {
   const out: ImagemDoDoc[] = [];
-  const visitar = (no: unknown) => {
-    if (!no || typeof no !== 'object') return;
+  const pilha: unknown[] = [doc];
+  while (pilha.length > 0) {
+    const no = pilha.pop();
+    if (!no || typeof no !== 'object') continue;
     const n = no as NoDoc;
     if (n.type === 'image') out.push({ src: n.attrs?.src, alt: n.attrs?.alt });
-    if (Array.isArray(n.content)) n.content.forEach(visitar);
-  };
-  visitar(doc);
+    if (Array.isArray(n.content)) for (let i = n.content.length - 1; i >= 0; i--) pilha.push(n.content[i]);
+  }
   return out;
 }
 
@@ -88,9 +93,4 @@ export function imagensCitadas(doc: NoDoc | null, notaId: string): Set<string> {
     if (id) ids.add(id);
   }
   return ids;
-}
-
-/** Imagens guardadas que o documento não cita mais. */
-export function orfas(guardadas: readonly string[], citadas: ReadonlySet<string>): string[] {
-  return guardadas.filter(id => !citadas.has(id.toLowerCase()));
 }

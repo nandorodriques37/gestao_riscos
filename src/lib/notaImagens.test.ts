@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  ehSrcDaNota, ehUuid, imagemIdDoSrc, imagensCitadas, imagensDoDoc, lerDoc, notaImagemUrl, orfas,
+  ehSrcDaNota, ehUuid, imagemIdDoSrc, imagensCitadas, imagensDoDoc, lerDoc, notaImagemUrl,
 } from './notaImagens';
 
 const NOTA = '3b8a5924-3580-40b6-b02d-c8fec9f80cb5';
@@ -67,10 +67,9 @@ describe('imagens do documento', () => {
     expect(imagensCitadas(doc, OUTRA).size).toBe(0);
   });
 
-  it('órfã é a guardada que o documento não cita', () => {
-    const citadas = imagensCitadas(doc, NOTA);
-    expect(orfas([IMG, IMG2, OUTRA], citadas)).toEqual([OUTRA]);
-    expect(orfas([IMG.toUpperCase()], citadas)).toEqual([]);
-    expect(orfas([], citadas)).toEqual([]);
+  it('percorre documento muito aninhado sem estourar a pilha', () => {
+    let no: Record<string, unknown> = { type: 'image', attrs: { src: notaImagemUrl(NOTA, IMG) } };
+    for (let i = 0; i < 50_000; i++) no = { type: 'bulletList', content: [no] };
+    expect(imagensDoDoc({ type: 'doc', content: [no] })).toHaveLength(1);
   });
 });

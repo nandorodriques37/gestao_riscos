@@ -11,12 +11,14 @@
 //
 // Ninguém apaga imagem quando o bloco sai do documento: remover é edição comum,
 // que o Ctrl+Z desfaz. Quem limpa é o cascade (página excluída) e a varredura
-// abaixo, que só leva imagem sem citação há mais de um dia.
+// abaixo, que só leva imagem sem citação há mais de um dia — contado de quando
+// ela SAIU do documento (`orfa_desde`), não de quando subiu: medir pelo upload
+// apagava na mesma gravação qualquer imagem colada anteontem.
 import type { Sql } from './_db.js';
 import { makeTable, type Tabela } from './_table.js';
 import { validarImagem, type NewAttachment } from './_attachmentsDb.js';
 import {
-  MIMES_NOTA, HORAS_ATE_VARRER, ehUuid, imagemIdDoSrc, imagensDoDoc, imagensCitadas, lerDoc, orfas,
+  MIMES_NOTA, HORAS_ATE_VARRER, ehUuid, imagemIdDoSrc, imagensDoDoc, imagensCitadas, lerDoc,
 } from '../src/lib/notaImagens.js';
 import type { Nota, NotaImagem } from '../src/types.js';
 
@@ -52,35 +54,48 @@ export async function ensureNotasSchema(sql: Sql): Promise<void> {
       tamanho    integer not null default 0,
       dados      text not null,
       autor      text not null default '',
-      created_at timestamptz not null default now()
+      created_at timestamptz not null default now(),
+      orfa_desde timestamptz
     )
   `);
+  await sql('alter table nota_imagens add column if not exists orfa_desde timestamptz');
   // Toda leitura e a varredura filtram por página.
   await sql('create index if not exists nota_imagens_nota_id_idx on nota_imagens (nota_id)');
 }
 
 /**
- * Imagens desta página que o documento não cita e que já passaram do prazo.
+ * Acerta o relógio de cada imagem pela gravação que acabou de acontecer e
+ * apaga as que estão fora do documento há mais de `HORAS_ATE_VARRER`.
+ *
+ * Citada → `orfa_desde` volta a nulo (o Ctrl+Z que a trouxe de volta zera o
+ * prazo). Fora do documento → o relógio começa agora, se ainda não corria.
+ * Só então sai o que passou do prazo — e só desta página.
  *
  * Melhor esforço: a página já foi gravada quando isto roda, e falhar aqui só
- * adia a limpeza para a próxima gravação. Documento ilegível ou vazio não
- * varre nada — um cliente com defeito mandando `''` não pode apagar as imagens
- * de ninguém.
+ * adia a limpeza para a próxima gravação. Documento ilegível ou vazio não mexe
+ * em nada — um cliente com defeito mandando `''` não pode apagar as imagens de
+ * ninguém nem disparar o relógio delas.
  */
 export async function varrerImagensOrfas(sql: Sql, notaId: string, conteudo: unknown): Promise<number> {
   try {
     const doc = lerDoc(conteudo);
     if (!doc) return 0;
-    const velhas = await sql(
-      `select id from nota_imagens
-       where nota_id = $1 and created_at < now() - make_interval(hours => $2)`,
-      [notaId, HORAS_ATE_VARRER],
+    const citadas = [...imagensCitadas(doc, notaId)];
+    await sql(
+      'update nota_imagens set orfa_desde = null where nota_id = $1 and id = any($2::uuid[]) and orfa_desde is not null',
+      [notaId, citadas],
     );
-    const apagar = orfas(velhas.map(r => String(r.id)), imagensCitadas(doc, notaId));
-    if (apagar.length === 0) return 0;
+    await sql(
+      `update nota_imagens set orfa_desde = now()
+       where nota_id = $1 and not (id = any($2::uuid[])) and orfa_desde is null`,
+      [notaId, citadas],
+    );
     const rows = await sql(
-      'delete from nota_imagens where nota_id = $1 and id = any($2::uuid[]) returning id',
-      [notaId, apagar],
+      `delete from nota_imagens
+       where nota_id = $1 and not (id = any($2::uuid[]))
+         and orfa_desde < now() - make_interval(hours => $3)
+       returning id`,
+      [notaId, citadas, HORAS_ATE_VARRER],
     );
     return rows.length;
   } catch (err) {
@@ -106,7 +121,9 @@ export const notas: Tabela<Nota> = {
   async update(sql, id, patch, expectedVersion) {
     const result = await notasBase.update(sql, id, patch, expectedVersion);
     if (result.status === 'ok' && 'conteudo' in patch) {
-      await varrerImagensOrfas(sql, id, result.item.conteudo);
+      // O id da linha, não o da URL: o Postgres aceita uuid sem hífens, e a
+      // comparação com o `src` do documento é textual.
+      await varrerImagensOrfas(sql, result.item.id, result.item.conteudo);
     }
     return result;
   },
