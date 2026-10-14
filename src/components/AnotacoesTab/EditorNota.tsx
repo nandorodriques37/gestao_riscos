@@ -7,7 +7,7 @@ import { TaskItem, TaskList } from '@tiptap/extension-list';
 import { Highlight } from '@tiptap/extension-highlight';
 import { Placeholder } from '@tiptap/extensions';
 import type { Node as NoPM, Schema } from '@tiptap/pm/model';
-import { EditorState, Selection } from '@tiptap/pm/state';
+import { EditorState, NodeSelection, Selection } from '@tiptap/pm/state';
 import type { EditorView } from '@tiptap/pm/view';
 import type { Nota } from '../../types';
 import { imagemIdDoSrc, imagensDoDoc, lerDoc, notaImagemUrl, type NoDoc } from '../../lib/notaImagens';
@@ -257,11 +257,13 @@ export function EditorNota({ nota, recarregar, onChange, onUploads, autoFocus }:
    * O documento que acabou de ser carregado é o "gravado": a normalização do
    * TipTap (o parágrafo final que o TrailingNode acrescenta) acontece aqui,
    * fora do desfazer e sem evento de mudança, e o resultado vira a referência.
-   * Abrir uma página nunca grava nada, nem `editado_por`.
+   * Abrir uma página nunca grava nada, nem `editado_por`. `soltarBloco`: a
+   * seleção de bloco que o ProseMirror inventou ao abrir vira cursor
+   * (`semBlocoSelecionado`); falso quando foi a pessoa que escolheu o bloco.
    */
-  function normalizar(editor: Editor) {
+  function normalizar(editor: Editor, soltarBloco = true) {
     const tr = editor.state.tr;
-    const selecao = semBlocoSelecionado(tr.selection);
+    const selecao = soltarBloco ? semBlocoSelecionado(tr.selection) : tr.selection;
     if (selecao !== tr.selection) tr.setSelection(selecao);
     editor.view.dispatch(tr.setMeta('addToHistory', false).setMeta('preventUpdate', true));
     docRef.current = editor.state.doc;
@@ -667,6 +669,9 @@ export function EditorNota({ nota, recarregar, onChange, onUploads, autoFocus }:
     if (!ed || ed.isDestroyed) return;
     cancelarRitmo();
     const marcadores = marcadoresDe(ed.state);
+    // A imagem que a pessoa selecionou continua selecionada; só a seleção de
+    // bloco que o `Selection.near` inventou é solta.
+    const blocoEscolhido = ed.state.selection instanceof NodeSelection;
     const lido = docDoConteudo(ed.schema, notaRef.current.conteudo);
     // A versão do servidor tem bloco que este editor não lê: nada da tela vira
     // edição por cima dela. A página fica em branco, só para leitura.
@@ -679,7 +684,7 @@ export function EditorNota({ nota, recarregar, onChange, onUploads, autoFocus }:
     conteudoAbertoRef.current = notaRef.current.conteudo;
     if (lido) {
       destravar(ed);
-      normalizar(ed);
+      normalizar(ed, !blocoEscolhido);
       prontoRef.current = true;
     } else {
       travar(ed);

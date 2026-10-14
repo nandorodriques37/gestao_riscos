@@ -3,6 +3,7 @@ import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeAll, beforeEach, expect, it, vi } from 'vitest';
 import type { Editor } from '@tiptap/react';
 import { GapCursor } from '@tiptap/pm/gapcursor';
+import { NodeSelection } from '@tiptap/pm/state';
 import type { Nota, NotaImagem } from '../../types';
 
 // O envio e o preparo saem da rede e do canvas: aqui são falsos controlados.
@@ -581,6 +582,24 @@ it('página que começa com imagem abre sem a imagem selecionada, e a primeira t
   act(() => { editor.view.focus(); editor.commands.insertContent('abc'); });
   expect((editor.getJSON().content ?? []).map(b => b.type)).toEqual(['paragraph', 'image', 'bulletList', 'paragraph']);
   expect(editor.getText()).toMatch(/^abc/);
+});
+
+it('a imagem que a pessoa selecionou continua selecionada quando a versão de outra pessoa chega', async () => {
+  const comImagemNoMeio = (fim: string) => JSON.stringify({ type: 'doc', content: [
+    { type: 'paragraph', content: [{ type: 'text', text: 'Antes' }] },
+    { type: 'image', attrs: { src: `/api/notas/${NOTA_ID}/imagens/${IMG_ID}`, alt: 'print.png' } },
+    { type: 'paragraph', content: [{ type: 'text', text: fim }] },
+  ] });
+  const { container, rerender } = render(<EditorNota nota={nota(comImagemNoMeio('Depois'))} recarregar={0} onChange={vi.fn()} />);
+  await aposCriar();
+  const editor = editorDe(container);
+  act(() => { editor.commands.setNodeSelection(7); });
+  expect(editor.state.selection).toBeInstanceOf(NodeSelection);
+
+  rerender(<EditorNota nota={nota(comImagemNoMeio('Depois, editado'))} recarregar={1} onChange={vi.fn()} />);
+  expect(editor.getText()).toContain('Depois, editado');
+  expect(editor.state.selection).toBeInstanceOf(NodeSelection);
+  expect(editor.state.selection.from).toBe(7);
 });
 
 it('"Imagem indisponível" oferece Tentar de novo, que pede o arquivo outra vez, e não afirma perda', async () => {
