@@ -52,7 +52,7 @@ function paginas(): Nota[] {
     {
       id: 'n1', version: 4, updated_at: minutosAntes(5), titulo: 'Triagem', fixada: true,
       autor: 'Derylson', editado_por: 'Derylson',
-      conteudo: docDeTexto('Meus\nRevisar com a Ana o painel de vendas;\nLigar para os fornecedores atrasados;'),
+      conteudo: docDeTexto('Meus\nRevisar com a Ana o relatório de vendas;\nLigar para os fornecedores atrasados;'),
     },
     {
       id: 'n3', version: 1, updated_at: new Date(2026, 9, 8, 16, 0).toISOString(), titulo: 'Estoque parado no depósito', fixada: false,
@@ -219,7 +219,7 @@ it('a busca casa título e texto sem acento e sem caixa, e o vazio diz o que foi
   expect(titulosNaLista()).toEqual(['Reunião regional']);
   expect(screen.getByRole('button', { name: /^Todas/ }).textContent).toBe('Todas1');
 
-  fireEvent.change(busca(), { target: { value: 'PAINEL' } });
+  fireEvent.change(busca(), { target: { value: 'RELATORIO' } });
   expect(titulosNaLista()).toEqual(['Triagem']);
 
   fireEvent.change(busca(), { target: { value: 'plantão domingo' } });

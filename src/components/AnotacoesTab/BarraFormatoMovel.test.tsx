@@ -48,7 +48,7 @@ afterEach(() => {
 // ---------- A página ----------
 
 const NOTA_ID = '11111111-1111-4111-8111-111111111111';
-const TEXTO = 'Relatório do depósito - Atrasado a 28 dias';
+const TEXTO = 'Relatório do depósito - prazo vencido';
 
 function doc(...paragrafos: string[]): string {
   return JSON.stringify({

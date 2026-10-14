@@ -11,7 +11,7 @@ import { BolhaFormato, MSG_LINK_RECUSADO } from './BolhaFormato';
 // tem lista própria, e é isso que o teste do link confere.
 import { linkPermitidoNoEditor } from '../../lib/links';
 
-const TEXTO = 'Relatório do depósito - Atrasado a 28 dias';
+const TEXTO = 'Relatório do depósito - prazo vencido';
 
 let editorAtual: Editor | null = null;
 

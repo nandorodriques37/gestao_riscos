@@ -36,7 +36,7 @@ function montar(itens: ItemPaleta[], abrir = abertura()) {
 }
 
 const PAGINA_TRIAGEM: ItemPaleta = {
-  tipo: 'nota', id: 'n-triagem', rotulo: 'Triagem', sub: 'Meus · Revisar com a Ana o painel de vendas',
+  tipo: 'nota', id: 'n-triagem', rotulo: 'Triagem', sub: 'Meus · Revisar com a Ana o relatório de vendas',
 };
 
 it('lista a página com o tipo escrito, e a página "Triagem" não se confunde com a aba Triagem', () => {
@@ -65,7 +65,7 @@ it('lista a página com o tipo escrito, e a página "Triagem" não se confunde c
 
 it('acha a página pelo começo do texto, não só pelo título', () => {
   const { buscar } = montar([PAGINA_TRIAGEM]);
-  buscar('vendas');
+  buscar('relatorio');
   expect(screen.getAllByRole('option').map(o => o.id)).toEqual(['paleta-nota:n-triagem']);
 });
 
