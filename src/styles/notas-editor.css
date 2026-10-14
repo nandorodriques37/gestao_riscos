@@ -350,9 +350,21 @@
   opacity: 1;
 }
 
-/* Sem mouse não há hover: a barra fica sempre à vista (idioma de .anexo-remover). */
+/* Sem mouse não há hover: a barra fica sempre à vista (idioma de .anexo-remover),
+   mas FORA da imagem — por cima, ela cobria quase metade do topo de cada print.
+   Logo abaixo, à direita, só os ícones: sem cartão, sem sombra. */
 @media (hover: none) {
-  .nota-imagem-barra { opacity: 1; }
+  .nota-imagem-barra {
+    position: static;
+    justify-content: flex-end;
+    padding: 0;
+    background: none;
+    border: 0;
+    box-shadow: none;
+    opacity: 1;
+  }
+
+  .nota-imagem-barra > .nota-imagem-btn { color: var(--ink-3); }
 }
 
 .nota-imagem-btn {
