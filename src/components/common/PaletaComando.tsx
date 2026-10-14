@@ -8,11 +8,12 @@ import { useBloqueioDeRolagem } from '../../hooks/useBloqueioDeRolagem';
 /**
  * Paleta de comando: Ctrl/⌘+K.
  *
- * Um app com sete seções, dezenas de iniciativas, sessenta riscos e mais de
- * cem tarefas não tinha busca global — cada aba tinha a sua, e ir de um risco
- * a uma iniciativa era três cliques. A paleta indexa os destinos (a mesma
- * lista do trilho), os registros das quatro camadas, as pessoas e as páginas
- * da aba Anotações, e abre qualquer um.
+ * Um app com oito destinos (nove enquanto a Triagem da migração existe),
+ * dezenas de iniciativas, sessenta riscos e mais de cem tarefas não tinha
+ * busca global — cada aba tinha a sua, e ir de um risco a uma iniciativa era
+ * três cliques. A paleta indexa os destinos (a mesma lista do trilho,
+ * `NavRail/secoes.tsx`), os registros das quatro camadas, as pessoas e as
+ * páginas da aba Anotações, e abre qualquer um.
  *
  * Portal no <body>, `role="dialog"`, foco no campo ao abrir e devolvido ao
  * fechar, ↑↓ navegam, Enter abre, Esc fecha. Não usa o ModalShell porque a

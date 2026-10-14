@@ -39,6 +39,14 @@ export interface AnotacoesTabProps {
   onSelecionar: (id: string | null, opcoes?: { substituir?: boolean }) => Promise<boolean>;
 }
 
+/**
+ * Página pedida pela URL que a lista desta tela não tem: o link que alguém
+ * acabou de mandar, de uma página criada depois da última leitura. A tela
+ * relê uma vez antes de dizer que ela não existe — e, nesse meio-tempo, não
+ * escolhe outra página no lugar (a URL pedida seria trocada pela primeira).
+ */
+interface Conferencia { id: string; fase: 'conferindo' | 'feita' }
+
 /** O que está na tela da página aberta — pode estar à frente da lista (conflito). */
 interface TextoNaTela { id: string; titulo: string; conteudo: string }
 
@@ -54,6 +62,9 @@ interface Retida { id: string; motivo: MotivoNaoSalvo }
  * que ficou na fila continua no hook, e uma recusa depois disso vira aviso.
  */
 const ESPERA_AO_SAIR = 3000;
+
+/** O que a tela diz quando a página pedida pelo link não veio nem depois de reler. */
+const PAGINA_INEXISTENTE = 'Esta página não existe mais ou foi excluída.';
 
 /** O que sair agora descarta, por motivo da recusa. */
 const SAIR_DESCARTA: Record<MotivoNaoSalvo, string> = {
@@ -84,14 +95,20 @@ function semImagens(conteudo: string): string {
 }
 
 /**
- * Lista e página lado a lado só acima de 760px. Abaixo, a lista É a tela e a
- * página abre por cima dela: escolher a primeira página sozinho ali faria o
- * "‹ Páginas" virar um botão que não sai do lugar. Sem `matchMedia` (testes,
+ * Lista e página lado a lado só acima de 960px — o mesmo corte de notas.css,
+ * que é quem esconde um dos lados. Abaixo, a lista É a tela e a página abre
+ * por cima dela: escolher a primeira página sozinho ali faria o "‹ Páginas"
+ * virar um botão que não sai do lugar. Sem `matchMedia` (testes,
  * pré-renderização), vale a tela larga.
+ *
+ * Por que 960 e não 760: com o rail de 76px, as duas colunas deixavam o texto
+ * com ~33 caracteres por linha a 761px e ~46 a 901px. Daqui para baixo a
+ * página fica sozinha (~68 a 761px); a 961px, já com a lista, ~55.
  */
+const DUAS_COLUNAS = '(min-width: 961px)';
 function telaLarga(): boolean {
   return typeof window === 'undefined' || typeof window.matchMedia !== 'function'
-    || window.matchMedia('(min-width: 761px)').matches;
+    || window.matchMedia(DUAS_COLUNAS).matches;
 }
 
 /**
@@ -149,28 +166,59 @@ export function AnotacoesTab({ notas, autor, onPedirNome, selecionada, onSelecio
   const autorRef = useRef(autor);
   useLayoutEffect(() => { api.current = notas; autorRef.current = autor; });
 
+  /**
+   * A última versão confirmada de cada página, lida da lista em cada
+   * renderização em que a linha É o que o servidor confirmou: sem gravação
+   * na fila, sem texto retido, e o estado salvo (ou nunca editado, ou a
+   * versão do servidor que o 409 trouxe). Serve à lista: a edição otimista
+   * que o servidor recusou (um 400 de limite) fica na linha até alguém
+   * decidir, e a lista a anunciava como se fosse da página.
+   */
+  const confirmadas = useRef(new Map<string, Nota>());
+  useLayoutEffect(() => {
+    for (const n of lista) {
+      const status = notas.saveStatus[n.id];
+      if (status !== undefined && status !== 'saved' && status !== 'conflict') continue;
+      if (notas.naoSalvas.has(n.id) || notas.hasPendingWrite(n.id)) continue;
+      confirmadas.current.set(n.id, n);
+    }
+  });
+
   /* ---------------------------------------------------------------------- */
   /* Lista: busca, recorte, ordem                                           */
   /* ---------------------------------------------------------------------- */
 
+  // A lista mostra o que o servidor tem. A página com texto retido (recusado,
+  // ou de uma página que outra pessoa excluiu) aparece na versão confirmada
+  // enquanto a linha ainda for a mesma versão; o editor continua com o texto
+  // da tela. No 409 a linha já é a do servidor, mais nova, e passa direto.
+  const naLista = useMemo(() => {
+    if (notas.naoSalvas.size === 0) return lista;
+    return lista.map(n => {
+      const c = notas.naoSalvas.has(n.id) ? confirmadas.current.get(n.id) : undefined;
+      if (!c || c.version !== n.version) return n;
+      if (c.titulo === n.titulo && c.conteudo === n.conteudo && c.editado_por === n.editado_por) return n;
+      return { ...n, titulo: c.titulo, conteudo: c.conteudo, editado_por: c.editado_por };
+    });
+  }, [lista, notas.naoSalvas]);
   const visiveis = useMemo(
-    () => ordenarNotas(filtrarNotas(lista, { busca, recorte, autor })),
-    [lista, busca, recorte, autor],
+    () => ordenarNotas(filtrarNotas(naLista, { busca, recorte, autor })),
+    [naLista, busca, recorte, autor],
   );
   const contagens = useMemo<Record<RecorteNotas, number>>(() => ({
-    todas: filtrarNotas(lista, { busca, recorte: 'todas', autor }).length,
-    minhas: filtrarNotas(lista, { busca, recorte: 'minhas', autor }).length,
-  }), [lista, busca, autor]);
+    todas: filtrarNotas(naLista, { busca, recorte: 'todas', autor }).length,
+    minhas: filtrarNotas(naLista, { busca, recorte: 'minhas', autor }).length,
+  }), [naLista, busca, autor]);
   const fixadas = useMemo(() => visiveis.filter(n => n.fixada), [visiveis]);
   const recentes = useMemo(() => visiveis.filter(n => !n.fixada), [visiveis]);
-  const { titulo, subtitulo } = tituloDaAba(lista, agora);
+  const { titulo, subtitulo } = tituloDaAba(naLista, agora);
   const visiveisRef = useRef(visiveis);
   useLayoutEffect(() => { visiveisRef.current = visiveis; });
 
-  // Id que não existe (página excluída, link velho) é o mesmo que nenhum —
-  // menos quando o texto de quem escrevia nela só existe na tela: a página
-  // excluída por outra pessoa continua aberta, a partir do texto guardado,
-  // até a pessoa recriar ou descartar.
+  // Id que a lista não tem: a página foi excluída, ou é nova e esta tela ainda
+  // não leu (ver `Conferencia`) — menos quando o texto de quem escrevia nela
+  // só existe na tela: a página excluída por outra pessoa continua aberta, a
+  // partir do texto guardado, até a pessoa recriar ou descartar.
   const daLista = selecionada ? lista.find(n => n.id === selecionada) ?? null : null;
   const orfa = selecionada && !daLista ? notas.naoSalvas.get(selecionada) : undefined;
   const aberta = daLista ?? orfa?.nota ?? null;
@@ -183,6 +231,17 @@ export function AnotacoesTab({ notas, autor, onPedirNome, selecionada, onSelecio
     () => [...notas.naoSalvas].filter(([id]) => id !== abertaId),
     [notas.naoSalvas, abertaId],
   );
+
+  // A conferência vale para UM id: trocar de seleção a esquece, e voltar ao
+  // mesmo link relê de novo (a página pode ter sido criada nesse meio-tempo).
+  const [conferencia, setConferencia] = useState<Conferencia | null>(null);
+  if (conferencia && conferencia.id !== selecionada) setConferencia(null);
+  const desconhecida = selecionada && !aberta ? selecionada : null;
+  /** Relendo, ou a leitura inicial ainda não chegou: a página pode estar a caminho. */
+  const procurando = desconhecida !== null
+    && (notas.loading || conferencia?.id !== desconhecida || conferencia.fase === 'conferindo');
+  /** Relida, e a página não veio. */
+  const inexistente = desconhecida !== null && !procurando;
 
   /* ---------------------------------------------------------------------- */
   /* Página aberta: texto na tela, conflito, recarga                         */
@@ -369,15 +428,39 @@ export function AnotacoesTab({ notas, autor, onPedirNome, selecionada, onSelecio
   /* Seleção                                                                 */
   /* ---------------------------------------------------------------------- */
 
-  // Escolha automática da primeira página, só com as duas colunas na tela.
+  // Página pedida que a lista não tem: relê uma vez antes de desistir dela. A
+  // gravação na fila vai antes, com o mesmo teto da saída — o hook não relê
+  // por cima de quem digita, e a releitura pulada diria "não existe" à toa.
+  useEffect(() => {
+    if (!desconhecida || notas.loading || conferencia?.id === desconhecida) return;
+    const id = desconhecida;
+    setConferencia({ id, fase: 'conferindo' });
+    void (async () => {
+      let relogio: ReturnType<typeof setTimeout> | undefined;
+      try {
+        if (api.current.hasPendingWrites()) {
+          const teto = new Promise<void>(resolve => { relogio = setTimeout(resolve, ESPERA_AO_SAIR); });
+          await Promise.race([api.current.flushPending(), teto]);
+        }
+        await api.current.refresh();
+      } finally {
+        clearTimeout(relogio);
+        setConferencia(c => (c?.id === id ? { id, fase: 'feita' } : c));
+      }
+    })();
+  }, [desconhecida, notas.loading, conferencia]);
+
+  // Escolha automática da primeira página, só com as duas colunas na tela e
+  // só sem página pedida: a pedida que a lista não tem passa pela conferência
+  // acima, e trocá-la pela primeira apagaria da URL o link que a pessoa abriu.
   const escolhendo = useRef(false);
   useEffect(() => {
-    if (notas.loading || aberta || escolhendo.current || !telaLarga()) return;
+    if (notas.loading || selecionada || escolhendo.current || !telaLarga()) return;
     const candidatas = (visiveis.length > 0 ? visiveis : ordenarNotas(lista)).filter(n => n.id !== excluindo.current);
     if (candidatas.length === 0) return;
     escolhendo.current = true;
     void onSelecionar(candidatas[0].id, { substituir: true }).finally(() => { escolhendo.current = false; });
-  }, [notas.loading, aberta, visiveis, lista, onSelecionar]);
+  }, [notas.loading, selecionada, visiveis, lista, onSelecionar]);
 
   // No celular, voltar à lista devolve o foco à linha da página que estava aberta.
   const ultimaAberta = useRef<string | null>(null);
@@ -579,9 +662,11 @@ export function AnotacoesTab({ notas, autor, onPedirNome, selecionada, onSelecio
   // A página aberta já tem faixa própria no cabeçalho, e as outras páginas
   // com texto recusado têm aviso com nome: o genérico do hook seria um segundo.
   const comFaixa = estado === 'erro' || estado === 'recusada' || estado === 'excluida' || estado === 'conflito';
-  const erroDoHook = notas.error && !comFaixa && naoSalvasFora.length === 0 ? notas.error : null;
+  /** A página pedida não veio porque a releitura não chegou ao servidor — não porque ela não existe. */
+  const semRedeParaConferir = inexistente && notas.semConexao;
+  const erroDoHook = notas.error && !comFaixa && !semRedeParaConferir && naoSalvasFora.length === 0 ? notas.error : null;
   const erro = erroCriar ?? erroDoHook;
-  const semPaginas = !notas.loading && lista.length === 0 && !aberta;
+  const semPaginas = !notas.loading && lista.length === 0 && !aberta && !procurando;
   // O editor e o título montam com o texto recusado, quando a página volta à tela com ele.
   const notaNaTela = aberta && guardada
     ? { ...aberta, titulo: guardada.nota.titulo, conteudo: guardada.nota.conteudo }
@@ -589,7 +674,10 @@ export function AnotacoesTab({ notas, autor, onPedirNome, selecionada, onSelecio
   const imagensNaTela = notaNaTela ? imagensDoDoc(lerDoc(notaNaTela.conteudo)).length : 0;
 
   return (
-    <div className="tab-page notas-page" data-aberta={aberta ? 'true' : undefined}>
+    // `data-aberta` é "há página pedida", achada ou não: na tela estreita a
+    // coluna da página aparece também para dizer que está abrindo, ou que a
+    // página não existe — com o "‹ Páginas" de volta à lista.
+    <div className="tab-page notas-page" data-aberta={selecionada && !semPaginas ? 'true' : undefined}>
       <div className="page-bar">
         <div>
           <h1 className="page-title">{titulo}</h1>
@@ -631,8 +719,10 @@ export function AnotacoesTab({ notas, autor, onPedirNome, selecionada, onSelecio
       {semPaginas ? (
         <EmptyState
           contexto="Bloco de notas"
-          message="Nenhuma página ainda"
-          hint="As páginas guardam resumos, pautas e pendências da equipe. Todos veem, e cada página guarda quem escreveu."
+          message={inexistente ? PAGINA_INEXISTENTE : 'Nenhuma página ainda'}
+          hint={inexistente
+            ? 'O link é de uma página que não está mais aqui, e a aba não tem nenhuma outra. As páginas guardam resumos, pautas e pendências da equipe.'
+            : 'As páginas guardam resumos, pautas e pendências da equipe. Todos veem, e cada página guarda quem escreveu.'}
           action={{ label: 'Nova página', onClick: () => void novaPagina() }}
         />
       ) : (
@@ -650,15 +740,36 @@ export function AnotacoesTab({ notas, autor, onPedirNome, selecionada, onSelecio
             selecionada={abertaId}
             onAbrir={abrir}
             agora={agora}
-            carregando={notas.loading}
+            carregando={notas.loading || procurando}
           />
 
           <div className="notas-coluna">
+            {selecionada && (
+              <button type="button" className="btn btn-ghost notas-voltar" onClick={() => void onSelecionar(null)}>
+                <span aria-hidden="true">‹</span> Páginas
+              </button>
+            )}
+            {procurando && (
+              <div className="notas-abrindo" role="status">
+                <p className="notas-abrindo-texto">Abrindo a página…</p>
+                {Array.from({ length: 3 }).map((_, i) => <div key={i} className="skeleton-row" />)}
+              </div>
+            )}
+            {inexistente && (semRedeParaConferir ? (
+              <EmptyState
+                message="Sem conexão: não deu para abrir esta página"
+                hint="A lista desta tela pode estar desatualizada. O link abre quando a conexão voltar."
+                action={{ label: 'Tentar de novo', onClick: () => { api.current.clearError(); setConferencia(null); } }}
+              />
+            ) : (
+              <EmptyState
+                message={PAGINA_INEXISTENTE}
+                hint="O link pode ser de uma página que alguém excluiu. As páginas da equipe estão na lista."
+                action={{ label: 'Ver as páginas', onClick: () => void onSelecionar(null) }}
+              />
+            ))}
             {aberta && notaNaTela ? (
               <>
-                <button type="button" className="btn btn-ghost notas-voltar" onClick={() => void onSelecionar(null)}>
-                  <span aria-hidden="true">‹</span> Páginas
-                </button>
                 <section
                   className="notas-pagina"
                   aria-label={`Página ${aberta.titulo.trim() || 'Sem título'}`}

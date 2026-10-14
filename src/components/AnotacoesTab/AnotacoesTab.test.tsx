@@ -72,6 +72,8 @@ interface Opcoes {
   saveNow?: (id: string, patch: NotaPatch, version?: number) => Promise<boolean>;
   /** Resposta dos guards de navegação (imagem subindo, por exemplo). */
   podeSair?: () => boolean;
+  /** O que a releitura traz do servidor (sem isto, a lista não muda). */
+  releitura?: () => Promise<Nota[]>;
 }
 
 /**
@@ -90,7 +92,10 @@ function montar(opcoes: Opcoes = {}) {
     remove: vi.fn(async (id: string) => { log.push(`remover ${id}`); return true; }),
     flushPending: vi.fn(async () => true),
     clearError: vi.fn(),
-    refresh: vi.fn(async () => {}),
+    refresh: vi.fn(async () => {
+      const doServidor = await opcoes.releitura?.();
+      if (doServidor) controle.setLista!(doServidor);
+    }),
     onSelecionar: vi.fn(),
     onPedirNome: vi.fn(),
   };
@@ -423,9 +428,68 @@ it('sem página nenhuma, o vazio explica e cria a primeira', async () => {
   await waitFor(() => expect(espias.onSelecionar).toHaveBeenLastCalledWith('nova', undefined));
 });
 
-it('link para uma página que não existe mais abre a primeira, sem empilhar histórico', async () => {
+it('link para uma página que esta tela ainda não leu: relê antes, diz que está abrindo e abre a pedida, sem trocar pela primeira', async () => {
+  let liberar!: () => void;
+  const chegou = new Promise<void>(r => { liberar = r; });
+  const nova: Nota = {
+    id: 'n9', version: 1, updated_at: minutosAntes(1), titulo: 'Pauta do comitê de riscos', fixada: false,
+    autor: 'Bia Lima', editado_por: 'Bia Lima', conteudo: docDeTexto('Itens da pauta'),
+  };
+  const { espias } = montar({ selecionada: 'n9', releitura: async () => { await chegou; return [...paginas(), nova]; } });
+
+  expect(await screen.findByText('Abrindo a página…')).toBeTruthy();
+  expect(espias.refresh).toHaveBeenCalledTimes(1);
+  // Enquanto relê, a escolha automática não troca a página pedida pela primeira.
+  expect(espias.onSelecionar).not.toHaveBeenCalled();
+  expect(screen.queryByText(/não existe mais/)).toBeNull();
+
+  await act(async () => { liberar(); });
+  await waitFor(() => expect(tituloDaPagina()).toBe('Pauta do comitê de riscos'));
+  expect(editor().value).toBe('Itens da pauta');
+  expect(screen.queryByText('Abrindo a página…')).toBeNull();
+  expect(itemDaLista('n9').getAttribute('aria-current')).toBe('true');
+  // A URL continua a do link: ninguém navegou.
+  expect(espias.onSelecionar).not.toHaveBeenCalled();
+  expect(espias.refresh).toHaveBeenCalledTimes(1);
+});
+
+it('link para uma página que não existe nem depois de reler: diz isso, não abre outra no lugar, e Ver as páginas volta à lista', async () => {
   const { espias } = montar({ selecionada: 'apagada' });
-  await waitFor(() => expect(espias.onSelecionar).toHaveBeenCalledWith('n1', { substituir: true }));
+  expect(await screen.findByText('Esta página não existe mais ou foi excluída.')).toBeTruthy();
+  expect(espias.refresh).toHaveBeenCalledTimes(1);
+  expect(espias.onSelecionar).not.toHaveBeenCalled();
+  // A lista continua inteira ao lado, sem nenhuma marcada.
+  expect(titulosNaLista()).toHaveLength(3);
+  expect(screen.getAllByRole('link').some(a => a.getAttribute('aria-current') === 'true')).toBe(false);
+
+  fireEvent.click(screen.getByRole('button', { name: 'Ver as páginas' }));
+  await waitFor(() => expect(espias.onSelecionar).toHaveBeenCalledWith(null, undefined));
+  // Sem página pedida, a tela larga volta a abrir a primeira — substituindo, sem empilhar histórico.
+  await waitFor(() => expect(espias.onSelecionar).toHaveBeenLastCalledWith('n1', { substituir: true }));
+  expect(screen.queryByText('Esta página não existe mais ou foi excluída.')).toBeNull();
+});
+
+it('o título longo quebra em vez de sumir: o campo cresce com o texto, Enter leva ao corpo e a quebra colada vira espaço', () => {
+  const { espias } = montar({ selecionada: 'n1' });
+  const titulo = screen.getByLabelText('Título da página') as HTMLTextAreaElement;
+  expect(titulo.tagName).toBe('TEXTAREA');
+  expect(titulo.maxLength).toBe(200);
+
+  // A altura acompanha o texto (o jsdom não mede: o teste diz quanto o texto ocupa).
+  Object.defineProperty(titulo, 'scrollHeight', { configurable: true, get: () => 88 });
+  fireEvent.change(titulo, { target: { value: 'Pauta do comitê de riscos\n— outubro de 2026' } });
+  expect(titulo.value).toBe('Pauta do comitê de riscos — outubro de 2026');
+  expect(titulo.style.height).toBe('88px');
+  expect(espias.update).toHaveBeenLastCalledWith('n1', { titulo: 'Pauta do comitê de riscos — outubro de 2026', editado_por: 'Derylson' });
+
+  // Enter (com ou sem Shift) não quebra a linha: vai para o corpo.
+  titulo.focus();
+  expect(fireEvent.keyDown(titulo, { key: 'Enter' })).toBe(false);
+  expect(document.activeElement).toBe(editor());
+  titulo.focus();
+  expect(fireEvent.keyDown(titulo, { key: 'Enter', shiftKey: true })).toBe(false);
+  expect(document.activeElement).toBe(editor());
+  expect(titulo.value).toBe('Pauta do comitê de riscos — outubro de 2026');
 });
 
 it('a busca ativa é limpa ao criar uma página, senão a nova sumiria da lista', async () => {
@@ -701,6 +765,36 @@ it('recusa do servidor (limite de tamanho) mostra a mensagem dele e não tenta d
   await waitFor(() => expect(estado().textContent).toBe('Salvo'));
   expect(srv.linhas.get(ID_A)!.conteudo).toBe(docDeTexto('linha original A\n(resumo)'));
   expect(screen.queryByRole('alert')).toBeNull();
+});
+
+it('com o texto recusado (400) na tela, a lista mostra a versão que o servidor tem; gravado o texto corrigido, mostra o novo', async () => {
+  localStorage.clear();
+  const srv = servidorDeNotas([paginaNoServidor(ID_A, 'Pagina A', 'linha original A'), paginaNoServidor(ID_B, 'Pagina B', 'linha B')]);
+  montarComHook(ID_A);
+  await abertaCom('linha original A');
+
+  srv.estado.recusa = { status: 400, error: 'A página passou do limite de tamanho. Divida o texto em duas páginas.' };
+  fireEvent.change(screen.getByLabelText('Título da página'), { target: { value: 'TITULO RECUSADO' } });
+  fireEvent.change(editor(), { target: { value: 'linha original A\nTEXTO RECUSADO' } });
+  await screen.findByText(/Divida o texto em duas páginas/, {}, { timeout: 3000 });
+
+  // A lista não anuncia o que o servidor recusou…
+  const item = itemDaLista(ID_A);
+  expect(item.textContent).not.toContain('RECUSADO');
+  expect(item.querySelector('.notas-item-titulo')?.textContent).toBe('Pagina A');
+  expect(item.querySelector('.notas-item-trecho')?.textContent).toContain('linha original A');
+  expect(item.querySelector('.notas-item-meta')?.textContent).toContain('Ana');
+  // …e a tela continua com o texto de quem escreveu.
+  expect(editor().value).toBe('linha original A\nTEXTO RECUSADO');
+  expect(tituloDaPagina()).toBe('TITULO RECUSADO');
+
+  srv.estado.recusa = null;
+  fireEvent.change(editor(), { target: { value: 'linha original A\n(resumo)' } });
+  expect(itemDaLista(ID_A).textContent).not.toContain('(resumo)');
+  fireEvent.click(screen.getByRole('button', { name: 'Tentar de novo' }));
+  await waitFor(() => expect(estado().textContent).toBe('Salvo'));
+  expect(itemDaLista(ID_A).querySelector('.notas-item-titulo')?.textContent).toBe('TITULO RECUSADO');
+  expect(itemDaLista(ID_A).textContent).toContain('(resumo)');
 });
 
 it('Descartar e sair depois de uma recusa (400) descarta de verdade: reabrir mostra o texto do servidor, sem "Sem conexão", e a próxima edição não sobe o descartado', async () => {

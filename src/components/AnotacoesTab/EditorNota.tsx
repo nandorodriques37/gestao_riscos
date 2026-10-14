@@ -45,6 +45,7 @@ import {
 import { MenuBarra } from './menuBarra';
 import { MenuBarraView } from './MenuBarraView';
 import { BolhaFormato } from './BolhaFormato';
+import { BarraFormatoMovel } from './BarraFormatoMovel';
 import { AlcaBloco } from './AlcaBloco';
 import { MoverBloco } from './moverBloco';
 
@@ -184,7 +185,9 @@ const EM_CURSO = new Set<EnvioImagem['fase']>(['fila', 'preparando', 'enviando']
  * imagem. Atalhos de markdown (`##`, `1.`, `-`, `[]`, `>`, `---`) valem ao
  * digitar; "/" abre o menu de blocos (`menuBarra.ts`), a seleção de texto
  * mostra a barra de formato (`BolhaFormato`) e a calha esquerda tem o "+" e a
- * alça que move o bloco (`AlcaBloco`, `moverBloco.ts`).
+ * alça que move o bloco (`AlcaBloco`, `moverBloco.ts`). No toque (ponteiro
+ * grosso até 1100px) a bolha cede à barra acima do teclado
+ * (`BarraFormatoMovel`).
  *
  * Imagem entra colada, arrastada, solta de fora da página ou escolhida no
  * item "Imagem" do menu "/" — os quatro pelo mesmo `enfileirar`. Enquanto sobe, o
@@ -758,6 +761,7 @@ export function EditorNota({ nota, recarregar, onChange, onUploads, autoFocus }:
       <EditorContent editor={editor} />
       <MenuBarraView editor={editor} onImagens={(arquivos, ponto) => acoesRef.current.escolheuImagens(arquivos, ponto)} />
       <BolhaFormato editor={editor} />
+      <BarraFormatoMovel editor={editor} />
       <AlcaBloco editor={editor} />
       {soltando && (
         <p className="nota-upload-soltar" role="status">

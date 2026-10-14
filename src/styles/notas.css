@@ -11,8 +11,10 @@
    ========================================================================= */
 
 /* ---------- Painel: lista ao lado da página ----------
-   Duas colunas acima de 760px. A largura da lista é uma medida só, para a
-   régua do celular (que a desmonta) não precisar repeti-la. */
+   Duas colunas acima de 960px (o mesmo corte de `DUAS_COLUNAS`, em
+   AnotacoesTab.tsx, que decide a escolha automática da primeira página). A
+   largura da lista é uma medida só, para a régua estreita (que a desmonta)
+   não precisar repeti-la. */
 
 .notas-painel {
   --notas-lista-w: 320px;
@@ -275,18 +277,26 @@
   padding: var(--sp-6) var(--nota-margem-dir) var(--sp-4) var(--nota-margem-esq);
 }
 
+/* Título e ações na mesma linha enquanto o título tiver ~24 caracteres de
+   largura (`ch` na fonte DELE, 28px em peso 800) ao lado de Fixar e Excluir.
+   Menos que isso, o wrap leva as ações para baixo e o título fica com a
+   linha inteira — a 761px e a 1024px ele dividia ~300px com os botões. Topo
+   alinhado: o título longo quebra em várias linhas, e os botões ficam na
+   altura da primeira. */
 .nota-cab-linha {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--sp-3) var(--sp-4);
 }
 
 /* O título é o campo maior da tela e não parece campo em repouso: o
    contorno só aparece no hover e no foco. A margem negativa alinha o texto
-   (não a caixa) com o corpo. */
+   (não a caixa) com o corpo. É um <textarea> de uma linha que cresce com o
+   texto (a altura vem do componente): título longo quebra, não some. */
 .nota-titulo {
-  flex: 1 1 280px;
+  display: block;
+  flex: 1 1 24ch;
   min-width: 0;
   margin: 0 0 0 calc(-1 * var(--sp-2));
   padding: var(--sp-1) var(--sp-2);
@@ -298,6 +308,9 @@
   line-height: 1.2;
   letter-spacing: var(--tracking-tighter);
   color: var(--ink-1);
+  resize: none;
+  overflow: hidden;
+  overflow-wrap: anywhere;
 }
 
 .nota-titulo:hover {
@@ -309,11 +322,14 @@
   opacity: 1;
 }
 
+/* A primeira linha do título tem ~44px (28px × 1,2 mais o respiro); o
+   botão, 36px. O passo da escala centra um no outro. */
 .nota-cab-acoes {
   display: flex;
   flex: none;
   flex-wrap: wrap;
   gap: var(--sp-2);
+  margin-top: var(--sp-1);
 }
 
 .nota-acao[aria-pressed='true'] {
@@ -421,28 +437,51 @@
   gap: var(--sp-2);
 }
 
-/* ---------- Faixa intermediária (sem rail) ----------
-   A lista estreita e as margens da página encolhem antes de virar uma coluna
-   só: a 761px ainda cabem as duas, com o texto a ~350px. */
+/* ---------- Página pedida que ainda está chegando ----------
+   O link para uma página que esta tela não leu: a aba relê antes de dizer
+   que ela não existe. Cartão da página, com o esqueleto do texto. */
+.notas-abrindo {
+  display: flex;
+  flex-direction: column;
+  padding: var(--sp-5) 0 var(--sp-4);
+  background: var(--bg-surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  box-shadow: var(--elev-1);
+}
+
+.notas-abrindo-texto {
+  margin: 0 var(--sp-4) var(--sp-2);
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+  color: var(--ink-2);
+}
+
+/* ---------- Rail recolhido (761–1100px) ----------
+   A lista estreita e as margens da página encolhem. Medido com o rail de
+   76px e um parágrafo corrido: a 961px, primeira largura com as duas colunas,
+   o texto tem 467px e ~55 caracteres por linha; com as margens largas seriam
+   ~435px. */
 @media (max-width: 1100px) {
   .notas-painel {
     --notas-lista-w: 272px;
     gap: var(--sp-4);
   }
-}
 
-@media (max-width: 900px) {
   .notas-pagina {
     --nota-margem-esq: calc(var(--sp-6) + var(--sp-5));
     --nota-margem-dir: var(--sp-5);
   }
 }
 
-/* ---------- Celular: lista → página ----------
-   Uma tela de cada vez. Os dois lados ficam no DOM e o atributo decide; a
-   escolha automática da primeira página não roda aqui (ver AnotacoesTab),
-   senão o "‹ Páginas" não sairia do lugar. */
-@media (max-width: 760px) {
+/* ---------- Estreito: lista → página ----------
+   Uma tela de cada vez até 960px, não só no celular. Com o rail recolhido, as
+   duas colunas deixavam o texto com ~33 caracteres por linha a 761px (lista
+   de 272px, cartão de 349px) e com ~46 a 901px — no limite dos 45. Sozinha, a
+   página tem ~68 já a 761px. Os dois lados ficam no DOM e o atributo decide;
+   a escolha automática da primeira página não roda aqui (`DUAS_COLUNAS`, em
+   AnotacoesTab.tsx), senão o "‹ Páginas" não sairia do lugar. */
+@media (max-width: 960px) {
   .notas-painel {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -463,6 +502,15 @@
     display: inline-flex;
   }
 
+  .notas-item-seta {
+    display: block;
+  }
+}
+
+/* ---------- Celular ----------
+   O que muda para o polegar e para a tela de 375px: linha mais alta, título
+   da lista maior, margens da página no mínimo, sem o rodapé de atalhos. */
+@media (max-width: 760px) {
   .notas-item {
     min-height: max(64px, var(--tap-min));
     padding: var(--sp-3) var(--sp-4);
@@ -470,10 +518,6 @@
 
   .notas-item-titulo {
     font-size: var(--fs-lg);
-  }
-
-  .notas-item-seta {
-    display: block;
   }
 
   .notas-pagina {
@@ -485,10 +529,15 @@
     padding-top: var(--sp-5);
   }
 
-  /* 16px é o piso de campo no iOS; o título é bem maior, mas desce um degrau. */
+  /* 16px é o piso de campo no iOS; o título é bem maior, mas desce um degrau.
+     As ações sempre embaixo: no celular o título fica com a linha inteira. */
   .nota-titulo {
     flex-basis: 100%;
     font-size: var(--fs-2xl);
+  }
+
+  .nota-cab-acoes {
+    margin-top: 0;
   }
 
   /* Atalho de teclado não serve a quem digita no vidro. */

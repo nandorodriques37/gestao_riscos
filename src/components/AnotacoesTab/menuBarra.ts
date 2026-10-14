@@ -8,8 +8,9 @@
 // chegam pelo `onKeyDown` do plugin, e o item ativo é anunciado ao leitor de
 // tela pelo `aria-activedescendant` no próprio elemento editável.
 //
-// O que cada bloco faz no documento mora em `aplicarBloco`, que a barra de
-// formato do celular (Lote 4) reaproveita sem passar pelo menu.
+// O que cada bloco faz no documento mora em `aplicarBloco`. A barra de formato
+// do toque (`BarraFormatoMovel`) lê a mesma lista de blocos, mas aplica com os
+// `toggle*` do TipTap: lá, tocar de novo no botão ativo desfaz.
 import { Extension, type Editor, type Range } from '@tiptap/react';
 import { PluginKey, type EditorState, type Transaction } from '@tiptap/pm/state';
 import type { Node as NoPM } from '@tiptap/pm/model';
@@ -352,8 +353,9 @@ export function aplicarBloco(editor: Editor, id: IdBloco, intervalo?: Range | nu
 
 /**
  * Abre o menu onde está o cursor, escrevendo a "/" (com um espaço antes,
- * se o cursor está colado numa palavra). Para o "+" da margem do bloco e a
- * barra do celular, que pedem o menu sem a pessoa digitar.
+ * se o cursor está colado numa palavra). É a reserva da barra do celular
+ * quando não há bloco à mão; o "+" da margem e o "Inserir bloco" da barra
+ * abrem o menu numa linha nova (`inserirAbaixo`, em `moverBloco.ts`).
  */
 export function abrirMenuBarra(editor: Editor): boolean {
   if (editor.isDestroyed) return false;
@@ -422,7 +424,7 @@ export function posicionarMenu(
 /**
  * A borda do chrome fixo que cobre o texto: a de baixo do cabeçalho (sticky
  * no topo) e a de cima da barra inferior do celular. Medidas, não lidas do
- * token: a barra inferior só existe até 820px e o cabeçalho pode ter rolado.
+ * token: a barra inferior só existe até 760px e o cabeçalho pode ter rolado.
  */
 function bordaDoChrome(seletor: string, lado: 'bottom' | 'top'): number | null {
   const el = document.querySelector(seletor);
@@ -433,8 +435,8 @@ function bordaDoChrome(seletor: string, lado: 'bottom' | 'top'): number | null {
 
 /**
  * A parte da tela que a pessoa vê (no celular, acima do teclado), sem o
- * cabeçalho e a barra inferior: o menu fica acima deles na pilha (z-index), e
- * aberto para cima cobriria a migalha e a busca.
+ * cabeçalho, a barra inferior e a barra de formato do toque: o menu fica acima
+ * deles na pilha (z-index), e aberto para cima cobriria a migalha e a busca.
  */
 export function janelaVisivel(): JanelaVisivel {
   const alturaLayout = document.documentElement.clientHeight || window.innerHeight;
@@ -446,6 +448,10 @@ export function janelaVisivel(): JanelaVisivel {
   if (cabecalho !== null && cabecalho > janela.topo) janela.topo = Math.min(cabecalho, janela.base);
   const barra = bordaDoChrome('.nav-bottom', 'top');
   if (barra !== null && barra < janela.base && barra > janela.topo) janela.base = barra;
+  // A barra de formato do toque (`BarraFormatoMovel`), presa acima do teclado:
+  // o menu aberto pelo "Inserir bloco" dela não pode cobri-la.
+  const formato = bordaDoChrome('.nota-formato', 'top');
+  if (formato !== null && formato < janela.base && formato > janela.topo) janela.base = formato;
   return janela;
 }
 

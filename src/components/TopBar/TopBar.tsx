@@ -5,22 +5,13 @@ import { Marca } from '../common/Marca';
 import { SeletorTema } from '../common/SeletorTema';
 
 interface TopBarProps {
-  tab: Tab;
   /**
-   * @deprecated O header não navega mais: a fita de abas que usava isto saiu
-   * (entre 761 e 1100px quem navega agora é o rail recolhido). Fica opcional
-   * só até o `App` parar de passar; não é lido.
+   * Destino atual, só para a migalha. O header não navega: entre 761 e 1100px
+   * quem navega é o rail recolhido, e abaixo disso a barra inferior.
    */
-  onChangeTab?: (tab: Tab) => void;
+  tab: Tab;
   /** Estado de sincronização com o servidor, exibido à direita do header. */
   sync?: { state: 'idle' | 'saving' | 'error'; label: string };
-  /**
-   * @deprecated Servia à fita de abas, que saiu. A migalha acha o rótulo da
-   * Triagem sem ele (`gruposCom(true)`). Não é lido.
-   */
-  mostrarTriagem?: boolean;
-  /** @deprecated Contador da fita de abas, que saiu. Não é lido. */
-  triagemPendente?: number;
   /**
    * Identidade autodeclarada e tema. O estado dos dois SUBIU para o `App`.
    *

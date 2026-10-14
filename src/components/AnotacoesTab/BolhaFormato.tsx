@@ -14,6 +14,7 @@ import { BubbleMenu, type BubbleMenuProps } from '@tiptap/react/menus';
 import { AllSelection, Plugin, PluginKey, TextSelection, type EditorState } from '@tiptap/pm/state';
 import { Decoration, DecorationSet } from '@tiptap/pm/view';
 import { linkPermitido } from '../../lib/links';
+import { FAIXA_TOQUE } from './BarraFormatoMovel';
 
 /**
  * Barra flutuante de formatação da aba Anotações: surge sobre uma seleção de
@@ -26,8 +27,9 @@ import { linkPermitido } from '../../lib/links';
  * - fora do editor (o campo do título é outro elemento: o editor perde o foco
  *   e a barra sai junto);
  * - com o menu "/" aberto (qualquer `@tiptap/suggestion` ativa);
- * - em aparelho só de toque até 760px — lá a barra de formato fica acima do
- *   teclado (Lote 4).
+ * - na faixa de toque (ponteiro grosso até 1100px, `FAIXA_TOQUE`) — lá quem
+ *   formata é a barra acima do teclado (`BarraFormatoMovel`). Uma das duas,
+ *   nunca as duas.
  *
  * A bolha mora numa camada própria no `<body>`: nenhum `overflow` de cartão a
  * corta e nenhum `transform` de ancestral a desloca. É `absolute` no documento,
@@ -182,13 +184,15 @@ function linkParaLer(href: string): string {
 
 // ---------- Quando mostrar ----------
 
-/** Aparelho só de toque e estreito: a barra de formato do celular assume (Lote 4). */
-const SO_TOQUE_ESTREITO = '(hover: none) and (pointer: coarse) and (max-width: 760px)';
-
-function soToqueEstreito(): boolean {
+/**
+ * Faixa de toque: a barra de formato acima do teclado assume. A consulta é a
+ * da própria barra — com duas, haveria largura em que nenhuma aparece, ou as
+ * duas.
+ */
+function naFaixaDeToque(): boolean {
   return typeof window !== 'undefined'
     && typeof window.matchMedia === 'function'
-    && window.matchMedia(SO_TOQUE_ESTREITO).matches;
+    && window.matchMedia(FAIXA_TOQUE).matches;
 }
 
 /**
@@ -339,7 +343,7 @@ function Bolha({ editor }: { editor: Editor }) {
 
   const [deveMostrar] = useState(() => {
     const regra: DeveMostrar = ({ editor: ed, view, state, from, to, element }) => {
-      if (!ed.isEditable || soToqueEstreito()) return false;
+      if (!ed.isEditable || naFaixaDeToque()) return false;
       const { selection } = state;
       if (selection.empty) return false;
       // A imagem selecionada (NodeSelection) tem a barra dela; aqui só texto.

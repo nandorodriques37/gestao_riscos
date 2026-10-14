@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react';
 import type { Nota } from '../../types';
 import { quandoEditada } from '../../lib/notas';
 
@@ -20,6 +20,30 @@ export type EstadoGravacao = 'salvo' | 'salvando' | 'enviando' | 'conflito' | 'e
  * sempre um PATCH que o servidor recusa.
  */
 const MAX_TITULO = 200;
+
+/**
+ * O título é uma linha só: Enter leva ao corpo, e a quebra que vier colada
+ * vira espaço. O campo é um `<textarea>` só para o texto longo QUEBRAR em vez
+ * de sumir à direita ("Pauta do comitê d…" a 761 e a 1024px).
+ */
+function umaLinha(texto: string): string {
+  return texto.replace(/[\r\n]+/g, ' ');
+}
+
+/**
+ * Altura do campo = altura do texto. `field-sizing: content` resolveria no
+ * CSS, mas ainda não chegou a todos os navegadores. Campo fora da vista
+ * (`display: none` num ancestral, `scrollHeight` 0) fica sem altura fixa,
+ * senão nasceria com 0px quando aparecesse.
+ */
+function ajustarAltura(campo: HTMLTextAreaElement | null) {
+  if (!campo) return;
+  campo.style.height = 'auto';
+  if (campo.scrollHeight === 0) { campo.style.removeProperty('height'); return; }
+  // `scrollHeight` não conta a borda, e a caixa é border-box.
+  const borda = campo.offsetHeight - campo.clientHeight;
+  campo.style.height = `${campo.scrollHeight + borda}px`;
+}
 
 export interface CabecalhoNotaProps {
   nota: Nota;
@@ -91,7 +115,29 @@ export function CabecalhoNota({
     setTitulo(nota.titulo);
   }
 
-  const campo = useRef<HTMLInputElement>(null);
+  const campo = useRef<HTMLTextAreaElement>(null);
+
+  // A altura acompanha o texto (a cada mudança, inclusive a recarga) e a
+  // largura: o mesmo título cabe numa linha na tela larga e quebra em várias
+  // na estreita, ou quando a janela muda de tamanho.
+  useLayoutEffect(() => { ajustarAltura(campo.current); }, [titulo]);
+  useEffect(() => {
+    const el = campo.current;
+    if (!el) return;
+    let largura = el.clientWidth;
+    const observador = typeof ResizeObserver === 'function'
+      ? new ResizeObserver(() => {
+        // Só a largura importa; a altura que muda é a nossa.
+        if (el.clientWidth === largura) return;
+        largura = el.clientWidth;
+        ajustarAltura(el);
+      })
+      : null;
+    observador?.observe(el);
+    // A fonte da interface chega depois do primeiro quadro e muda a quebra.
+    void document.fonts?.ready.then(() => ajustarAltura(el));
+    return () => observador?.disconnect();
+  }, []);
   // Só ao montar (o cabeçalho é montado com `key` da página): a página nova
   // abre com o cursor no título.
   const focarAoMontar = useRef(focarTitulo);
@@ -102,11 +148,14 @@ export function CabecalhoNota({
     avisarFocado.current();
   }, []);
 
-  // Enter no título leva ao corpo, como num documento: o título é uma linha só.
-  function aoTeclar(e: KeyboardEvent<HTMLInputElement>) {
+  // Enter no título leva ao corpo, como num documento: o título é uma linha só
+  // (também com Shift: quebra de linha no título não existe).
+  function aoTeclar(e: KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key !== 'Enter' || e.nativeEvent.isComposing) return;
     e.preventDefault();
-    e.currentTarget.closest('.notas-pagina')?.querySelector<HTMLElement>('[contenteditable="true"], textarea')?.focus();
+    e.currentTarget.closest('.notas-pagina')
+      ?.querySelector<HTMLElement>('[contenteditable="true"], textarea:not(.nota-titulo)')
+      ?.focus();
   }
 
   const autor = nota.autor.trim();
@@ -120,16 +169,20 @@ export function CabecalhoNota({
     <header className="nota-cab">
       <div className="nota-cab-linha">
         <label className="sr-only" htmlFor={idTitulo}>Título da página</label>
-        <input
+        <textarea
           ref={campo}
           id={idTitulo}
           className="nota-titulo"
-          type="text"
+          rows={1}
           value={titulo}
           placeholder="Sem título"
           maxLength={MAX_TITULO}
           autoComplete="off"
-          onChange={e => { setTitulo(e.target.value); onTitulo(e.target.value); }}
+          onChange={e => {
+            const t = umaLinha(e.target.value);
+            setTitulo(t);
+            onTitulo(t);
+          }}
           onKeyDown={aoTeclar}
         />
         <div className="nota-cab-acoes">

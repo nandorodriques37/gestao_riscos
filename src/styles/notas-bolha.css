@@ -218,11 +218,12 @@
   box-shadow: 0 0 0 1px var(--brand-soft);
 }
 
-/* ---------- Só toque e estreito ----------
-   No celular a barra de formato fica acima do teclado (Lote 4); a bolha não
+/* ---------- Faixa de toque ----------
+   Ponteiro grosso até 1100px (`FAIXA_TOQUE`, a mesma de `tokens.css`): quem
+   formata é a barra acima do teclado (`BarraFormatoMovel`), e a bolha não
    disputa espaço com o menu de seleção do sistema. O componente já não a
-   mostra nesse caso — esta regra é a segunda linha. */
-@media (hover: none) and (pointer: coarse) and (max-width: 760px) {
+   mostra nessa faixa — esta regra é a segunda linha. */
+@media (pointer: coarse) and (max-width: 1100px) {
   .nota-bolha {
     display: none;
   }

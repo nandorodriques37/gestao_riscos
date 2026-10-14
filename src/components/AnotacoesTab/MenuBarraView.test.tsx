@@ -275,7 +275,7 @@ describe('posicionarMenu', () => {
 
 describe('janelaVisivel', () => {
   function chrome(classe: string, caixa: { top: number; bottom: number }) {
-    const el = document.createElement(classe === 'app-header' ? 'header' : 'nav');
+    const el = document.createElement(classe === 'app-header' ? 'header' : classe === 'nota-formato' ? 'div' : 'nav');
     el.className = classe;
     el.getBoundingClientRect = () => ({ ...caixa, left: 0, right: 0, x: 0, y: caixa.top, width: 0, height: caixa.bottom - caixa.top, toJSON: () => ({}) });
     document.body.appendChild(el);
@@ -283,7 +283,7 @@ describe('janelaVisivel', () => {
   }
 
   afterEach(() => {
-    document.querySelectorAll('.app-header, .nav-bottom').forEach(el => el.remove());
+    document.querySelectorAll('.app-header, .nav-bottom, .nota-formato').forEach(el => el.remove());
   });
 
   it('sem cabeçalho nem barra, é a janela inteira', () => {
@@ -300,6 +300,13 @@ describe('janelaVisivel', () => {
     const caixa = { altura: 400, largura: 320 };
     expect(posicionarMenu(ancora, caixa, { ...janelaVisivel(), topo: 0, base: 820 }).lado).toBe('acima');
     expect(posicionarMenu(ancora, caixa, { ...janelaVisivel(), base: 820 }).lado).toBe('abaixo');
+  });
+
+  it('desconta a barra de formato do toque: o menu do "Inserir bloco" não a cobre', () => {
+    // Acima do teclado (a 300px da base), como a `BarraFormatoMovel` fica.
+    const topo = window.innerHeight - 300 - 48;
+    chrome('nota-formato', { top: topo, bottom: topo + 48 });
+    expect(janelaVisivel().base).toBe(topo);
   });
 
   it('barra escondida (display: none) não conta', () => {

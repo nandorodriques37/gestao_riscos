@@ -1,0 +1,147 @@
+/* ============================================================================
+   Aba Anotações — a barra de formato do toque (BarraFormatoMovel).
+
+   Dono: o Lote 4B. Na faixa de toque do CLAUDE.md (ponteiro grosso até
+   1100px), enquanto o editor tem o foco, a formatação sai da bolha sobre a
+   seleção e vem para uma barra presa à base da parte VISÍVEL da tela — acima
+   do teclado. É o painel "Barra de formato" do canvas aprovado
+   (Mobile-Anotacao), traduzido para os tokens do app. Só tokens.
+
+   Quem decide se ela existe é o componente (`matchMedia(FAIXA_TOQUE)` e o
+   foco do editor): esta folha não tem regra de toque própria. A distância até
+   a base chega em `--nota-formato-base`, medida pelo `visualViewport`; sem ele
+   a barra fica em `bottom: 0` com a faixa segura do iPhone. Ela mora num
+   portal no fim do <body> — nenhum `transform` de ancestral a desloca.
+   ========================================================================= */
+
+/* O mesmo plano do chrome fixo da base (a barra inferior): papel opaco sobre
+   hairline, sem vidro. Abaixo do menu "/" (45), que abre a partir dela, do
+   snackbar e da folha "Mais" (50) e dos modais (60). */
+.nota-formato {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: var(--nota-formato-base, 0px);
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  padding-block: 0 env(safe-area-inset-bottom);
+  padding-inline: max(var(--sp-2), env(safe-area-inset-left)) max(var(--sp-2), env(safe-area-inset-right));
+  background: var(--surface-1);
+  border-top: 1px solid var(--line-hairline);
+  color: var(--ink-1);
+  font-family: var(--font-sans);
+}
+
+/* Com o teclado aberto a faixa do indicador de gestos fica atrás dele: a
+   folga embaixo seria um vão vazio entre a barra e as teclas. */
+.nota-formato[data-teclado] {
+  padding-block-end: 0;
+}
+
+/* A fileira rola de lado; "Concluir" fica fora dela, sempre à vista. */
+.nota-formato-rolagem {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: calc(var(--sp-1) / 2);
+  min-block-size: var(--sp-7);
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+
+.nota-formato-rolagem::-webkit-scrollbar {
+  display: none;
+}
+
+.nota-formato-btn {
+  flex: 0 0 auto;
+  display: inline-grid;
+  place-items: center;
+  min-inline-size: max(var(--control-h), var(--tap-min));
+  block-size: max(var(--control-h), var(--tap-min));
+  padding: 0 var(--sp-2);
+  border: 0;
+  border-radius: var(--r-control);
+  background: none;
+  color: var(--ink-1);
+  font: inherit;
+  /* A sigla do Título ("H2"), como no menu "/". */
+  font-size: var(--fs-md);
+  font-weight: var(--fw-heavy);
+  cursor: pointer;
+  /* Toque duplo não amplia a página por cima do texto. */
+  touch-action: manipulation;
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+
+.nota-formato-btn svg {
+  inline-size: calc(var(--sp-4) + var(--sp-1));
+  block-size: calc(var(--sp-4) + var(--sp-1));
+}
+
+/* Hover só onde ele existe: no toque ele "gruda" no último botão tocado. */
+@media (hover: hover) {
+  .nota-formato-btn:hover {
+    background: var(--bg-hover);
+  }
+}
+
+/* Marca ou bloco ativo no cursor: o azul suave da bolha, ícone no azul de texto. */
+.nota-formato-btn[aria-pressed='true'] {
+  background: var(--brand-soft);
+  color: var(--brand-text);
+}
+
+/* O anel fica para dentro: os botões são vizinhos sem vão. */
+.nota-formato-btn:focus-visible {
+  outline-offset: calc(-1 * var(--focus-w));
+}
+
+/* A ação primária: termina a edição (o teclado desce e a barra sai). */
+.nota-formato-concluir {
+  background: var(--brand);
+  color: var(--brand-ink);
+}
+
+@media (hover: hover) {
+  .nota-formato-concluir:hover {
+    background: var(--brand-hover);
+  }
+}
+
+.nota-formato-sep {
+  flex: none;
+  inline-size: 1px;
+  block-size: var(--sp-5);
+  margin-inline: var(--sp-1);
+  background: var(--line-hairline);
+}
+
+/* Contraste forçado (Windows): o fundo do botão ativo some, o contorno fica. */
+@media (forced-colors: active) {
+  .nota-formato-btn[aria-pressed='true'] {
+    outline: var(--focus-w) solid Highlight;
+    outline-offset: calc(-1 * var(--focus-w));
+  }
+}
+
+/* Enquanto a barra aparece, a navegação inferior sai: as duas nunca se
+   empilham na base (no Android que encolhe o layout, a de navegação subiria
+   junto com o teclado). Quem decide é a presença da barra, não uma segunda
+   regra de largura — fora da faixa de ≤760px a navegação já não existe. */
+body:has(> .nota-formato) .nav-bottom {
+  display: none;
+}
+
+/* O aviso da página (snackbar: "imagem da web não foi colada") sobe para cima
+   da barra: no tablet ele nascia a --sp-5 da base, sobre os botões, e no
+   celular ficava atrás do teclado. `--nota-formato-topo` é onde a barra começa,
+   contado da base do layout; o componente o põe no <html> e o tira ao sair. */
+body:has(> .nota-formato) .undo-snackbar {
+  bottom: calc(var(--nota-formato-topo, var(--sp-7)) + var(--sp-3));
+}

@@ -120,7 +120,9 @@
   outline: none;
 }
 
-/* Medida de leitura: ~72 caracteres por linha, também na tela larga. */
+/* Teto da medida de leitura, também na tela larga. `ch` é a largura do zero,
+   mais larga que a letra média da Montserrat: 72ch dão ~90 caracteres de
+   texto corrido, não 72. */
 .nota-doc > * {
   max-width: 72ch;
 }

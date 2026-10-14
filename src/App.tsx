@@ -25,7 +25,7 @@ import { gruposCom } from './components/NavRail/secoes';
 import { nomeRisco, plural } from './lib/portfolioLabels';
 import { prontosParaFechar, cadeiaQuebrada } from './lib/portfolioMetrics';
 import { useAppNavigation } from './hooks/useAppNavigation';
-import { canNavigate, readRoute, type AppRoute } from './lib/navigation';
+import { readRoute, type AppRoute } from './lib/navigation';
 import { AREAS, ROTINAS, CATEGORIAS, RECURSOS, RESPONSAVEIS } from './data/RiskData';
 import { useRecords } from './hooks/useRecords';
 import { useTasks } from './hooks/useTasks';
@@ -45,7 +45,7 @@ const UNDO_TIMEOUT = 8000;
 const MODO_RISCO_KEY = 'riskMatrix.modoRisco.v1';
 
 function App() {
-  const { route, navigate } = useAppNavigation();
+  const { route, navigate, perguntar, emEspera } = useAppNavigation();
   const tab = route.tab;
   const editingId = route.risco;
   const iniciativaSel = route.iniciativa;
@@ -66,9 +66,8 @@ function App() {
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Tema e identidade autodeclarada. Moravam dentro do `TopBar`; subiram porque
-  // abaixo de 760px o header perde as abas para a barra inferior e os dois
-  // passam a aparecer TAMBÉM na folha "Mais". Um `useState` em cada componente
-  // daria duas verdades sobre o mesmo tema.
+  // abaixo de 760px os dois aparecem TAMBÉM na folha "Mais" da barra inferior.
+  // Um `useState` em cada componente daria duas verdades sobre o mesmo tema.
   const [theme, setTheme] = useState<ThemePref>(readThemePref);
   const [autor, setAutor] = useState(lerAutor);
   const [paletaAberta, setPaletaAberta] = useState(false);
@@ -123,8 +122,9 @@ function App() {
   const promocaoPendente = pf.portfolio.acoes_risco
     .filter(a => a.triagem === 'iniciativa' && !a.iniciativa_id).length;
   const migracaoIniciada = pf.portfolio.acoes_risco.length > 0;
-  // Uma regra só, lida pelo rail e pela barra do topo: a Triagem é aba de
-  // mudança, fica enquanto há trabalho e some sozinha quando a migração acaba.
+  // Uma regra só, lida pelo rail, pela barra inferior (e a folha "Mais") e pela
+  // paleta: a Triagem é aba de mudança, fica enquanto há trabalho e some
+  // sozinha quando a migração acaba.
   const mostrarTriagem = tab === 'triagem'
     || !migracaoIniciada
     || triagemPendente > 0
@@ -136,12 +136,17 @@ function App() {
 
   useEffect(() => { writePref(MODO_RISCO_KEY, modoRisco); }, [modoRisco]);
 
-  /** Troca de seção com cross-fade onde o navegador suportar. */
+  /**
+   * Troca de seção com cross-fade onde o navegador suportar. Todas as trocas
+   * que o app inicia perguntam aos guards por `perguntar` (e não pelo
+   * `canNavigate` cru): a espera conta, e a correção automática da URL não
+   * passa por cima dela (ver `useAppNavigation`).
+   */
   const irPara = useCallback(async (destino: Tab, recorte?: string) => {
-    if (!(await canNavigate())) return;
+    if (!(await perguntar())) return;
     if (destino === 'registro' && recorte) setModoRisco('tabela');
     trocarComTransicao(() => navigate({ ...readRoute(''), tab: destino, recorte: recorte ?? null }));
-  }, [navigate]);
+  }, [navigate, perguntar]);
   /**
    * Troca de aba por um atalho (paleta, link para a iniciativa, criar
    * iniciativa a partir do objetivo). Passa pelos guards como `irPara`: a aba
@@ -149,22 +154,26 @@ function App() {
    * Anotações, imagem subindo — não abre diálogo que impeça o atalho.
    */
   const navegarGuardado = useCallback(async (destino: AppRoute) => {
-    if (!(await canNavigate())) return false;
-    navigate(destino);
-    return true;
-  }, [navigate]);
+    if (!(await perguntar())) return false;
+    return navigate(destino);
+  }, [navigate, perguntar]);
   const abrirIniciativa = useCallback((id: string) => {
     void navegarGuardado({ ...readRoute(''), tab: 'iniciativas', iniciativa: id });
   }, [navegarGuardado]);
   /**
    * Abre uma página (ou volta à lista, com null). Passa pelos guards: trocar de
    * página desmonta o editor, e um envio de imagem em andamento pergunta antes.
+   *
+   * `substituir` é a escolha automática (a primeira página, a vizinha da que
+   * saiu): com outra troca esperando os guards — um Voltar com diálogo aberto —
+   * ela nem pergunta. Perguntar de novo abriria um segundo diálogo, que
+   * responderia "ficar" pelo primeiro, e o destino pedido sumiria.
    */
   const selecionarNota = useCallback(async (id: string | null, opcoes?: { substituir?: boolean }) => {
-    if (!(await canNavigate())) return false;
-    navigate({ ...readRoute(''), tab: 'anotacoes', nota: id }, opcoes?.substituir);
-    return true;
-  }, [navigate]);
+    if (opcoes?.substituir && emEspera()) return false;
+    if (!(await perguntar())) return false;
+    return navigate({ ...readRoute(''), tab: 'anotacoes', nota: id }, opcoes?.substituir);
+  }, [navigate, perguntar, emEspera]);
   const abrirRisco = useCallback((id: string) => navigate({ ...route, risco: id }), [navigate, route]);
 
   // Ctrl/⌘+K abre a paleta — menos quando já há um diálogo aberto, que tem o
@@ -384,10 +393,7 @@ function App() {
     <div className="app-shell" data-tab={tab}>
       <TopBar
         tab={tab}
-        onChangeTab={irPara}
         sync={sync}
-        mostrarTriagem={mostrarTriagem}
-        triagemPendente={triagemPendente}
         autor={autor}
         onPedirNome={pedirNome}
         theme={theme}
@@ -404,8 +410,9 @@ function App() {
         triagemPendente={triagemPendente}
       />
 
-      {/* As três formas de navegação ficam no DOM ao mesmo tempo; quem aparece
-          em cada faixa é decidido em styles/rail.css, num lugar só. */}
+      {/* As duas formas de navegação — o rail (expandido ou recolhido) e a
+          barra inferior — ficam no DOM ao mesmo tempo; quem aparece em cada
+          faixa é decidido em styles/rail.css, num lugar só. */}
       <NavBottom
         tab={tab}
         onChangeTab={irPara}
