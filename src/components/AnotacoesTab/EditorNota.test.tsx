@@ -305,3 +305,257 @@ it('sair com imagem subindo pergunta antes (Sair / Esperar)', async () => {
   await waitFor(() => expect(JSON.stringify(editor.getJSON())).toContain(IMG_ID));
   expect(await canNavigate()).toBe(true);
 });
+
+// ---------- Arrastar um arquivo sobre o marcador de envio ----------
+
+/** Evento de arraste com arquivos (o jsdom não tem DragEvent). */
+function arraste(tipo: string, arquivos: File[]): Event {
+  const e = new Event(tipo, { bubbles: true, cancelable: true });
+  Object.defineProperty(e, 'dataTransfer', { value: { files: arquivos, types: ['Files'], getData: () => '' } });
+  Object.defineProperty(e, 'clientX', { value: 10 });
+  Object.defineProperty(e, 'clientY', { value: 10 });
+  return e;
+}
+
+it('soltar um arquivo em cima de uma imagem que está subindo insere a imagem, sem o navegador abrir o arquivo', async () => {
+  const { container } = render(<EditorNota nota={nota(doc('Um', 'Dois'))} recarregar={0} onChange={vi.fn()} />);
+  await aposCriar();
+  const editor = editorDe(container);
+  colarHtml(editor, '', [new File([new Uint8Array([1])], 'a.png', { type: 'image/png' })]);
+  await waitFor(() => expect(container.querySelector('.nota-upload')).not.toBeNull());
+  const marcador = container.querySelector('.nota-upload') as HTMLElement;
+  const dentro = marcador.querySelector('figure') ?? marcador;
+
+  // O editor cancela o dragover sobre o marcador (e sobre o que há dentro dele).
+  for (const alvo of [marcador, dentro]) {
+    const passando = arraste('dragover', [new File([new Uint8Array([1])], 'b.png', { type: 'image/png' })]);
+    act(() => { alvo.dispatchEvent(passando); });
+    expect(passando.defaultPrevented).toBe(true);
+  }
+
+  const soltando = arraste('drop', [new File([new Uint8Array([1])], 'c.png', { type: 'image/png' })]);
+  act(() => { marcador.dispatchEvent(soltando); });
+  expect(soltando.defaultPrevented).toBe(true);
+  await waitFor(() => expect(container.querySelectorAll('.nota-upload')).toHaveLength(2));
+});
+
+it('o marcador continua guardando os cliques dos botões dele; só o arraste de arquivo passa', async () => {
+  const { marcadorParaEvento } = await import('./uploadsDeImagem');
+  expect(marcadorParaEvento(new Event('mousedown'))).toBe(true);
+  expect(marcadorParaEvento(new Event('click'))).toBe(true);
+  // Arrastar a miniatura do bloco não começa um arraste do documento.
+  expect(marcadorParaEvento(new Event('dragstart'))).toBe(true);
+  for (const tipo of ['dragenter', 'dragover', 'dragleave', 'drop']) {
+    expect(marcadorParaEvento(new Event(tipo))).toBe(false);
+  }
+});
+
+// ---------- Links ----------
+
+function docComLink(...marcas: unknown[]): string {
+  return JSON.stringify({
+    type: 'doc',
+    // Texto puro entre as marcas: duas marcas iguais lado a lado viram um <a> só.
+    content: [{ type: 'paragraph', content: marcas.flatMap((mark, i) => [{ type: 'text', text: `link${i}`, marks: [mark] }, { type: 'text', text: ' · ' }]) }],
+  });
+}
+
+it('marca de link malformada (href nulo, numérico ou ausente) abre sem derrubar a tela', async () => {
+  const conteudo = docComLink({ type: 'link' }, { type: 'link', attrs: { href: null } }, { type: 'link', attrs: { href: 5 } });
+  let container!: HTMLElement;
+  expect(() => { ({ container } = render(<EditorNota nota={nota(conteudo)} recarregar={0} onChange={vi.fn()} />)); }).not.toThrow();
+  await aposCriar();
+  expect(editorDe(container).getText()).toContain('link2');
+  const links = Array.from(container.querySelectorAll('.nota-doc a'));
+  expect(links).toHaveLength(3);
+  for (const a of links) expect(a.getAttribute('href')).toBe('');
+});
+
+it('link colado perde class, rel, target e title de fora e sai com os padrões seguros', async () => {
+  const { container } = render(<EditorNota nota={nota(doc('x'))} recarregar={0} onChange={vi.fn()} />);
+  await aposCriar();
+  const editor = editorDe(container);
+  cursorEm(editor, 'x');
+  colarHtml(editor, '<p><a class="btn lightbox" target="_self" rel="opener" title="t" href="https://x.com">Ver</a> <a href="java&#9;script:alert(1)">b</a> <a href="data:text/html,oi">c</a> <a href="vbscript:msgbox(1)">d</a></p>');
+  const a = container.querySelector('.nota-doc a[href="https://x.com"]');
+  expect(a).not.toBeNull();
+  expect(a?.getAttribute('target')).toBe('_blank');
+  expect(a?.getAttribute('rel')).toBe('noopener noreferrer nofollow');
+  expect(a?.hasAttribute('class')).toBe(false);
+  expect(a?.hasAttribute('title')).toBe(false);
+  const json = JSON.stringify(editor.getJSON());
+  expect(json).not.toMatch(/lightbox|_self|opener"|"title":"t"/);
+  // Os esquemas perigosos não viram link.
+  expect(container.querySelectorAll('.nota-doc a')).toHaveLength(1);
+  expect(json).not.toMatch(/script:|data:/);
+});
+
+it('domínio e e-mail digitados viram link (https: e mailto:); javascript: não', async () => {
+  const { container } = render(<EditorNota nota={nota(doc('x'))} recarregar={0} onChange={vi.fn()} />);
+  await aposCriar();
+  const editor = editorDe(container);
+  cursorEm(editor, 'x');
+  act(() => { editor.commands.insertContent(' www.paguemenos.com.br '); });
+  act(() => { editor.commands.insertContent('fulano@empresa.com.br '); });
+  act(() => { editor.commands.insertContent('javascript:alert(1) '); });
+  const hrefs = Array.from(container.querySelectorAll('.nota-doc a')).map(a => a.getAttribute('href'));
+  expect(hrefs).toEqual(['https://www.paguemenos.com.br', 'mailto:fulano@empresa.com.br']);
+});
+
+// ---------- Documento que o esquema não lê ----------
+
+it('documento com bloco fora do esquema abre só para leitura, avisa e não grava nada', async () => {
+  const aviso = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+  const conteudo = JSON.stringify({ type: 'doc', content: [
+    { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'Pauta da semana' }] },
+    { type: 'paragraph', content: [{ type: 'text', text: 'rodar ' }, { type: 'text', text: 'select *', marks: [{ type: 'code' }] }] },
+  ] });
+  const onChange = vi.fn();
+  const { container, rerender } = render(<EditorNota nota={nota(conteudo)} recarregar={0} onChange={onChange} autoFocus />);
+  await aposCriar();
+  const editor = editorDe(container);
+  expect(screen.getByText('Esta página tem um bloco que este editor não lê. Nada foi alterado.')).toBeTruthy();
+  expect(editor.isEditable).toBe(false);
+  expect(container.querySelector('.nota-doc')?.getAttribute('contenteditable')).toBe('false');
+
+  // Nem texto, nem imagem: nada vira edição por cima do conteúdo gravado.
+  act(() => { editor.commands.insertContent('x'); });
+  colarHtml(editor, '', [new File([new Uint8Array([1])], 'print.png', { type: 'image/png' })]);
+  act(() => { editor.commands.blur(); });
+  await act(async () => { await new Promise(r => setTimeout(r, 400)); });
+  expect(onChange).not.toHaveBeenCalled();
+  expect(container.querySelector('.nota-upload')).toBeNull();
+
+  // "Carregar a dela" com um documento legível: a página volta a ser editável.
+  rerender(<EditorNota nota={nota(doc('Versão legível'))} recarregar={1} onChange={onChange} />);
+  expect(screen.queryByText(/este editor não lê/)).toBeNull();
+  expect(editor.isEditable).toBe(true);
+  expect(editor.getText()).toBe('Versão legível');
+  act(() => { editor.commands.insertContentAt(editor.state.doc.content.size - 1, '!'); });
+  expect(onChange).toHaveBeenCalledTimes(1);
+  expect(onChange.mock.calls[0][0]).toContain('Versão legível!');
+
+  // E uma versão nova ilegível trava de novo, sem emitir.
+  rerender(<EditorNota nota={nota(conteudo)} recarregar={2} onChange={onChange} />);
+  expect(editor.isEditable).toBe(false);
+  expect(screen.getByText(/este editor não lê/)).toBeTruthy();
+  await act(async () => { await new Promise(r => setTimeout(r, 400)); });
+  expect(onChange).toHaveBeenCalledTimes(1);
+  aviso.mockRestore();
+});
+
+// ---------- Imagem de outra página ----------
+
+const OUTRA_ID = '22222222-2222-4222-8222-222222222222';
+
+it('imagem de outra página que não existe mais vira recusa: âmbar, sem "Tentar de novo" e fora da guarda de saída', async () => {
+  const { canNavigate } = await import('../../lib/navigation');
+  const busca = vi.fn(async () => new Response('', { status: 404 }));
+  vi.stubGlobal('fetch', busca);
+  try {
+    const { container } = render(<EditorNota nota={nota(doc('Linha'))} recarregar={0} onChange={vi.fn()} />);
+    await aposCriar();
+    const editor = editorDe(container);
+    colarHtml(editor, `<p>Print</p><img src="/api/notas/${OUTRA_ID}/imagens/${IMG_ID}" alt="print.png">`);
+    expect(await screen.findByText('A imagem da outra página não existe mais.')).toBeTruthy();
+    const bloco = container.querySelector('[data-fase="recusada"]') as HTMLElement;
+    expect(bloco).not.toBeNull();
+    expect(bloco.textContent).toContain('Imagem indisponível');
+    expect(screen.queryByRole('button', { name: 'Tentar de novo' })).toBeNull();
+    expect(busca).toHaveBeenCalledTimes(1);
+    expect(envio.chamadas).toHaveLength(0);
+    // Nada a perder: sair não pergunta.
+    expect(await canNavigate()).toBe(true);
+  } finally {
+    vi.unstubAllGlobals();
+  }
+});
+
+it('falha de rede ao buscar a imagem de outra página mostra a mensagem em português, nunca a do navegador', async () => {
+  vi.stubGlobal('fetch', vi.fn(async () => { throw new TypeError('Failed to fetch'); }));
+  try {
+    const { container } = render(<EditorNota nota={nota(doc('Linha'))} recarregar={0} onChange={vi.fn()} />);
+    await aposCriar();
+    const editor = editorDe(container);
+    colarHtml(editor, `<p>Print</p><img src="/api/notas/${OUTRA_ID}/imagens/${IMG_ID}" alt="print.png">`);
+    expect(await screen.findByText(/^Sem conexão: não deu para buscar a imagem da outra página\./)).toBeTruthy();
+    expect(container.textContent).not.toContain('Failed to fetch');
+    expect(container.querySelector('[data-fase="erro"]')).not.toBeNull();
+    // Rede é passageira: aqui o "Tentar de novo" faz sentido.
+    expect(screen.getByRole('button', { name: 'Tentar de novo' })).toBeTruthy();
+  } finally {
+    vi.unstubAllGlobals();
+  }
+});
+
+// ---------- Imagem colada num item de lista vazio ----------
+
+function lista(tipo: 'bulletList' | 'orderedList', itens: string[]): string {
+  return JSON.stringify({
+    type: 'doc',
+    content: [{
+      type: tipo,
+      ...(tipo === 'orderedList' ? { attrs: { start: 1 } } : {}),
+      content: itens.map(t => ({ type: 'listItem', content: [{ type: 'paragraph', content: t ? [{ type: 'text', text: t }] : [] }] })),
+    }],
+  });
+}
+
+function resumo(editor: Editor) {
+  return (editor.getJSON().content ?? []).map(b => [b.type, (b.content ?? []).length, b.attrs?.start ?? null]);
+}
+
+it('com o cursor num item de lista vazio no fim da lista, a imagem ocupa o lugar do item', async () => {
+  const { container } = render(<EditorNota nota={nota(lista('bulletList', ['um', '']))} recarregar={0} onChange={vi.fn()} />);
+  await aposCriar();
+  const editor = editorDe(container);
+  cursorEm(editor, '');
+  await colarPrintEEnviar(editor);
+  await waitFor(() => expect(JSON.stringify(editor.getJSON())).toContain(IMG_ID));
+  expect(resumo(editor)).toEqual([['bulletList', 1, null], ['image', 0, null], ['paragraph', 0, null]]);
+});
+
+it('item vazio no meio de uma lista numerada: a lista se divide ali, sem item sobrando', async () => {
+  const { container } = render(<EditorNota nota={nota(lista('orderedList', ['um', '', 'três']))} recarregar={0} onChange={vi.fn()} />);
+  await aposCriar();
+  const editor = editorDe(container);
+  cursorEm(editor, '');
+  await colarPrintEEnviar(editor);
+  await waitFor(() => expect(JSON.stringify(editor.getJSON())).toContain(IMG_ID));
+  expect(resumo(editor).slice(0, 3)).toEqual([['orderedList', 1, 1], ['image', 0, null], ['orderedList', 1, 2]]);
+});
+
+it('lista de um item só, vazio: a imagem toma o lugar da lista', async () => {
+  const { container } = render(<EditorNota nota={nota(lista('bulletList', ['']))} recarregar={0} onChange={vi.fn()} />);
+  await aposCriar();
+  const editor = editorDe(container);
+  cursorEm(editor, '');
+  await colarPrintEEnviar(editor);
+  await waitFor(() => expect(JSON.stringify(editor.getJSON())).toContain(IMG_ID));
+  expect(resumo(editor).map(([tipo]) => tipo)).toEqual(['image', 'paragraph']);
+});
+
+// ---------- Imagem que não carregou ----------
+
+it('"Imagem indisponível" oferece Tentar de novo, que pede o arquivo outra vez, e não afirma perda', async () => {
+  const conteudo = JSON.stringify({ type: 'doc', content: [
+    { type: 'image', attrs: { src: `/api/notas/${NOTA_ID}/imagens/${IMG_ID}`, alt: 'print.png' } },
+    { type: 'paragraph' },
+  ] });
+  const { container } = render(<EditorNota nota={nota(conteudo)} recarregar={0} onChange={vi.fn()} />);
+  await aposCriar();
+  const primeira = await waitFor(() => {
+    const img = container.querySelector('.nota-imagem img');
+    expect(img).not.toBeNull();
+    return img as HTMLImageElement;
+  });
+  act(() => { primeira.dispatchEvent(new Event('error')); });
+  expect(await screen.findByText('Imagem indisponível')).toBeTruthy();
+  expect(screen.getByText('A imagem não carregou agora. Pode ser a conexão: tente de novo antes de remover.')).toBeTruthy();
+  expect(container.textContent).not.toMatch(/não volta/);
+  act(() => { screen.getByRole('button', { name: 'Tentar de novo' }).click(); });
+  const nova = container.querySelector('.nota-imagem img');
+  expect(nova).not.toBeNull();
+  expect(nova).not.toBe(primeira);
+  expect(screen.queryByText('Imagem indisponível')).toBeNull();
+});

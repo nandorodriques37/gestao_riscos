@@ -120,6 +120,16 @@ describe('imagens da página', () => {
     expect(await criarImagemNota(sql, 'não-é-uuid', { mime: 'image/png', dados: PNG }, 'T')).toEqual({ status: 'not_found' });
   });
 
+  it('recusa bytes que não são do formato declarado e guarda o nome com a extensão do formato', async () => {
+    const n = await novaNota();
+    const zip = Buffer.concat([Buffer.from('PK'), Buffer.from([3, 4]), Buffer.alloc(40)]).toString('base64');
+    expect(await criarImagemNota(sql, n.id, { nome: 'Planilha Q3.xlsm', mime: 'image/gif', dados: zip }, 'T'))
+      .toEqual({ status: 'invalid', message: 'O arquivo não é a imagem que diz ser.' });
+    expect(await sql('select id from nota_imagens where nota_id = $1', [n.id])).toHaveLength(0);
+    const renomeada = await criarImagemNota(sql, n.id, { nome: 'Planilha Q3.xlsm', mime: 'image/png', dados: PNG }, 'T');
+    expect(renomeada.status === 'ok' && renomeada.imagem.nome).toBe('Planilha Q3.png');
+  });
+
   it('grava, devolve o metadado sem bytes e só lê pela página dona', async () => {
     const a = await novaNota('A');
     const b = await novaNota('B');

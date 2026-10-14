@@ -104,6 +104,8 @@ export function ImagemNotaView({ node, selected, deleteNode, extension, getPos, 
   const altura = typeof node.attrs.height === 'number' ? node.attrs.height : undefined;
   // Guardado por endereço: um desfazer que troque o `src` não herda o erro do anterior.
   const [falhou, setFalhou] = useState<string | null>(null);
+  /** Cada "Tentar de novo" monta um <img> novo, que pede o arquivo outra vez. */
+  const [tentativa, setTentativa] = useState(0);
   const indisponivel = falhou === src;
   const opcoes = extension.options as OpcoesImagemNota;
 
@@ -118,6 +120,14 @@ export function ImagemNotaView({ node, selected, deleteNode, extension, getPos, 
     editor.commands.focus();
   }
 
+  /** A falha pode ser só a rede (ou um 500 passageiro): o arquivo é pedido de novo. */
+  function tentarDeNovo() {
+    setFalhou(null);
+    setTentativa(t => t + 1);
+    // Os botões saem com o aviso: o foco volta ao texto, não ao <body>.
+    editor.commands.focus();
+  }
+
   return (
     <NodeViewWrapper
       as="figure"
@@ -128,8 +138,9 @@ export function ImagemNotaView({ node, selected, deleteNode, extension, getPos, 
       {indisponivel ? (
         <div className="nota-imagem-indisponivel">
           <p className="nota-upload-titulo"><IconeImagem tamanho={18} />Imagem indisponível</p>
-          <p className="nota-upload-motivo">O arquivo não carregou. Se a imagem saiu da página há mais de um dia, ela não volta.</p>
+          <p className="nota-upload-motivo">A imagem não carregou agora. Pode ser a conexão: tente de novo antes de remover.</p>
           <div className="nota-upload-acoes">
+            <button type="button" className="btn btn-navy" onClick={tentarDeNovo}>Tentar de novo</button>
             <button type="button" className="btn btn-outline-navy" onClick={remover}>Remover</button>
           </div>
         </div>
@@ -138,6 +149,7 @@ export function ImagemNotaView({ node, selected, deleteNode, extension, getPos, 
           {/* `data-drag-handle`: arrastar a imagem move o bloco (o TipTap desenha a cópia levantada). */}
           <div className="nota-imagem-quadro" data-drag-handle="">
             <img
+              key={tentativa}
               src={src}
               alt={alt}
               width={largura}
@@ -189,6 +201,8 @@ export interface EnvioImagem {
   /** A mensagem do erro ou da recusa. */
   mensagem?: string;
   motivo?: MotivoRecusa;
+  /** Título da recusa quando o do motivo não descreve o caso (a imagem de outra página que sumiu). */
+  titulo?: string;
   /** Endereço local (`blob:`) da miniatura do que não subiu. Só na tela, nunca no documento. */
   previa?: string;
 }
@@ -227,7 +241,7 @@ export function EnvioImagemView({ envio, onTentarDeNovo, onRemover, onEscolherOu
           <div className="nota-upload-falha-texto">
             {recusada ? (
               <>
-                <p className="nota-upload-titulo">{TITULO_RECUSA[envio.motivo ?? 'ilegivel']}</p>
+                <p className="nota-upload-titulo">{envio.titulo ?? TITULO_RECUSA[envio.motivo ?? 'ilegivel']}</p>
                 <p className="nota-upload-arquivo tabular">{nome}{envio.bytesOriginais > 0 ? ` · ${formatBytes(envio.bytesOriginais)}` : ''}</p>
                 <p className="nota-upload-motivo">{motivo}</p>
               </>

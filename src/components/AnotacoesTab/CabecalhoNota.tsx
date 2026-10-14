@@ -7,9 +7,12 @@ import { quandoEditada } from '../../lib/notas';
  * - `salvando` e `enviando` são neutros (está acontecendo, nada a fazer);
  * - `salvo` tem o ponto verde;
  * - `conflito` é âmbar: nada se perdeu enquanto a pessoa não escolher;
- * - `erro` é coral: o texto existe só nesta tela até a conexão voltar.
+ * - `erro` é coral: o texto existe só nesta tela, e o envio tenta de novo;
+ * - `recusada` é coral: o servidor recusou (limite, validação) e repetir o
+ *   mesmo texto não muda a resposta;
+ * - `excluida` é coral: outra pessoa excluiu a página com o texto na tela.
  */
-export type EstadoGravacao = 'salvo' | 'salvando' | 'enviando' | 'conflito' | 'erro';
+export type EstadoGravacao = 'salvo' | 'salvando' | 'enviando' | 'conflito' | 'erro' | 'recusada' | 'excluida';
 
 /**
  * Teto do título — o mesmo `MAX_TITULO_NOTA` que o servidor valida
@@ -31,6 +34,13 @@ export interface CabecalhoNotaProps {
   onTituloFocado: () => void;
   onTitulo: (titulo: string) => void;
   estado: EstadoGravacao;
+  /**
+   * A mensagem do servidor, em `erro` e `recusada`. Em `erro`, `null` é falta
+   * de rede — e a faixa diz "Sem conexão"; um 500 não é queda de conexão.
+   */
+  mensagem?: string | null;
+  /** Em `excluida`: imagens do texto, que foram junto com a página e não voltam ao recriar. */
+  imagensPerdidas?: number;
   /** Imagens subindo agora; só conta quando `estado` é `enviando`. */
   enviando: number;
   /** Outra pessoa gravou por cima: mostra a faixa de escolha. */
@@ -42,6 +52,9 @@ export interface CabecalhoNotaProps {
   onExcluir: () => void;
   onManterMinha: () => void;
   onCarregarDela: () => void;
+  /** Em `excluida`: cria uma página nova com o texto da tela. */
+  onRecriar?: () => void;
+  /** Em `erro`, manda a fila agora; em `recusada`, grava de novo o texto da tela. */
   onTentarAgora: () => void;
 }
 
@@ -50,6 +63,8 @@ const ROTULO: Record<Exclude<EstadoGravacao, 'enviando'>, string> = {
   salvando: 'Salvando…',
   conflito: 'Não salvo',
   erro: 'Não salvo · tentando de novo',
+  recusada: 'Não salvo',
+  excluida: 'Não salvo',
 };
 
 /**
@@ -62,8 +77,8 @@ function tempoDesde(iso: string, agora: Date): string {
 }
 
 export function CabecalhoNota({
-  nota, recarregar, focarTitulo, onTituloFocado, onTitulo, estado, enviando, conflito, resolvendo,
-  agora, onFixar, onExcluir, onManterMinha, onCarregarDela, onTentarAgora,
+  nota, recarregar, focarTitulo, onTituloFocado, onTitulo, estado, mensagem = null, imagensPerdidas = 0,
+  enviando, conflito, resolvendo, agora, onFixar, onExcluir, onManterMinha, onCarregarDela, onRecriar, onTentarAgora,
 }: CabecalhoNotaProps) {
   const [titulo, setTitulo] = useState(nota.titulo);
   const [carregado, setCarregado] = useState(recarregar);
@@ -170,10 +185,42 @@ export function CabecalhoNota({
       {!conflito && estado === 'erro' && (
         <div className="nota-erro" role="alert">
           <p className="nota-faixa-texto">
-            Sem conexão com o servidor. O que você escreveu continua aqui e sobe quando a conexão voltar.
+            {mensagem
+              ? <>{mensagem} O que você escreveu continua aqui e sobe na próxima tentativa.</>
+              : 'Sem conexão com o servidor. O que você escreveu continua aqui e sobe quando a conexão voltar.'}
           </p>
           <div className="nota-faixa-acoes">
             <button type="button" className="btn btn-ghost" onClick={onTentarAgora}>Tentar agora</button>
+          </div>
+        </div>
+      )}
+
+      {estado === 'recusada' && (
+        <div className="nota-erro" role="alert">
+          <p className="nota-faixa-texto">
+            <b>O servidor não aceitou o texto.</b>
+            {mensagem && <> {mensagem}</>}
+            {' '}O seu texto continua aqui.
+          </p>
+          <div className="nota-faixa-acoes">
+            <button type="button" className="btn btn-ghost" onClick={onTentarAgora} disabled={resolvendo}>Tentar de novo</button>
+          </div>
+        </div>
+      )}
+
+      {estado === 'excluida' && (
+        <div className="nota-erro" role="alert">
+          <p className="nota-faixa-texto">
+            <b>Esta página foi excluída por outra pessoa.</b>
+            {' '}O seu texto continua aqui
+            {imagensPerdidas > 0 && (imagensPerdidas === 1
+              ? ', sem a imagem, que foi junto com a página'
+              : `, sem as ${imagensPerdidas} imagens, que foram junto com a página`)}.
+          </p>
+          <div className="nota-faixa-acoes">
+            <button type="button" className="btn btn-navy" onClick={onRecriar} disabled={resolvendo}>
+              Recriar com o meu texto
+            </button>
           </div>
         </div>
       )}

@@ -49,6 +49,20 @@ export const chaveUploads = new PluginKey<EstadoUploads>('uploadsDeImagem');
 
 const VAZIO: EstadoUploads = { marcadores: [], decos: DecorationSet.empty };
 
+/**
+ * Eventos de arraste que o marcador deixa com o editor. Soltar um arquivo em
+ * cima de uma imagem que está subindo (ou do bloco recusado) é o gesto natural
+ * para trocar de arquivo: sem o `dragover` cancelado pelo editor, o navegador
+ * abriria o arquivo no lugar do app. O `dragstart` fica de fora — arrastar a
+ * miniatura do bloco não pode começar um arraste do documento.
+ */
+const ARRASTE_DO_EDITOR = new Set(['dragenter', 'dragover', 'dragleave', 'drop']);
+
+/** O que o marcador guarda para si: os cliques dos botões dele. O arraste de arquivo é do editor. */
+export function marcadorParaEvento(evento: Event): boolean {
+  return !ARRASTE_DO_EDITOR.has(evento.type);
+}
+
 function decorar(doc: NoPM, marcadores: readonly Marcador[]): DecorationSet {
   return DecorationSet.create(doc, marcadores.map(m => Decoration.widget(m.pos, m.el, {
     key: `upload-${m.id}`,
@@ -57,7 +71,7 @@ function decorar(doc: NoPM, marcadores: readonly Marcador[]): DecorationSet {
     side: 1 + m.ordem,
     ignoreSelection: true,
     // Os botões do marcador (Tentar de novo, Remover) são da tela, não do editor.
-    stopEvent: () => true,
+    stopEvent: marcadorParaEvento,
   })));
 }
 
@@ -119,10 +133,17 @@ function ehItemDeLista(no: NoPM): boolean {
   return no.type.name === 'listItem' || no.type.name === 'taskItem';
 }
 
+/** Item de lista que só tem o parágrafo vazio (o Enter no fim da lista acabou de criá-lo). */
+function ehItemVazio(no: NoPM): boolean {
+  const unico = no.childCount === 1 ? no.firstChild : null;
+  return ehItemDeLista(no) && !!unico && unico.isTextblock && unico.content.size === 0;
+}
+
 /**
  * Logo abaixo do bloco do cursor. Num item de lista o bloco é o item inteiro:
  * a imagem entra entre dois itens e a lista se divide (ver `inserirBloco`).
- * Com o bloco do cursor vazio, a imagem ocupa o lugar dele.
+ * Com o bloco do cursor vazio, a imagem ocupa o lugar dele — também o item de
+ * lista vazio, que não fica sobrando acima da imagem.
  */
 export function pontoDoCursor(state: EditorState): PontoDeInsercao {
   const sel = state.selection;
@@ -132,7 +153,7 @@ export function pontoDoCursor(state: EditorState): PontoDeInsercao {
   while (d > 0 && !$fim.node(d).isTextblock) d--;
   if (d === 0) return { pos: sel.to, substituir: false };
   if (d >= 2 && ehItemDeLista($fim.node(d - 1)) && $fim.index(d - 1) === 0) {
-    return { pos: $fim.after(d - 1), substituir: false };
+    return { pos: $fim.after(d - 1), substituir: ehItemVazio($fim.node(d - 1)) };
   }
   return { pos: $fim.after(d), substituir: $fim.node(d).content.size === 0 };
 }
@@ -197,6 +218,22 @@ export function trocarMarcadorPorImagem(state: EditorState, id: string, tipo: No
     if (antes && antes.isTextblock && antes.content.size === 0 && i > 0 && $p.parent.canReplaceWith(i - 1, i, tipo)) {
       tr.replaceWith(marcador.pos - antes.nodeSize, marcador.pos, no);
       return tr;
+    }
+    // Item de lista ainda vazio: sai, e a imagem entra no lugar dele — a lista
+    // se divide ali (ou a imagem fica antes ou depois dela, na ponta). Se ele
+    // era o único item, a imagem toma o lugar da lista inteira.
+    if (antes && ehItemVazio(antes)) {
+      const inicio = marcador.pos - antes.nodeSize;
+      if ($p.parent.childCount > 1) {
+        tr.delete(inicio, marcador.pos);
+        inserirBloco(tr, inicio, no);
+        return tr;
+      }
+      const $lista = $p.depth > 0 ? state.doc.resolve($p.before()) : null;
+      if ($lista && $lista.parent.canReplaceWith($lista.index(), $lista.index() + 1, tipo)) {
+        tr.replaceWith($p.before(), $p.after(), no);
+        return tr;
+      }
     }
   }
   inserirBloco(tr, marcador.pos, no);

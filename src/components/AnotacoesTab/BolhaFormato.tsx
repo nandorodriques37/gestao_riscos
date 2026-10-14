@@ -13,6 +13,7 @@ import { useEditorState, type Editor } from '@tiptap/react';
 import { BubbleMenu, type BubbleMenuProps } from '@tiptap/react/menus';
 import { AllSelection, Plugin, PluginKey, TextSelection, type EditorState } from '@tiptap/pm/state';
 import { Decoration, DecorationSet } from '@tiptap/pm/view';
+import { linkPermitido } from '../../lib/links';
 
 /**
  * Barra flutuante de formatação da aba Anotações: surge sobre uma seleção de
@@ -144,24 +145,11 @@ function temExtensao(editor: Editor, nome: string): boolean {
 export const MSG_LINK_RECUSADO = 'Use um link da web (https://…) ou mailto:.';
 const MSG_LINK_VAZIO = 'Cole ou digite um endereço.';
 
-type RegraDeLink = (url: string, ctx: { defaultValidate: (url: string) => boolean; protocols: unknown[]; defaultProtocol: string }) => boolean;
-
-/**
- * A regra é a do EDITOR: o `isAllowedUri` com que o `EditorNota` configurou a
- * extensão Link (hoje, só http(s) e mailto). A bolha não tem uma segunda
- * lista; e o `setLink` confere a mesma regra de novo ao aplicar.
- */
-function linkAceito(editor: Editor, href: string): boolean {
-  const ext = editor.extensionManager.extensions.find(e => e.name === 'link');
-  const opcoes = ext?.options as { isAllowedUri?: RegraDeLink; protocols?: unknown[]; defaultProtocol?: string } | undefined;
-  if (!href || typeof opcoes?.isAllowedUri !== 'function') return false;
-  return !!opcoes.isAllowedUri(href, {
-    // Regra que delega ao padrão do TipTap não ganha nada aqui: na dúvida, recusa.
-    defaultValidate: () => false,
-    protocols: opcoes.protocols ?? [],
-    defaultProtocol: opcoes.defaultProtocol ?? 'https',
-  });
-}
+// A regra de quais endereços viram link é `linkPermitido` (`lib/links.ts`), a
+// mesma com que o `EditorNota` configura a extensão Link — não há segunda
+// lista. Aqui ela roda sem a validação padrão do TipTap: o endereço já passou
+// por `normalizarLink`, então o que chega sem esquema não é da web. O
+// `setLink` confere de novo ao aplicar.
 
 /**
  * O que a pessoa cola vira endereço: "www.exemplo.com" e "exemplo.com.br/x"
@@ -467,7 +455,7 @@ function Bolha({ editor }: { editor: Editor }) {
 
   const marcas = MARCAS.filter(m => temExtensao(editor, m.marca));
   const temLink = temExtensao(editor, 'link');
-  const podeAbrir = ativos.link && linkAceito(editor, ativos.href);
+  const podeAbrir = ativos.link && linkPermitido(ativos.href);
 
   /** Enter/Espaço num botão dispara um clique com `detail` 0: aí o foco fica na barra. */
   const doTeclado = (e: ReactMouseEvent) => e.detail === 0;
@@ -505,7 +493,7 @@ function Bolha({ editor }: { editor: Editor }) {
       fecharCampo(false);
       return;
     }
-    if (!linkAceito(editor, href)) {
+    if (!linkPermitido(href)) {
       setErro(MSG_LINK_RECUSADO);
       campoRef.current?.focus();
       return;
@@ -517,7 +505,7 @@ function Bolha({ editor }: { editor: Editor }) {
   }
 
   function abrirLink() {
-    if (!linkAceito(editor, ativos.href)) return;
+    if (!linkPermitido(ativos.href)) return;
     window.open(ativos.href, '_blank', 'noopener,noreferrer');
   }
 

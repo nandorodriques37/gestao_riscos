@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { EditorContent, useEditor, type Editor, type JSONContent, type UseEditorOptions } from '@tiptap/react';
 import { StarterKit } from '@tiptap/starter-kit';
+import { Link } from '@tiptap/extension-link';
 import { TaskItem, TaskList } from '@tiptap/extension-list';
 import { Highlight } from '@tiptap/extension-highlight';
 import { Placeholder } from '@tiptap/extensions';
@@ -24,6 +25,7 @@ import {
 import { MSG_SEM_CONEXAO, ehCancelamento, uploadNotaImagem } from '../../lib/notasApi';
 import { avisoImagensDaWeb, escolherColagem, imagensDoHtmlColado } from '../../lib/colagem';
 import { guardNavigation } from '../../lib/navigation';
+import { linkPermitidoNoEditor } from '../../lib/links';
 import { plural } from '../../lib/portfolioLabels';
 import { useConfirmacao } from '../common/Confirmacao';
 import { ImageLightbox, type ImagemDoVisor } from '../common/ImageLightbox';
@@ -80,24 +82,41 @@ const PLACEHOLDER = 'Escreva, ou digite / para inserir um bloco';
 
 const OPCOES_PREPARO = { maxDimension: MAX_IMAGE_DIMENSION_NOTA, qualidade: QUALIDADE_NOTA, aceitos: ACCEPT_IMAGEM_NOTA };
 
-/** Link só para a web e para e-mail: `javascript:`, `data:` e afins não viram link. */
-function linkPermitido(url: string): boolean {
-  return /^(https?:\/\/|mailto:)/i.test(url.trim());
-}
+/**
+ * O Link sem os atributos do HTML de origem. `class`, `rel`, `target` e
+ * `title` de um link colado não são guardados nem desenhados: os de fora
+ * trocariam os padrões seguros e uma classe do próprio app (`lightbox`, `btn`)
+ * ganharia o estilo global dela. Quem escreve `target` e `rel` no `<a>` é só o
+ * `HTMLAttributes` da configuração, abaixo. A regra de quais endereços viram
+ * link é a de `lib/links.ts`, a mesma da barra flutuante.
+ */
+const LinkSeguro = Link.extend({
+  addAttributes() {
+    const descartado = { default: null, rendered: false, parseHTML: () => null };
+    return { ...this.parent?.(), class: descartado, rel: descartado, target: descartado, title: descartado };
+  },
+});
 
-/** O documento gravado; página vazia, ou texto que não é um documento válido, vira página em branco. */
-function docDoConteudo(schema: Schema, conteudo: string): NoPM {
+/** Aviso da página cujo documento tem bloco ou marca fora do esquema deste editor. */
+export const MSG_DOC_ILEGIVEL = 'Esta página tem um bloco que este editor não lê. Nada foi alterado.';
+
+/**
+ * O documento gravado, lido pelo esquema do editor. Página vazia (ou texto que
+ * nem é documento) vira página em branco; `null` é um documento que o esquema
+ * NÃO lê — um bloco ou marca que este editor não tem (o `code`, desligado; um
+ * import futuro). Esse não pode abrir em branco: a primeira tecla gravaria o
+ * vazio por cima do conteúdo real.
+ */
+function docDoConteudo(schema: Schema, conteudo: string): NoPM | null {
   const json = lerDoc(conteudo);
-  if (json) {
-    try {
-      const doc = schema.nodeFromJSON(json);
-      doc.check();
-      return doc;
-    } catch {
-      // documento que o esquema não aceita: abre em branco, e nada é gravado até alguém escrever
-    }
+  if (!json) return schema.topNodeType.createAndFill() as NoPM;
+  try {
+    const doc = schema.nodeFromJSON(json);
+    doc.check();
+    return doc;
+  } catch {
+    return null;
   }
-  return schema.topNodeType.createAndFill() as NoPM;
 }
 
 /** De onde vêm os bytes: o arquivo colado, ou a imagem de outra página, baixada na hora do envio. */
@@ -117,11 +136,34 @@ function mimeDoDataUrl(src: string): string {
   return /^data:([^;,]+)/i.exec(src)?.[1]?.toLowerCase() ?? 'image/png';
 }
 
-/** Imagem de outra página: mesma origem, a rota pública da imagem. Reenviada para esta. */
+export const MSG_OUTRA_PAGINA_SUMIU = 'A imagem da outra página não existe mais.';
+export const MSG_OUTRA_PAGINA_SEM_CONEXAO = 'Sem conexão: não deu para buscar a imagem da outra página.';
+const MSG_OUTRA_PAGINA_FALHOU = 'O servidor não entregou a imagem da outra página.';
+
+/**
+ * Imagem de outra página: mesma origem, a rota pública da imagem. Reenviada
+ * para esta. Toda falha sai com mensagem nossa — nunca o texto cru do
+ * navegador ("Failed to fetch"). Imagem que não existe mais (404: a página foi
+ * excluída ou a imagem foi varrida) é recusa, não erro: tentar de novo traria
+ * o mesmo 404.
+ */
 async function baixarDeOutraPagina(src: string, nome: string): Promise<File> {
-  const resposta = await fetch(src, { credentials: 'same-origin' });
-  if (!resposta.ok) throw new Error('A imagem da outra página não está mais disponível.');
-  const blob = await resposta.blob();
+  let resposta: Response;
+  try {
+    resposta = await fetch(src, { credentials: 'same-origin' });
+  } catch {
+    throw new Error(MSG_OUTRA_PAGINA_SEM_CONEXAO);
+  }
+  if (resposta.status === 404 || resposta.status === 410) {
+    throw new ImagemRecusadaError('ilegivel', MSG_OUTRA_PAGINA_SUMIU);
+  }
+  if (!resposta.ok) throw new Error(MSG_OUTRA_PAGINA_FALHOU);
+  let blob: Blob;
+  try {
+    blob = await resposta.blob();
+  } catch {
+    throw new Error(MSG_OUTRA_PAGINA_SEM_CONEXAO);
+  }
   return new File([blob], comExtensaoDe(nome || 'imagem', blob.type || 'image/png'), { type: blob.type });
 }
 
@@ -163,6 +205,14 @@ export function EditorNota({ nota, recarregar, onChange, onUploads, autoFocus }:
   const editorRef = useRef<Editor | null>(null);
   /** Falso até o documento da abertura estar normalizado: antes disso, mudança não é edição. */
   const prontoRef = useRef(false);
+  /** O texto com que o editor foi montado (o `content` das opções, lidas uma vez). */
+  const conteudoAbertoRef = useRef(nota.conteudo);
+  /**
+   * O documento gravado tem bloco ou marca que este editor não lê. A página
+   * fica só para leitura e nada é emitido: abrir em branco e deixar escrever
+   * gravaria o vazio por cima do conteúdo real.
+   */
+  const [ilegivel, setIlegivel] = useState(false);
   /** O JSON carregado ou emitido por último. Só se emite o que difere dele. */
   const ultimoRef = useRef<string | null>(null);
   /** O documento mais recente. Serializar só na hora de emitir, nunca a cada tecla. */
@@ -209,6 +259,20 @@ export function EditorNota({ nota, recarregar, onChange, onUploads, autoFocus }:
     editor.view.dispatch(editor.state.tr.setMeta('addToHistory', false).setMeta('preventUpdate', true));
     docRef.current = editor.state.doc;
     ultimoRef.current = JSON.stringify(editor.getJSON());
+  }
+
+  /** Só leitura, sem salvamento armado: o documento gravado fica como está no servidor. */
+  function travar(editor: Editor) {
+    cancelarRitmo();
+    prontoRef.current = false;
+    editor.setEditable(false, false);
+    setIlegivel(true);
+  }
+
+  /** Documento legível de novo ("Carregar a dela" trouxe um que este editor lê). */
+  function destravar(editor: Editor) {
+    if (!editor.isEditable) editor.setEditable(true, false);
+    setIlegivel(false);
   }
 
   // ---------- Envios de imagem ----------
@@ -275,13 +339,20 @@ export function EditorNota({ nota, recarregar, onChange, onUploads, autoFocus }:
     if (!vivo(id)) return;
     let preparada = preparadas.current.get(id);
     if (!preparada) {
-      atualizar(id, { fase: 'preparando', progresso: 0, mensagem: undefined, motivo: undefined });
+      atualizar(id, { fase: 'preparando', progresso: 0, mensagem: undefined, motivo: undefined, titulo: undefined });
       let arquivo: File;
       try {
         const fonte = fontes.current.get(id) as Fonte;
         arquivo = typeof fonte === 'function' ? await fonte() : fonte;
       } catch (err) {
-        if (vivo(id)) falhar(id, err instanceof Error ? err.message : MSG_SEM_CONEXAO);
+        if (!vivo(id)) return;
+        // A imagem da outra página não existe mais: recusa (âmbar, sem
+        // "Tentar de novo", fora da guarda de saída) — não há o que reenviar.
+        if (err instanceof ImagemRecusadaError) {
+          atualizar(id, { fase: 'recusada', motivo: err.motivo, mensagem: err.message, titulo: 'Imagem indisponível' });
+        } else {
+          falhar(id, err instanceof Error && err.message ? err.message : MSG_SEM_CONEXAO);
+        }
         return;
       }
       if (!vivo(id)) return;
@@ -323,6 +394,12 @@ export function EditorNota({ nota, recarregar, onChange, onUploads, autoFocus }:
       );
       const editor = editorRef.current;
       if (!vivo(id) || !editor || editor.isDestroyed) return;
+      // A página travou enquanto a imagem subia (a versão nova é ilegível):
+      // nada entra num documento que não será gravado.
+      if (!editor.isEditable) {
+        remover(id);
+        return;
+      }
       const tipo = editor.schema.nodes.image;
       editor.view.dispatch(trocarMarcadorPorImagem(editor.state, id, tipo, {
         src: notaImagemUrl(notaId, imagem.id),
@@ -341,7 +418,8 @@ export function EditorNota({ nota, recarregar, onChange, onUploads, autoFocus }:
 
   function enfileirar(novos: Novo[], ponto: PontoDeInsercao) {
     const editor = editorRef.current;
-    if (!editor || editor.isDestroyed || novos.length === 0) return;
+    // Página só de leitura (documento que este editor não lê): nada entra.
+    if (!editor || editor.isDestroyed || !editor.isEditable || novos.length === 0) return;
     const estados: EnvioImagem[] = [];
     const marcadores: Marcador[] = [];
     for (const novo of novos) {
@@ -387,7 +465,7 @@ export function EditorNota({ nota, recarregar, onChange, onUploads, autoFocus }:
     preparadas.current.delete(id);
     soltarPrevia(previas.current.get(id));
     previas.current.delete(id);
-    atualizar(id, { fase: 'fila', nome: arquivo.name || 'imagem', bytesOriginais: arquivo.size, progresso: 0, mensagem: undefined, motivo: undefined, previa: undefined });
+    atualizar(id, { fase: 'fila', nome: arquivo.name || 'imagem', bytesOriginais: arquivo.size, progresso: 0, mensagem: undefined, motivo: undefined, titulo: undefined, previa: undefined });
     agendarEnvio(id);
   }
 
@@ -417,6 +495,12 @@ export function EditorNota({ nota, recarregar, onChange, onUploads, autoFocus }:
   const acoes = {
     aoCriar(editor: Editor) {
       if (editor !== editorRef.current) return; // a instância descartada do StrictMode
+      // O TipTap troca o documento que o esquema recusa por um vazio, com um
+      // aviso no console. Aqui a recusa trava a página em vez de virar edição.
+      if (!docDoConteudo(editor.schema, conteudoAbertoRef.current)) {
+        travar(editor);
+        return;
+      }
       normalizar(editor);
       prontoRef.current = true;
       if (autoFocusRef.current) editor.commands.focus('end');
@@ -515,9 +599,17 @@ export function EditorNota({ nota, recarregar, onChange, onUploads, autoFocus }:
         // Sem desenho no canvas aprovado: não entram como bloco nem como marca.
         code: false,
         codeBlock: false,
-        link: { openOnClick: false, autolink: true, defaultProtocol: 'https', isAllowedUri: linkPermitido },
+        // O Link entra abaixo, sem os atributos do HTML de origem.
+        link: false,
         // A cor do cursor de soltar vem da folha (token), não de um literal.
         dropcursor: { color: false, width: 3, class: 'nota-upload-cursor' },
+      }),
+      LinkSeguro.configure({
+        openOnClick: false,
+        autolink: true,
+        defaultProtocol: 'https',
+        isAllowedUri: linkPermitidoNoEditor,
+        HTMLAttributes: { target: '_blank', rel: 'noopener noreferrer nofollow', class: null },
       }),
       TaskList,
       TaskItem.configure({
@@ -568,13 +660,23 @@ export function EditorNota({ nota, recarregar, onChange, onUploads, autoFocus }:
     if (!ed || ed.isDestroyed) return;
     cancelarRitmo();
     const marcadores = marcadoresDe(ed.state);
-    const doc = docDoConteudo(ed.schema, notaRef.current.conteudo);
+    const lido = docDoConteudo(ed.schema, notaRef.current.conteudo);
+    // A versão do servidor tem bloco que este editor não lê: nada da tela vira
+    // edição por cima dela. A página fica em branco, só para leitura.
+    const doc = lido ?? (ed.schema.topNodeType.createAndFill() as NoPM);
     // O cursor fica perto de onde estava: a versão de fora chega também com a
     // tela limpa (a página recarrega em silêncio), e o cursor não pode pular
     // para o topo de quem só estava lendo.
     const selection = Selection.near(doc.resolve(Math.min(ed.state.selection.from, doc.content.size)));
     ed.view.updateState(EditorState.create({ schema: ed.schema, doc, plugins: ed.state.plugins, selection }));
-    normalizar(ed);
+    conteudoAbertoRef.current = notaRef.current.conteudo;
+    if (lido) {
+      destravar(ed);
+      normalizar(ed);
+      prontoRef.current = true;
+    } else {
+      travar(ed);
+    }
     // Os envios em curso continuam; o lugar deles no texto descartado não existe mais.
     if (marcadores.length > 0) {
       const fim = ed.state.doc.content.size;
@@ -652,6 +754,7 @@ export function EditorNota({ nota, recarregar, onChange, onUploads, autoFocus }:
 
   return (
     <div className="nota-upload-zona" data-soltando={soltando || undefined}>
+      {ilegivel && <p className="nota-ilegivel" role="status">{MSG_DOC_ILEGIVEL}</p>}
       <EditorContent editor={editor} />
       <MenuBarraView editor={editor} onImagens={(arquivos, ponto) => acoesRef.current.escolheuImagens(arquivos, ponto)} />
       <BolhaFormato editor={editor} />

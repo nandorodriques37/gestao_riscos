@@ -345,8 +345,8 @@
 
 /* Estado da gravação: um <output> (papel status implícito) com o ponto.
    Neutro enquanto salva ou envia; verde quando salvo; âmbar no conflito
-   (nada se perdeu enquanto a pessoa não escolher); coral no erro (o texto
-   existe só nesta tela até a conexão voltar). */
+   (nada se perdeu enquanto a pessoa não escolher); coral no erro, na recusa
+   do servidor e na página excluída (o texto existe só nesta tela). */
 .nota-status {
   --c: var(--ink-3);
   display: inline-flex;
@@ -373,13 +373,16 @@
   color: var(--badge-atencao);
 }
 
-.nota-status[data-estado='erro'] {
+.nota-status[data-estado='erro'],
+.nota-status[data-estado='recusada'],
+.nota-status[data-estado='excluida'] {
   --c: var(--brand-red);
   color: var(--coral-texto);
 }
 
-/* Faixas do cabeçalho: conflito (âmbar, atenção) e erro ao salvar (coral,
-   risco de perda). Mesma forma, tinta diferente. */
+/* Faixas do cabeçalho: conflito (âmbar, atenção) e erro ao salvar — rede,
+   recusa do servidor, página excluída (coral, risco de perda). Mesma forma,
+   tinta diferente. */
 .nota-conflito,
 .nota-erro {
   --c: var(--tier-alto);

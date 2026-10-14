@@ -18,10 +18,37 @@ export type NotaPatch = Partial<Pick<Nota, 'titulo' | 'conteudo' | 'fixada' | 'a
 export class NotaConflictError extends Error {
   /** A página como está no servidor agora. */
   current: Nota;
+  status = 409;
   constructor(current: Nota) {
     super('Esta página foi alterada por outra pessoa enquanto você editava.');
     this.name = 'NotaConflictError';
     this.current = current;
+  }
+}
+
+/**
+ * O servidor respondeu e recusou. Leva o `status`: é por ele que o
+ * `useStoredCollection` separa o 4xx que não muda tentando de novo (404 da
+ * página excluída, 400 do limite de tamanho) da falha que passa sozinha.
+ */
+export class NotaHttpError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = 'NotaHttpError';
+    this.status = status;
+  }
+}
+
+/** Falha de rede (o `fetch` nem teve resposta). Sem `status`: o hook tenta de novo. */
+export const MSG_SEM_CONEXAO_SERVIDOR = 'Sem conexão com o servidor.';
+
+/** O `fetch` rejeita com a mensagem do navegador, em inglês ("Failed to fetch"). */
+async function pedir(url: string, init?: RequestInit): Promise<Response> {
+  try {
+    return await fetch(url, init);
+  } catch {
+    throw new Error(MSG_SEM_CONEXAO_SERVIDOR);
   }
 }
 
@@ -34,17 +61,17 @@ async function parse<T>(res: Response): Promise<T> {
     } catch {
       // corpo não-JSON — mantém a mensagem padrão
     }
-    throw new Error(msg);
+    throw new NotaHttpError(msg, res.status);
   }
   return res.json() as Promise<T>;
 }
 
 export async function listNotas(): Promise<Nota[]> {
-  return parse(await fetch(BASE));
+  return parse(await pedir(BASE));
 }
 
 export async function createNota(data: NotaPatch): Promise<Nota> {
-  return parse(await fetch(BASE, {
+  return parse(await pedir(BASE, {
     method: 'POST',
     headers: cabecalhosDeEscrita(),
     body: JSON.stringify(data),
@@ -52,7 +79,7 @@ export async function createNota(data: NotaPatch): Promise<Nota> {
 }
 
 export async function patchNota(id: string, patch: NotaPatch, version?: number): Promise<Nota> {
-  const res = await fetch(`${BASE}/${encodeURIComponent(id)}`, {
+  const res = await pedir(`${BASE}/${encodeURIComponent(id)}`, {
     method: 'PATCH',
     headers: cabecalhosDeEscrita(),
     body: JSON.stringify({ ...patch, expectedVersion: version }),
@@ -62,7 +89,7 @@ export async function patchNota(id: string, patch: NotaPatch, version?: number):
 }
 
 export async function deleteNota(id: string): Promise<void> {
-  await parse(await fetch(`${BASE}/${encodeURIComponent(id)}`, {
+  await parse(await pedir(`${BASE}/${encodeURIComponent(id)}`, {
     method: 'DELETE',
     headers: cabecalhosDeEscrita(),
   }));

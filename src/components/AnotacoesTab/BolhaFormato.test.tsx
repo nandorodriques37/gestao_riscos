@@ -7,10 +7,9 @@ import { StarterKit } from '@tiptap/starter-kit';
 import { Highlight } from '@tiptap/extension-highlight';
 import { NodeSelection, Plugin, PluginKey } from '@tiptap/pm/state';
 import { BolhaFormato, MSG_LINK_RECUSADO } from './BolhaFormato';
-
-// O mesmo Link do EditorNota: só web e e-mail. A bolha não tem regra própria —
-// ela lê esta, e é isso que o teste do link confere.
-const linkPermitido = (url: string) => /^(https?:\/\/|mailto:)/i.test(url.trim());
+// A mesma regra do EditorNota (`lib/links.ts`): só web e e-mail. A bolha não
+// tem lista própria, e é isso que o teste do link confere.
+import { linkPermitidoNoEditor } from '../../lib/links';
 
 const TEXTO = 'Polviztra no CD04 - Atrasado a 28 dias';
 
@@ -22,7 +21,7 @@ function Banco() {
       StarterKit.configure({
         code: false,
         codeBlock: false,
-        link: { openOnClick: false, autolink: true, defaultProtocol: 'https', isAllowedUri: linkPermitido },
+        link: { openOnClick: false, autolink: true, defaultProtocol: 'https', isAllowedUri: linkPermitidoNoEditor },
       }),
       Highlight.configure({ multicolor: false }),
     ],
@@ -171,6 +170,25 @@ it('o campo do link recusa javascript: e aceita "www.exemplo.com" como https', a
 
   fireEvent.click(screen.getByRole('button', { name: 'Remover link' }));
   expect(ed().getHTML()).not.toContain('href');
+});
+
+it('link gravado com href que não é endereço (nulo, número) não derruba a bolha nem oferece Abrir', async () => {
+  const abrir = vi.spyOn(window, 'open').mockImplementation(() => null);
+  render(<Banco />);
+  for (const href of [5, null]) {
+    act(() => {
+      const marca = ed().schema.marks.link.create({ href });
+      ed().view.dispatch(ed().state.tr.addMark(1, 10, marca));
+    });
+    await selecionar();
+    await esperarBarra();
+    expect(await screen.findByRole('button', { name: 'Editar link' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Abrir' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Remover link' })).toBeTruthy();
+    // A regra é a mesma do editor: o <a> sai sem endereço, sem lançar.
+    expect(document.querySelector('.ProseMirror a')?.getAttribute('href')).toBe('');
+  }
+  expect(abrir).not.toHaveBeenCalled();
 });
 
 it('Esc no campo do link cancela sem criar link e devolve o foco ao editor', async () => {

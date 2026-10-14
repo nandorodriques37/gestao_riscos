@@ -74,6 +74,27 @@
   caret-color: transparent;
 }
 
+/* ---------- Documento que este editor não lê ----------
+   Bloco ou marca fora do esquema: a página abre só para leitura, sem
+   salvamento armado. Âmbar (atenção), não coral: nada se perdeu e nada foi
+   gravado. Alinhada com o texto pelas mesmas margens do documento. */
+.nota-ilegivel {
+  max-width: 72ch;
+  margin:
+    0
+    var(--nota-margem-dir, calc(var(--sp-6) + var(--sp-2)))
+    var(--sp-3)
+    var(--nota-margem-esq, calc(var(--sp-7) + var(--sp-5)));
+  padding: var(--sp-3) var(--sp-4);
+  border: 1px solid var(--badge-atencao);
+  border-radius: var(--r-card);
+  background: color-mix(in oklab, var(--badge-atencao) 8%, var(--bg-surface));
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+  line-height: 1.45;
+  color: var(--ink-1);
+}
+
 /* ---------- Documento ---------- */
 
 .nota-doc {

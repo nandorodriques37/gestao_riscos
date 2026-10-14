@@ -28,14 +28,86 @@ const BASE64_RE = /^[A-Za-z0-9+/]+={0,2}$/;
  */
 export const CACHE_CONTROL_IMUTAVEL = 'public, max-age=31536000, immutable';
 
+/** Teto do nome guardado, com a extensão. */
+const MAX_NOME = 200;
+
+/** Extensões de cada formato aceito; a primeira é a que o nome ganha quando a dele não bate. */
+const EXTENSOES_DO_MIME: Record<string, readonly string[]> = {
+  'image/png': ['png'],
+  'image/jpeg': ['jpg', 'jpeg'],
+  'image/webp': ['webp'],
+  'image/gif': ['gif'],
+  'image/avif': ['avif'],
+};
+
+/**
+ * O nome com a extensão do formato. É o nome que o `Content-Disposition`
+ * devolve e que o navegador usa ao Baixar — e ele prevalece sobre o atributo
+ * `download`. "Planilha Q3.xlsm" enviado como GIF é guardado "Planilha Q3.gif":
+ * a rota de imagem nunca entrega um arquivo de outro tipo com nome de outro
+ * tipo. Mesma troca do `comExtensaoDe` do cliente (`src/lib/imageAttachments.ts`,
+ * que a API não importa: ele usa canvas e `FileReader`).
+ */
+export function nomeComExtensao(nome: string, mime: string): string {
+  const limpo = nome.trim() || 'imagem';
+  const extensoes = EXTENSOES_DO_MIME[mime.toLowerCase()];
+  if (!extensoes) return limpo.slice(0, MAX_NOME);
+  const atual = /\.([^.]*)$/.exec(limpo);
+  const ext = atual && extensoes.includes(atual[1].toLowerCase()) ? atual[1] : extensoes[0];
+  const base = (atual ? limpo.slice(0, atual.index) : limpo).trim() || 'imagem';
+  return `${base.slice(0, MAX_NOME - ext.length - 1)}.${ext}`;
+}
+
 /**
  * Cabeçalho de exibição da imagem. `filename*` (RFC 5987) carrega o nome real
  * em UTF-8 percent-encoded; o `filename` simples é o fallback ASCII, sem aspas
- * nem quebras de linha, que quebrariam o cabeçalho.
+ * nem quebras de linha, que quebrariam o cabeçalho. Com o `mime`, o nome sai
+ * com a extensão do formato também para linhas gravadas antes dessa regra.
  */
-export function contentDisposition(nome: string): string {
-  const ascii = nome.replace(/[^\x20-\x7E]/g, '_').replace(/["\\]/g, '_') || 'imagem';
-  return `inline; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(nome)}`;
+export function contentDisposition(nome: string, mime?: string): string {
+  const real = mime ? nomeComExtensao(nome, mime) : nome;
+  const ascii = real.replace(/[^\x20-\x7E]/g, '_').replace(/["\\]/g, '_') || 'imagem';
+  return `inline; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(real)}`;
+}
+
+export const MSG_ASSINATURA_ERRADA = 'O arquivo não é a imagem que diz ser.';
+
+/** Os bytes `de`…`ate` como texto (as assinaturas são ASCII). */
+function textoDosBytes(bytes: Uint8Array, de: number, ate: number): string {
+  return String.fromCharCode(...bytes.subarray(de, ate));
+}
+
+/** AVIF: caixa `ftyp` com a marca `avif` (imagem) ou `avis` (sequência), principal ou compatível. */
+function ehAvif(b: Uint8Array): boolean {
+  if (textoDosBytes(b, 4, 8) !== 'ftyp') return false;
+  const tamanhoDaCaixa = ((b[0] << 24) | (b[1] << 16) | (b[2] << 8) | b[3]) >>> 0;
+  const fim = Math.min(Math.max(tamanhoDaCaixa, 12), b.length);
+  for (let i = 8; i + 4 <= fim; i += 4) {
+    if (i === 12) continue; // versão menor, não é marca
+    const marca = textoDosBytes(b, i, i + 4);
+    if (marca === 'avif' || marca === 'avis') return true;
+  }
+  return false;
+}
+
+/** Com que bytes o arquivo de cada formato começa. MIME fora da tabela não tem como ser conferido. */
+const ASSINATURAS: Record<string, (b: Uint8Array) => boolean> = {
+  'image/png': b => b[0] === 0x89 && textoDosBytes(b, 1, 4) === 'PNG' && b[4] === 0x0d && b[5] === 0x0a && b[6] === 0x1a && b[7] === 0x0a,
+  'image/jpeg': b => b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff,
+  'image/gif': b => /^GIF8[79]a$/.test(textoDosBytes(b, 0, 6)),
+  'image/webp': b => textoDosBytes(b, 0, 4) === 'RIFF' && textoDosBytes(b, 8, 12) === 'WEBP',
+  'image/avif': ehAvif,
+};
+
+/**
+ * Os bytes batem com o MIME declarado? Decodifica só o começo do base64 (64
+ * caracteres = 48 bytes): GIF e AVIF sobem sem passar pelo decodificador do
+ * navegador, e sem esta conferência a rota de imagem guardaria (e serviria
+ * para Baixar) qualquer arquivo rotulado de imagem.
+ */
+export function assinaturaConfere(mime: string, dados: string): boolean {
+  const confere = ASSINATURAS[mime.toLowerCase()];
+  return !!confere && confere(Buffer.from(dados.slice(0, 64), 'base64'));
 }
 
 /** Resultado de um upload — a recusa é dado de retorno, não exceção. */
@@ -143,9 +215,9 @@ function listaDeFormatos(mimes: readonly string[]): string {
 }
 
 /**
- * Formato, base64 e teto de uma imagem enviada. Pura e compartilhada: anexo de
- * tarefa e imagem de página passam pela mesma régua, cada um com a sua lista de
- * formatos.
+ * Formato, base64, teto e assinatura de uma imagem enviada; o nome sai com a
+ * extensão do formato. Pura e compartilhada: anexo de tarefa e imagem de
+ * página passam pela mesma régua, cada um com a sua lista de formatos.
  */
 export function validarImagem(
   input: NewAttachment, mimes: readonly string[] = ALLOWED_IMAGE_MIMES,
@@ -165,7 +237,9 @@ export function validarImagem(
     return { ok: false, message: `Imagem acima do limite de ${Math.round(MAX_ATTACHMENT_BYTES / (1024 * 1024))} MB.` };
   }
 
-  const nome = typeof input.nome === 'string' && input.nome.trim() !== '' ? input.nome.trim().slice(0, 200) : 'imagem';
+  if (!assinaturaConfere(mime, dados)) return { ok: false, message: MSG_ASSINATURA_ERRADA };
+
+  const nome = nomeComExtensao(typeof input.nome === 'string' ? input.nome : '', mime);
   return { ok: true, imagem: { nome, mime, dados, tamanho } };
 }
 

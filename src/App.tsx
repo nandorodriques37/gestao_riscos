@@ -25,7 +25,7 @@ import { gruposCom } from './components/NavRail/secoes';
 import { nomeRisco, plural } from './lib/portfolioLabels';
 import { prontosParaFechar, cadeiaQuebrada } from './lib/portfolioMetrics';
 import { useAppNavigation } from './hooks/useAppNavigation';
-import { canNavigate, readRoute } from './lib/navigation';
+import { canNavigate, readRoute, type AppRoute } from './lib/navigation';
 import { AREAS, ROTINAS, CATEGORIAS, RECURSOS, RESPONSAVEIS } from './data/RiskData';
 import { useRecords } from './hooks/useRecords';
 import { useTasks } from './hooks/useTasks';
@@ -142,7 +142,20 @@ function App() {
     if (destino === 'registro' && recorte) setModoRisco('tabela');
     trocarComTransicao(() => navigate({ ...readRoute(''), tab: destino, recorte: recorte ?? null }));
   }, [navigate]);
-  const abrirIniciativa = useCallback((id: string) => navigate({ ...readRoute(''), tab: 'iniciativas', iniciativa: id }), [navigate]);
+  /**
+   * Troca de aba por um atalho (paleta, link para a iniciativa, criar
+   * iniciativa a partir do objetivo). Passa pelos guards como `irPara`: a aba
+   * que sai desmonta, e o guard que mora numa página — texto recusado na aba
+   * Anotações, imagem subindo — não abre diálogo que impeça o atalho.
+   */
+  const navegarGuardado = useCallback(async (destino: AppRoute) => {
+    if (!(await canNavigate())) return false;
+    navigate(destino);
+    return true;
+  }, [navigate]);
+  const abrirIniciativa = useCallback((id: string) => {
+    void navegarGuardado({ ...readRoute(''), tab: 'iniciativas', iniciativa: id });
+  }, [navegarGuardado]);
   /**
    * Abre uma página (ou volta à lista, com null). Passa pelos guards: trocar de
    * página desmonta o editor, e um envio de imagem em andamento pergunta antes.
@@ -198,11 +211,12 @@ function App() {
   const abrirDaPaleta = useMemo<AberturaPorTipo>(() => ({
     objetivo: () => { void irPara('objetivos'); },
     iniciativa: abrirIniciativa,
+    // O risco abre o modal sobre a aba atual: nada desmonta, nada a perguntar.
     risco: abrirRisco,
-    tarefa: id => navigate({ ...readRoute(''), tab: 'tarefas', tarefa: id }),
+    tarefa: id => { void navegarGuardado({ ...readRoute(''), tab: 'tarefas', tarefa: id }); },
     pessoa: () => { void irPara('pessoas'); },
     nota: id => { void selecionarNota(id); },
-  }), [irPara, abrirIniciativa, abrirRisco, navigate, selecionarNota]);
+  }), [irPara, abrirIniciativa, abrirRisco, navegarGuardado, selecionarNota]);
 
   /** Excluir um risco desvincula as mitigações — não as apaga. O diálogo diz quantas. */
   function pedidoExcluirRisco(rec: StoredRiskRecord) {
@@ -436,7 +450,7 @@ function App() {
           )}
 
           {tab === 'objetivos' && (
-            <ObjetivosTab idsDoRecorte={idsDoRecorte} onCriarIniciativa={objetivo => navigate({ ...readRoute(''), tab: 'iniciativas', objetivo })}
+            <ObjetivosTab idsDoRecorte={idsDoRecorte} onCriarIniciativa={objetivo => { void navegarGuardado({ ...readRoute(''), tab: 'iniciativas', objetivo }); }}
               riscos={records}
               pf={pf}
               onIrPara={irPara}

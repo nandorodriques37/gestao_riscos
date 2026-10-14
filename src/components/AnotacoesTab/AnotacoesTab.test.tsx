@@ -4,7 +4,8 @@ import { useState, type Dispatch, type SetStateAction } from 'react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { AnotacoesTab } from './AnotacoesTab';
 import type { EditorNotaProps } from './EditorNota';
-import type { NotaSaveStatus, UseNotas } from '../../hooks/useNotas';
+import { useNotas, type NotaSaveStatus, type UseNotas } from '../../hooks/useNotas';
+import { canNavigate } from '../../lib/navigation';
 import type { NotaPatch } from '../../lib/notasApi';
 import type { Nota } from '../../types';
 import { docDeTexto } from '../../lib/notas';
@@ -36,7 +37,7 @@ beforeEach(() => {
   vi.useFakeTimers({ toFake: ['Date'] });
   vi.setSystemTime(AGORA);
 });
-afterEach(() => { cleanup(); vi.useRealTimers(); vi.restoreAllMocks(); });
+afterEach(() => { cleanup(); vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 const UUID_N1 = '11111111-1111-4111-8111-111111111111';
 
@@ -60,6 +61,8 @@ function paginas(): Nota[] {
     },
   ];
 }
+
+const SEM_TEXTO_RECUSADO: UseNotas['naoSalvas'] = new Map();
 
 interface Opcoes {
   notas?: Nota[];
@@ -103,8 +106,13 @@ function montar(opcoes: Opcoes = {}) {
     controle.setLista = setLista;
     controle.setStatus = setStatus;
     const notas: UseNotas = {
-      notas: lista, loading: opcoes.loading ?? false, error: null, saveStatus: status,
+      notas: lista, loading: opcoes.loading ?? false, error: null, semConexao: false, saveStatus: status,
       hasPendingWrites: () => false,
+      hasPendingWrite: () => false,
+      naoSalvas: SEM_TEXTO_RECUSADO,
+      textoNaoSalvo: () => undefined,
+      guardarTexto: () => {},
+      descartarTexto: () => {},
       update: (id, patch) => {
         espias.update(id, patch);
         setLista(l => l.map(n => (n.id === id ? { ...n, ...patch } : n)));
@@ -340,10 +348,11 @@ it('409: a faixa aparece, o texto local fica, e Manter a minha grava sobre a ver
   expect(espias.update).not.toHaveBeenCalled();
 
   fireEvent.click(within(faixa).getByRole('button', { name: 'Manter a minha' }));
+  // Sem versão explícita: o hook lê a da lista depois de gravar a fila da página.
   await waitFor(() => expect(espias.saveNow).toHaveBeenCalledWith(
     'n1',
     { titulo: 'Triagem', conteudo: docDeTexto('Meus\nO meu texto\nMais uma'), editado_por: 'Derylson' },
-    7,
+    undefined,
   ));
   await waitFor(() => expect(screen.queryByText(/Outra pessoa editou/)).toBeNull());
   expect(estado().textContent).toBe('Salvo');
@@ -360,10 +369,11 @@ it('409 de novo ao Manter a minha deixa a faixa, com o tempo da versão nova', a
   expect(estado().textContent).toBe('Não salvo');
   expect(editor().value).toBe('Meus\nO meu texto');
 
-  // A segunda tentativa vai sobre a versão que o segundo 409 devolveu.
+  // A segunda tentativa também vai sem versão: o hook usa a que o segundo 409
+  // deixou na lista (o teste com o hook de verdade, abaixo, confere o número).
   fireEvent.click(screen.getByRole('button', { name: 'Manter a minha' }));
   await waitFor(() => expect(espias.saveNow).toHaveBeenCalledTimes(2));
-  expect(espias.saveNow.mock.calls[1][2]).toBe(8);
+  expect(espias.saveNow.mock.calls[1][2]).toBeUndefined();
 });
 
 it('Carregar a dela pede confirmação e só então troca o texto da tela', async () => {
@@ -445,4 +455,314 @@ it('se alguém diz "ficar", a página nova em branco não fica para trás', asyn
   await waitFor(() => expect(espias.remove).toHaveBeenCalledWith('nova'));
   expect(titulosNaLista()).not.toContain('Sem título');
   expect((screen.getByLabelText('Título da página') as HTMLInputElement).value).toBe('Triagem');
+});
+
+/* -------------------------------------------------------------------------- */
+/* Com o hook de verdade (useNotas) e um servidor falso: o que a tela faz      */
+/* quando o servidor recusa o texto — 409, página excluída, limite, sem rede.  */
+/* -------------------------------------------------------------------------- */
+
+const ID_A = 'aaaaaaaa-1111-4111-8111-111111111111';
+const ID_B = 'bbbbbbbb-2222-4222-8222-222222222222';
+
+function paginaNoServidor(id: string, titulo: string, texto: string, version = 1): Nota {
+  return {
+    id, titulo, conteudo: docDeTexto(texto), fixada: false, autor: 'Ana', editado_por: 'Ana',
+    version, updated_at: minutosAntes(30),
+  };
+}
+
+const respostaJson = (corpo: unknown, status = 200) => new Response(JSON.stringify(corpo), {
+  status, headers: { 'Content-Type': 'application/json' },
+});
+
+/**
+ * O servidor da rota `/api/portfolio/notas`, com a mesma regra de versão (409
+ * com a linha atual), o 404 de `Registro não encontrado` e uma chave de "sem
+ * rede" que faz o `fetch` rejeitar como o do navegador.
+ */
+function servidorDeNotas(iniciais: Nota[]) {
+  const linhas = new Map(iniciais.map(n => [n.id, n]));
+  const patches: { id: string; corpo: Record<string, unknown> }[] = [];
+  const posts: Record<string, unknown>[] = [];
+  const estado = { offline: false, recusa: null as null | { status: number; error: string }, criadas: 0 };
+  vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+    if (estado.offline) throw new TypeError('Failed to fetch');
+    const metodo = init?.method ?? 'GET';
+    const m = /^\/api\/portfolio\/notas(?:\/([^/]+))?$/.exec(url);
+    if (!m) return respostaJson({ error: 'Rota não encontrada' }, 404);
+    if (metodo === 'GET') return respostaJson([...linhas.values()]);
+    const corpo = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>;
+    if (metodo === 'POST') {
+      posts.push(corpo);
+      const nova = { ...paginaNoServidor(`cccccccc-0000-4000-8000-00000000000${++estado.criadas}`, '', ''), ...corpo, version: 1 } as Nota;
+      linhas.set(nova.id, nova);
+      return respostaJson(nova, 201);
+    }
+    const id = decodeURIComponent(m[1] ?? '');
+    if (metodo === 'PATCH') {
+      patches.push({ id, corpo });
+      if (estado.recusa) return respostaJson({ error: estado.recusa.error }, estado.recusa.status);
+      const atual = linhas.get(id);
+      if (!atual) return respostaJson({ error: 'Registro não encontrado' }, 404);
+      const { expectedVersion, ...campos } = corpo;
+      if (expectedVersion != null && expectedVersion !== atual.version) return respostaJson(atual, 409);
+      const salva = { ...atual, ...campos, version: atual.version + 1 } as Nota;
+      linhas.set(id, salva);
+      return respostaJson(salva);
+    }
+    return respostaJson({ error: 'Método não suportado' }, 405);
+  }));
+  return {
+    linhas, patches, posts, estado,
+    /** Outra pessoa grava a página direto no servidor. */
+    gravarPorFora: (id: string, texto: string) => {
+      const atual = linhas.get(id)!;
+      linhas.set(id, { ...atual, conteudo: docDeTexto(texto), version: atual.version + 1, editado_por: 'Bia', updated_at: AGORA.toISOString() });
+    },
+  };
+}
+
+/** A aba com o `useNotas` de verdade e a seleção passando pelos guards, como no `App`. */
+function montarComHook(inicial: string) {
+  const ref: { notas?: UseNotas } = {};
+  function HarnessReal() {
+    const notas = useNotas();
+    ref.notas = notas;
+    const [sel, setSel] = useState<string | null>(inicial);
+    const onSelecionar = async (id: string | null) => {
+      if (!(await canNavigate())) return false;
+      setSel(id);
+      return true;
+    };
+    return <AnotacoesTab notas={notas} autor="Ana" onPedirNome={() => {}} selecionada={sel} onSelecionar={onSelecionar} />;
+  }
+  render(<HarnessReal />);
+  return ref as { notas: UseNotas };
+}
+
+const itemDaLista = (id: string) => document.getElementById(`nota-item-${id}`)!;
+const tituloDaPagina = () => (screen.getByLabelText('Título da página') as HTMLInputElement).value;
+
+async function abertaCom(texto: string) {
+  await waitFor(() => expect(editor().value).toBe(texto));
+}
+
+it('trocar de página com gravação na fila espera o envio: o 409 acende a faixa ANTES de sair, com o texto na tela', async () => {
+  localStorage.clear();
+  const srv = servidorDeNotas([paginaNoServidor(ID_A, 'Pagina A', 'linha original A'), paginaNoServidor(ID_B, 'Pagina B', 'linha B')]);
+  montarComHook(ID_A);
+  await abertaCom('linha original A');
+
+  srv.gravarPorFora(ID_A, 'texto dela');
+  fireEvent.change(editor(), { target: { value: 'linha original A\nMEU PARAGRAFO' } });
+  // Antes dos 600 ms do salvamento automático, clica na outra página.
+  fireEvent.click(itemDaLista(ID_B));
+
+  const faixa = await screen.findByRole('alert');
+  expect(faixa.textContent).toContain('Outra pessoa editou esta página');
+  // A página não saiu, e o texto continua na tela.
+  expect(tituloDaPagina()).toBe('Pagina A');
+  expect(editor().value).toBe('linha original A\nMEU PARAGRAFO');
+  expect(srv.patches).toHaveLength(1);
+  expect(srv.patches[0].corpo.expectedVersion).toBe(1);
+});
+
+it('a página que sai com gravação na fila e leva 409 depois (sem rede na hora) não perde o texto: o aviso nomeia a página e reabrir acende a faixa', async () => {
+  localStorage.clear();
+  const srv = servidorDeNotas([paginaNoServidor(ID_A, 'Pagina A', 'linha original A'), paginaNoServidor(ID_B, 'Pagina B', 'linha B')]);
+  const ref = montarComHook(ID_A);
+  await abertaCom('linha original A');
+
+  srv.estado.offline = true;
+  fireEvent.change(editor(), { target: { value: 'linha original A\nTEXTO SEM REDE' } });
+  await waitFor(() => expect(screen.getByRole('alert').textContent).toContain('Sem conexão com o servidor'), { timeout: 3000 });
+  // Nada que o servidor não confirmou vai para o cache: reaberto sem rede, nada diria "Salvo".
+  expect(localStorage.getItem('notas.cache.v1')).not.toContain('TEXTO SEM REDE');
+
+  // Sem rede, sair não fica preso: a fila continua no hook.
+  srv.gravarPorFora(ID_A, 'texto dela');
+  fireEvent.click(itemDaLista(ID_B));
+  await waitFor(() => expect(tituloDaPagina()).toBe('Pagina B'));
+
+  // A conexão volta e a nova tentativa leva 409, com a página fora da tela.
+  srv.estado.offline = false;
+  await act(async () => { await ref.notas.flushPending(); });
+  const aviso = await screen.findByText('O seu texto em “Pagina A” não foi salvo: outra pessoa editou a página.');
+  // Um aviso só: o genérico do hook ("Este registro foi alterado…") não repete.
+  expect(screen.queryByText(/Este registro foi alterado/)).toBeNull();
+  expect(localStorage.getItem('notas.cache.v1')).not.toContain('TEXTO SEM REDE');
+  // Fora da fila e fora do cache, o texto só existe na memória: fechar o navegador pergunta.
+  const fechar = new Event('beforeunload', { cancelable: true });
+  window.dispatchEvent(fechar);
+  expect(fechar.defaultPrevented).toBe(true);
+
+  fireEvent.click(within(aviso.closest('.error-banner') as HTMLElement).getByRole('button', { name: 'Abrir página' }));
+  await waitFor(() => expect(tituloDaPagina()).toBe('Pagina A'));
+  // Reabre a partir do texto guardado, com a faixa de escolha.
+  expect(editor().value).toBe('linha original A\nTEXTO SEM REDE');
+  expect(screen.getByRole('alert').textContent).toContain('Outra pessoa editou esta página');
+  expect(screen.queryByText(/não foi salvo: outra pessoa/)).toBeNull();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Manter a minha' }));
+  await waitFor(() => expect(estado().textContent).toBe('Salvo'));
+  expect(srv.linhas.get(ID_A)!.conteudo).toBe(docDeTexto('linha original A\nTEXTO SEM REDE'));
+  expect(screen.queryByRole('alert')).toBeNull();
+});
+
+it('Descartar e sair leva o texto guardado: o aviso da página não volta depois', async () => {
+  localStorage.clear();
+  const srv = servidorDeNotas([paginaNoServidor(ID_A, 'Pagina A', 'linha original A'), paginaNoServidor(ID_B, 'Pagina B', 'linha B')]);
+  montarComHook(ID_A);
+  await abertaCom('linha original A');
+  srv.gravarPorFora(ID_A, 'texto dela');
+  fireEvent.change(editor(), { target: { value: 'linha original A\nMEU PARAGRAFO' } });
+  fireEvent.click(itemDaLista(ID_B));
+  await screen.findByRole('alert');
+
+  fireEvent.click(itemDaLista(ID_B));
+  const dialogo = await screen.findByRole('dialog', { name: 'Sair sem salvar o seu texto?' });
+  fireEvent.click(within(dialogo).getByRole('button', { name: 'Descartar e sair' }));
+  await waitFor(() => expect(tituloDaPagina()).toBe('Pagina B'));
+  expect(screen.queryByText(/não foi salvo/)).toBeNull();
+  expect(screen.queryByRole('alert')).toBeNull();
+});
+
+it('Manter a minha depois de um Fixar no conflito grava sobre a versão certa, sem 409 da própria pessoa', async () => {
+  localStorage.clear();
+  const srv = servidorDeNotas([paginaNoServidor(ID_A, 'Pagina A', 'linha original A'), paginaNoServidor(ID_B, 'Pagina B', 'linha B')]);
+  montarComHook(ID_A);
+  await abertaCom('linha original A');
+  srv.gravarPorFora(ID_A, 'texto dela');
+  fireEvent.change(editor(), { target: { value: 'linha original A\nMEU PARAGRAFO' } });
+  fireEvent.click(itemDaLista(ID_B));
+  await screen.findByRole('alert');
+
+  // Fixar durante o conflito vai pela fila; Manter a minha grava a fila antes.
+  fireEvent.click(screen.getByRole('button', { name: 'Fixar' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Manter a minha' }));
+  await waitFor(() => expect(estado().textContent).toBe('Salvo'));
+
+  expect(srv.patches.map(p => [Object.keys(p.corpo).filter(k => k !== 'editado_por' && k !== 'expectedVersion').sort().join(','), p.corpo.expectedVersion]))
+    .toEqual([['conteudo', 1], ['fixada', 2], ['conteudo,titulo', 3]]);
+  expect(srv.linhas.get(ID_A)).toMatchObject({ version: 4, fixada: true, conteudo: docDeTexto('linha original A\nMEU PARAGRAFO') });
+  expect(screen.queryByText(/Outra pessoa editou/)).toBeNull();
+});
+
+it('página excluída por outra pessoa: diz isso (não "Sem conexão"), não tenta de novo, e Recriar com o meu texto cria e abre a página', async () => {
+  localStorage.clear();
+  const srv = servidorDeNotas([paginaNoServidor(ID_A, 'Pagina A', 'linha original A'), paginaNoServidor(ID_B, 'Pagina B', 'linha B')]);
+  const ref = montarComHook(ID_A);
+  await abertaCom('linha original A');
+
+  srv.linhas.delete(ID_A);
+  fireEvent.change(editor(), { target: { value: 'linha original A\nMEU TEXTO' } });
+  const faixa = await screen.findByText('Esta página foi excluída por outra pessoa.', {}, { timeout: 3000 });
+  expect(screen.queryByText(/Sem conexão/)).toBeNull();
+  expect(estado().textContent).toBe('Não salvo');
+  // O 404 sai da fila: nada fica tentando, e a releitura destrava.
+  expect(ref.notas.hasPendingWrites()).toBe(false);
+  await act(async () => { await ref.notas.refresh(); });
+  expect(titulosNaLista()).toEqual(['Pagina B']);
+  // A página saiu da lista, mas o texto continua na tela.
+  expect(tituloDaPagina()).toBe('Pagina A');
+  expect(editor().value).toBe('linha original A\nMEU TEXTO');
+  expect(srv.patches).toHaveLength(1);
+
+  fireEvent.click(within(faixa.closest('.nota-erro') as HTMLElement).getByRole('button', { name: 'Recriar com o meu texto' }));
+  await waitFor(() => expect(srv.posts).toHaveLength(1));
+  expect(srv.posts[0]).toMatchObject({ titulo: 'Pagina A', conteudo: docDeTexto('linha original A\nMEU TEXTO'), autor: 'Ana', editado_por: 'Ana' });
+  await waitFor(() => expect(screen.queryByText('Esta página foi excluída por outra pessoa.')).toBeNull());
+  expect(tituloDaPagina()).toBe('Pagina A');
+  expect(editor().value).toBe('linha original A\nMEU TEXTO');
+  expect(estado().textContent).toBe('Salvo');
+  expect(titulosNaLista().sort()).toEqual(['Pagina A', 'Pagina B']);
+});
+
+it('recusa do servidor (limite de tamanho) mostra a mensagem dele e não tenta de novo sozinha; Tentar de novo grava o texto corrigido', async () => {
+  localStorage.clear();
+  const srv = servidorDeNotas([paginaNoServidor(ID_A, 'Pagina A', 'linha original A'), paginaNoServidor(ID_B, 'Pagina B', 'linha B')]);
+  const ref = montarComHook(ID_A);
+  await abertaCom('linha original A');
+
+  srv.estado.recusa = { status: 400, error: 'A página passou do limite de tamanho. Divida o texto em duas páginas.' };
+  fireEvent.change(editor(), { target: { value: 'linha original A\n(texto colado enorme)' } });
+  const faixa = await screen.findByText(/Divida o texto em duas páginas/, {}, { timeout: 3000 });
+  expect(faixa.textContent).toContain('O servidor não aceitou o texto.');
+  expect(screen.queryByText(/Sem conexão/)).toBeNull();
+  expect(estado().textContent).toBe('Não salvo');
+  expect(ref.notas.hasPendingWrites()).toBe(false);
+
+  // A pessoa corta o texto e tenta de novo.
+  srv.estado.recusa = null;
+  fireEvent.change(editor(), { target: { value: 'linha original A\n(resumo)' } });
+  expect(srv.patches).toHaveLength(1);
+  fireEvent.click(screen.getByRole('button', { name: 'Tentar de novo' }));
+  await waitFor(() => expect(estado().textContent).toBe('Salvo'));
+  expect(srv.linhas.get(ID_A)!.conteudo).toBe(docDeTexto('linha original A\n(resumo)'));
+  expect(screen.queryByRole('alert')).toBeNull();
+});
+
+it('erro do servidor que passa sozinho (500) mostra a mensagem dele, não "Sem conexão", e segue tentando', async () => {
+  localStorage.clear();
+  const srv = servidorDeNotas([paginaNoServidor(ID_A, 'Pagina A', 'linha original A'), paginaNoServidor(ID_B, 'Pagina B', 'linha B')]);
+  const ref = montarComHook(ID_A);
+  await abertaCom('linha original A');
+
+  srv.estado.recusa = { status: 500, error: 'Falha no banco de dados.' };
+  fireEvent.change(editor(), { target: { value: 'linha original A\nMEU TEXTO' } });
+  const faixa = await screen.findByText(/Falha no banco de dados\./, {}, { timeout: 3000 });
+  expect(faixa.textContent).toContain('sobe na próxima tentativa');
+  expect(screen.queryByText(/Sem conexão/)).toBeNull();
+  expect(estado().textContent).toBe('Não salvo · tentando de novo');
+  // Continua na fila: não é recusa definitiva.
+  expect(ref.notas.hasPendingWrites()).toBe(true);
+
+  srv.estado.recusa = null;
+  fireEvent.click(screen.getByRole('button', { name: 'Tentar agora' }));
+  await waitFor(() => expect(estado().textContent).toBe('Salvo'));
+  expect(srv.linhas.get(ID_A)!.conteudo).toBe(docDeTexto('linha original A\nMEU TEXTO'));
+});
+
+it('sair da ABA com gravação na fila e levar 409 depois também não perde o texto: ao voltar, o aviso nomeia a página', async () => {
+  localStorage.clear();
+  const srv = servidorDeNotas([paginaNoServidor(ID_A, 'Pagina A', 'linha original A'), paginaNoServidor(ID_B, 'Pagina B', 'linha B')]);
+  const ref: { notas?: UseNotas } = {};
+  // O hook mora acima da aba, como no `App`: trocar de aba desmonta só a aba.
+  function ComAbas() {
+    const notas = useNotas();
+    ref.notas = notas;
+    const [naAba, setNaAba] = useState(true);
+    const [sel, setSel] = useState<string | null>(ID_A);
+    const sair = async () => { if (await canNavigate()) setNaAba(false); };
+    return (
+      <>
+        <button type="button" onClick={() => void sair()}>Ir para Pessoas</button>
+        {/* Volta por um link para a outra página (no `App`, a URL leva a página). */}
+        <button type="button" onClick={() => { setSel(ID_B); setNaAba(true); }}>Abrir a Pagina B</button>
+        {naAba && (
+          <AnotacoesTab notas={notas} autor="Ana" onPedirNome={() => {}} selecionada={sel}
+            onSelecionar={async id => { if (!(await canNavigate())) return false; setSel(id); return true; }} />
+        )}
+      </>
+    );
+  }
+  render(<ComAbas />);
+  await abertaCom('linha original A');
+
+  srv.estado.offline = true;
+  fireEvent.change(editor(), { target: { value: 'linha original A\nTEXTO DA ABA' } });
+  await waitFor(() => expect(screen.getByRole('alert').textContent).toContain('Sem conexão'), { timeout: 3000 });
+  srv.gravarPorFora(ID_A, 'texto dela');
+  fireEvent.click(screen.getByRole('button', { name: 'Ir para Pessoas' }));
+  await waitFor(() => expect(screen.queryByLabelText('Conteúdo da página')).toBeNull());
+
+  srv.estado.offline = false;
+  await act(async () => { await ref.notas!.flushPending(); });
+  fireEvent.click(screen.getByRole('button', { name: 'Abrir a Pagina B' }));
+  await abertaCom('linha B');
+  expect(screen.getByText('O seu texto em “Pagina A” não foi salvo: outra pessoa editou a página.')).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: 'Abrir página' }));
+  await waitFor(() => expect(editor().value).toBe('linha original A\nTEXTO DA ABA'));
+  expect(screen.getByRole('alert').textContent).toContain('Outra pessoa editou esta página');
 });
