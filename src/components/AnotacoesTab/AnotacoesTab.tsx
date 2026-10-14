@@ -489,6 +489,7 @@ export function AnotacoesTab({ notas, autor, onPedirNome, selecionada, onSelecio
                     />
                   </div>
                   <p className="notas-dica">
+                    <span><kbd>/</kbd> insere um bloco</span>
                     <span><kbd>##</kbd> título</span>
                     <span><kbd>1.</kbd> lista numerada</span>
                     <span><kbd>-</kbd> marcadores</span>
@@ -496,6 +497,7 @@ export function AnotacoesTab({ notas, autor, onPedirNome, selecionada, onSelecio
                     <span><kbd>&gt;</kbd> citação</span>
                     <span><kbd>Ctrl+Shift+H</kbd> destaque</span>
                     <span><kbd>Ctrl+V</kbd> cola imagem</span>
+                    <span><kbd>Alt+Shift+↑ ↓</kbd> move o bloco</span>
                   </p>
                 </section>
               </>

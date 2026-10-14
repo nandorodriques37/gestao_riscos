@@ -19,7 +19,7 @@ const AnotacoesTab = lazy(() => import('./components/AnotacoesTab/AnotacoesTab')
 import { EditModal } from './components/EditModal/EditModal';
 import { ModoRiscoToggle } from './components/common/ModoRiscoToggle';
 import { PromoverAcaoModal } from './components/RegistroTab/PromoverAcaoModal';
-import { PaletaComando, type ItemPaleta } from './components/common/PaletaComando';
+import { PaletaComando, type AberturaPorTipo, type ItemPaleta } from './components/common/PaletaComando';
 import { useConfirmacao } from './components/common/Confirmacao';
 import { gruposCom } from './components/NavRail/secoes';
 import { nomeRisco, plural } from './lib/portfolioLabels';
@@ -30,6 +30,7 @@ import { AREAS, ROTINAS, CATEGORIAS, RECURSOS, RESPONSAVEIS } from './data/RiskD
 import { useRecords } from './hooks/useRecords';
 import { useTasks } from './hooks/useTasks';
 import { useNotas } from './hooks/useNotas';
+import { ordenarNotas, trechoDaNota } from './lib/notas';
 import { usePortfolio } from './hooks/usePortfolio';
 import { downloadRecordsCSV } from './lib/csv';
 import {
@@ -166,6 +167,17 @@ function App() {
     return () => window.removeEventListener('keydown', onKey);
   }, [paletaAberta]);
 
+  // As páginas entram na paleta só com ela aberta: o trecho percorre o
+  // documento, e a lista muda a cada salvamento automático de quem digita —
+  // ninguém precisa reindexar páginas para uma paleta fechada. Fixadas e
+  // recentes primeiro, como na aba: a paleta mostra só as seis primeiras.
+  const paginasPaleta = useMemo<ItemPaleta[]>(() => (paletaAberta
+    ? ordenarNotas(notas.notas).map(n => ({
+      tipo: 'nota' as const, id: n.id, rotulo: n.titulo.trim() || 'Sem título',
+      sub: trechoDaNota(n, 80) || undefined,
+    }))
+    : []), [paletaAberta, notas.notas]);
+
   /** O que a paleta indexa: os registros das camadas, com o mínimo para reconhecer. */
   const itensPaleta = useMemo<ItemPaleta[]>(() => {
     const objetivoPorId = new Map(pf.portfolio.objetivos.map(o => [o.id, o.descricao]));
@@ -178,16 +190,19 @@ function App() {
       ...records.filter(r => r.risco.trim()).map(r => ({ tipo: 'risco' as const, id: r.id, rotulo: nomeRisco(r), sub: r.area || undefined })),
       ...tarefas.tasks.map(t => ({ tipo: 'tarefa' as const, id: t.id, rotulo: t.tarefa || 'Tarefa sem título', sub: t.tipo || undefined })),
       ...pf.portfolio.pessoas.map(p => ({ tipo: 'pessoa' as const, id: p.id, rotulo: p.nome, sub: p.papel || undefined })),
+      ...paginasPaleta,
     ];
-  }, [pf.portfolio.objetivos, pf.portfolio.iniciativas, pf.portfolio.pessoas, records, tarefas.tasks]);
+  }, [pf.portfolio.objetivos, pf.portfolio.iniciativas, pf.portfolio.pessoas, records, tarefas.tasks, paginasPaleta]);
 
-  const abrirDaPaleta = useCallback((item: ItemPaleta) => {
-    if (item.tipo === 'risco') abrirRisco(item.id);
-    else if (item.tipo === 'iniciativa') abrirIniciativa(item.id);
-    else if (item.tipo === 'tarefa') navigate({ ...readRoute(''), tab: 'tarefas', tarefa: item.id });
-    else if (item.tipo === 'objetivo') irPara('objetivos');
-    else irPara('pessoas');
-  }, [abrirRisco, abrirIniciativa, navigate, irPara]);
+  /** Um destino por tipo: tipo sem destino não compila, e nenhum cai no de outro. */
+  const abrirDaPaleta = useMemo<AberturaPorTipo>(() => ({
+    objetivo: () => { void irPara('objetivos'); },
+    iniciativa: abrirIniciativa,
+    risco: abrirRisco,
+    tarefa: id => navigate({ ...readRoute(''), tab: 'tarefas', tarefa: id }),
+    pessoa: () => { void irPara('pessoas'); },
+    nota: id => { void selecionarNota(id); },
+  }), [irPara, abrirIniciativa, abrirRisco, navigate, selecionarNota]);
 
   /** Excluir um risco desvincula as mitigações — não as apaga. O diálogo diz quantas. */
   function pedidoExcluirRisco(rec: StoredRiskRecord) {
@@ -546,7 +561,7 @@ function App() {
         grupos={gruposCom(mostrarTriagem)}
         itens={itensPaleta}
         onIrPara={irPara}
-        onAbrir={abrirDaPaleta}
+        abrir={abrirDaPaleta}
       />
       {dialogoConfirmacao}
 

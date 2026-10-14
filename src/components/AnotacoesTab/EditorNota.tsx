@@ -40,6 +40,11 @@ import {
   type Marcador,
   type PontoDeInsercao,
 } from './uploadsDeImagem';
+import { MenuBarra } from './menuBarra';
+import { MenuBarraView } from './MenuBarraView';
+import { BolhaFormato } from './BolhaFormato';
+import { AlcaBloco } from './AlcaBloco';
+import { MoverBloco } from './moverBloco';
 
 /**
  * Props do editor de uma página. É o CONTRATO entre a página (AnotacoesTab) e
@@ -71,7 +76,7 @@ export interface EditorNotaProps {
  */
 const INTERVALO_ONCHANGE = 300;
 
-const PLACEHOLDER = 'Escreva aqui. ## vira título, 1. vira lista numerada.';
+const PLACEHOLDER = 'Escreva, ou digite / para inserir um bloco';
 
 const OPCOES_PREPARO = { maxDimension: MAX_IMAGE_DIMENSION_NOTA, qualidade: QUALIDADE_NOTA, aceitos: ACCEPT_IMAGEM_NOTA };
 
@@ -135,9 +140,12 @@ const EM_CURSO = new Set<EnvioImagem['fase']>(['fila', 'preparando', 'enviando']
  * O corpo de uma página da aba Anotações: um editor de blocos (TipTap) que
  * grava sozinho. Títulos, listas, tarefas, citação, divisor, destaque, link e
  * imagem. Atalhos de markdown (`##`, `1.`, `-`, `[]`, `>`, `---`) valem ao
- * digitar.
+ * digitar; "/" abre o menu de blocos (`menuBarra.ts`), a seleção de texto
+ * mostra a barra de formato (`BolhaFormato`) e a calha esquerda tem o "+" e a
+ * alça que move o bloco (`AlcaBloco`, `moverBloco.ts`).
  *
- * Imagem entra colada, arrastada ou solta de fora da página. Enquanto sobe, o
+ * Imagem entra colada, arrastada, solta de fora da página ou escolhida no
+ * item "Imagem" do menu "/" — os quatro pelo mesmo `enfileirar`. Enquanto sobe, o
  * lugar dela é um marcador FORA do documento (`uploadsDeImagem.ts`): o
  * documento só recebe o bloco com o endereço final, numa transação comum.
  */
@@ -419,6 +427,10 @@ export function EditorNota({ nota, recarregar, onChange, onUploads, autoFocus }:
       agendar();
     },
     descarregar,
+    /** O item "Imagem" do menu "/": o mesmo caminho da imagem colada. */
+    escolheuImagens(arquivos: File[], ponto: PontoDeInsercao) {
+      enfileirar(arquivos.map(deArquivo), ponto);
+    },
     colar(view: EditorView, event: ClipboardEvent): boolean {
       const dados = event.clipboardData;
       if (!dados) return false;
@@ -519,6 +531,8 @@ export function EditorNota({ nota, recarregar, onChange, onUploads, autoFocus }:
       }),
       ImagemNota.configure({ notaId, onAmpliar: pos => acoesRef.current.ampliar(pos) }),
       UploadsDeImagem,
+      MenuBarra,
+      MoverBloco,
     ],
     content: lerDoc(nota.conteudo) as JSONContent | null,
     // O CSS que o TipTap injetaria tem cor fixa (o cursor de lacuna em preto);
@@ -639,6 +653,9 @@ export function EditorNota({ nota, recarregar, onChange, onUploads, autoFocus }:
   return (
     <div className="nota-upload-zona" data-soltando={soltando || undefined}>
       <EditorContent editor={editor} />
+      <MenuBarraView editor={editor} onImagens={(arquivos, ponto) => acoesRef.current.escolheuImagens(arquivos, ponto)} />
+      <BolhaFormato editor={editor} />
+      <AlcaBloco editor={editor} />
       {soltando && (
         <p className="nota-upload-soltar" role="status">
           <IconeImagem />

@@ -1,0 +1,229 @@
+/* ============================================================================
+   Aba Anotações — a barra flutuante de formatação (BolhaFormato).
+
+   Dono: a etapa da bolha do Lote 3. Surge sobre uma seleção de texto com
+   Negrito, Itálico, Sublinhado, Tachado | Destaque e Link, como o painel
+   "Barra flutuante" do canvas aprovado. Só tokens.
+
+   A bolha mora numa camada própria no fim do <body> (`.nota-bolha-camada`),
+   posicionada em `absolute` no documento pelo plugin do TipTap (Floating UI):
+   nenhum `overflow` de cartão a corta, nenhum `transform` de ancestral a
+   desloca, e ela rola junto com a página. O plugin escreve `position`, `left`,
+   `top`, `width`, `visibility` e `opacity` no próprio elemento; o resto é daqui.
+   ========================================================================= */
+
+/* Abaixo do header fixo (z-index 30), do rail e dos modais: perto do topo ela
+   vira para baixo da seleção (`flip`), e se a seleção rola para baixo do header
+   ela some (`hide`). */
+.nota-bolha {
+  z-index: 25;
+  padding: var(--sp-1);
+  background: var(--bg-surface);
+  border: 1px solid var(--line-hairline);
+  border-radius: var(--r-float);
+  box-shadow: var(--elev-2);
+  color: var(--ink-1);
+  font-family: var(--font-sans);
+  font-size: var(--fs-md);
+  line-height: 1.3;
+}
+
+/* O plugin dá foco à bolha inteira num clique fora dos botões; o anel é dos
+   botões e do campo. */
+.nota-bolha:focus {
+  outline: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .nota-bolha {
+    /* Só opacidade: nada de `transform` em quem flutua. `backwards`, nunca
+       `both` — o estado final é o que o plugin escreveu no elemento. */
+    animation: nota-bolha-surge var(--dur-fast) var(--ease) backwards;
+  }
+}
+
+@keyframes nota-bolha-surge {
+  from { opacity: 0; }
+}
+
+.nota-bolha-corpo,
+.nota-bolha-barra {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---------- Botões de marca ---------- */
+
+.nota-bolha-botoes,
+.nota-bolha-grupo {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--sp-1) / 2);
+}
+
+.nota-bolha-btn {
+  display: inline-grid;
+  place-items: center;
+  min-inline-size: max(var(--control-h), var(--tap-min));
+  block-size: max(var(--control-h), var(--tap-min));
+  padding: 0 var(--sp-2);
+  border: 0;
+  border-radius: var(--r-full);
+  background: none;
+  color: var(--ink-1);
+  font: inherit;
+  font-weight: var(--fw-bold);
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+
+.nota-bolha-btn:hover {
+  background: var(--bg-hover);
+}
+
+/* Marca ativa na seleção (aria-pressed) e link ativo (data-ativo): o mesmo
+   azul suave da aba ativa, com o ícone no azul de texto. */
+.nota-bolha-btn[aria-pressed='true'],
+.nota-bolha-btn[data-ativo] {
+  background: var(--brand-soft);
+  color: var(--brand-text);
+}
+
+/* O anel global troca o raio para --r-control; aqui o botão é pílula, e o
+   anel fica para dentro para não encostar no vizinho. */
+.nota-bolha-btn:focus-visible,
+.nota-bolha-texto:focus-visible {
+  border-radius: var(--r-full);
+  outline-offset: calc(-1 * var(--focus-w));
+}
+
+.nota-bolha-sep {
+  flex: none;
+  inline-size: 1px;
+  block-size: calc(var(--sp-4) + var(--sp-1));
+  margin-inline: var(--sp-1);
+  background: var(--line-hairline);
+}
+
+/* O ícone do Destaque é a própria cor do marca-texto com um "A" — amarelo
+   próprio, nunca coral. */
+.nota-bolha-amostra {
+  display: grid;
+  place-items: center;
+  inline-size: calc(var(--sp-4) + var(--sp-1));
+  block-size: calc(var(--sp-4) + var(--sp-1));
+  border-radius: var(--r-xs);
+  background: var(--marca-texto);
+  box-shadow: inset 0 0 0 1px var(--line-border);
+  color: var(--on-marca-texto);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-heavy);
+  line-height: 1;
+}
+
+/* ---------- Seleção dentro de um link: endereço, Abrir, Remover link ---------- */
+
+.nota-bolha-linha {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  margin-block-start: var(--sp-1);
+  padding: var(--sp-1) 0 0 var(--sp-2);
+  border-top: 1px solid var(--line-hairline);
+}
+
+.nota-bolha-url {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  max-inline-size: calc(var(--sp-7) * 4);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink-2);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+}
+
+.nota-bolha-texto {
+  flex: none;
+  block-size: max(var(--control-h), var(--tap-min));
+  padding: 0 var(--sp-3);
+  border: 0;
+  border-radius: var(--r-full);
+  background: none;
+  color: var(--brand-text);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-bold);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.nota-bolha-texto:hover {
+  background: var(--bg-hover);
+}
+
+/* ---------- Campo do link ---------- */
+
+.nota-bolha-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--sp-1) var(--sp-2);
+  margin-block-start: var(--sp-1);
+  padding: var(--sp-2) var(--sp-1) var(--sp-1);
+  border-top: 1px solid var(--line-hairline);
+}
+
+.nota-bolha-campo {
+  inline-size: calc(var(--sp-7) * 5);
+  min-inline-size: 0;
+  max-inline-size: calc(100vw - var(--sp-7) * 3);
+  block-size: var(--control-h);
+  padding: 0 var(--sp-3);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-control);
+  background: var(--bg-surface);
+  color: var(--ink-1);
+  font: inherit;
+  font-size: var(--fs-field);
+}
+
+.nota-bolha-campo::placeholder {
+  color: var(--ink-3);
+}
+
+.nota-bolha-campo[aria-invalid='true'] {
+  border-color: var(--danger);
+}
+
+/* A mensagem não alarga a bolha: ela quebra na largura do campo + Aplicar
+   (`contain: inline-size` zera a largura intrínseca dela). */
+.nota-bolha-erro {
+  grid-column: 1 / -1;
+  contain: inline-size;
+  margin: 0;
+  padding-inline: var(--sp-1);
+  color: var(--danger);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+}
+
+/* ---------- O trecho que vai virar link ----------
+   Com o foco no campo, o navegador apaga o realce da seleção; a decoração
+   (fora do documento) mantém o trecho à vista, no azul suave da seleção do
+   canvas. */
+.nota-doc .nota-bolha-alvo {
+  background: var(--brand-soft);
+  box-shadow: 0 0 0 1px var(--brand-soft);
+}
+
+/* ---------- Só toque e estreito ----------
+   No celular a barra de formato fica acima do teclado (Lote 4); a bolha não
+   disputa espaço com o menu de seleção do sistema. O componente já não a
+   mostra nesse caso — esta regra é a segunda linha. */
+@media (hover: none) and (pointer: coarse) and (max-width: 760px) {
+  .nota-bolha {
+    display: none;
+  }
+}

@@ -1,0 +1,127 @@
+/* ============================================================================
+   Aba Anotações — controles do bloco na calha esquerda: "+" e a alça "⋮⋮".
+
+   Dono: a etapa da alça do Lote 3 (AlcaBloco.tsx, moverBloco.ts). Só tokens.
+   A calha é a margem esquerda da página (`--nota-margem-esq`, em notas.css):
+   48px de controles cabem nos 72px do desktop e nos 56px até 900px; abaixo
+   de 760px a margem cai para 16px e a alça some, como sem mouse.
+
+   O traço de onde o bloco arrastado entra NÃO mora aqui: é o Dropcursor do
+   editor, em --brand (`.nota-upload-cursor`, notas-editor.css).
+   ========================================================================= */
+
+/* Âncora de tamanho zero no canto do contêiner posicionado do editor
+   (`.nota-upload-zona`): é a origem das medidas da alça, e rola junto com o
+   texto. Sem camada fixa e sem portal. */
+.nota-alca-ancora {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+}
+
+/* `top`/`left` (do componente) são a borda esquerda do bloco e o meio da
+   primeira linha dele; a alça fica à esquerda disso, com um vão de --sp-1.
+   `translate` aqui não prende nenhuma camada fixa: a alça não tem uma. */
+.nota-alca {
+  position: absolute;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  translate: calc(-100% - var(--sp-1)) -50%;
+  animation: nota-alca-surge var(--dur-fast) var(--ease);
+}
+
+@keyframes nota-alca-surge {
+  from { opacity: 0; }
+}
+
+.nota-alca-btn {
+  display: grid;
+  place-items: center;
+  width: max(var(--sp-5), var(--tap-min));
+  height: max(var(--sp-5), var(--tap-min));
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: none;
+  color: var(--ink-3);
+  cursor: pointer;
+  transition:
+    background var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease);
+}
+
+.nota-alca-btn:hover {
+  background: var(--bg-hover);
+  color: var(--ink-2);
+}
+
+.nota-alca-btn:focus-visible {
+  outline: var(--focus-w) solid var(--focus);
+  outline-offset: var(--focus-offset);
+}
+
+/* O alvo do clique e do arraste é o botão, nunca o traço do ícone. */
+.nota-alca-btn svg {
+  pointer-events: none;
+}
+
+.nota-alca-arrastar {
+  width: max(calc(var(--sp-5) - var(--sp-1)), var(--tap-min));
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.nota-alca-arrastar:active,
+.nota-alca[data-arrastando] .nota-alca-arrastar {
+  cursor: grabbing;
+}
+
+/* O bloco inteiro está selecionado (clique na alça): a alça diz qual. */
+.nota-alca[data-selecionado] .nota-alca-arrastar {
+  background: var(--bg-selected);
+  color: var(--brand-text);
+}
+
+/* ---------- O bloco selecionado inteiro ----------
+   Clique na alça (ou o soltar de um arraste) seleciona o bloco como um nó:
+   Delete apaga, Alt+Shift+↑ ↓ movem. O fundo é o da seleção; o divisor e a
+   imagem já têm o anel deles (notas-editor.css), por isso ficam de fora. */
+.nota-doc :is(p, h1, h2, h3, blockquote, li, ul, ol).ProseMirror-selectednode {
+  border-radius: var(--r-xs);
+  background: var(--bg-selected);
+  box-shadow: 0 0 0 calc(var(--sp-1) / 2) var(--bg-selected);
+}
+
+/* O original enquanto a cópia levantada anda: o lugar que vai ficar vazio. */
+.nota-doc .nota-bloco-arrastado {
+  opacity: 0.4;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nota-alca {
+    animation: none;
+  }
+
+  .nota-alca-btn {
+    transition: none;
+  }
+}
+
+/* Celular e toque: sem hover não há o que revelar a alça, e a calha não cabe.
+   No teclado continuam "/" e Alt+Shift+↑ ↓. */
+@media (max-width: 760px), (hover: none), (pointer: coarse) {
+  .nota-alca-ancora {
+    display: none;
+  }
+}
+
+/* Arquivo de fora sobre a página: o aviso "Solte para inserir" e o traço do
+   Dropcursor dizem onde a imagem entra; a alça do bloco sob o ponteiro
+   competiria com eles. O arraste da própria alça não marca `data-soltando`. */
+.nota-upload-zona[data-soltando] .nota-alca-ancora {
+  display: none;
+}
