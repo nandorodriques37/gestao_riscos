@@ -18,10 +18,10 @@ const SRC = '/api/notas/11111111-1111-4111-8111-111111111111/imagens/22222222-22
 
 const TRIAGEM = doc(
   h(2, 'Meus'),
-  ol('Alinhar com Plinio dashboard de EO;', 'Tratar TOP fornecedores em ruptura no CD10;'),
+  ol('Revisar com a Ana o painel de vendas;', 'Ligar para os fornecedores atrasados;'),
   img(SRC),
-  h(2, 'Hugo Braga'),
-  ol('Polviztra no CD04 - Atrasado a 28 dias'),
+  h(2, 'Rafael Costa'),
+  ol('Relatório do depósito - prazo vencido'),
 );
 
 let seq = 0;
@@ -38,27 +38,27 @@ describe('textoDaNota', () => {
   it('uma linha por bloco de texto, na ordem do documento, sem a imagem', () => {
     expect(textoDaNota(TRIAGEM)).toBe([
       'Meus',
-      'Alinhar com Plinio dashboard de EO;',
-      'Tratar TOP fornecedores em ruptura no CD10;',
-      'Hugo Braga',
-      'Polviztra no CD04 - Atrasado a 28 dias',
+      'Revisar com a Ana o painel de vendas;',
+      'Ligar para os fornecedores atrasados;',
+      'Rafael Costa',
+      'Relatório do depósito - prazo vencido',
     ].join('\n'));
   });
 
   it('junta os pedaços de uma linha com marcas e quebra na quebra manual', () => {
-    const conteudo = doc(p(t('Alinhar '), t('com Plinio', [{ type: 'highlight' }]), { type: 'hardBreak' }, t('depois')));
-    expect(textoDaNota(conteudo)).toBe('Alinhar com Plinio\ndepois');
+    const conteudo = doc(p(t('Revisar '), t('com a Ana', [{ type: 'highlight' }]), { type: 'hardBreak' }, t('depois')));
+    expect(textoDaNota(conteudo)).toBe('Revisar com a Ana\ndepois');
   });
 
   it('lê tarefa, citação e bloco de código; descarta linha em branco e divisor', () => {
     const conteudo = doc(
-      { type: 'taskList', content: [{ type: 'taskItem', attrs: { checked: true }, content: [p(t('Material DROs'))] }] },
+      { type: 'taskList', content: [{ type: 'taskItem', attrs: { checked: true }, content: [p(t('Material da reunião'))] }] },
       p(),
-      { type: 'blockquote', content: [p(t('Incluir o Hugo'))] },
+      { type: 'blockquote', content: [p(t('Incluir a Ana'))] },
       { type: 'horizontalRule' },
       { type: 'codeBlock', content: [t('a\nb')] },
     );
-    expect(textoDaNota(conteudo)).toBe('Material DROs\nIncluir o Hugo\na\nb');
+    expect(textoDaNota(conteudo)).toBe('Material da reunião\nIncluir a Ana\na\nb');
   });
 
   it('página vazia ou ilegível não tem texto', () => {
@@ -69,7 +69,7 @@ describe('textoDaNota', () => {
   });
 
   it('docDeTexto é o caminho inverso: um parágrafo por linha', () => {
-    expect(textoDaNota(docDeTexto('Meus\n\nHugo Braga'))).toBe('Meus\nHugo Braga');
+    expect(textoDaNota(docDeTexto('Meus\n\nRafael Costa'))).toBe('Meus\nRafael Costa');
     expect(JSON.parse(docDeTexto(''))).toEqual({ type: 'doc', content: [{ type: 'paragraph' }] });
   });
 
@@ -95,17 +95,17 @@ describe('trechoDaNota', () => {
   it('pula a linha que repete o título e emenda as seguintes', () => {
     const n = nota({ titulo: 'meus', conteudo: TRIAGEM });
     expect(trechoDaNota(n, 200)).toBe(
-      'Alinhar com Plinio dashboard de EO · Tratar TOP fornecedores em ruptura no CD10 · Hugo Braga · Polviztra no CD04 - Atrasado a 28 dias',
+      'Revisar com a Ana o painel de vendas · Ligar para os fornecedores atrasados · Rafael Costa · Relatório do depósito - prazo vencido',
     );
   });
 
   it('começa na primeira linha quando o título é outro', () => {
-    expect(trechoDaNota(nota({ titulo: 'Triagem', conteudo: TRIAGEM }), 200).startsWith('Meus · Alinhar com Plinio')).toBe(true);
+    expect(trechoDaNota(nota({ titulo: 'Triagem', conteudo: TRIAGEM }), 200).startsWith('Meus · Revisar com a Ana')).toBe(true);
   });
 
   it('corta na palavra inteira, com reticências, sem passar do máximo', () => {
     const trecho = trechoDaNota(nota({ titulo: 'Triagem', conteudo: TRIAGEM }), 40);
-    expect(trecho).toBe('Meus · Alinhar com Plinio dashboard de…');
+    expect(trecho).toBe('Meus · Revisar com a Ana o painel de…');
     expect(trecho.length).toBeLessThanOrEqual(40);
   });
 
@@ -130,21 +130,21 @@ describe('ordenarNotas', () => {
 
 describe('filtrarNotas', () => {
   const triagem = nota({ titulo: 'Triagem', conteudo: TRIAGEM, autor: 'DERYLSON' });
-  const plantao = nota({ titulo: 'Plantão aos sábados', conteudo: doc(p(t('Prós e contras'))), autor: 'Rafael Costa', editado_por: 'Derylson' });
-  const promo = nota({ titulo: 'Ações promocionais', conteudo: doc(p(t('Modelo com a Lis'))), autor: 'Camila Nunes', editado_por: 'Camila Nunes' });
-  const todas = [triagem, plantao, promo];
+  const escala = nota({ titulo: 'Escala de verão', conteudo: doc(p(t('Prós e contras'))), autor: 'Rafael Costa', editado_por: 'Derylson' });
+  const promo = nota({ titulo: 'Ações de campanha', conteudo: doc(p(t('Modelo com a Ana'))), autor: 'Camila Nunes', editado_por: 'Camila Nunes' });
+  const todas = [triagem, escala, promo];
 
   it('busca no título e no texto, sem acento e sem caixa', () => {
-    expect(filtrarNotas(todas, { busca: 'PLANTAO', recorte: 'todas', autor: '' })).toEqual([plantao]);
-    expect(filtrarNotas(todas, { busca: 'polviztra', recorte: 'todas', autor: '' })).toEqual([triagem]);
+    expect(filtrarNotas(todas, { busca: 'VERAO', recorte: 'todas', autor: '' })).toEqual([escala]);
+    expect(filtrarNotas(todas, { busca: 'relatorio', recorte: 'todas', autor: '' })).toEqual([triagem]);
     expect(filtrarNotas(todas, { busca: 'acoes', recorte: 'todas', autor: '' })).toEqual([promo]);
     expect(filtrarNotas(todas, { busca: '  ', recorte: 'todas', autor: '' })).toEqual(todas);
-    expect(filtrarNotas(todas, { busca: 'plantão domingo', recorte: 'todas', autor: '' })).toEqual([]);
+    expect(filtrarNotas(todas, { busca: 'verão domingo', recorte: 'todas', autor: '' })).toEqual([]);
   });
 
   it('"Minhas" = escrevi ou editei por último, casando o nome sem caixa nem acento', () => {
-    expect(filtrarNotas(todas, { busca: '', recorte: 'minhas', autor: 'derylson' })).toEqual([triagem, plantao]);
-    expect(filtrarNotas(todas, { busca: 'prós', recorte: 'minhas', autor: 'Derylson' })).toEqual([plantao]);
+    expect(filtrarNotas(todas, { busca: '', recorte: 'minhas', autor: 'derylson' })).toEqual([triagem, escala]);
+    expect(filtrarNotas(todas, { busca: 'prós', recorte: 'minhas', autor: 'Derylson' })).toEqual([escala]);
     expect(ehMinha(promo, 'camila  nunes')).toBe(true);
   });
 

@@ -70,7 +70,7 @@ function aplicar(state: EditorState, comando: Command): { ok: boolean; state: Ed
   return { ok, state: tr ? state.apply(tr) : state, tr };
 }
 
-/** Os blocos de primeiro nível como texto curto: "p:A", "h2:Hugo", "ol[1|2]". */
+/** Os blocos de primeiro nível como texto curto: "p:A", "h2:Ana", "ol[1|2]". */
 function forma(no: NoPM): string {
   const nome = no.type.name;
   if (nome === 'doc') return no.content.content.map(forma).join(' ');
@@ -122,14 +122,14 @@ describe('moverBloco', () => {
   });
 
   it('título seguido de lista: o título passa pela lista inteira, de uma vez', () => {
-    const inicio = cursorEm(docDe(h(2, 'Hugo Braga'), ol(li('Squad'), li('Excessos CD9')), h(2, 'Hugo Diógenes')), 'Braga');
+    const inicio = cursorEm(docDe(h(2, 'Rafael Costa'), ol(li('Agenda'), li('Estoque parado')), h(2, 'Camila Nunes')), 'Costa');
     const baixo = aplicar(inicio, moverBloco('baixo'));
-    expect(forma(baixo.state.doc)).toBe('ol[Squad|Excessos CD9] h2:Hugo Braga h2:Hugo Diógenes');
+    expect(forma(baixo.state.doc)).toBe('ol[Agenda|Estoque parado] h2:Rafael Costa h2:Camila Nunes');
     // E a lista sobe por cima do título, inteira, com o cursor num item.
-    const lista = aplicar(cursorEm(baixo.state.doc, 'Squad'), moverBloco('cima'));
+    const lista = aplicar(cursorEm(baixo.state.doc, 'Agenda'), moverBloco('cima'));
     expect(lista.ok).toBe(false); // o item é o bloco do cursor, e ele é o primeiro da lista
-    const doTitulo = aplicar(cursorEm(baixo.state.doc, 'Braga'), moverBloco('cima'));
-    expect(forma(doTitulo.state.doc)).toBe('h2:Hugo Braga ol[Squad|Excessos CD9] h2:Hugo Diógenes');
+    const doTitulo = aplicar(cursorEm(baixo.state.doc, 'Costa'), moverBloco('cima'));
+    expect(forma(doTitulo.state.doc)).toBe('h2:Rafael Costa ol[Agenda|Estoque parado] h2:Camila Nunes');
   });
 
   it('item de lista aninhada se move só dentro da lista dele', () => {
@@ -143,16 +143,16 @@ describe('moverBloco', () => {
   });
 
   it('tarefa marcada continua marcada depois de mover', () => {
-    const doc = docDe(tarefas(tarefa('Ligar'), tarefa('Sal de Andrews - OK', true)));
-    const r = aplicar(cursorEm(doc, 'Andrews'), moverBloco('cima'));
-    expect(forma(r.state.doc)).toBe('tl[Sal de Andrews - OK|Ligar]');
+    const doc = docDe(tarefas(tarefa('Ligar'), tarefa('Pedido conferido - OK', true)));
+    const r = aplicar(cursorEm(doc, 'conferido'), moverBloco('cima'));
+    expect(forma(r.state.doc)).toBe('tl[Pedido conferido - OK|Ligar]');
     expect(r.state.doc.firstChild?.firstChild?.attrs.checked).toBe(true);
   });
 
   it('lista numerada que começa em 4 mantém o início', () => {
-    const lista: JSONContent = { ...ol(li('Ruptura Hypera'), li('Ruptura FQM')), attrs: { start: 4 } };
-    const r = aplicar(cursorEm(docDe(lista), 'FQM'), moverBloco('cima'));
-    expect(forma(r.state.doc)).toBe('ol[Ruptura FQM|Ruptura Hypera]');
+    const lista: JSONContent = { ...ol(li('Falta de caixas'), li('Falta de etiquetas')), attrs: { start: 4 } };
+    const r = aplicar(cursorEm(docDe(lista), 'etiquetas'), moverBloco('cima'));
+    expect(forma(r.state.doc)).toBe('ol[Falta de etiquetas|Falta de caixas]');
     expect(r.state.doc.firstChild?.attrs.start).toBe(4);
   });
 
@@ -212,13 +212,13 @@ describe('blocoDaSelecao e blocoEm', () => {
   it('o cursor num item é o item; num título, o título; numa citação, a citação', () => {
     const doc = docDe(
       h(2, 'Meus'),
-      ol(li('Orientar equipe', ol(li('Piloto EO')))),
+      ol(li('Orientar equipe', ol(li('Piloto novo')))),
       { type: 'blockquote', content: [p('Citado')] },
     );
     expect(blocoDaSelecao(cursorEm(doc, 'Meus'))?.no.type.name).toBe('heading');
     expect(blocoDaSelecao(cursorEm(doc, 'Orientar'))?.pos).toBe(inicioDe(doc, 'listItem'));
     const aninhado = blocoDaSelecao(cursorEm(doc, 'Piloto'));
-    expect(aninhado?.no.textContent).toBe('Piloto EO');
+    expect(aninhado?.no.textContent).toBe('Piloto novo');
     expect(aninhado?.no.type.name).toBe('listItem');
     expect(blocoDaSelecao(cursorEm(doc, 'Citado'))?.no.type.name).toBe('blockquote');
   });
@@ -264,7 +264,7 @@ describe('inserirAbaixo (o "+")', () => {
   });
 
   it('abaixo de um título, da imagem e do divisor: parágrafo', () => {
-    expect(forma(inserir(docDe(h(2, 'Hugo'), p('x')), 0).state.doc)).toBe('h2:Hugo p:/ p:x');
+    expect(forma(inserir(docDe(h(2, 'Ana'), p('x')), 0).state.doc)).toBe('h2:Ana p:/ p:x');
     const comImagem = docDe(p('A'), img);
     expect(forma(inserir(comImagem, inicioDe(comImagem, 'image')).state.doc)).toBe('p:A img p:/');
     const comDivisor = docDe({ type: 'horizontalRule' }, p('B'));

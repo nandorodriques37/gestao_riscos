@@ -10,10 +10,10 @@ afterEach(cleanup);
 const UM_DE_CADA: Record<TipoItemPaleta, ItemPaleta & { busca: string }> = {
   objetivo: { tipo: 'objetivo', id: 'o1', rotulo: 'Reduzir ruptura nas lojas', busca: 'ruptura' },
   iniciativa: { tipo: 'iniciativa', id: 'i1', rotulo: 'Revisar malha de CDs', busca: 'malha' },
-  risco: { tipo: 'risco', id: 'r1', rotulo: 'Falta de fralda no CD10', busca: 'fralda' },
-  tarefa: { tipo: 'tarefa', id: 't1', rotulo: 'Ligar para o fornecedor Drylock', busca: 'drylock' },
-  pessoa: { tipo: 'pessoa', id: 'p1', rotulo: 'Hugo Diógenes', busca: 'diogenes' },
-  nota: { tipo: 'nota', id: 'n1', rotulo: 'Reunião com DROs', sub: 'Material de apoio da DRO 5', busca: 'dros' },
+  risco: { tipo: 'risco', id: 'r1', rotulo: 'Falta de embalagem no depósito', busca: 'embalagem' },
+  tarefa: { tipo: 'tarefa', id: 't1', rotulo: 'Ligar para a transportadora', busca: 'transportadora' },
+  pessoa: { tipo: 'pessoa', id: 'p1', rotulo: 'Camila Simões', busca: 'simoes' },
+  nota: { tipo: 'nota', id: 'n1', rotulo: 'Reunião regional', sub: 'Material de apoio da região sul', busca: 'regional' },
 };
 
 const destino = () => vi.fn<(id: string) => void>();
@@ -36,7 +36,7 @@ function montar(itens: ItemPaleta[], abrir = abertura()) {
 }
 
 const PAGINA_TRIAGEM: ItemPaleta = {
-  tipo: 'nota', id: 'n-triagem', rotulo: 'Triagem', sub: 'Meus · Alinhar com Plínio o dashboard de EO',
+  tipo: 'nota', id: 'n-triagem', rotulo: 'Triagem', sub: 'Meus · Revisar com a Ana o relatório de vendas',
 };
 
 it('lista a página com o tipo escrito, e a página "Triagem" não se confunde com a aba Triagem', () => {
@@ -52,7 +52,7 @@ it('lista a página com o tipo escrito, e a página "Triagem" não se confunde c
   expect(secao.textContent).toBe('Triagem');
   expect(within(pagina).getByText('Página')).toBeTruthy();
   expect(within(pagina).getByText('Triagem')).toBeTruthy();
-  expect(pagina.textContent).toContain('Alinhar com Plínio');
+  expect(pagina.textContent).toContain('Revisar com a Ana');
   expect(screen.getByText('Páginas')).toBeTruthy();
 
   // Nome acessível distinto: um leitor de tela também separa as duas.
@@ -65,7 +65,7 @@ it('lista a página com o tipo escrito, e a página "Triagem" não se confunde c
 
 it('acha a página pelo começo do texto, não só pelo título', () => {
   const { buscar } = montar([PAGINA_TRIAGEM]);
-  buscar('plinio');
+  buscar('relatorio');
   expect(screen.getAllByRole('option').map(o => o.id)).toEqual(['paleta-nota:n-triagem']);
 });
 

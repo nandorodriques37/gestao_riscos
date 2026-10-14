@@ -22,7 +22,7 @@ describe('textoDoHtml', () => {
   });
 
   it('devolve o texto visível com espaços colapsados', () => {
-    expect(textoDoHtml('<table><tr><td>Ruptura</td>\n<td>CD 10</td></tr></table>')).toBe('Ruptura CD 10');
+    expect(textoDoHtml('<table><tr><td>Caixas</td>\n<td>Depósito 2</td></tr></table>')).toBe('Caixas Depósito 2');
   });
 });
 

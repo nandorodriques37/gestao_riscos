@@ -44,20 +44,20 @@ const UUID_N1 = '11111111-1111-4111-8111-111111111111';
 function paginas(): Nota[] {
   return [
     {
-      id: 'n2', version: 2, updated_at: minutosAntes(120), titulo: 'Reunião com DROs', fixada: false,
+      id: 'n2', version: 2, updated_at: minutosAntes(120), titulo: 'Reunião regional', fixada: false,
       // Escrita por outra pessoa, editada por último por mim (em caixa alta): é "minha".
       autor: 'Camila Nunes', editado_por: 'DERYLSON',
-      conteudo: docDeTexto('Ruptura dos AME na DRO 5\nMaterial de apoio'),
+      conteudo: docDeTexto('Faltas na região sul\nMaterial de apoio'),
     },
     {
       id: 'n1', version: 4, updated_at: minutosAntes(5), titulo: 'Triagem', fixada: true,
       autor: 'Derylson', editado_por: 'Derylson',
-      conteudo: docDeTexto('Meus\nAlinhar com Plínio o dashboard de EO;\nTratar TOP fornecedores em ruptura no CD10;'),
+      conteudo: docDeTexto('Meus\nRevisar com a Ana o relatório de vendas;\nLigar para os fornecedores atrasados;'),
     },
     {
-      id: 'n3', version: 1, updated_at: new Date(2026, 9, 8, 16, 0).toISOString(), titulo: 'Excessos de fralda CD10', fixada: false,
+      id: 'n3', version: 1, updated_at: new Date(2026, 9, 8, 16, 0).toISOString(), titulo: 'Estoque parado no depósito', fixada: false,
       autor: 'Rafael Costa', editado_por: 'Rafael Costa',
-      conteudo: docDeTexto('Drylock: virar veículos para outros CDs'),
+      conteudo: docDeTexto('Transportadora: remanejar as cargas'),
     },
   ];
 }
@@ -200,11 +200,11 @@ it('o título conta as páginas e as editadas na semana; a lista separa Fixadas 
 
   expect(within(screen.getByRole('list', { name: 'Fixadas' })).getAllByRole('link')).toHaveLength(1);
   expect(within(screen.getByRole('list', { name: 'Recentes' })).getAllByRole('link')).toHaveLength(2);
-  expect(titulosNaLista()).toEqual(['Triagem', 'Reunião com DROs', 'Excessos de fralda CD10']);
+  expect(titulosNaLista()).toEqual(['Triagem', 'Reunião regional', 'Estoque parado no depósito']);
   // A meta diz quem editou por último e quando.
   const triagem = screen.getAllByRole('link')[0];
   expect(triagem.querySelector('.notas-item-meta')?.textContent).toBe('Derylson · há 5 min');
-  expect(triagem.querySelector('.notas-item-trecho')?.textContent).toContain('Alinhar com Plínio');
+  expect(triagem.querySelector('.notas-item-trecho')?.textContent).toContain('Revisar com a Ana');
 
   // Acima de 760px a primeira da ordem abre sozinha, sem empilhar histórico.
   await waitFor(() => expect(espias.onSelecionar).toHaveBeenCalledWith('n1', { substituir: true }));
@@ -216,10 +216,10 @@ it('o título conta as páginas e as editadas na semana; a lista separa Fixadas 
 it('a busca casa título e texto sem acento e sem caixa, e o vazio diz o que foi buscado', () => {
   montar({ selecionada: 'n1' });
   fireEvent.change(busca(), { target: { value: 'reuniao' } });
-  expect(titulosNaLista()).toEqual(['Reunião com DROs']);
+  expect(titulosNaLista()).toEqual(['Reunião regional']);
   expect(screen.getByRole('button', { name: /^Todas/ }).textContent).toBe('Todas1');
 
-  fireEvent.change(busca(), { target: { value: 'PLINIO' } });
+  fireEvent.change(busca(), { target: { value: 'RELATORIO' } });
   expect(titulosNaLista()).toEqual(['Triagem']);
 
   fireEvent.change(busca(), { target: { value: 'plantão domingo' } });
@@ -235,7 +235,7 @@ it('Minhas mostra as páginas que escrevi ou editei por último', () => {
   const minhas = screen.getByRole('button', { name: /^Minhas/ });
   fireEvent.click(minhas);
   expect(minhas.getAttribute('aria-pressed')).toBe('true');
-  expect(titulosNaLista()).toEqual(['Triagem', 'Reunião com DROs']);
+  expect(titulosNaLista()).toEqual(['Triagem', 'Reunião regional']);
 });
 
 it('Minhas sem nome no chip pede o nome em vez de mostrar lista vazia', () => {
@@ -285,7 +285,7 @@ it('Excluir pede confirmação; só então sai da página e depois exclui', asyn
     type: 'doc',
     content: [
       { type: 'paragraph', content: [{ type: 'text', text: 'Meus' }] },
-      { type: 'paragraph', content: [{ type: 'text', text: 'Alinhar com Plínio' }] },
+      { type: 'paragraph', content: [{ type: 'text', text: 'Revisar com a Ana' }] },
       { type: 'image', attrs: { src: `/api/notas/${UUID_N1}/imagens/22222222-2222-4222-8222-222222222222` } },
       { type: 'image', attrs: { src: `/api/notas/${UUID_N1}/imagens/33333333-3333-4333-8333-333333333333` } },
     ],
@@ -307,7 +307,7 @@ it('Excluir pede confirmação; só então sai da página e depois exclui', asyn
   // A seguinte na ordem da lista abre ANTES de a página sumir.
   expect(log.slice(-2)).toEqual(['abrir n2', 'remover n1']);
   expect(espias.onSelecionar).toHaveBeenLastCalledWith('n2', { substituir: true });
-  await waitFor(() => expect(titulosNaLista()).toEqual(['Reunião com DROs', 'Excessos de fralda CD10']));
+  await waitFor(() => expect(titulosNaLista()).toEqual(['Reunião regional', 'Estoque parado no depósito']));
 });
 
 it('página sem texto anuncia só que some', async () => {

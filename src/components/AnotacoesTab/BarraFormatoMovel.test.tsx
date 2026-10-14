@@ -48,7 +48,7 @@ afterEach(() => {
 // ---------- A página ----------
 
 const NOTA_ID = '11111111-1111-4111-8111-111111111111';
-const TEXTO = 'Polviztra no CD04 - Atrasado a 28 dias';
+const TEXTO = 'Relatório do depósito - prazo vencido';
 
 function doc(...paragrafos: string[]): string {
   return JSON.stringify({
@@ -173,7 +173,7 @@ it('Negrito liga e desliga a marca sem tirar o foco do editor, e o aria-pressed 
   expect(fireEvent.mouseDown(negrito)).toBe(false);
   fireEvent.click(negrito);
   expect(editor.view.hasFocus()).toBe(true);
-  expect(editor.getHTML()).toContain('<strong>Polviztra</strong>');
+  expect(editor.getHTML()).toContain('<strong>Relatório</strong>');
   await waitFor(() => expect(botao('Negrito').getAttribute('aria-pressed')).toBe('true'));
 
   fireEvent.click(botao('Negrito'));
@@ -186,7 +186,7 @@ it('Destaque, Título e as listas alternam o que está no cursor', async () => {
   await focar(editor, 1, 10);
 
   fireEvent.click(botao('Destaque'));
-  expect(editor.getHTML()).toContain('<mark>Polviztra</mark>');
+  expect(editor.getHTML()).toContain('<mark>Relatório</mark>');
   await waitFor(() => expect(botao('Destaque').getAttribute('aria-pressed')).toBe('true'));
 
   fireEvent.click(botao('Título 2'));
@@ -222,17 +222,17 @@ it('Inserir bloco abre o menu "/" no cursor', async () => {
 });
 
 it('Inserir bloco num parágrafo com texto abre o menu numa linha nova abaixo — a linha escrita fica como está', async () => {
-  const { editor } = await montar(doc('Ruptura FQM Farma'));
+  const { editor } = await montar(doc('Falta de etiquetas'));
   await focar(editor, 4);
   fireEvent.click(botao('Inserir bloco'));
   const blocos: string[] = [];
   editor.state.doc.forEach(no => { blocos.push(`${no.type.name}:${no.textContent}`); });
-  expect(blocos).toEqual(['paragraph:Ruptura FQM Farma', 'paragraph:/']);
+  expect(blocos).toEqual(['paragraph:Falta de etiquetas', 'paragraph:/']);
   expect(screen.getByRole('listbox')).toBeTruthy();
 });
 
 it('Imagem pede o seletor da página, que oferece galeria e câmera (sem capture), com o lugar guardado antes', async () => {
-  const { editor, container } = await montar(doc(TEXTO, 'Ruptura FQM Farma'));
+  const { editor, container } = await montar(doc(TEXTO, 'Falta de etiquetas'));
   await focar(editor, 5);
   const noCursor = pontoDoCursor(editor.state);
   const loja = lojaDoMenu(editor);

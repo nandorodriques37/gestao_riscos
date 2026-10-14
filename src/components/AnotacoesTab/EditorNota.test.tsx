@@ -2,6 +2,8 @@
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeAll, beforeEach, expect, it, vi } from 'vitest';
 import type { Editor } from '@tiptap/react';
+import { GapCursor } from '@tiptap/pm/gapcursor';
+import { NodeSelection } from '@tiptap/pm/state';
 import type { Nota, NotaImagem } from '../../types';
 
 // O envio e o preparo saem da rede e do canvas: aqui são falsos controlados.
@@ -78,11 +80,11 @@ afterEach(() => { cleanup(); vi.useRealTimers(); });
 it('abrir a página não chama onChange, nem pela normalização do documento', async () => {
   const onChange = vi.fn();
   // Termina num título: o TipTap acrescenta o parágrafo final ao abrir.
-  const conteudo = JSON.stringify({ type: 'doc', content: [{ type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'Hugo Braga' }] }] });
+  const conteudo = JSON.stringify({ type: 'doc', content: [{ type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'Rafael Costa' }] }] });
   const { container } = render(<EditorNota nota={nota(conteudo)} recarregar={0} onChange={onChange} />);
   await aposCriar();
   const editor = editorDe(container);
-  expect(editor.getText()).toContain('Hugo Braga');
+  expect(editor.getText()).toContain('Rafael Costa');
   editor.commands.focus('end');
   editor.commands.blur();
   await act(async () => { await new Promise(r => setTimeout(r, 350)); });
@@ -555,6 +557,50 @@ it('lista de um item só, vazio: a imagem toma o lugar da lista', async () => {
 });
 
 // ---------- Imagem que não carregou ----------
+
+it('página que começa com imagem abre sem a imagem selecionada, e a primeira tecla não a substitui', async () => {
+  const comImagemNoTopo = (texto: string) => JSON.stringify({ type: 'doc', content: [
+    { type: 'image', attrs: { src: `/api/notas/${NOTA_ID}/imagens/${IMG_ID}`, alt: 'print.png' } },
+    { type: 'bulletList', content: [{ type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: texto }] }] }] },
+  ] });
+  const onChange = vi.fn();
+  const { container, rerender } = render(<EditorNota nota={nota(comImagemNoTopo('Primeiro item'))} recarregar={0} onChange={onChange} />);
+  await aposCriar();
+  const editor = editorDe(container);
+  await waitFor(() => expect(container.querySelector('.nota-imagem')).not.toBeNull());
+  expect(editor.state.selection).toBeInstanceOf(GapCursor);
+  expect(container.querySelector('.nota-imagem[data-selecionada]')).toBeNull();
+  await act(async () => { await new Promise(r => setTimeout(r, 350)); });
+  expect(onChange).not.toHaveBeenCalled();
+
+  // "Carregar a dela" com o cursor no topo também não seleciona a imagem.
+  rerender(<EditorNota nota={nota(comImagemNoTopo('Item dela'))} recarregar={1} onChange={onChange} />);
+  expect(editor.getText()).toContain('Item dela');
+  expect(editor.state.selection).toBeInstanceOf(GapCursor);
+
+  // Enter no título foca o corpo pela seleção guardada: digitar cria um parágrafo acima.
+  act(() => { editor.view.focus(); editor.commands.insertContent('abc'); });
+  expect((editor.getJSON().content ?? []).map(b => b.type)).toEqual(['paragraph', 'image', 'bulletList', 'paragraph']);
+  expect(editor.getText()).toMatch(/^abc/);
+});
+
+it('a imagem que a pessoa selecionou continua selecionada quando a versão de outra pessoa chega', async () => {
+  const comImagemNoMeio = (fim: string) => JSON.stringify({ type: 'doc', content: [
+    { type: 'paragraph', content: [{ type: 'text', text: 'Antes' }] },
+    { type: 'image', attrs: { src: `/api/notas/${NOTA_ID}/imagens/${IMG_ID}`, alt: 'print.png' } },
+    { type: 'paragraph', content: [{ type: 'text', text: fim }] },
+  ] });
+  const { container, rerender } = render(<EditorNota nota={nota(comImagemNoMeio('Depois'))} recarregar={0} onChange={vi.fn()} />);
+  await aposCriar();
+  const editor = editorDe(container);
+  act(() => { editor.commands.setNodeSelection(7); });
+  expect(editor.state.selection).toBeInstanceOf(NodeSelection);
+
+  rerender(<EditorNota nota={nota(comImagemNoMeio('Depois, editado'))} recarregar={1} onChange={vi.fn()} />);
+  expect(editor.getText()).toContain('Depois, editado');
+  expect(editor.state.selection).toBeInstanceOf(NodeSelection);
+  expect(editor.state.selection.from).toBe(7);
+});
 
 it('"Imagem indisponível" oferece Tentar de novo, que pede o arquivo outra vez, e não afirma perda', async () => {
   const conteudo = JSON.stringify({ type: 'doc', content: [
