@@ -4,7 +4,7 @@ import type { Sql } from './_db.js';
 import { ensureTudo } from './_schema.js';
 import { MAX_ATTACHMENT_BYTES, base64Bytes } from './_attachmentsDb.js';
 import {
-  notas, criarImagemNota, lerImagemNota, validarNota, varrerImagensOrfas, MAX_TITULO_NOTA,
+  notas, criarImagemNota, lerImagemNota, validarNota, varrerImagensOrfas, MAX_TITULO_NOTA, MAX_PROFUNDIDADE_NOTA,
 } from './_notasDb.js';
 import { ENTIDADES, listPortfolio, validarEntidade } from './_portfolioDb.js';
 import { notaImagemUrl } from '../src/lib/notaImagens.js';
@@ -72,6 +72,21 @@ describe('notas — a entidade', () => {
 
 describe('validarNota', () => {
   const atual = { id: '3b8a5924-3580-40b6-b02d-c8fec9f80cb5' } as Nota;
+
+  it('recusa aninhamento acima do teto e aceita lista dentro de lista do editor', () => {
+    // Montado como texto: JSON.stringify de 25 mil níveis estouraria a pilha.
+    const aninhar = (niveis: number) => {
+      let no = JSON.stringify(paragrafo('fundo'));
+      for (let i = 0; i < niveis; i++) no = '{"type":"blockquote","content":[' + no + ']}';
+      return '{"type":"doc","content":[' + no + ']}';
+    };
+    expect(validarNota({ conteudo: aninhar(25_000) }, atual)).toMatch(/aninhados demais/);
+    expect(validarNota({ conteudo: aninhar(MAX_PROFUNDIDADE_NOTA) }, atual)).toMatch(/aninhados demais/);
+    expect(validarNota({ conteudo: aninhar(MAX_PROFUNDIDADE_NOTA - 3) }, atual)).toBeNull();
+    let lista: unknown = { type: 'listItem', content: [paragrafo('nível 10')] };
+    for (let i = 0; i < 10; i++) lista = { type: 'listItem', content: [paragrafo('item'), { type: 'bulletList', content: [lista] }] };
+    expect(validarNota({ conteudo: doc({ type: 'bulletList', content: [lista] }) }, atual)).toBeNull();
+  });
 
   it('aceita página vazia e documento sem imagem', () => {
     expect(validarNota({ titulo: '', conteudo: '' }, null)).toBeNull();

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  ehSrcDaNota, ehUuid, imagemIdDoSrc, imagensCitadas, imagensDoDoc, lerDoc, notaImagemUrl,
+  ehSrcDaNota, ehUuid, imagemIdDoSrc, imagensCitadas, imagensDoDoc, lerDoc, notaImagemUrl, profundidadeDoDoc,
 } from './notaImagens';
 
 const NOTA = '3b8a5924-3580-40b6-b02d-c8fec9f80cb5';
@@ -71,5 +71,14 @@ describe('imagens do documento', () => {
     let no: Record<string, unknown> = { type: 'image', attrs: { src: notaImagemUrl(NOTA, IMG) } };
     for (let i = 0; i < 50_000; i++) no = { type: 'bulletList', content: [no] };
     expect(imagensDoDoc({ type: 'doc', content: [no] })).toHaveLength(1);
+  });
+
+  it('mede a profundidade sem recursão', () => {
+    expect(profundidadeDoDoc(null)).toBe(0);
+    expect(profundidadeDoDoc({ type: 'doc', content: [] })).toBe(1);
+    expect(profundidadeDoDoc(doc)).toBe(4);
+    let no: Record<string, unknown> = { type: 'paragraph' };
+    for (let i = 0; i < 50_000; i++) no = { type: 'blockquote', content: [no] };
+    expect(profundidadeDoDoc({ type: 'doc', content: [no] })).toBe(50_002);
   });
 });

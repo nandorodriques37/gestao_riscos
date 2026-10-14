@@ -23,10 +23,17 @@ interface TextoCache { texto: string; chave: string }
 const cache = new Map<string, TextoCache>();
 const LIMITE_CACHE = 300;
 
+/**
+ * Pilha explícita, sem recursão: a lista percorre o texto de TODAS as páginas,
+ * e um documento aninhado de propósito estouraria a pilha e derrubaria a aba de
+ * todo mundo (o servidor também recusa, em `validarNota`).
+ */
 function percorrer(doc: NoDoc): string[] {
   const linhas: string[] = [];
-  const visitar = (no: unknown) => {
-    if (!no || typeof no !== 'object') return;
+  const pilha: unknown[] = [doc];
+  while (pilha.length > 0) {
+    const no = pilha.pop();
+    if (!no || typeof no !== 'object') continue;
     const n = no as NoDoc & { text?: unknown };
     const filhos = Array.isArray(n.content) ? (n.content as Array<NoDoc & { text?: unknown }>) : [];
     // Bloco de texto (parágrafo, título, bloco de código): o conteúdo é inline.
@@ -38,13 +45,12 @@ function percorrer(doc: NoDoc): string[] {
         else if (f?.type === 'hardBreak') { linhas.push(linha); linha = ''; }
       }
       linhas.push(linha);
-      return;
+      continue;
     }
-    // Contêiner (documento, lista, item, citação): desce. Imagem e divisor não
-    // têm texto e não viram linha.
-    filhos.forEach(visitar);
-  };
-  visitar(doc);
+    // Contêiner (documento, lista, item, citação): desce, na ordem do
+    // documento. Imagem e divisor não têm texto e não viram linha.
+    for (let k = filhos.length - 1; k >= 0; k--) pilha.push(filhos[k]);
+  }
   return linhas.flatMap(l => l.split('\n')).filter(l => l.trim() !== '');
 }
 

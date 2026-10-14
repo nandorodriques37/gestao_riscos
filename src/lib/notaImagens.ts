@@ -85,6 +85,25 @@ export function imagensDoDoc(doc: NoDoc | null): ImagemDoDoc[] {
   return out;
 }
 
+/**
+ * Até onde o documento desce. O editor nunca passa de umas dezenas de níveis
+ * (lista dentro de lista); o teto existe para um documento montado à mão pela
+ * API não estourar a pilha de quem o percorre por recursão — o ProseMirror
+ * inclusive. Pilha explícita, pelo mesmo motivo.
+ */
+export function profundidadeDoDoc(doc: NoDoc | null): number {
+  let maior = 0;
+  const pilha: Array<[unknown, number]> = [[doc, 1]];
+  while (pilha.length > 0) {
+    const [no, nivel] = pilha.pop()!;
+    if (!no || typeof no !== 'object') continue;
+    if (nivel > maior) maior = nivel;
+    const filhos = (no as NoDoc).content;
+    if (Array.isArray(filhos)) for (const f of filhos) pilha.push([f, nivel + 1]);
+  }
+  return maior;
+}
+
 /** Ids das imagens desta página citadas pelo documento. */
 export function imagensCitadas(doc: NoDoc | null, notaId: string): Set<string> {
   const ids = new Set<string>();

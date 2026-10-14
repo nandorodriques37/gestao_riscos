@@ -79,6 +79,18 @@ describe('textoDaNota', () => {
   });
 });
 
+describe('textoDaNota em documento aninhado', () => {
+  it('não estoura a pilha e mantém a ordem das linhas', () => {
+    // Montado como texto: o próprio JSON.stringify de um objeto tão fundo
+    // estoura a pilha — que é justamente o caso de um documento vindo da API.
+    let no = '{"type":"paragraph","content":[{"type":"text","text":"fundo"}]}';
+    for (let i = 0; i < 25_000; i++) no = '{"type":"blockquote","content":[' + no + ']}';
+    const p = (t: string) => '{"type":"paragraph","content":[{"type":"text","text":"' + t + '"}]}';
+    const conteudo = '{"type":"doc","content":[' + p('antes') + ',' + no + ',' + p('depois') + ']}';
+    expect(textoDaNota(conteudo)).toBe('antes\nfundo\ndepois');
+  });
+});
+
 describe('trechoDaNota', () => {
   it('pula a linha que repete o título e emenda as seguintes', () => {
     const n = nota({ titulo: 'meus', conteudo: TRIAGEM });

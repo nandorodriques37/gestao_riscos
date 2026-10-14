@@ -18,7 +18,7 @@ import type { Sql } from './_db.js';
 import { makeTable, type Tabela } from './_table.js';
 import { validarImagem, type NewAttachment } from './_attachmentsDb.js';
 import {
-  MIMES_NOTA, HORAS_ATE_VARRER, ehUuid, imagemIdDoSrc, imagensDoDoc, imagensCitadas, lerDoc,
+  MIMES_NOTA, HORAS_ATE_VARRER, ehUuid, imagemIdDoSrc, imagensDoDoc, imagensCitadas, lerDoc, profundidadeDoDoc,
 } from '../src/lib/notaImagens.js';
 import type { Nota, NotaImagem } from '../src/types.js';
 
@@ -31,6 +31,13 @@ export const MAX_TITULO_NOTA = 200;
  * linha que o polling de quem está com a página aberta arrasta inteira.
  */
 export const MAX_CONTEUDO_NOTA = 1_000_000;
+
+/**
+ * Níveis de aninhamento aceitos. Lista dentro de lista no editor fica bem
+ * abaixo; 25 mil citações aninhadas cabem em 850 KB e derrubavam a lista da
+ * aba (e o editor) de todo mundo com estouro de pilha.
+ */
+export const MAX_PROFUNDIDADE_NOTA = 100;
 
 const notasBase: Tabela<Nota> = makeTable<Nota>({
   nome: 'notas',
@@ -146,6 +153,7 @@ export function validarNota(dados: Record<string, unknown>, atual: Nota | null):
   if (dados.conteudo.length > MAX_CONTEUDO_NOTA) return 'A página passou do limite de tamanho. Divida o texto em duas páginas.';
   const doc = lerDoc(dados.conteudo);
   if (!doc) return 'Conteúdo da página inválido.';
+  if (profundidadeDoDoc(doc) > MAX_PROFUNDIDADE_NOTA) return 'Conteúdo da página inválido: blocos aninhados demais.';
   const imagens = imagensDoDoc(doc);
   if (imagens.length === 0) return null;
   // Na criação ainda não há id: a imagem só sobe para uma página que existe.
