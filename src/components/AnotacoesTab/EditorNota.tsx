@@ -48,6 +48,7 @@ import { BolhaFormato } from './BolhaFormato';
 import { BarraFormatoMovel } from './BarraFormatoMovel';
 import { AlcaBloco } from './AlcaBloco';
 import { MoverBloco } from './moverBloco';
+import { semBlocoSelecionado } from './selecaoInicial';
 
 /**
  * Props do editor de uma página. É o CONTRATO entre a página (AnotacoesTab) e
@@ -259,7 +260,10 @@ export function EditorNota({ nota, recarregar, onChange, onUploads, autoFocus }:
    * Abrir uma página nunca grava nada, nem `editado_por`.
    */
   function normalizar(editor: Editor) {
-    editor.view.dispatch(editor.state.tr.setMeta('addToHistory', false).setMeta('preventUpdate', true));
+    const tr = editor.state.tr;
+    const selecao = semBlocoSelecionado(tr.selection);
+    if (selecao !== tr.selection) tr.setSelection(selecao);
+    editor.view.dispatch(tr.setMeta('addToHistory', false).setMeta('preventUpdate', true));
     docRef.current = editor.state.doc;
     ultimoRef.current = JSON.stringify(editor.getJSON());
   }

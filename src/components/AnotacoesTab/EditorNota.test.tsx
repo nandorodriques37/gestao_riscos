@@ -2,6 +2,7 @@
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeAll, beforeEach, expect, it, vi } from 'vitest';
 import type { Editor } from '@tiptap/react';
+import { GapCursor } from '@tiptap/pm/gapcursor';
 import type { Nota, NotaImagem } from '../../types';
 
 // O envio e o preparo saem da rede e do canvas: aqui são falsos controlados.
@@ -555,6 +556,32 @@ it('lista de um item só, vazio: a imagem toma o lugar da lista', async () => {
 });
 
 // ---------- Imagem que não carregou ----------
+
+it('página que começa com imagem abre sem a imagem selecionada, e a primeira tecla não a substitui', async () => {
+  const comImagemNoTopo = (texto: string) => JSON.stringify({ type: 'doc', content: [
+    { type: 'image', attrs: { src: `/api/notas/${NOTA_ID}/imagens/${IMG_ID}`, alt: 'print.png' } },
+    { type: 'bulletList', content: [{ type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: texto }] }] }] },
+  ] });
+  const onChange = vi.fn();
+  const { container, rerender } = render(<EditorNota nota={nota(comImagemNoTopo('Primeiro item'))} recarregar={0} onChange={onChange} />);
+  await aposCriar();
+  const editor = editorDe(container);
+  await waitFor(() => expect(container.querySelector('.nota-imagem')).not.toBeNull());
+  expect(editor.state.selection).toBeInstanceOf(GapCursor);
+  expect(container.querySelector('.nota-imagem[data-selecionada]')).toBeNull();
+  await act(async () => { await new Promise(r => setTimeout(r, 350)); });
+  expect(onChange).not.toHaveBeenCalled();
+
+  // "Carregar a dela" com o cursor no topo também não seleciona a imagem.
+  rerender(<EditorNota nota={nota(comImagemNoTopo('Item dela'))} recarregar={1} onChange={onChange} />);
+  expect(editor.getText()).toContain('Item dela');
+  expect(editor.state.selection).toBeInstanceOf(GapCursor);
+
+  // Enter no título foca o corpo pela seleção guardada: digitar cria um parágrafo acima.
+  act(() => { editor.view.focus(); editor.commands.insertContent('abc'); });
+  expect((editor.getJSON().content ?? []).map(b => b.type)).toEqual(['paragraph', 'image', 'bulletList', 'paragraph']);
+  expect(editor.getText()).toMatch(/^abc/);
+});
 
 it('"Imagem indisponível" oferece Tentar de novo, que pede o arquivo outra vez, e não afirma perda', async () => {
   const conteudo = JSON.stringify({ type: 'doc', content: [
