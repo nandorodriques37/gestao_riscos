@@ -7,6 +7,7 @@ import tasks from './_tasksRoute.js';
 import task from './_taskRoute.js';
 import attachments from './_attachmentsRoute.js';
 import attachment from './_attachmentRoute.js';
+import notaImagens from './_notaImagensRoute.js';
 import health from './_healthRoute.js';
 import restore from './_restoreRoute.js';
 
@@ -32,6 +33,12 @@ export default async function router(req: VercelRequest, res: VercelResponse, sq
       if (parts.length === 3) return await task(req, res, sql);
       if (parts[3] === 'anexos' && parts.length === 4) return await attachments(req, res, sql);
       if (parts[3] === 'anexos' && parts.length === 5) { req.query.anexoId = parts[4]; return await attachment(req, res, sql); }
+    }
+    if (parts[1] === 'notas' && parts[3] === 'imagens' && (parts.length === 4 || parts.length === 5)) {
+      req.query.id = parts[2];
+      if (parts.length === 5) req.query.imagemId = parts[4];
+      else delete req.query.imagemId;
+      return await notaImagens(req, res, sql);
     }
     if (parts[1] === 'health' && parts.length === 2) {
       if (req.method !== 'GET') { res.setHeader('Allow', 'GET'); res.status(405).json({ error: 'Método não permitido' }); return; }

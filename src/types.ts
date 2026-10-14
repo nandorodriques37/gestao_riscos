@@ -361,6 +361,35 @@ export interface AcaoRisco extends EntidadePortfolio {
   triagem: DestinoTriagem;
 }
 
+/**
+ * Página da aba Anotações. Fica FORA do `PortfolioBundle`: o texto é longo e
+ * não pode viajar no polling de 15s do pacote. Tem lista e rota próprias
+ * (`/api/portfolio/notas`).
+ */
+export interface Nota extends EntidadePortfolio {
+  titulo: string;
+  /**
+   * Documento do editor (JSON do TipTap) serializado como texto. Vazio é a
+   * página em branco. Imagem entra só como nó com `src` relativo
+   * (`/api/notas/:id/imagens/:imagemId`); os bytes moram em `nota_imagens`.
+   */
+  conteudo: string;
+  fixada: boolean;
+  /** Quem criou a página — o nome do chip de autor, como nas outras gravações. */
+  autor: string;
+  /** Quem gravou por último. */
+  editado_por: string;
+}
+
+/** Metadado de uma imagem de página. Os bytes saem pela rota da imagem. */
+export interface NotaImagem {
+  id: string;
+  nome: string;
+  mime: string;
+  /** Tamanho do binário em bytes (não do base64 do transporte). */
+  tamanho: number;
+}
+
 /** Pacote devolvido por `GET /api/portfolio` — todas as entidades de uma vez. */
 export interface PortfolioBundle {
   pessoas: Pessoa[];

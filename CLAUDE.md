@@ -32,6 +32,21 @@ Os `.dc.html` são **referência de design, não código de produção**. Recrie
 - **Salvamento e sincronização:** os formulários usam rascunho e confirmação explícita, preservam a versão da abertura e mantêm o texto em caso de erro. `useStoredCollection` concentra cache, leituras protegidas contra respostas antigas e a fila de debounce por registro das edições rápidas. `usePortfolio` confirma cada alteração antes de atualizar a coleção. `dataSync` invalida riscos, tarefas e portfólio entre si. Cache local nunca equivale a confirmação do servidor.
 - **Operações compostas:** `api/_operacoes.ts` salva risco + plano e cria iniciativa + vínculo em transações idempotentes, com chave e assinatura em `operacoes_app`. A mesma chave só pode repetir o mesmo pedido; a resposta confirmada é reutilizada. A validação das versões e a auditoria fazem parte da transação. Uma falha não pode confirmar só metade do formulário.
 - **Anexos de imagem (tarefas):** tabela própria `task_attachments` (`api/_attachmentsDb.ts`), nunca coluna em `tasks` — a aba faz polling e os bytes não podem viajar no `GET /api/tasks`, que carrega só o metadado (`anexos`). Os bytes saem por `GET /api/tasks/:id/anexos/:anexoId`, com cache imutável, e vão direto no `src` de um `<img>`. O cliente reduz a imagem antes de subir (`src/lib/imageAttachments.ts`: teto de 1600px e 3 MB, re-encode em WebP); o servidor revalida formato e tamanho. Anexo **não** é campo de `Task`: entra e sai por endpoint próprio, fora do PATCH com debounce.
+- **Anotações (páginas em blocos):** `notas` é entidade da fábrica, servida por
+  `/api/portfolio/notas` com versão e 409, mas fica **fora** do
+  `PortfolioBundle` — texto longo não vai no polling de 15s. Mora em
+  `api/_notasDb.ts`; a regra entra em `validarNota`, chamada por
+  `validarEntidade`. `conteudo` é o JSON do editor serializado; busca e trecho
+  derivam dele, sem coluna paralela. Imagem colada é nó do documento com `src`
+  **relativo à própria página** (`/api/notas/:id/imagens/:imagemId`, regra pura
+  em `src/lib/notaImagens.ts`): nunca `data:`, `blob:`, URL de fora ou de outra
+  página — o servidor recusa. Os bytes ficam em `nota_imagens` (cascade com a
+  página), entram por `POST` e saem por `GET` com cache imutável e `nosniff`
+  (`api/_notaImagensRoute.ts`), como os anexos. Não há DELETE: remover o bloco é
+  edição desfazível, então a imagem só sai pela varredura (`varrerImagensOrfas`,
+  a cada gravação com `conteudo`) depois de **24 h** sem citação. Documento
+  vazio ou ilegível nunca varre. A validação de formato e teto é uma só
+  (`validarImagem`), com a lista de cada lado: notas sem AVIF.
 - **Portfólio (objetivo → iniciativa → marco):** seis entidades (`pessoas`, `objetivos`, `medicoes`, `iniciativas`, `marcos`, `acoes_risco`) sobre a fábrica genérica `api/_table.ts`, atendidas por `api/_portfolioRoute.ts` através do roteador único. Não recriar uma entrada de função por profundidade: os antigos PATCH/DELETE que falhavam na borda agora mantêm a URL pública via rewrite, sem catch-all de arquivos. O front lê o pacote por `GET /api/portfolio` e `usePortfolio`; as métricas são funções puras em `src/lib/portfolioMetrics.ts`. Regra de integridade nova entra em **`validarEntidade`** (`api/_portfolioDb.ts`), compartilhada pelos dois ambientes.
 - **Marco tem três campos de texto, e eles não se substituem:**
   `criterio_aceite` (como se verifica a entrega), `motivo_replanejamento` (por

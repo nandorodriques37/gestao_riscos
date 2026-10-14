@@ -122,28 +122,63 @@ export interface NewAttachment {
   dados?: unknown;
 }
 
-export async function createAttachment(
-  sql: Sql, taskId: string, input: NewAttachment,
-): Promise<CreateAttachmentOutcome> {
+/** Imagem que passou na validação, pronta para gravar. */
+export interface ImagemValida {
+  nome: string;
+  mime: string;
+  /** Base64 puro, já sem espaços nas pontas. */
+  dados: string;
+  /** Bytes do binário. */
+  tamanho: number;
+}
+
+const ROTULO_MIME: Record<string, string> = {
+  'image/png': 'PNG', 'image/jpeg': 'JPEG', 'image/webp': 'WebP', 'image/gif': 'GIF', 'image/avif': 'AVIF',
+};
+
+/** "PNG, JPEG ou WebP" a partir da lista aceita — a mensagem não mente quando a lista muda. */
+function listaDeFormatos(mimes: readonly string[]): string {
+  const nomes = mimes.map(m => ROTULO_MIME[m] ?? m);
+  return nomes.length <= 1 ? nomes.join('') : `${nomes.slice(0, -1).join(', ')} ou ${nomes[nomes.length - 1]}`;
+}
+
+/**
+ * Formato, base64 e teto de uma imagem enviada. Pura e compartilhada: anexo de
+ * tarefa e imagem de página passam pela mesma régua, cada um com a sua lista de
+ * formatos.
+ */
+export function validarImagem(
+  input: NewAttachment, mimes: readonly string[] = ALLOWED_IMAGE_MIMES,
+): { ok: true; imagem: ImagemValida } | { ok: false; message: string } {
   const mime = typeof input.mime === 'string' ? input.mime.toLowerCase() : '';
-  if (!ALLOWED_IMAGE_MIMES.includes(mime)) {
-    return { status: 'invalid', message: 'Formato não suportado — envie PNG, JPEG, WebP, GIF ou AVIF.' };
+  if (!mimes.includes(mime)) {
+    return { ok: false, message: `Formato não suportado — envie ${listaDeFormatos(mimes)}.` };
   }
 
   const dados = typeof input.dados === 'string' ? input.dados.trim() : '';
   if (dados === '' || !BASE64_RE.test(dados)) {
-    return { status: 'invalid', message: 'Conteúdo da imagem ausente ou inválido.' };
+    return { ok: false, message: 'Conteúdo da imagem ausente ou inválido.' };
   }
 
   const tamanho = base64Bytes(dados);
   if (tamanho > MAX_ATTACHMENT_BYTES) {
-    return { status: 'invalid', message: `Imagem acima do limite de ${Math.round(MAX_ATTACHMENT_BYTES / (1024 * 1024))} MB.` };
+    return { ok: false, message: `Imagem acima do limite de ${Math.round(MAX_ATTACHMENT_BYTES / (1024 * 1024))} MB.` };
   }
+
+  const nome = typeof input.nome === 'string' && input.nome.trim() !== '' ? input.nome.trim().slice(0, 200) : 'imagem';
+  return { ok: true, imagem: { nome, mime, dados, tamanho } };
+}
+
+export async function createAttachment(
+  sql: Sql, taskId: string, input: NewAttachment,
+): Promise<CreateAttachmentOutcome> {
+  const validacao = validarImagem(input);
+  if (!validacao.ok) return { status: 'invalid', message: validacao.message };
+  const { nome, mime, dados, tamanho } = validacao.imagem;
 
   const existe = await sql('select id from tasks where id = $1', [taskId]);
   if (!existe[0]) return { status: 'not_found' };
 
-  const nome = typeof input.nome === 'string' && input.nome.trim() !== '' ? input.nome.trim().slice(0, 200) : 'imagem';
   const rows = await sql(
     `insert into task_attachments (task_id, position, nome, mime, tamanho, dados)
      values ($1, (select coalesce(max(position), -1) + 1 from task_attachments where task_id = $1), $2, $3, $4, $5)

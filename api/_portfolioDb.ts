@@ -7,9 +7,12 @@
 import type { Sql } from './_db.js';
 import { makeTable, type Tabela } from './_table.js';
 import { acoesRiscoSobreTasks } from './_trabalhoDb.js';
+import { notas, ensureNotasSchema, validarNota } from './_notasDb.js';
 import type {
-  Pessoa, Objetivo, Medicao, Iniciativa, Marco, AcaoRisco, PortfolioBundle,
+  Pessoa, Objetivo, Medicao, Iniciativa, Marco, AcaoRisco, Nota, PortfolioBundle,
 } from '../src/types.js';
+
+export { notas };
 
 export const pessoas: Tabela<Pessoa> = makeTable<Pessoa>({
   nome: 'pessoas',
@@ -147,6 +150,8 @@ export const ENTIDADES = {
   iniciativas,
   marcos,
   'acoes-risco': acoesRisco,
+  // Fora do `listPortfolio` de propósito: texto longo não vai no polling.
+  notas,
 } as const;
 
 export type NomeEntidade = keyof typeof ENTIDADES;
@@ -167,6 +172,9 @@ export async function ensurePortfolioSchema(sql: Sql): Promise<void> {
   await iniciativas.ensure(sql);
   await marcos.ensure(sql);
   await acoesRiscoCongelada.ensure(sql);
+  // Páginas da aba Anotações e as imagens delas. Sem chave para nenhuma tabela
+  // acima; ficam aqui para a sequência continuar existindo só em `ensureTudo`.
+  await ensureNotasSchema(sql);
 }
 
 /** Todas as listas de uma vez — o front faz um polling só sobre este pacote. */
@@ -304,6 +312,7 @@ export async function validarEntidade(
   if (nome === 'iniciativas') return validarIniciativa(sql, dados, atual as Iniciativa | null);
   if (nome === 'marcos') return validarMarco(dados, atual as Marco | null);
   if (nome === 'medicoes') return validarMedicao(dados, atual as Medicao | null);
+  if (nome === 'notas') return validarNota(dados, atual as Nota | null);
   return null;
 }
 
@@ -332,6 +341,9 @@ export interface Backup {
   iniciativas: Iniciativa[];
   marcos: Marco[];
   acoes_risco: AcaoRisco[];
+  notas: Nota[];
+  /** Metadado das imagens das páginas; `dados` só com `?anexos=1`. */
+  nota_imagens: Record<string, unknown>[];
 }
 
 /**
@@ -344,11 +356,16 @@ export async function backup(sql: Sql, incluirAnexos = false): Promise<Backup> {
   const colunasAnexo = incluirAnexos
     ? 'id, task_id, position, nome, mime, tamanho, dados, created_at'
     : 'id, task_id, position, nome, mime, tamanho, created_at';
-  const [riscos, tarefas, anexos, portfolio] = await Promise.all([
+  const colunasImagemNota = incluirAnexos
+    ? 'id, nota_id, nome, mime, tamanho, dados, autor, created_at'
+    : 'id, nota_id, nome, mime, tamanho, autor, created_at';
+  const [riscos, tarefas, anexos, portfolio, paginas, imagensNota] = await Promise.all([
     sql('select * from risk_records order by position asc, created_at asc'),
     sql('select * from tasks order by position asc, created_at asc'),
     sql(`select ${colunasAnexo} from task_attachments order by task_id, position`),
     listPortfolio(sql),
+    notas.list(sql),
+    sql(`select ${colunasImagemNota} from nota_imagens order by nota_id, created_at`),
   ]);
   return {
     gerado_em: new Date().toISOString(),
@@ -356,5 +373,7 @@ export async function backup(sql: Sql, incluirAnexos = false): Promise<Backup> {
     tasks: tarefas,
     task_attachments: anexos,
     ...portfolio,
+    notas: paginas,
+    nota_imagens: imagensNota,
   };
 }

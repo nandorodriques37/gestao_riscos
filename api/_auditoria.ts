@@ -117,7 +117,8 @@ function rotuloDe(tabela: string, registro: Registro | null): string {
     ? ['risco']
     : tabela === 'objetivos' ? ['descricao']
       : tabela === 'medicoes' ? ['data']
-        : ['nome', 'descricao'];
+        : tabela === 'notas' ? ['titulo']
+          : ['nome', 'descricao'];
   for (const c of candidatos) {
     const v = ler(registro, c);
     if (typeof v === 'string' && v.trim()) return v.trim().slice(0, 120);

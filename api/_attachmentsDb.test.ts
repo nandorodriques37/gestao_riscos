@@ -3,7 +3,7 @@ import { PGlite } from '@electric-sql/pglite';
 import { ensureTasksSchema, createTask, listTasks, deleteTaskById, type Sql } from './_tasksDb.js';
 import {
   createAttachment, listAttachments, getAttachment, deleteAttachment,
-  base64Bytes, contentDisposition, MAX_ATTACHMENT_BYTES,
+  base64Bytes, contentDisposition, validarImagem, MAX_ATTACHMENT_BYTES,
 } from './_attachmentsDb.js';
 
 // Mesma abordagem de `_tasksDb.test.ts`: Postgres de verdade (pglite), para que
@@ -46,6 +46,21 @@ describe('contentDisposition', () => {
     const fallback = header.match(/filename="([^"]*)"/)?.[1] ?? '';
     expect(fallback).not.toContain('"');
     expect(fallback).toBe('relat_rio _final_.png');
+  });
+});
+
+describe('validarImagem', () => {
+  it('a mensagem de formato acompanha a lista aceita', () => {
+    expect(validarImagem({ mime: 'image/bmp', dados: PNG_1X1 })).toEqual({ ok: false, message: 'Formato não suportado — envie PNG, JPEG, WebP, GIF ou AVIF.' });
+    expect(validarImagem({ mime: 'image/avif', dados: PNG_1X1 }, ['image/png', 'image/jpeg'])).toEqual({ ok: false, message: 'Formato não suportado — envie PNG ou JPEG.' });
+  });
+
+  it('normaliza nome, mime e tamanho da imagem aceita', () => {
+    expect(validarImagem({ nome: '  print.png ', mime: 'IMAGE/PNG', dados: ` ${PNG_1X1} ` })).toEqual({
+      ok: true, imagem: { nome: 'print.png', mime: 'image/png', dados: PNG_1X1, tamanho: base64Bytes(PNG_1X1) },
+    });
+    const semNome = validarImagem({ mime: 'image/png', dados: PNG_1X1 });
+    expect(semNome.ok && semNome.imagem.nome).toBe('imagem');
   });
 });
 
