@@ -135,8 +135,9 @@ export function applyThemePref(pref: ThemePref): void {
 
 const RAIL_KEY = 'riskMatrix.rail.v1';
 
-/** Rail expandido ou colapsado. Padrão: expandido, porque sete destinos com
- *  rótulo são mais fáceis de aprender do que sete ícones. */
+/** Rail expandido ou colapsado. Padrão: expandido, porque os destinos com
+ *  rótulo são mais fáceis de aprender do que os mesmos ícones. Vale acima de 1100px:
+ *  entre 761 e 1100 o `NavRail` recolhe o rail sem tocar nesta preferência. */
 export function readRailExpandido(): boolean {
   try {
     const raw = localStorage.getItem(RAIL_KEY);

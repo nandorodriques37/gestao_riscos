@@ -4,11 +4,12 @@ import type { Tab } from '../../types';
 /**
  * Os destinos do app, em UMA lista.
  *
- * Moram aqui, e não dentro do `NavRail`, porque a navegação tem três formas —
- * rail lateral acima de 1100px, abas do topo entre 761 e 1100, barra inferior
- * abaixo de 760 — e as três precisam concordar sobre quais destinos existem, em
- * que ordem e sob que grupo. Duas listas derivariam exatamente como a regra da
- * Triagem derivou entre `App` e `TopBar` antes de virar um booleano só.
+ * Moram aqui, e não dentro do `NavRail`, porque mais de um componente desenha
+ * a navegação — o rail lateral acima de 760px (recolhido à força entre 761 e
+ * 1100), a barra inferior e a folha "Mais" abaixo disso, a migalha do header e a
+ * paleta de comando — e todos precisam concordar sobre quais destinos existem,
+ * em que ordem e sob que grupo. Duas listas derivariam exatamente como a regra
+ * da Triagem derivou entre `App` e `TopBar` antes de virar um booleano só.
  *
  * Os ícones são SVG traçado em grade de 24: sem lib e sem emoji, como o resto do
  * app.

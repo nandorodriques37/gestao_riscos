@@ -4,19 +4,18 @@
    Antes só existia @media (max-width: 760px). A faixa 761–1100px ficava
    descoberta e era exatamente onde a tabela de 19 colunas, a matriz de
    quadrantes e o strip de KPIs quebravam pior.
+
+   As faixas são as da navegação (fim de rail.css): rail como a pessoa deixou
+   acima de 1100px, rail recolhido (76px) de 761 a 1100, barra inferior abaixo.
    ========================================================================= */
 
-/* ---------- Tablet / notebook estreito ---------- */
+/* ---------- Tablet / notebook estreito (rail recolhido) ---------- */
 
 @media (max-width: 1100px) {
-  /* Sem rail, o header aperta o respiro e a rota some — as abas do topo já
-     dizem onde se está. */
+  /* Com o rail recolhido, o header acompanha o respiro da página (que desce
+     para --sp-5 logo abaixo): a migalha alinha com o título da aba. */
   .app-header-inner {
-    padding-inline: var(--sp-3);
-  }
-
-  .header-route {
-    display: none;
+    padding-inline: var(--sp-5);
   }
 
   .tab-page,
@@ -120,8 +119,13 @@
     gap: var(--sp-3);
   }
 
-  /* O nome da marca VOLTA. Ele sumia para dar espaço à fita de abas; agora quem
-     navega é a barra inferior, e o header ficou com espaço sobrando. */
+  /* O rail sai de cena e a marca volta ao header (rail.css), no lugar da
+     migalha: quem marca o destino aqui é a barra inferior. O texto do estado
+     de sincronização cede ao ponto. */
+  .header-route {
+    display: none;
+  }
+
   .sync-status span {
     display: none;
   }
@@ -433,14 +437,5 @@
 
   .brand-name {
     font-size: var(--fs-sm);
-  }
-}
-
-/* Em 768px as oito abas já não cabem ao lado da marca: a barra inferior entra
-   antes do layout móvel (ver rail.css) e o conteúdo ganha o
-   respiro dela. */
-@media (min-width: 761px) and (max-width: 820px) {
-  .app-conteudo {
-    padding-bottom: calc(var(--nav-bottom-h) + env(safe-area-inset-bottom));
   }
 }

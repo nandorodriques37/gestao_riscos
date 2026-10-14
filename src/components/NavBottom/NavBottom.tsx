@@ -8,12 +8,15 @@ import { DESTINOS_BARRA, GRUPOS, ICONES, gruposCom, type Secao } from '../NavRai
 /**
  * Navegação do celular: barra inferior fixa, na zona do polegar.
  *
- * Substitui a fita de abas do topo abaixo de 760px. A fita rolava 8 destinos
+ * É a navegação abaixo de 760px, onde nem o rail recolhido cabe (76px de 375
+ * são um quinto da tela). Antes dela, uma fita de abas rolava todos os destinos
  * dentro de um header de 56px que ainda carregava marca, chip de autor, estado
  * de sincronização e botão de tema — a 375px cabiam duas abas, a barra de
  * rolagem é invisível por regra do próprio app, e os grupos Direção/Risco/
  * Execução sumiam. Quem abria no telefone não tinha como saber que existiam
- * Pessoas ou Priorização.
+ * Pessoas ou Priorização. A fita não existe mais em faixa nenhuma: entre 761 e
+ * 1100px quem navega é o rail recolhido, e esta barra vale só até 760px (o
+ * corte mora no fim de `styles/rail.css`).
  *
  * São quatro destinos fixos (um por camada da cadeia) mais "Mais", que abre uma
  * folha com os grupos INTEIROS — os mesmos rótulos e a mesma ordem do rail,
