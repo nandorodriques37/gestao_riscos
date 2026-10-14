@@ -3,7 +3,7 @@ import type { PortfolioBundle } from '../types';
 import { fetchPortfolio, patchEntidadeApi, createEntidadeApi, deleteEntidadeApi,
   migrarAcoesApi, promoverTriagemApi, mesclarPessoasApi, salvarRiscoApi, criarIniciativaDaAcaoApi, reordenarObjetivosApi,
   type EntidadeUrl, type SalvarRiscoPedido } from '../lib/portfolioApi';
-import { invalidarDados, observarDados } from '../lib/dataSync';
+import { invalida, invalidarDados, observarDados } from '../lib/dataSync';
 const CACHE = 'riskMatrix.portfolio.v1';
 const CAMPO: Record<EntidadeUrl, keyof PortfolioBundle> = {
   pessoas: 'pessoas', objetivos: 'objetivos', medicoes: 'medicoes', iniciativas: 'iniciativas', marcos: 'marcos', 'acoes-risco': 'acoes_risco',
@@ -101,7 +101,7 @@ export function usePortfolio() {
   const clearError = useCallback(() => setError(null), []);
   useEffect(() => {
     mounted.current = true; void refresh().finally(() => { if (mounted.current) setLoading(false); });
-    const stop = observarDados(source => { if (source !== 'portfolio') void refresh(); });
+    const stop = observarDados(source => { if (invalida(source, 'portfolio')) void refresh(); });
     return () => { mounted.current = false; stop(); };
   }, [refresh]);
   return { portfolio, loading, saving, error, refresh, clearError, patchEntidade, patchVarios, createEntidade, criarERetornar,

@@ -1,0 +1,495 @@
+/* ============================================================================
+   Aba Anotações — página, lista e cabeçalho da página.
+
+   Dono: a etapa de interface do Lote 2 (AnotacoesTab, ListaNotas,
+   CabecalhoNota). O corpo do editor — blocos, destaque, imagem, upload — mora
+   em notas-editor.css. Só tokens: nenhum hex, espaçamento fora de --sp-* nem
+   fonte fora de --fs-*.
+
+   Prefixos: `.notas-*` para a página e a lista, `.nota-cab*`/`.nota-*` para o
+   cabeçalho da página aberta. O editor usa `.nota-doc` e o que vem dentro.
+   ========================================================================= */
+
+/* ---------- Painel: lista ao lado da página ----------
+   Duas colunas acima de 760px. A largura da lista é uma medida só, para a
+   régua do celular (que a desmonta) não precisar repeti-la. */
+
+.notas-painel {
+  --notas-lista-w: 320px;
+  display: grid;
+  grid-template-columns: var(--notas-lista-w) minmax(0, 1fr);
+  gap: var(--sp-5);
+  align-items: start;
+}
+
+/* ---------- Lista de páginas ----------
+   Cartão próprio, preso abaixo do header enquanto a página rola: uma página
+   longa não pode empurrar a lista para fora da vista. Quem rola é ela. */
+
+.notas-lista {
+  position: sticky;
+  top: calc(var(--header-h) + var(--sp-4));
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  max-height: calc(100dvh - var(--header-h) - var(--sp-6));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--sp-4) 0 var(--sp-2);
+  background: var(--bg-surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  box-shadow: var(--elev-1);
+}
+
+.notas-filtros {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: 0 var(--sp-4) var(--sp-2);
+}
+
+/* A busca ocupa a coluna inteira: o teto de 360px do primitivo é para a
+   barra de filtros, onde ela divide a linha com outros controles. */
+.notas-filtros .search-input {
+  flex: none;
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+}
+
+.notas-filtros .search-input::placeholder {
+  color: var(--ink-3);
+}
+
+/* Todas | Minhas: dois segmentos de largura igual, contagem ao lado. */
+.notas-recorte {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.notas-recorte button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-1);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+}
+
+.notas-recorte .view-toggle-count {
+  margin-left: 0;
+  font-weight: var(--fw-bold);
+}
+
+.notas-secao {
+  margin: 0;
+  padding: var(--sp-3) var(--sp-4) var(--sp-1) var(--sp-5);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
+  line-height: 1.3;
+  letter-spacing: var(--tracking-rotulo);
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+
+.notas-itens {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.notas-itens > li + li {
+  border-top: 1px solid var(--line-hairline);
+}
+
+/* Linha: título, trecho de uma linha, quem e quando. A ativa leva o fundo da
+   marca e a barra azul por dentro — azul é estrutura, não alerta. */
+.notas-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-width: 0;
+  padding: var(--sp-2) var(--sp-4) var(--sp-3) var(--sp-5);
+  color: var(--ink-1);
+  text-decoration: none;
+  transition: background var(--dur-fast) var(--ease);
+}
+
+.notas-item:hover {
+  background: var(--bg-hover);
+}
+
+.notas-item[aria-current='true'] {
+  background: var(--brand-soft);
+  box-shadow: inset var(--sp-1) 0 0 var(--brand);
+}
+
+/* A lista rola: o anel por fora seria cortado pela borda dela. */
+.notas-item:focus-visible {
+  outline-offset: calc(-1 * var(--focus-w));
+  border-radius: 0;
+}
+
+.notas-item-texto {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.notas-item-titulo,
+.notas-item-trecho,
+.notas-item-meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.notas-item-titulo {
+  font-size: var(--fs-md);
+  font-weight: var(--fw-bold);
+  line-height: 1.4;
+}
+
+.notas-item[aria-current='true'] .notas-item-titulo {
+  color: var(--brand-text);
+}
+
+/* Vocabulário de vazio: título em branco é "Sem título", em itálico e --ink-3. */
+.notas-item .notas-item-titulo[data-vazio='true'] {
+  font-style: italic;
+  font-weight: var(--fw-semibold);
+  color: var(--ink-3);
+}
+
+.notas-item-trecho {
+  font-size: var(--fs-md);
+  font-weight: var(--fw-medium);
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+
+.notas-item-meta {
+  margin-top: var(--sp-1);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+
+/* A seta só existe no celular, onde a linha leva a outra tela. */
+.notas-item-seta {
+  display: none;
+  flex: none;
+  color: var(--ink-3);
+}
+
+.notas-carregando {
+  padding: var(--sp-2) 0;
+}
+
+/* O vazio dentro da lista é o conteúdo dela: sem segundo cartão. */
+.notas-lista .empty-state {
+  min-height: 0;
+  padding: var(--sp-6) var(--sp-4);
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+/* ---------- Página aberta ---------- */
+
+.notas-coluna {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  min-width: 0;
+}
+
+.notas-voltar {
+  display: none;
+  align-self: flex-start;
+}
+
+/* Sem overflow: hidden — o que flutua sobre o texto (menus do editor) pode
+   sair do cartão. As margens laterais são do cartão inteiro: o cabeçalho, as
+   faixas, o rodapé e o corpo do editor (`.nota-doc`, em notas-editor.css)
+   leem as mesmas duas medidas e alinham pela mesma borda. A da esquerda é
+   larga porque é a calha dos controles de bloco. */
+.notas-pagina {
+  --nota-margem-esq: calc(var(--sp-7) + var(--sp-5));
+  --nota-margem-dir: calc(var(--sp-6) + var(--sp-2));
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--bg-surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  box-shadow: var(--elev-1);
+}
+
+.notas-corpo {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Rodapé de atalhos: dica, não controle. */
+.notas-dica {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2) var(--sp-4);
+  margin: 0;
+  padding: var(--sp-3) var(--nota-margem-dir) var(--sp-4) var(--nota-margem-esq);
+  border-top: 1px solid var(--line);
+  border-radius: 0 0 var(--r-card) var(--r-card);
+  background: var(--bg-sunken);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  line-height: 1.6;
+  color: var(--ink-2);
+}
+
+.notas-dica kbd {
+  display: inline-block;
+  margin-right: var(--sp-1);
+  padding: 0 var(--sp-1);
+  border: 1px solid var(--line-border);
+  border-bottom-width: 2px;
+  border-radius: var(--r-xs);
+  background: var(--bg-surface);
+  font-family: inherit;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-1);
+}
+
+/* ---------- Cabeçalho da página ---------- */
+
+.nota-cab {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-6) var(--nota-margem-dir) var(--sp-4) var(--nota-margem-esq);
+}
+
+.nota-cab-linha {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3) var(--sp-4);
+}
+
+/* O título é o campo maior da tela e não parece campo em repouso: o
+   contorno só aparece no hover e no foco. A margem negativa alinha o texto
+   (não a caixa) com o corpo. */
+.nota-titulo {
+  flex: 1 1 280px;
+  min-width: 0;
+  margin: 0 0 0 calc(-1 * var(--sp-2));
+  padding: var(--sp-1) var(--sp-2);
+  border: 1px solid transparent;
+  border-radius: var(--r-control);
+  background: transparent;
+  font-size: var(--fs-num);
+  font-weight: var(--fw-heavy);
+  line-height: 1.2;
+  letter-spacing: var(--tracking-tighter);
+  color: var(--ink-1);
+}
+
+.nota-titulo:hover {
+  background: var(--bg-hover);
+}
+
+.nota-titulo::placeholder {
+  color: var(--ink-3);
+  opacity: 1;
+}
+
+.nota-cab-acoes {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+
+.nota-acao[aria-pressed='true'] {
+  background: var(--brand-soft);
+}
+
+.nota-acao svg {
+  flex: none;
+}
+
+/* Meta: o texto vai num <span> — a linha é flex com gap, e texto solto
+   viraria itens separados. */
+.nota-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-1) var(--sp-4);
+  margin: 0;
+  font-size: var(--fs-md);
+  font-weight: var(--fw-medium);
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+
+.nota-meta b {
+  font-weight: var(--fw-bold);
+  color: var(--ink-1);
+}
+
+/* Estado da gravação: um <output> (papel status implícito) com o ponto.
+   Neutro enquanto salva ou envia; verde quando salvo; âmbar no conflito
+   (nada se perdeu enquanto a pessoa não escolher); coral no erro (o texto
+   existe só nesta tela até a conexão voltar). */
+.nota-status {
+  --c: var(--ink-3);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+
+.nota-status i {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--r-full);
+  background: var(--c);
+}
+
+.nota-status[data-estado='salvo'] { --c: var(--success); }
+
+.nota-status[data-estado='conflito'] {
+  --c: var(--tier-alto);
+  color: var(--badge-atencao);
+}
+
+.nota-status[data-estado='erro'] {
+  --c: var(--brand-red);
+  color: var(--coral-texto);
+}
+
+/* Faixas do cabeçalho: conflito (âmbar, atenção) e erro ao salvar (coral,
+   risco de perda). Mesma forma, tinta diferente. */
+.nota-conflito,
+.nota-erro {
+  --c: var(--tier-alto);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3) var(--sp-4);
+  margin-top: var(--sp-2);
+  padding: var(--sp-3) var(--sp-4);
+  border: 1px solid var(--c);
+  border-radius: var(--r-card);
+  background: color-mix(in oklab, var(--c) 10%, var(--bg-surface));
+  font-size: var(--fs-md);
+  line-height: 1.45;
+  color: var(--ink-1);
+}
+
+.nota-erro {
+  --c: var(--brand-red);
+  background: var(--danger-soft);
+}
+
+.nota-faixa-texto {
+  flex: 1 1 280px;
+  min-width: 0;
+  margin: 0;
+}
+
+.nota-faixa-texto b {
+  font-weight: var(--fw-heavy);
+}
+
+.nota-faixa-acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+
+/* ---------- Faixa intermediária (sem rail) ----------
+   A lista estreita e as margens da página encolhem antes de virar uma coluna
+   só: a 761px ainda cabem as duas, com o texto a ~350px. */
+@media (max-width: 1100px) {
+  .notas-painel {
+    --notas-lista-w: 272px;
+    gap: var(--sp-4);
+  }
+}
+
+@media (max-width: 900px) {
+  .notas-pagina {
+    --nota-margem-esq: calc(var(--sp-6) + var(--sp-5));
+    --nota-margem-dir: var(--sp-5);
+  }
+}
+
+/* ---------- Celular: lista → página ----------
+   Uma tela de cada vez. Os dois lados ficam no DOM e o atributo decide; a
+   escolha automática da primeira página não roda aqui (ver AnotacoesTab),
+   senão o "‹ Páginas" não sairia do lugar. */
+@media (max-width: 760px) {
+  .notas-painel {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .notas-page:not([data-aberta]) .notas-coluna,
+  .notas-page[data-aberta] .notas-lista,
+  .notas-page[data-aberta] > .page-bar {
+    display: none;
+  }
+
+  .notas-lista {
+    position: static;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .notas-voltar {
+    display: inline-flex;
+  }
+
+  .notas-item {
+    min-height: max(64px, var(--tap-min));
+    padding: var(--sp-3) var(--sp-4);
+  }
+
+  .notas-item-titulo {
+    font-size: var(--fs-lg);
+  }
+
+  .notas-item-seta {
+    display: block;
+  }
+
+  .notas-pagina {
+    --nota-margem-esq: var(--sp-4);
+    --nota-margem-dir: var(--sp-4);
+  }
+
+  .nota-cab {
+    padding-top: var(--sp-5);
+  }
+
+  /* 16px é o piso de campo no iOS; o título é bem maior, mas desce um degrau. */
+  .nota-titulo {
+    flex-basis: 100%;
+    font-size: var(--fs-2xl);
+  }
+
+  /* Atalho de teclado não serve a quem digita no vidro. */
+  .notas-dica {
+    display: none;
+  }
+}

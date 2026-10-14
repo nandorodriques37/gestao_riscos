@@ -14,6 +14,8 @@ const PriorizacaoTab = lazy(() => import('./components/PriorizacaoTab/Priorizaca
 const TarefasTab = lazy(() => import('./components/TarefasTab/TarefasTab').then(m => ({ default: m.TarefasTab })));
 const PessoasTab = lazy(() => import('./components/PessoasTab/PessoasTab').then(m => ({ default: m.PessoasTab })));
 const TriagemTab = lazy(() => import('./components/TriagemTab/TriagemTab').then(m => ({ default: m.TriagemTab })));
+// O editor (TipTap) só desce com a aba: nenhuma outra tela paga por ele.
+const AnotacoesTab = lazy(() => import('./components/AnotacoesTab/AnotacoesTab').then(m => ({ default: m.AnotacoesTab })));
 import { EditModal } from './components/EditModal/EditModal';
 import { ModoRiscoToggle } from './components/common/ModoRiscoToggle';
 import { PromoverAcaoModal } from './components/RegistroTab/PromoverAcaoModal';
@@ -27,6 +29,7 @@ import { canNavigate, readRoute } from './lib/navigation';
 import { AREAS, ROTINAS, CATEGORIAS, RECURSOS, RESPONSAVEIS } from './data/RiskData';
 import { useRecords } from './hooks/useRecords';
 import { useTasks } from './hooks/useTasks';
+import { useNotas } from './hooks/useNotas';
 import { usePortfolio } from './hooks/usePortfolio';
 import { downloadRecordsCSV } from './lib/csv';
 import {
@@ -105,6 +108,9 @@ function App() {
   // conseguia contar tarefa nenhuma — a aba Tarefas não está montada quando o
   // Painel está. Uma instância só, aqui, e as duas telas leem a mesma lista.
   const tarefas = useTasks();
+  // As páginas da aba Anotações moram aqui pelo mesmo motivo e por mais um: o
+  // salvamento automático pendente não pode morrer quando a aba desmonta.
+  const notas = useNotas();
   const idsDoRecorte = useMemo(() => {
     if (!route.recorte) return null;
     const lacunas = cadeiaQuebrada({ ...pf.portfolio, riscos: records, acoes: pf.portfolio.acoes_risco, trabalho: tarefas.tasks });
@@ -136,6 +142,15 @@ function App() {
     trocarComTransicao(() => navigate({ ...readRoute(''), tab: destino, recorte: recorte ?? null }));
   }, [navigate]);
   const abrirIniciativa = useCallback((id: string) => navigate({ ...readRoute(''), tab: 'iniciativas', iniciativa: id }), [navigate]);
+  /**
+   * Abre uma página (ou volta à lista, com null). Passa pelos guards: trocar de
+   * página desmonta o editor, e um envio de imagem em andamento pergunta antes.
+   */
+  const selecionarNota = useCallback(async (id: string | null, opcoes?: { substituir?: boolean }) => {
+    if (!(await canNavigate())) return false;
+    navigate({ ...readRoute(''), tab: 'anotacoes', nota: id }, opcoes?.substituir);
+    return true;
+  }, [navigate]);
   const abrirRisco = useCallback((id: string) => navigate({ ...route, risco: id }), [navigate, route]);
 
   // Ctrl/⌘+K abre a paleta — menos quando já há um diálogo aberto, que tem o
@@ -226,6 +241,20 @@ function App() {
   const tarefasPendentes = tarefas.hasPendingWrites;
   const foraDoQuadro = tab !== 'tarefas';
   const portfolioRefresh = pf.refresh;
+  // As páginas ficam fora desse relógio: o texto é longo, e relê-lo a cada 15s
+  // em todas as abas pesaria à toa. Relê ao entrar na aba e quando a janela
+  // volta ao foco com a aba aberta — o próprio hook pula a leitura enquanto há
+  // gravação pendente, então o texto de quem digita nunca é sobrescrito.
+  const notasRefresh = notas.refresh;
+  const naAnotacoes = tab === 'anotacoes';
+  useEffect(() => {
+    if (!naAnotacoes) return;
+    void notasRefresh();
+    const aoFocar = () => { if (!document.hidden) void notasRefresh(); };
+    window.addEventListener('focus', aoFocar);
+    return () => window.removeEventListener('focus', aoFocar);
+  }, [naAnotacoes, notasRefresh]);
+
   useEffect(() => {
     const canSync = () => !document.hidden && !hasPendingWrites();
     const sync = () => {
@@ -284,6 +313,9 @@ function App() {
 
   const editingRecord = editingId != null ? records.find(r => r.id === editingId) ?? null : null;
   const showLoading = loading && records.length === 0;
+  // Abas que não leem o registro de risco: o aviso de erro e o esqueleto de
+  // carregamento dele não são delas.
+  const semRegistro = tab === 'tarefas' || tab === 'anotacoes';
 
   /**
    * Cabeçalho das leituras do risco que não trazem o seu. A tabela monta o
@@ -358,7 +390,7 @@ function App() {
 
       <div className="app-conteudo">
       {route.recorte && <div className="context-banner" role="status"><span>Itens que precisam de atenção: {idsDoRecorte?.size ?? 0}</span><button className="btn btn-ghost" onClick={() => navigate({ ...route, recorte: null }, true)}>Limpar recorte</button></div>}
-      {tab !== 'tarefas' && error && (
+      {!semRegistro && error && (
         <div className="error-banner">
           <span>{error}</span>
           <button onClick={() => { clearError(); void refresh(); }}>Tentar novamente</button>
@@ -366,7 +398,7 @@ function App() {
         </div>
       )}
 
-      {tab !== 'tarefas' && showLoading ? (
+      {!semRegistro && showLoading ? (
         <div className="app-loading" role="status" aria-label="Carregando matriz de risco…">
           <div className="skeleton-kpis">
             {Array.from({ length: 5 }).map((_, i) => <div key={i} className="skeleton-kpi" />)}
@@ -461,6 +493,16 @@ function App() {
           {tab === 'pessoas' && <PessoasTab pf={pf} onIrPara={irPara} />}
 
           {tab === 'triagem' && <TriagemTab records={records} pf={pf} />}
+
+          {tab === 'anotacoes' && (
+            <AnotacoesTab
+              notas={notas}
+              autor={autor}
+              onPedirNome={pedirNome}
+              selecionada={route.nota}
+              onSelecionar={selecionarNota}
+            />
+          )}
         </Suspense>
       )}
       </div>

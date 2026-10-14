@@ -72,7 +72,7 @@ export interface StoredRiskRecord extends RiskRecord {
 export type Tab =
   | 'painel' | 'objetivos' | 'iniciativas' | 'priorizacao'
   | 'registro'
-  | 'tarefas' | 'pessoas' | 'triagem';
+  | 'tarefas' | 'pessoas' | 'anotacoes' | 'triagem';
 
 /**
  * As três leituras do registro de risco. Não é destino de menu: é a mesma

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { invalidarDados, observarDados, type DataSource } from '../lib/dataSync';
+import { invalida, invalidarDados, observarDados, type DataSource } from '../lib/dataSync';
 import { nextRetryDelay } from '../lib/retryBackoff';
 
 export type SaveStatus = 'saving' | 'saved' | 'error' | 'conflict';
@@ -143,7 +143,7 @@ export function useStoredCollection<T extends Stored, P extends object>(api: Ada
   useEffect(() => {
     mounted.current = true;
     void refresh().finally(() => { if (mounted.current) setLoading(false); });
-    const stop = observarDados(source => { if (source !== api.source) void refresh(); });
+    const stop = observarDados(source => { if (invalida(source, api.source)) void refresh(); });
     const currentTimers = timers.current;
     return () => { mounted.current = false; stop(); currentTimers.forEach(clearTimeout); };
   }, [api, refresh]);
