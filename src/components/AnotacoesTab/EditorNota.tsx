@@ -24,7 +24,7 @@ import {
 } from '../../lib/imageAttachments';
 import { MSG_SEM_CONEXAO, ehCancelamento, uploadNotaImagem } from '../../lib/notasApi';
 import { avisoImagensDaWeb, escolherColagem, imagensDoHtmlColado } from '../../lib/colagem';
-import { guardNavigation } from '../../lib/navigation';
+import { guardNavigation, type AppRoute } from '../../lib/navigation';
 import { linkPermitidoNoEditor } from '../../lib/links';
 import { plural } from '../../lib/portfolioLabels';
 import { useConfirmacao } from '../common/Confirmacao';
@@ -69,6 +69,12 @@ export interface EditorNotaProps {
   onUploads?(emAndamento: number): void;
   /** Foca o fim do documento ao montar. */
   autoFocus?: boolean;
+  /**
+   * A navegação mantém esta página na tela (com a tela dividida, mudou só a
+   * outra metade): o envio de imagem não tem por que perguntar. Sem isto,
+   * toda navegação pergunta.
+   */
+  fica?: (destino?: AppRoute) => boolean;
 }
 
 /**
@@ -195,7 +201,7 @@ const EM_CURSO = new Set<EnvioImagem['fase']>(['fila', 'preparando', 'enviando']
  * lugar dela é um marcador FORA do documento (`uploadsDeImagem.ts`): o
  * documento só recebe o bloco com o endereço final, numa transação comum.
  */
-export function EditorNota({ nota, recarregar, onChange, onUploads, autoFocus }: EditorNotaProps) {
+export function EditorNota({ nota, recarregar, onChange, onUploads, autoFocus, fica }: EditorNotaProps) {
   const notaId = nota.id;
   const notaRef = useRef(nota);
   notaRef.current = nota;
@@ -204,6 +210,8 @@ export function EditorNota({ nota, recarregar, onChange, onUploads, autoFocus }:
   const onUploadsRef = useRef(onUploads);
   onUploadsRef.current = onUploads;
   const autoFocusRef = useRef(autoFocus);
+  const ficaRef = useRef(fica);
+  ficaRef.current = fica;
 
   // ---------- Ritmo do onChange ----------
   const editorRef = useRef<Editor | null>(null);
@@ -732,7 +740,8 @@ export function EditorNota({ nota, recarregar, onChange, onUploads, autoFocus }:
       ? `${plural(emAndamento, 'imagem', 'imagens')} ${emAndamento === 1 ? 'ainda está subindo' : 'ainda estão subindo'}`
       : `${plural(falhas, 'imagem', 'imagens')} ${falhas === 1 ? 'não subiu' : 'não subiram'}`;
     const consequencia = total === 1 ? 'Sair agora descarta a imagem.' : `Sair agora descarta as ${total} imagens.`;
-    const soltarGuarda = guardNavigation(() => confirmar({ titulo, consequencia, rotuloConfirmar: 'Sair', rotuloManter: 'Esperar' }));
+    const soltarGuarda = guardNavigation(destino => ficaRef.current?.(destino)
+      || confirmar({ titulo, consequencia, rotuloConfirmar: 'Sair', rotuloManter: 'Esperar' }));
     const avisarSaida = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ''; };
     window.addEventListener('beforeunload', avisarSaida);
     return () => {

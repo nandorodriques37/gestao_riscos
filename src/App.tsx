@@ -171,8 +171,22 @@ function App() {
    */
   const selecionarNota = useCallback(async (id: string | null, opcoes?: { substituir?: boolean }) => {
     if (opcoes?.substituir && emEspera()) return false;
-    if (!(await perguntar())) return false;
-    return navigate({ ...readRoute(''), tab: 'anotacoes', nota: id }, opcoes?.substituir);
+    // A metade de baixo fica onde está — menos quando a página pedida é ela
+    // (a paleta abre qualquer página): a mesma página nas duas metades seriam
+    // dois editores disputando o texto.
+    const agora = readRoute(window.location.hash);
+    const abaixo = agora.tab === 'anotacoes' && agora.notaAbaixo !== id ? agora.notaAbaixo : null;
+    const destino: AppRoute = { ...readRoute(''), tab: 'anotacoes', nota: id, notaAbaixo: abaixo };
+    if (!(await perguntar(destino))) return false;
+    return navigate(destino, opcoes?.substituir);
+  }, [navigate, perguntar, emEspera]);
+  /** A página da metade de baixo (ou fecha a metade, com null). A de cima não sai do lugar. */
+  const selecionarNotaAbaixo = useCallback(async (id: string | null, opcoes?: { substituir?: boolean }) => {
+    if (opcoes?.substituir && emEspera()) return false;
+    const agora = readRoute(window.location.hash);
+    const destino: AppRoute = { ...readRoute(''), tab: 'anotacoes', nota: agora.nota, notaAbaixo: id === agora.nota ? null : id };
+    if (!(await perguntar(destino))) return false;
+    return navigate(destino, opcoes?.substituir);
   }, [navigate, perguntar, emEspera]);
   const abrirRisco = useCallback((id: string) => navigate({ ...route, risco: id }), [navigate, route]);
 
@@ -537,6 +551,8 @@ function App() {
               onPedirNome={pedirNome}
               selecionada={route.nota}
               onSelecionar={selecionarNota}
+              abaixo={route.notaAbaixo}
+              onSelecionarAbaixo={selecionarNotaAbaixo}
             />
           )}
         </Suspense>

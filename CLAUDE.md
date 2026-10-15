@@ -71,6 +71,25 @@ Os `.dc.html` são **referência de design, não código de produção**. Recrie
   mesmo corte de `notas.css`): abaixo disso a coluna de texto ficava com ~33
   caracteres por linha, e vale lista → página com "‹ Páginas". O título é um
   `<textarea>` que cresce e nunca corta.
+- **Página aberta é `PaginaNota`, e pode haver duas.** A aba decide QUAL
+  página abre (URL, conferência do link, escolha automática); `PaginaNota`
+  cuida do resto — texto local, conflito, texto retido, guards de saída,
+  Fixar/Excluir/Recriar. Com as duas colunas (`DUAS_COLUNAS`), "Abrir abaixo"
+  na lista divide a tela: `notaAbaixo` na URL, cada metade com meia altura e
+  corpo que rola sozinho, o de baixo com o × de fechar. **Uma página nunca
+  troca de metade nem aparece nas duas** — o texto local mora na instância, e
+  dois editores na mesma página disputariam o texto; a escolha automática e a
+  vizinha de quem foi excluída pulam a de baixo. Guards recebem o **destino**
+  (`canNavigate(destino)`): a página que a navegação deixa na mesma metade
+  não pergunta (`ficaNaTela`), inclusive o envio de imagem do editor; sem
+  destino, todo guard pergunta como antes. Abaixo de 961px a tela mostra uma
+  página só, mas a de baixo continua **montada e escondida pelo CSS**:
+  estreitar a janela não passa pelos guards, e desmontar levaria junto um
+  texto retido.
+- **Zoom de leitura** (`lib/zoomNota.ts`): A− · 100% · A+ no cabeçalho, cinco
+  degraus, preferência do navegador de quem lê (nunca da página). Só o texto
+  do documento escala (`--nota-zoom` por `data-zoom`); margens, alça e barras
+  ficam no tamanho da interface.
 - **Editor das Anotações:** TipTap **3.31.4 exato em todo `@tiptap/*`** — um
   só `@tiptap/core` no `npm ls`; versão solta duplica o núcleo. A alça "+ ⋮⋮"
   é própria (`AlcaBloco`, `moverBloco.ts`) porque o drag-handle oficial puxa

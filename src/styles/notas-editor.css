@@ -99,13 +99,16 @@
 
 .nota-doc {
   --nota-recuo: calc(var(--sp-5) + var(--sp-1));
+  /* Zoom de leitura (`data-zoom` na página): multiplica os quatro degraus do
+     texto e nada mais — margens, alça e barras ficam no tamanho da interface. */
+  --nota-z: var(--nota-zoom, 1);
   min-height: calc(var(--sp-7) * 4);
   padding:
     var(--sp-2)
     var(--nota-margem-dir, calc(var(--sp-6) + var(--sp-2)))
     calc(var(--sp-6) + var(--sp-2))
     var(--nota-margem-esq, calc(var(--sp-7) + var(--sp-5)));
-  font-size: var(--fs-lg);
+  font-size: calc(var(--fs-lg) * var(--nota-z));
   font-weight: var(--fw-regular);
   line-height: 1.6;
   color: var(--ink-1);
@@ -153,21 +156,21 @@
 /* Três degraus da escala, abaixo do título da página (--fs-num). */
 .nota-doc h1 {
   margin: calc(var(--sp-5) + var(--sp-1)) 0 var(--sp-1);
-  font-size: var(--fs-2xl);
+  font-size: calc(var(--fs-2xl) * var(--nota-z));
   line-height: 1.25;
   letter-spacing: var(--tracking-tighter);
 }
 
 .nota-doc h2 {
   margin: var(--sp-5) 0 var(--sp-1);
-  font-size: var(--fs-xl);
+  font-size: calc(var(--fs-xl) * var(--nota-z));
   line-height: 1.3;
   letter-spacing: var(--tracking-tight);
 }
 
 .nota-doc h3 {
   margin: calc(var(--sp-4) + var(--sp-1)) 0 var(--sp-1);
-  font-size: var(--fs-card);
+  font-size: calc(var(--fs-card) * var(--nota-z));
   line-height: 1.35;
 }
 

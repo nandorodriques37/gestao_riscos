@@ -5,7 +5,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { AnotacoesTab } from './AnotacoesTab';
 import type { EditorNotaProps } from './EditorNota';
 import { useNotas, type NotaSaveStatus, type UseNotas } from '../../hooks/useNotas';
-import { canNavigate } from '../../lib/navigation';
+import { canNavigate, readRoute } from '../../lib/navigation';
 import type { NotaPatch } from '../../lib/notasApi';
 import type { Nota } from '../../types';
 import { docDeTexto } from '../../lib/notas';
@@ -69,6 +69,8 @@ interface Opcoes {
   loading?: boolean;
   autor?: string;
   selecionada?: string | null;
+  /** Página da metade de baixo. */
+  abaixo?: string | null;
   saveNow?: (id: string, patch: NotaPatch, version?: number) => Promise<boolean>;
   /** Resposta dos guards de navegação (imagem subindo, por exemplo). */
   podeSair?: () => boolean;
@@ -97,6 +99,7 @@ function montar(opcoes: Opcoes = {}) {
       if (doServidor) controle.setLista!(doServidor);
     }),
     onSelecionar: vi.fn(),
+    onSelecionarAbaixo: vi.fn(),
     onPedirNome: vi.fn(),
   };
   const controle: {
@@ -108,6 +111,7 @@ function montar(opcoes: Opcoes = {}) {
     const [lista, setLista] = useState<Nota[]>(opcoes.notas ?? paginas());
     const [status, setStatus] = useState<Record<string, NotaSaveStatus>>({});
     const [selecionada, setSelecionada] = useState<string | null>(opcoes.selecionada ?? null);
+    const [abaixo, setAbaixo] = useState<string | null>(opcoes.abaixo ?? null);
     controle.setLista = setLista;
     controle.setStatus = setStatus;
     const notas: UseNotas = {
@@ -154,6 +158,13 @@ function montar(opcoes: Opcoes = {}) {
       setSelecionada(id);
       return true;
     };
+    const onSelecionarAbaixo = async (id: string | null, op?: { substituir?: boolean }) => {
+      espias.onSelecionarAbaixo(id, op);
+      if (opcoes.podeSair && !opcoes.podeSair()) return false;
+      log.push(`abaixo ${id}`);
+      setAbaixo(id);
+      return true;
+    };
     return (
       <AnotacoesTab
         notas={notas}
@@ -161,6 +172,8 @@ function montar(opcoes: Opcoes = {}) {
         onPedirNome={espias.onPedirNome}
         selecionada={selecionada}
         onSelecionar={onSelecionar}
+        abaixo={abaixo}
+        onSelecionarAbaixo={onSelecionarAbaixo}
       />
     );
   }
@@ -278,6 +291,28 @@ it('Fixar alterna pela gravação automática', () => {
   fireEvent.click(fixada);
   expect(espias.update).toHaveBeenLastCalledWith('n1', { fixada: false, editado_por: 'Derylson' });
   expect(screen.getByRole('button', { name: 'Fixar' }).getAttribute('aria-pressed')).toBe('false');
+});
+
+it('o zoom de leitura muda o texto da página, não grava nada nela e fica para a próxima vez', () => {
+  localStorage.clear();
+  const { espias } = montar({ selecionada: 'n1' });
+  const pagina = () => screen.getByRole('region', { name: 'Página Triagem' });
+  const zoom = within(pagina()).getByRole('group', { name: 'Tamanho do texto' });
+  expect(pagina().getAttribute('data-zoom')).toBe('100');
+  expect((within(zoom).getByRole('button', { name: /Voltar a 100%/ }) as HTMLButtonElement).disabled).toBe(true);
+
+  fireEvent.click(within(zoom).getByRole('button', { name: 'Aumentar o texto' }));
+  fireEvent.click(within(zoom).getByRole('button', { name: 'Aumentar o texto' }));
+  expect(pagina().getAttribute('data-zoom')).toBe('130');
+  expect(within(zoom).getByRole('button', { name: /Voltar a 100%/ }).textContent).toBe('130%');
+  expect(espias.update).not.toHaveBeenCalled();
+
+  cleanup();
+  montar({ selecionada: 'n1' });
+  expect(pagina().getAttribute('data-zoom')).toBe('130');
+  fireEvent.click(screen.getByRole('button', { name: /Voltar a 100%/ }));
+  expect(pagina().getAttribute('data-zoom')).toBe('100');
+  localStorage.clear();
 });
 
 it('Excluir pede confirmação; só então sai da página e depois exclui', async () => {
@@ -587,19 +622,35 @@ function servidorDeNotas(iniciais: Nota[]) {
   };
 }
 
-/** A aba com o `useNotas` de verdade e a seleção passando pelos guards, como no `App`. */
-function montarComHook(inicial: string) {
+/**
+ * A aba com o `useNotas` de verdade e a seleção passando pelos guards, como no
+ * `App`: com o destino, para a metade que fica não perguntar.
+ */
+function montarComHook(inicial: string, abaixoInicial: string | null = null) {
   const ref: { notas?: UseNotas } = {};
   function HarnessReal() {
     const notas = useNotas();
     ref.notas = notas;
     const [sel, setSel] = useState<string | null>(inicial);
+    const [abaixo, setAbaixo] = useState<string | null>(abaixoInicial);
+    const destino = (nota: string | null, notaAbaixo: string | null) => ({ ...readRoute(''), tab: 'anotacoes' as const, nota, notaAbaixo });
     const onSelecionar = async (id: string | null) => {
-      if (!(await canNavigate())) return false;
+      if (!(await canNavigate(destino(id, abaixo)))) return false;
       setSel(id);
       return true;
     };
-    return <AnotacoesTab notas={notas} autor="Ana" onPedirNome={() => {}} selecionada={sel} onSelecionar={onSelecionar} />;
+    const onSelecionarAbaixo = async (id: string | null) => {
+      if (!(await canNavigate(destino(sel, id)))) return false;
+      setAbaixo(id);
+      return true;
+    };
+    return (
+      <AnotacoesTab
+        notas={notas} autor="Ana" onPedirNome={() => {}}
+        selecionada={sel} onSelecionar={onSelecionar}
+        abaixo={abaixo} onSelecionarAbaixo={onSelecionarAbaixo}
+      />
+    );
   }
   render(<HarnessReal />);
   return ref as { notas: UseNotas };
@@ -864,7 +915,8 @@ it('sair da ABA com gravação na fila e levar 409 depois também não perde o t
         <button type="button" onClick={() => { setSel(ID_B); setNaAba(true); }}>Abrir a Pagina B</button>
         {naAba && (
           <AnotacoesTab notas={notas} autor="Ana" onPedirNome={() => {}} selecionada={sel}
-            onSelecionar={async id => { if (!(await canNavigate())) return false; setSel(id); return true; }} />
+            onSelecionar={async id => { if (!(await canNavigate())) return false; setSel(id); return true; }}
+            abaixo={null} onSelecionarAbaixo={async () => false} />
         )}
       </>
     );
@@ -887,4 +939,95 @@ it('sair da ABA com gravação na fila e levar 409 depois também não perde o t
   fireEvent.click(screen.getByRole('button', { name: 'Abrir página' }));
   await waitFor(() => expect(editor().value).toBe('linha original A\nTEXTO DA ABA'));
   expect(screen.getByRole('alert').textContent).toContain('Outra pessoa editou esta página');
+});
+
+/* -------------------------------------------------------------------------- */
+/* Tela dividida: uma página em cima, outra embaixo                           */
+/* -------------------------------------------------------------------------- */
+
+const regiao = (nome: string) => screen.getByRole('region', { name: nome });
+const editorEm = (nome: string) => within(regiao(nome)).getByLabelText('Conteúdo da página') as HTMLTextAreaElement;
+
+it('Abrir abaixo divide a tela: as duas páginas editam cada uma a sua, e Fechar tira só a de baixo', async () => {
+  const { espias, log } = montar({ selecionada: 'n1' });
+  const lista = regiao('Páginas');
+  // A página de cima não se oferece para abrir embaixo.
+  expect(within(lista).queryByRole('button', { name: 'Abrir “Triagem” abaixo' })).toBeNull();
+
+  fireEvent.click(within(lista).getByRole('button', { name: 'Abrir “Reunião regional” abaixo' }));
+  await waitFor(() => expect(log).toContain('abaixo n2'));
+  expect(regiao('Página Triagem')).toBeTruthy();
+  expect(regiao('Página Reunião regional, abaixo')).toBeTruthy();
+  expect(espias.onSelecionar).not.toHaveBeenCalled();
+  // A linha diz onde a página está, por escrito; e não se oferece de novo.
+  expect(document.getElementById('nota-item-n2')!.textContent).toContain('Aberta abaixo');
+  expect(within(lista).queryByRole('button', { name: 'Abrir “Reunião regional” abaixo' })).toBeNull();
+
+  fireEvent.change(editorEm('Página Reunião regional, abaixo'), { target: { value: 'Faltas na região sul\nNova' } });
+  expect(espias.update).toHaveBeenLastCalledWith('n2', { conteudo: docDeTexto('Faltas na região sul\nNova'), editado_por: 'Derylson' });
+  fireEvent.change(editorEm('Página Triagem'), { target: { value: 'Meus' } });
+  expect(espias.update).toHaveBeenLastCalledWith('n1', { conteudo: docDeTexto('Meus'), editado_por: 'Derylson' });
+
+  // Só a de baixo tem Fechar.
+  expect(within(regiao('Página Triagem')).queryByRole('button', { name: /Fechar/ })).toBeNull();
+  fireEvent.click(within(regiao('Página Reunião regional, abaixo')).getByRole('button', { name: /Fechar/ }));
+  await waitFor(() => expect(screen.queryByRole('region', { name: 'Página Reunião regional, abaixo' })).toBeNull());
+  expect(log).toContain('abaixo null');
+  expect(regiao('Página Triagem')).toBeTruthy();
+});
+
+it('clicar na página que está embaixo leva até ela, sem trocar a de cima', () => {
+  const { espias } = montar({ selecionada: 'n1', abaixo: 'n2' });
+  fireEvent.click(document.getElementById('nota-item-n2')!);
+  expect(espias.onSelecionar).not.toHaveBeenCalled();
+  expect(document.activeElement?.id).toBe('nota-titulo-n2');
+});
+
+it('a mesma página nunca abre nas duas metades', () => {
+  montar({ selecionada: 'n1', abaixo: 'n1' });
+  expect(screen.getAllByRole('region', { name: /^Página / })).toHaveLength(1);
+});
+
+it('excluir a de cima abre a vizinha que NÃO está embaixo; excluir a de baixo fecha a metade', async () => {
+  const { espias, log } = montar({ selecionada: 'n1', abaixo: 'n2' });
+  fireEvent.click(within(regiao('Página Triagem')).getByRole('button', { name: 'Excluir' }));
+  let dialogo = await screen.findByRole('dialog', { name: 'Excluir “Triagem”?' });
+  fireEvent.click(within(dialogo).getByRole('button', { name: 'Excluir' }));
+  // Na ordem da lista a vizinha seria a de baixo (Reunião regional): pula para a seguinte.
+  await waitFor(() => expect(log).toEqual(['abrir n3', 'remover n1']));
+  expect(espias.onSelecionar).toHaveBeenLastCalledWith('n3', { substituir: true });
+
+  fireEvent.click(within(regiao('Página Reunião regional, abaixo')).getByRole('button', { name: 'Excluir' }));
+  dialogo = await screen.findByRole('dialog', { name: 'Excluir “Reunião regional”?' });
+  fireEvent.click(within(dialogo).getByRole('button', { name: 'Excluir' }));
+  await waitFor(() => expect(log).toEqual(['abrir n3', 'remover n1', 'abaixo null', 'remover n2']));
+  expect(regiao('Página Estoque parado no depósito')).toBeTruthy();
+});
+
+it('com texto retido em cima, abrir e fechar a de baixo não pergunta nada; sair da aba ainda pergunta', async () => {
+  localStorage.clear();
+  const srv = servidorDeNotas([paginaNoServidor(ID_A, 'Pagina A', 'linha original A'), paginaNoServidor(ID_B, 'Pagina B', 'linha B')]);
+  montarComHook(ID_A);
+  await abertaCom('linha original A');
+
+  srv.gravarPorFora(ID_A, 'texto dela');
+  fireEvent.change(editor(), { target: { value: 'linha original A\nMEU TEXTO' } });
+  await waitFor(() => expect(screen.getByRole('alert').textContent).toContain('Outra pessoa editou esta página'), { timeout: 3000 });
+
+  fireEvent.click(screen.getByRole('button', { name: 'Abrir “Pagina B” abaixo' }));
+  await waitFor(() => expect(editorEm('Página Pagina B, abaixo').value).toBe('linha B'));
+  expect(screen.queryByRole('dialog')).toBeNull();
+  // A de cima continua com o texto e a faixa.
+  expect(editorEm('Página Pagina A').value).toBe('linha original A\nMEU TEXTO');
+
+  fireEvent.click(within(regiao('Página Pagina B, abaixo')).getByRole('button', { name: /Fechar/ }));
+  await waitFor(() => expect(screen.queryByRole('region', { name: 'Página Pagina B, abaixo' })).toBeNull());
+  expect(screen.queryByRole('dialog')).toBeNull();
+
+  // Sem destino (outra aba, o navegador), o texto retido de cima pergunta.
+  let resposta: boolean | undefined;
+  void canNavigate().then(r => { resposta = r; });
+  const dialogo = await screen.findByRole('dialog', { name: 'Sair sem salvar o seu texto?' });
+  fireEvent.click(within(dialogo).getByRole('button', { name: 'Ficar' }));
+  await waitFor(() => expect(resposta).toBe(false));
 });
