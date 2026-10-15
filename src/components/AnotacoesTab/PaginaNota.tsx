@@ -4,7 +4,7 @@ import type { MotivoNaoSalvo, NotaSaveStatus, UseNotas } from '../../hooks/useNo
 import { useConfirmacao } from '../common/Confirmacao';
 import { linhasDaNota } from '../../lib/notas';
 import { imagensDoDoc, lerDoc } from '../../lib/notaImagens';
-import { guardNavigation } from '../../lib/navigation';
+import { guardNavigation, type AppRoute } from '../../lib/navigation';
 import { plural } from '../../lib/portfolioLabels';
 import type { ZoomNota } from '../../lib/zoomNota';
 import { CabecalhoNota, type EstadoGravacao } from './CabecalhoNota';
@@ -99,11 +99,27 @@ export interface PaginaNotaProps {
   onErro: (mensagem: string | null) => void;
   /** A página mostra faixa própria (conflito, erro, recusa): o aviso genérico do hook seria um segundo. */
   onFaixa: (temFaixa: boolean) => void;
+  /**
+   * Em qual metade da tela esta página está — o campo da URL que a nomeia.
+   * Uma página nunca troca de metade: o texto local, o conflito e o texto
+   * retido moram nesta instância.
+   */
+  painel: 'nota' | 'notaAbaixo';
+  /** Só na metade de baixo: tira a página da tela. */
+  onFechar?: () => void;
+}
+
+/**
+ * A navegação deixa esta página onde está: continua nas Anotações, na mesma
+ * metade. É a outra metade que muda, e os guards desta não têm o que perguntar.
+ */
+function ficaNaTela(destino: AppRoute | undefined, painel: PaginaNotaProps['painel'], id: string): boolean {
+  return destino?.tab === 'anotacoes' && destino[painel] === id;
 }
 
 export function PaginaNota({
   notas, autor, aberta, daLista, agora, zoom, onZoom, focarTitulo, onTituloFocado,
-  excluindo, depoisDeExcluir, onSelecionar, onErro, onFaixa,
+  excluindo, depoisDeExcluir, onSelecionar, onErro, onFaixa, painel, onFechar,
 }: PaginaNotaProps) {
   const [confirmar, dialogo] = useConfirmacao();
 
@@ -258,7 +274,8 @@ export function PaginaNota({
   useEffect(() => {
     if (!abertaId || !gravando) return;
     const id = abertaId;
-    return guardNavigation(async () => {
+    return guardNavigation(async destino => {
+      if (ficaNaTela(destino, painel, id)) return true;
       if (retidaRef.current?.id === id || excluindo.current !== null) return true;
       if (!api.current.hasPendingWrite(id)) return true;
       let relogio: ReturnType<typeof setTimeout> | undefined;
@@ -270,15 +287,15 @@ export function PaginaNota({
       }
       return !api.current.textoNaoSalvo(id);
     });
-  }, [abertaId, gravando, excluindo]);
+  }, [abertaId, gravando, excluindo, painel]);
 
   // Texto retido não está em lugar nenhum além da tela: sair da página, da
   // aba ou do navegador pergunta antes de descartar.
   useEffect(() => {
     if (!motivoNaTela || !abertaId) return;
     const id = abertaId;
-    const soltar = guardNavigation(async () => {
-      if (excluindo.current !== null) return true;
+    const soltar = guardNavigation(async destino => {
+      if (ficaNaTela(destino, painel, id) || excluindo.current !== null) return true;
       const ok = await confirmar({
         titulo: 'Sair sem salvar o seu texto?',
         consequencia: SAIR_DESCARTA[motivoNaTela],
@@ -291,7 +308,7 @@ export function PaginaNota({
     const avisar = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ''; };
     window.addEventListener('beforeunload', avisar);
     return () => { soltar(); window.removeEventListener('beforeunload', avisar); };
-  }, [motivoNaTela, abertaId, confirmar, excluindo]);
+  }, [motivoNaTela, abertaId, confirmar, excluindo, painel]);
 
   function alternarFixada() {
     // A página excluída não tem o que fixar: o PATCH voltaria 404.
@@ -460,7 +477,8 @@ export function PaginaNota({
         <section
           className="notas-pagina"
           data-zoom={zoom}
-          aria-label={`Página ${aberta.titulo.trim() || 'Sem título'}`}
+          data-painel={painel === 'notaAbaixo' ? 'abaixo' : undefined}
+          aria-label={`Página ${aberta.titulo.trim() || 'Sem título'}${painel === 'notaAbaixo' ? ', abaixo' : ''}`}
           onBlur={aoSairDaPagina}
         >
           <CabecalhoNota
@@ -484,6 +502,7 @@ export function PaginaNota({
             onManterMinha={() => void gravarTextoDaTela()}
             onCarregarDela={() => void carregarDela()}
             onRecriar={() => void recriar()}
+            onFechar={onFechar}
             onTentarAgora={() => void (estado === 'recusada' ? gravarTextoDaTela() : api.current.flushPending())}
           />
           <div className="notas-corpo">
@@ -493,6 +512,7 @@ export function PaginaNota({
               recarregar={recarregar}
               onChange={c => salvar(aberta.id, { conteudo: c })}
               onUploads={n => setEnvios(e => (e.id === aberta.id && e.n === n ? e : { id: aberta.id, n }))}
+              fica={destino => ficaNaTela(destino, painel, aberta.id)}
             />
           </div>
           <p className="notas-dica">

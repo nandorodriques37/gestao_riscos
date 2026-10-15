@@ -397,6 +397,13 @@
   background: var(--brand-soft);
 }
 
+.nota-fechar {
+  min-width: max(var(--control-h), var(--tap-min));
+  padding: 0;
+  font-size: var(--fs-xl);
+  line-height: 1;
+}
+
 .nota-acao svg {
   flex: none;
 }
@@ -523,6 +530,130 @@
    76px e um parágrafo corrido: a 961px, primeira largura com as duas colunas,
    o texto tem 467px e ~55 caracteres por linha; com as margens largas seriam
    ~435px. */
+/* ---------- Tela dividida: uma página em cima, outra embaixo ----------
+   Só com as duas colunas (abaixo de 961px a metade de baixo fica montada e
+   escondida — ver o fim do bloco). A coluna ocupa a altura que sobra na janela — `--notas-topo` é onde
+   ela começa no documento, medido pela aba — e cada metade fica com a metade
+   dela. Quem rola é o corpo de cada página: o cabeçalho (título, zoom, faixa
+   de conflito) fica à vista. Piso de 480px: numa janela baixa (notebook de
+   768px) as duas metades não viram fresta — cada uma guarda umas quatro
+   linhas de texto —, e quem rola é a página até a coluna grudar no topo. */
+
+.notas-metade {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  min-width: 0;
+  min-height: 0;
+}
+
+@media (min-width: 961px) {
+  .notas-coluna[data-dividida='true'] {
+    position: sticky;
+    top: calc(var(--header-h) + var(--sp-4));
+    display: grid;
+    grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+    height: max(
+      calc(var(--sp-7) * 10),
+      calc(100dvh - var(--notas-topo, calc(var(--header-h) + var(--sp-6))) - var(--sp-4))
+    );
+  }
+
+  .notas-coluna[data-dividida='true'] .notas-pagina {
+    flex: 1;
+    min-height: 0;
+  }
+
+  .notas-coluna[data-dividida='true'] .notas-corpo {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  /* Meia altura: o cabeçalho encolhe para o texto ficar com o espaço. O
+     rodapé de atalhos sai — é o mesmo nas duas, e comeria duas linhas de cada. */
+  .notas-coluna[data-dividida='true'] .nota-cab {
+    padding-top: var(--sp-4);
+    padding-bottom: var(--sp-3);
+  }
+
+  .notas-coluna[data-dividida='true'] .nota-titulo {
+    flex-basis: 12ch;
+    font-size: var(--fs-xl);
+  }
+
+  .notas-coluna[data-dividida='true'] .nota-cab-acoes {
+    margin-top: 0;
+  }
+
+  .notas-coluna[data-dividida='true'] .nota-doc {
+    min-height: 0;
+  }
+
+  .notas-coluna[data-dividida='true'] .notas-dica {
+    display: none;
+  }
+
+  .notas-metade[data-metade='abaixo'] > .empty-state {
+    flex: 1;
+  }
+}
+
+/* Estreita, uma página só: a metade de baixo continua montada (o texto
+   retido nela não pode sumir com a janela), mas fora da vista. */
+@media (max-width: 960px) {
+  .notas-metade[data-metade='abaixo'] {
+    display: none;
+  }
+}
+
+/* "Abrir abaixo": irmão do link, por cima do canto dele. Com mouse aparece
+   no hover ou no foco da linha; no toque fica sempre à vista. */
+.notas-li {
+  position: relative;
+}
+
+.notas-abrir-abaixo {
+  position: absolute;
+  top: var(--sp-2);
+  right: var(--sp-2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: max(var(--sp-6), var(--tap-min));
+  height: max(var(--sp-6), var(--tap-min));
+  border: 1px solid var(--line-border);
+  border-radius: var(--r-control);
+  background: var(--bg-surface);
+  color: var(--brand-text);
+}
+
+.notas-abrir-abaixo:hover {
+  background: var(--brand-soft);
+}
+
+@media (hover: hover) {
+  .notas-abrir-abaixo {
+    opacity: 0;
+  }
+
+  .notas-li:hover .notas-abrir-abaixo,
+  .notas-li:focus-within .notas-abrir-abaixo {
+    opacity: 1;
+  }
+}
+
+/* A página da metade de baixo: a marca da aberta, mais clara, e escrito onde está. */
+.notas-item[data-onde='abaixo'] {
+  box-shadow: inset var(--sp-1) 0 0 var(--brand-text);
+  background: color-mix(in oklab, var(--brand-soft) 55%, var(--bg-surface));
+}
+
+.notas-item-onde {
+  font-weight: var(--fw-bold);
+  color: var(--brand-text);
+}
+
 @media (max-width: 1100px) {
   .notas-painel {
     --notas-lista-w: 272px;

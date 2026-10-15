@@ -30,9 +30,9 @@ export function useAppNavigation() {
 
   const emEspera = useCallback(() => esperas.current > 0, []);
 
-  const perguntar = useCallback(async () => {
+  const perguntar = useCallback(async (destino?: AppRoute) => {
     esperas.current++;
-    try { return await canNavigate(); } finally { esperas.current--; }
+    try { return await canNavigate(destino); } finally { esperas.current--; }
   }, []);
 
   /** Aplica o destino. `false` quando foi descartado (correção automática durante uma espera). */
@@ -57,7 +57,7 @@ export function useAppNavigation() {
         // e só reaplica o destino se o usuário confirmar e nada mais navegou.
         window.history.pushState(null, '', base || '#tab=painel');
         const antes = geracao.current;
-        if (!(await perguntar()) || geracao.current !== antes) return;
+        if (!(await perguntar(readRoute(alvo))) || geracao.current !== antes) return;
         window.history.pushState(null, '', alvo);
       }
       geracao.current++;

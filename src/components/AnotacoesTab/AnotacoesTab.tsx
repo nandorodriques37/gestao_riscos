@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import type { Nota } from '../../types';
 import type { MotivoNaoSalvo, UseNotas } from '../../hooks/useNotas';
 import { useSessionState } from '../../hooks/useSessionState';
@@ -33,6 +33,13 @@ export interface AnotacoesTabProps {
    * página, senão o Voltar do navegador quica de volta nela.
    */
   onSelecionar: (id: string | null, opcoes?: { substituir?: boolean }) => Promise<boolean>;
+  /**
+   * Página da metade de baixo, lida da URL (`notaAbaixo`). Só vale com as duas
+   * colunas na tela; abaixo disso a URL guarda, mas a tela mostra uma só.
+   */
+  abaixo: string | null;
+  /** Abre uma página na metade de baixo (ou a fecha, com `null`). Pelos guards, como `onSelecionar`. */
+  onSelecionarAbaixo: (id: string | null, opcoes?: { substituir?: boolean }) => Promise<boolean>;
 }
 
 /**
@@ -73,6 +80,19 @@ function telaLarga(): boolean {
     || window.matchMedia(DUAS_COLUNAS).matches;
 }
 
+/** `telaLarga`, acompanhando a janela: a tela dividida some e volta com a largura. */
+function useTelaLarga(): boolean {
+  const [larga, setLarga] = useState(telaLarga);
+  useEffect(() => {
+    if (typeof window.matchMedia !== 'function') return;
+    const consulta = window.matchMedia(DUAS_COLUNAS);
+    const mudou = () => setLarga(consulta.matches);
+    consulta.addEventListener('change', mudou);
+    return () => consulta.removeEventListener('change', mudou);
+  }, []);
+  return larga;
+}
+
 /**
  * Relógio de minuto para o "há 5 min" não envelhecer com a página parada. Só
  * redesenha: quem relê as páginas é o `App`, nunca a aba.
@@ -94,9 +114,12 @@ function vizinha(ordem: readonly Nota[], id: string): string | null {
 }
 
 
-export function AnotacoesTab({ notas, autor, onPedirNome, selecionada, onSelecionar }: AnotacoesTabProps) {
+export function AnotacoesTab({
+  notas, autor, onPedirNome, selecionada, onSelecionar, abaixo, onSelecionarAbaixo,
+}: AnotacoesTabProps) {
   const lista = notas.notas;
   const agora = useAgora();
+  const larga = useTelaLarga();
   const [busca, setBusca] = useSessionState('anotacoes.busca', '');
   const [recorte, setRecorte] = useSessionState<RecorteNotas>('anotacoes.recorte', 'todas');
   const [criando, setCriando] = useState(false);
@@ -104,8 +127,10 @@ export function AnotacoesTab({ notas, autor, onPedirNome, selecionada, onSelecio
   const [zoom, setZoom] = useState<ZoomNota>(lerZoomNota);
   const mudarZoom = useCallback((z: ZoomNota) => { setZoom(z); gravarZoomNota(z); }, []);
   const [focarTituloId, setFocarTituloId] = useState<string | null>(null);
-  /** A página mostra faixa própria: o aviso genérico do hook seria um segundo. */
-  const [comFaixa, setComFaixa] = useState(false);
+  /** Uma das páginas mostra faixa própria: o aviso genérico do hook seria um segundo. */
+  const [faixaEmCima, setFaixaEmCima] = useState(false);
+  const [faixaEmbaixo, setFaixaEmbaixo] = useState(false);
+  const comFaixa = faixaEmCima || faixaEmbaixo;
   /** Página sendo excluída: nem a escolha automática nem o guard de conflito a tocam. */
   const excluindo = useRef<string | null>(null);
 
@@ -172,10 +197,23 @@ export function AnotacoesTab({ notas, autor, onPedirNome, selecionada, onSelecio
   const orfa = selecionada && !daLista ? notas.naoSalvas.get(selecionada) : undefined;
   const aberta = daLista ?? orfa?.nota ?? null;
   const abertaId = aberta?.id ?? null;
+
+  // A metade de baixo nunca tem a mesma página de cima (dois editores na
+  // mesma página disputariam o texto). A página que outra pessoa excluiu
+  // continua nela pelo texto guardado, como na de cima. Na tela estreita ela
+  // continua MONTADA, e o CSS a esconde: estreitar a janela não passa pelos
+  // guards, e desmontar ali levaria junto um texto retido.
+  const pedidaAbaixo = abaixo && abaixo !== selecionada ? abaixo : null;
+  const daListaAbaixo = pedidaAbaixo ? lista.find(n => n.id === pedidaAbaixo) ?? null : null;
+  const abertaAbaixo = daListaAbaixo ?? (pedidaAbaixo ? notas.naoSalvas.get(pedidaAbaixo)?.nota : undefined) ?? null;
+  const abaixoId = abertaAbaixo?.id ?? null;
+  const abaixoRef = useRef(abaixoId);
+  useLayoutEffect(() => { abaixoRef.current = abaixoId; });
+
   // As outras páginas com texto recusado: um aviso com nome para cada uma.
   const naoSalvasFora = useMemo(
-    () => [...notas.naoSalvas].filter(([id]) => id !== abertaId),
-    [notas.naoSalvas, abertaId],
+    () => [...notas.naoSalvas].filter(([id]) => id !== abertaId && id !== abaixoId),
+    [notas.naoSalvas, abertaId, abaixoId],
   );
 
   // A conferência vale para UM id: trocar de seleção a esquece, e voltar ao
@@ -221,7 +259,8 @@ export function AnotacoesTab({ notas, autor, onPedirNome, selecionada, onSelecio
   const escolhendo = useRef(false);
   useEffect(() => {
     if (notas.loading || selecionada || escolhendo.current || !telaLarga()) return;
-    const candidatas = (visiveis.length > 0 ? visiveis : ordenarNotas(lista)).filter(n => n.id !== excluindo.current);
+    const candidatas = (visiveis.length > 0 ? visiveis : ordenarNotas(lista))
+      .filter(n => n.id !== excluindo.current && n.id !== abaixoRef.current);
     if (candidatas.length === 0) return;
     escolhendo.current = true;
     void onSelecionar(candidatas[0].id, { substituir: true }).finally(() => { escolhendo.current = false; });
@@ -242,13 +281,45 @@ export function AnotacoesTab({ notas, autor, onPedirNome, selecionada, onSelecio
 
   function abrir(id: string) {
     if (id === abertaId) return;
+    // Já está na metade de baixo: leva até ela, sem trocar a de cima.
+    if (id === abaixoId && larga) {
+      document.getElementById(`nota-titulo-${id}`)?.focus();
+      return;
+    }
     void onSelecionar(id);
   }
 
-  /** Excluída a página, a tela larga abre a vizinha na lista; a estreita volta à lista. */
-  const depoisDeExcluir = useCallback((id: string) => (telaLarga()
-    ? vizinha(visiveisRef.current, id) ?? vizinha(ordenarNotas(api.current.notas), id)
-    : null), []);
+  /**
+   * Excluída a página de cima, a tela larga abre a vizinha na lista — nunca a
+   * que está embaixo — e a estreita volta à lista.
+   */
+  const depoisDeExcluir = useCallback((id: string) => {
+    if (!telaLarga()) return null;
+    const fora = (ordem: readonly Nota[]) => ordem.filter(n => n.id !== abaixoRef.current);
+    return vizinha(fora(visiveisRef.current), id) ?? vizinha(fora(ordenarNotas(api.current.notas)), id);
+  }, []);
+  /** Excluída a página de baixo, a metade fecha. */
+  const fecharAoExcluir = useCallback(() => null, []);
+  const dividida = abertaAbaixo !== null || pedidaAbaixo !== null;
+
+  // Dividida, a coluna vai até o pé da janela: precisa saber onde começa no
+  // documento (o título da aba e os avisos acima mudam isso). Mede o painel,
+  // não a coluna: ela é `sticky`, e rolada a caixa dela sai do lugar. A cada
+  // renderização — é um retângulo só — e quando a janela muda.
+  const painel = useRef<HTMLDivElement>(null);
+  const [topo, setTopo] = useState<number | null>(null);
+  useLayoutEffect(() => {
+    if (!dividida) return;
+    const medir = () => {
+      const el = painel.current;
+      if (!el) return;
+      const t = Math.round(el.getBoundingClientRect().top + window.scrollY);
+      setTopo(atual => (atual === t ? atual : t));
+    };
+    medir();
+    window.addEventListener('resize', medir);
+    return () => window.removeEventListener('resize', medir);
+  });
 
   /* ---------------------------------------------------------------------- */
   /* Ações                                                                   */
@@ -340,7 +411,7 @@ export function AnotacoesTab({ notas, autor, onPedirNome, selecionada, onSelecio
           action={{ label: 'Nova página', onClick: () => void novaPagina() }}
         />
       ) : (
-        <div className="notas-painel">
+        <div className="notas-painel" ref={painel}>
           <ListaNotas
             fixadas={fixadas}
             recentes={recentes}
@@ -352,52 +423,97 @@ export function AnotacoesTab({ notas, autor, onPedirNome, selecionada, onSelecio
             autor={autor}
             onPedirNome={onPedirNome}
             selecionada={abertaId}
+            abaixo={larga ? abaixoId : null}
             onAbrir={abrir}
+            onAbrirAbaixo={larga ? id => void onSelecionarAbaixo(id) : undefined}
             agora={agora}
             carregando={notas.loading || procurando}
           />
 
-          <div className="notas-coluna">
-            {selecionada && (
-              <button type="button" className="btn btn-ghost notas-voltar" onClick={() => void onSelecionar(null)}>
-                <span aria-hidden="true">‹</span> Páginas
-              </button>
-            )}
-            {procurando && (
-              <div className="notas-abrindo" role="status">
-                <p className="notas-abrindo-texto">Abrindo a página…</p>
-                {Array.from({ length: 3 }).map((_, i) => <div key={i} className="skeleton-row" />)}
+          {/* Dividida, cada metade tem metade da altura e rola sozinha. */}
+          <div
+            className="notas-coluna"
+            data-dividida={dividida ? 'true' : undefined}
+            // Medida de layout, não cor: o CSS não tem como saber onde a coluna começa.
+            style={dividida && topo !== null ? { '--notas-topo': `${topo}px` } as CSSProperties : undefined}
+          >
+            <div className="notas-metade">
+              {selecionada && (
+                <button type="button" className="btn btn-ghost notas-voltar" onClick={() => void onSelecionar(null)}>
+                  <span aria-hidden="true">‹</span> Páginas
+                </button>
+              )}
+              {procurando && (
+                <div className="notas-abrindo" role="status">
+                  <p className="notas-abrindo-texto">Abrindo a página…</p>
+                  {Array.from({ length: 3 }).map((_, i) => <div key={i} className="skeleton-row" />)}
+                </div>
+              )}
+              {inexistente && (semRedeParaConferir ? (
+                <EmptyState
+                  message="Sem conexão: não deu para abrir esta página"
+                  hint="A lista desta tela pode estar desatualizada. O link abre quando a conexão voltar."
+                  action={{ label: 'Tentar de novo', onClick: () => { api.current.clearError(); setConferencia(null); } }}
+                />
+              ) : (
+                <EmptyState
+                  message={PAGINA_INEXISTENTE}
+                  hint="O link pode ser de uma página que alguém excluiu. As páginas da equipe estão na lista."
+                  action={{ label: 'Ver as páginas', onClick: () => void onSelecionar(null) }}
+                />
+              ))}
+              <PaginaNota
+                notas={notas}
+                autor={autor}
+                aberta={aberta}
+                daLista={daLista !== null}
+                agora={agora}
+                zoom={zoom}
+                onZoom={mudarZoom}
+                focarTitulo={aberta !== null && focarTituloId === aberta.id}
+                onTituloFocado={() => setFocarTituloId(null)}
+                excluindo={excluindo}
+                depoisDeExcluir={depoisDeExcluir}
+                onSelecionar={onSelecionar}
+                onErro={setErroCriar}
+                onFaixa={setFaixaEmCima}
+                painel="nota"
+              />
+            </div>
+            {dividida && (
+              <div className="notas-metade" data-metade="abaixo">
+                {!abertaAbaixo && (notas.loading ? (
+                  <div className="notas-abrindo" role="status">
+                    <p className="notas-abrindo-texto">Abrindo a página…</p>
+                    {Array.from({ length: 3 }).map((_, i) => <div key={i} className="skeleton-row" />)}
+                  </div>
+                ) : (
+                  <EmptyState
+                    message={PAGINA_INEXISTENTE}
+                    hint="A página que estava aqui embaixo saiu da lista. A de cima continua como estava."
+                    action={{ label: 'Fechar', onClick: () => void onSelecionarAbaixo(null) }}
+                  />
+                ))}
+                <PaginaNota
+                  notas={notas}
+                  autor={autor}
+                  aberta={abertaAbaixo}
+                  daLista={daListaAbaixo !== null}
+                  agora={agora}
+                  zoom={zoom}
+                  onZoom={mudarZoom}
+                  focarTitulo={false}
+                  onTituloFocado={() => {}}
+                  excluindo={excluindo}
+                  depoisDeExcluir={fecharAoExcluir}
+                  onSelecionar={onSelecionarAbaixo}
+                  onErro={setErroCriar}
+                  onFaixa={setFaixaEmbaixo}
+                  painel="notaAbaixo"
+                  onFechar={() => void onSelecionarAbaixo(null)}
+                />
               </div>
             )}
-            {inexistente && (semRedeParaConferir ? (
-              <EmptyState
-                message="Sem conexão: não deu para abrir esta página"
-                hint="A lista desta tela pode estar desatualizada. O link abre quando a conexão voltar."
-                action={{ label: 'Tentar de novo', onClick: () => { api.current.clearError(); setConferencia(null); } }}
-              />
-            ) : (
-              <EmptyState
-                message={PAGINA_INEXISTENTE}
-                hint="O link pode ser de uma página que alguém excluiu. As páginas da equipe estão na lista."
-                action={{ label: 'Ver as páginas', onClick: () => void onSelecionar(null) }}
-              />
-            ))}
-            <PaginaNota
-              notas={notas}
-              autor={autor}
-              aberta={aberta}
-              daLista={daLista !== null}
-              agora={agora}
-              zoom={zoom}
-              onZoom={mudarZoom}
-              focarTitulo={aberta !== null && focarTituloId === aberta.id}
-              onTituloFocado={() => setFocarTituloId(null)}
-              excluindo={excluindo}
-              depoisDeExcluir={depoisDeExcluir}
-              onSelecionar={onSelecionar}
-              onErro={setErroCriar}
-              onFaixa={setComFaixa}
-            />
           </div>
         </div>
       )}

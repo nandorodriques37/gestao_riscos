@@ -82,6 +82,8 @@ export interface CabecalhoNotaProps {
   onCarregarDela: () => void;
   /** Em `excluida`: cria uma página nova com o texto da tela. */
   onRecriar?: () => void;
+  /** Só na metade de baixo da tela dividida: tira a página da tela (não exclui). */
+  onFechar?: () => void;
   /** Em `erro`, manda a fila agora; em `recusada`, grava de novo o texto da tela. */
   onTentarAgora: () => void;
 }
@@ -106,7 +108,7 @@ function tempoDesde(iso: string, agora: Date): string {
 
 export function CabecalhoNota({
   nota, recarregar, focarTitulo, onTituloFocado, onTitulo, estado, mensagem = null, imagensPerdidas = 0,
-  enviando, conflito, resolvendo, agora, zoom, onZoom, onFixar, onExcluir, onManterMinha, onCarregarDela, onRecriar, onTentarAgora,
+  enviando, conflito, resolvendo, agora, zoom, onZoom, onFixar, onExcluir, onManterMinha, onCarregarDela, onRecriar, onFechar, onTentarAgora,
 }: CabecalhoNotaProps) {
   const [titulo, setTitulo] = useState(nota.titulo);
   const [carregado, setCarregado] = useState(recarregar);
@@ -241,6 +243,13 @@ export function CabecalhoNota({
             </svg>
             Excluir
           </button>
+          {onFechar && (
+            // Só o ×, como todo painel que fecha: com texto, a linha não cabia
+            // ao lado do título na meia altura e quebrava em duas.
+            <button type="button" className="btn btn-ghost nota-acao nota-fechar" onClick={onFechar} aria-label="Fechar" title="Fechar a metade de baixo">
+              <span aria-hidden="true">×</span>
+            </button>
+          )}
         </div>
       </div>
 

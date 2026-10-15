@@ -24,7 +24,11 @@ export interface ListaNotasProps {
   onPedirNome: () => void;
   /** Página aberta; marca a linha com `aria-current`. */
   selecionada: string | null;
+  /** Página da metade de baixo, com a tela dividida. */
+  abaixo: string | null;
   onAbrir: (id: string) => void;
+  /** Abre a página na metade de baixo. Sem ele (tela estreita), a linha não oferece. */
+  onAbrirAbaixo?: (id: string) => void;
   agora: Date;
   carregando: boolean;
 }
@@ -42,7 +46,7 @@ const idDoItem = (id: string) => `nota-item-${id}`;
 
 export function ListaNotas({
   fixadas, recentes, busca, onBusca, recorte, onRecorte, contagens,
-  autor, onPedirNome, selecionada, onAbrir, agora, carregando,
+  autor, onPedirNome, selecionada, abaixo, onAbrir, onAbrirAbaixo, agora, carregando,
 }: ListaNotasProps) {
   const vazia = fixadas.length === 0 && recentes.length === 0;
 
@@ -86,8 +90,8 @@ export function ListaNotas({
         />
       ) : (
         <>
-          <Secao id="notas-fixadas" titulo="Fixadas" notas={fixadas} selecionada={selecionada} onAbrir={onAbrir} agora={agora} />
-          <Secao id="notas-recentes" titulo="Recentes" notas={recentes} selecionada={selecionada} onAbrir={onAbrir} agora={agora} />
+          <Secao id="notas-fixadas" titulo="Fixadas" notas={fixadas} {...{ selecionada, abaixo, onAbrir, onAbrirAbaixo, agora }} />
+          <Secao id="notas-recentes" titulo="Recentes" notas={recentes} {...{ selecionada, abaixo, onAbrir, onAbrirAbaixo, agora }} />
         </>
       )}
     </section>
@@ -99,19 +103,40 @@ interface SecaoProps {
   titulo: string;
   notas: readonly Nota[];
   selecionada: string | null;
+  abaixo: string | null;
   onAbrir: (id: string) => void;
+  onAbrirAbaixo?: (id: string) => void;
   agora: Date;
 }
 
-function Secao({ id, titulo, notas, selecionada, onAbrir, agora }: SecaoProps) {
+function Secao({ id, titulo, notas, selecionada, abaixo, onAbrir, onAbrirAbaixo, agora }: SecaoProps) {
   if (notas.length === 0) return null;
   return (
     <>
       <h2 className="notas-secao" id={id}>{titulo}</h2>
       <ul className="notas-itens" aria-labelledby={id}>
         {notas.map(n => (
-          <li key={n.id}>
-            <ItemNota nota={n} ativa={n.id === selecionada} onAbrir={onAbrir} agora={agora} />
+          <li key={n.id} className="notas-li">
+            <ItemNota nota={n} ativa={n.id === selecionada} embaixo={n.id === abaixo} onAbrir={onAbrir} agora={agora} />
+            {/* Irmão do link, não filho: botão dentro de <a> não é HTML válido.
+                Some na página que já está na tela, em cima ou embaixo — a
+                mesma página nas duas metades seriam dois editores disputando
+                o mesmo texto. */}
+            {onAbrirAbaixo && n.id !== selecionada && n.id !== abaixo && (
+              <button
+                type="button"
+                className="notas-abrir-abaixo"
+                onClick={() => onAbrirAbaixo(n.id)}
+                aria-label={`Abrir “${n.titulo.trim() || 'Sem título'}” abaixo`}
+                title="Abrir abaixo"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <rect x="4" y="4" width="16" height="16" rx="3" />
+                  <path d="M4 12h16" />
+                  <path d="M12 14.5v3M10.5 16h3" />
+                </svg>
+              </button>
+            )}
           </li>
         ))}
       </ul>
@@ -122,11 +147,13 @@ function Secao({ id, titulo, notas, selecionada, onAbrir, agora }: SecaoProps) {
 interface ItemNotaProps {
   nota: Nota;
   ativa: boolean;
+  /** Aberta na metade de baixo. */
+  embaixo: boolean;
   onAbrir: (id: string) => void;
   agora: Date;
 }
 
-function ItemNota({ nota, ativa, onAbrir, agora }: ItemNotaProps) {
+function ItemNota({ nota, ativa, embaixo, onAbrir, agora }: ItemNotaProps) {
   const titulo = nota.titulo.trim();
   const trecho = trechoDaNota(nota);
   const quem = nota.editado_por.trim() || nota.autor.trim();
@@ -146,7 +173,8 @@ function ItemNota({ nota, ativa, onAbrir, agora }: ItemNotaProps) {
       id={idDoItem(nota.id)}
       className="notas-item"
       href={routeHash({ tab: 'anotacoes', nota: nota.id })}
-      aria-current={ativa ? 'true' : undefined}
+      aria-current={ativa || embaixo ? 'true' : undefined}
+      data-onde={embaixo ? 'abaixo' : undefined}
       onClick={abrir}
     >
       <span className="notas-item-texto">
@@ -154,7 +182,14 @@ function ItemNota({ nota, ativa, onAbrir, agora }: ItemNotaProps) {
           {titulo || 'Sem título'}
         </span>
         {trecho && <span className="notas-item-trecho">{trecho}</span>}
-        {meta && <span className="notas-item-meta tabular">{meta}</span>}
+        {(meta || embaixo) && (
+          <span className="notas-item-meta tabular">
+            {/* Onde ela está vai escrito: a marca da linha sozinha não diz qual metade. */}
+            {embaixo && <span className="notas-item-onde">Aberta abaixo</span>}
+            {embaixo && meta && ' · '}
+            {meta}
+          </span>
+        )}
       </span>
       {/* Só aparece no celular, onde a linha leva a outra tela. */}
       <svg className="notas-item-seta" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
