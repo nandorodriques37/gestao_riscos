@@ -280,6 +280,28 @@ it('Fixar alterna pela gravação automática', () => {
   expect(screen.getByRole('button', { name: 'Fixar' }).getAttribute('aria-pressed')).toBe('false');
 });
 
+it('o zoom de leitura muda o texto da página, não grava nada nela e fica para a próxima vez', () => {
+  localStorage.clear();
+  const { espias } = montar({ selecionada: 'n1' });
+  const pagina = () => screen.getByRole('region', { name: 'Página Triagem' });
+  const zoom = within(pagina()).getByRole('group', { name: 'Tamanho do texto' });
+  expect(pagina().getAttribute('data-zoom')).toBe('100');
+  expect((within(zoom).getByRole('button', { name: /Voltar a 100%/ }) as HTMLButtonElement).disabled).toBe(true);
+
+  fireEvent.click(within(zoom).getByRole('button', { name: 'Aumentar o texto' }));
+  fireEvent.click(within(zoom).getByRole('button', { name: 'Aumentar o texto' }));
+  expect(pagina().getAttribute('data-zoom')).toBe('130');
+  expect(within(zoom).getByRole('button', { name: /Voltar a 100%/ }).textContent).toBe('130%');
+  expect(espias.update).not.toHaveBeenCalled();
+
+  cleanup();
+  montar({ selecionada: 'n1' });
+  expect(pagina().getAttribute('data-zoom')).toBe('130');
+  fireEvent.click(screen.getByRole('button', { name: /Voltar a 100%/ }));
+  expect(pagina().getAttribute('data-zoom')).toBe('100');
+  localStorage.clear();
+});
+
 it('Excluir pede confirmação; só então sai da página e depois exclui', async () => {
   const conteudo = JSON.stringify({
     type: 'doc',

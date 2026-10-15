@@ -8,6 +8,7 @@ import { filtrarNotas, linhasDaNota, ordenarNotas, tituloDaAba, type RecorteNota
 import { imagensDoDoc, lerDoc } from '../../lib/notaImagens';
 import { guardNavigation } from '../../lib/navigation';
 import { plural } from '../../lib/portfolioLabels';
+import { gravarZoomNota, lerZoomNota, type ZoomNota } from '../../lib/zoomNota';
 import { ListaNotas } from './ListaNotas';
 import { CabecalhoNota, type EstadoGravacao } from './CabecalhoNota';
 import { EditorNota } from './EditorNota';
@@ -158,6 +159,8 @@ export function AnotacoesTab({ notas, autor, onPedirNome, selecionada, onSelecio
   const [confirmar, dialogo] = useConfirmacao();
   const [criando, setCriando] = useState(false);
   const [erroCriar, setErroCriar] = useState<string | null>(null);
+  const [zoom, setZoom] = useState<ZoomNota>(lerZoomNota);
+  const mudarZoom = useCallback((z: ZoomNota) => { setZoom(z); gravarZoomNota(z); }, []);
 
   // O hook devolve um objeto novo a cada render (as funções dentro dele são
   // estáveis). Callbacks e efeitos o leem por ref para não rodar à toa — e o
@@ -772,6 +775,7 @@ export function AnotacoesTab({ notas, autor, onPedirNome, selecionada, onSelecio
               <>
                 <section
                   className="notas-pagina"
+                  data-zoom={zoom}
                   aria-label={`Página ${aberta.titulo.trim() || 'Sem título'}`}
                   onBlur={aoSairDaPagina}
                 >
@@ -789,6 +793,8 @@ export function AnotacoesTab({ notas, autor, onPedirNome, selecionada, onSelecio
                     conflito={emConflito}
                     resolvendo={resolvendo}
                     agora={agora}
+                    zoom={zoom}
+                    onZoom={mudarZoom}
                     onFixar={alternarFixada}
                     onExcluir={() => void excluir()}
                     onManterMinha={() => void gravarTextoDaTela()}
