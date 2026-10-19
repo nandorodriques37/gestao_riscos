@@ -79,7 +79,6 @@
    salvamento armado. Âmbar (atenção), não coral: nada se perdeu e nada foi
    gravado. Alinhada com o texto pelas mesmas margens do documento. */
 .nota-ilegivel {
-  max-width: 72ch;
   margin:
     0
     var(--nota-margem-dir, calc(var(--sp-6) + var(--sp-2)))
@@ -123,12 +122,10 @@
   outline: none;
 }
 
-/* Teto da medida de leitura, também na tela larga. `ch` é a largura do zero,
-   mais larga que a letra média da Montserrat: 72ch dão ~90 caracteres de
-   texto corrido, não 72. */
-.nota-doc > * {
-  max-width: 72ch;
-}
+/* Sem teto de medida: o texto ocupa a largura da página, como o título. O
+   teto de 72ch deixava um terço da tela larga vazio ao lado do texto; quem
+   quer linha mais curta tem o zoom (A+), que aumenta a letra na mesma
+   largura. */
 
 .nota-doc > :first-child {
   margin-top: 0;
