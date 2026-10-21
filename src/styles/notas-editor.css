@@ -191,6 +191,35 @@
   color: var(--ink-2);
 }
 
+/* Sub-itens (Tab num item de lista): o nível se lê pelo marcador, como num
+   documento — 1 → a → i, e o ciclo recomeça no quarto nível. Conta a
+   profundidade, não o tipo de quem está em volta: uma numerada dentro de
+   marcadores (ou o contrário, trocando o tipo pela barra) também desce um
+   degrau. A lista de tarefas fica fora por especificidade. */
+.nota-doc :is(ol, ul) ol {
+  list-style-type: lower-alpha;
+}
+
+.nota-doc :is(ol, ul) :is(ol, ul) ol {
+  list-style-type: lower-roman;
+}
+
+.nota-doc :is(ol, ul) :is(ol, ul) :is(ol, ul) ol {
+  list-style-type: decimal;
+}
+
+.nota-doc :is(ol, ul) ul {
+  list-style-type: circle;
+}
+
+.nota-doc :is(ol, ul) :is(ol, ul) ul {
+  list-style-type: square;
+}
+
+.nota-doc :is(ol, ul) :is(ol, ul) :is(ol, ul) ul {
+  list-style-type: disc;
+}
+
 .nota-doc blockquote {
   margin: var(--sp-1) 0;
   padding: 0 0 0 var(--sp-4);

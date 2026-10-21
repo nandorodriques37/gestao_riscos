@@ -519,6 +519,7 @@ export function PaginaNota({
             <span><kbd>/</kbd> insere um bloco</span>
             <span><kbd>##</kbd> título</span>
             <span><kbd>1.</kbd> lista numerada</span>
+            <span><kbd>Tab</kbd> sub-item</span>
             <span><kbd>-</kbd> marcadores</span>
             <span><kbd>[]</kbd> tarefa</span>
             <span><kbd>&gt;</kbd> citação</span>
