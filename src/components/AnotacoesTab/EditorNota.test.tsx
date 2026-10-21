@@ -77,6 +77,16 @@ beforeAll(() => {
 beforeEach(() => { envio.resolver = null; envio.chamadas = []; });
 afterEach(() => { cleanup(); vi.useRealTimers(); });
 
+
+/** Posição logo depois do texto no documento (o cursor no fim daquela linha). */
+function posDoTexto(editor: Editor, texto: string): number {
+  let pos = -1;
+  editor.state.doc.descendants((no, p) => {
+    if (pos < 0 && no.isText && no.text === texto) pos = p + texto.length;
+  });
+  return pos;
+}
+
 it('abrir a página não chama onChange, nem pela normalização do documento', async () => {
   const onChange = vi.fn();
   // Termina num título: o TipTap acrescenta o parágrafo final ao abrir.
@@ -623,4 +633,35 @@ it('"Imagem indisponível" oferece Tentar de novo, que pede o arquivo outra vez,
   expect(nova).not.toBeNull();
   expect(nova).not.toBe(primeira);
   expect(screen.queryByText('Imagem indisponível')).toBeNull();
+});
+
+it('Tab num item de lista faz dele sub-item do anterior (1 → a, b, c) e Shift+Tab o devolve', async () => {
+  const lista = JSON.stringify({
+    type: 'doc',
+    content: [{
+      type: 'orderedList',
+      content: ['Erros Pysha', 'Coleta'].map(t => ({
+        type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: t }] }],
+      })),
+    }],
+  });
+  const { container } = render(<EditorNota nota={nota(lista)} recarregar={0} onChange={() => undefined} />);
+  await aposCriar();
+  const editor = editorDe(container);
+  await act(async () => {
+    editor.view.focus();
+    editor.commands.setTextSelection(posDoTexto(editor, 'Coleta'));
+  });
+  const tecla = (shiftKey: boolean) =>
+    new KeyboardEvent('keydown', { key: 'Tab', shiftKey, bubbles: true, cancelable: true });
+
+  let ev = tecla(false);
+  act(() => { editor.view.dom.dispatchEvent(ev); });
+  // O Tab ficou com o editor: o foco não sai para o próximo campo da tela.
+  expect(ev.defaultPrevented).toBe(true);
+  expect(editor.getHTML()).toContain('<ol><li><p>Erros Pysha</p><ol><li><p>Coleta</p></li></ol></li></ol>');
+
+  ev = tecla(true);
+  act(() => { editor.view.dom.dispatchEvent(ev); });
+  expect(editor.getHTML()).toContain('<ol><li><p>Erros Pysha</p></li><li><p>Coleta</p></li></ol>');
 });

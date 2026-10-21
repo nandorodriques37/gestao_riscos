@@ -191,6 +191,32 @@
   color: var(--ink-2);
 }
 
+/* Sub-itens (Tab num item de lista): o nível se lê pelo marcador, como num
+   documento — 1 → a → i, e o ciclo recomeça no quarto nível. */
+.nota-doc ol ol {
+  list-style-type: lower-alpha;
+}
+
+.nota-doc ol ol ol {
+  list-style-type: lower-roman;
+}
+
+.nota-doc ol ol ol ol {
+  list-style-type: decimal;
+}
+
+.nota-doc ul ul {
+  list-style-type: circle;
+}
+
+.nota-doc ul ul ul {
+  list-style-type: square;
+}
+
+.nota-doc ul ul ul ul {
+  list-style-type: disc;
+}
+
 .nota-doc blockquote {
   margin: var(--sp-1) 0;
   padding: 0 0 0 var(--sp-4);

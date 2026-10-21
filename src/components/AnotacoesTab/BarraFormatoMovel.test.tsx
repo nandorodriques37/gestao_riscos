@@ -91,6 +91,16 @@ const botao = (nome: string) => within(barra() as HTMLElement).getByRole('button
 
 // ---------- Quando aparece ----------
 
+
+/** Posição logo depois do texto no documento (o cursor no fim daquela linha). */
+function posDoTexto(editor: Editor, texto: string): number {
+  let pos = -1;
+  editor.state.doc.descendants((no, p) => {
+    if (pos < 0 && no.isText && no.text === texto) pos = p + texto.length;
+  });
+  return pos;
+}
+
 it('a faixa é a de toque do CLAUDE.md: ponteiro grosso até 1100px', () => {
   expect(FAIXA_TOQUE).toBe('(pointer: coarse) and (max-width: 1100px)');
 });
@@ -211,6 +221,22 @@ it('Destaque, Título e as listas alternam o que está no cursor', async () => {
   expect(editor.isActive('taskList')).toBe(true);
   await waitFor(() => expect(botao('Lista de tarefas').getAttribute('aria-pressed')).toBe('true'));
   expect(editor.view.hasFocus()).toBe(true);
+});
+
+it('numa lista, sub-item e voltar um nível aparecem e movem o item (o teclado do celular não tem Tab)', async () => {
+  const { editor } = await montar(doc('Erros Pysha', 'Coleta'));
+  await focar(editor, 1);
+  expect(within(barra() as HTMLElement).queryByRole('button', { name: 'Transformar em sub-item' })).toBeNull();
+
+  await act(async () => { editor.chain().selectAll().toggleOrderedList().run(); });
+  // O cursor no segundo item: vira o "a." do primeiro.
+  await act(async () => { editor.commands.setTextSelection(posDoTexto(editor, 'Coleta')); });
+  fireEvent.click(await waitFor(() => botao('Transformar em sub-item')));
+  expect(editor.getHTML()).toContain('<ol><li><p>Erros Pysha</p><ol><li><p>Coleta</p></li></ol></li></ol>');
+  expect(editor.view.hasFocus()).toBe(true);
+
+  fireEvent.click(botao('Voltar um nível'));
+  expect(editor.getHTML()).toContain('<ol><li><p>Erros Pysha</p></li><li><p>Coleta</p></li></ol>');
 });
 
 it('Inserir bloco abre o menu "/" no cursor', async () => {

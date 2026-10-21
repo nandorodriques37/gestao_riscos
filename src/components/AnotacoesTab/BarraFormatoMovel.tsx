@@ -99,6 +99,9 @@ function Svg({ children, traco = 2 }: { children: ReactNode; traco?: number }) {
 const ICONE_MAIS = <Svg traco={2.2}><path d="M12 5v14M5 12h14" /></Svg>;
 /** O da bolha (`BolhaFormato`). */
 const ICONE_NEGRITO = <Svg traco={2.4}><path d="M7 4h6a4 4 0 0 1 0 8H7zM7 12h7a4 4 0 0 1 0 8H7z" /></Svg>;
+/** Recuo de lista: as linhas de texto com a seta para a direita (sub-item) ou para a esquerda. */
+const ICONE_AVANCAR = <Svg><path d="M11 6h9M11 12h9M11 18h9M4 9l3 3-3 3" /></Svg>;
+const ICONE_RECUAR = <Svg><path d="M11 6h9M11 12h9M11 18h9M7 9l-3 3 3 3" /></Svg>;
 const ICONE_CONCLUIR = <Svg traco={2.6}><path d="M5 12.5l4.5 4.5L19 7.5" /></Svg>;
 /** A própria cor do marca-texto com um "A" — a mesma amostra da bolha. */
 const ICONE_DESTAQUE = <span className="nota-bolha-amostra" aria-hidden="true">A</span>;
@@ -107,6 +110,9 @@ const ICONE_DESTAQUE = <span className="nota-bolha-amostra" aria-hidden="true">A
 
 type Lista = 'orderedList' | 'bulletList' | 'taskList';
 const LISTAS: ReadonlySet<string> = new Set<Lista>(['orderedList', 'bulletList', 'taskList']);
+
+/** O item que o Tab e o Shift+Tab movem: o da tarefa tem tipo próprio. */
+const itemDaLista = (lista: Lista) => (lista === 'taskList' ? 'taskItem' : 'listItem');
 
 /** A lista mais próxima em volta do cursor (a de dentro, numa lista aninhada): é a que o botão alterna. */
 function listaDoCursor(state: EditorState): Lista | null {
@@ -329,6 +335,9 @@ function Barra({ editor }: { editor: Editor }) {
       pressionado: estado.lista === 'taskList',
       acionar: () => alternar(ed => { ed.chain().toggleTaskList().run(); }),
     },
+    // O teclado do celular não tem Tab: o sub-item (1 → a, b, c) e a volta
+    // ficam aqui, só enquanto o cursor está numa lista.
+    ...(estado.lista ? listaRecuo(estado.lista) : []),
     {
       id: 'destaque',
       rotulo: 'Destaque',
@@ -345,7 +354,27 @@ function Barra({ editor }: { editor: Editor }) {
       acionar: () => alternar(ed => { ed.chain().toggleBold().run(); }),
     },
   ];
+  function listaRecuo(lista: Lista): Acao[] {
+    const item = itemDaLista(lista);
+    return [
+      {
+        id: 'avancar',
+        rotulo: 'Transformar em sub-item',
+        icone: ICONE_AVANCAR,
+        acionar: () => alternar(ed => { ed.chain().sinkListItem(item).run(); }),
+      },
+      {
+        id: 'recuar',
+        rotulo: 'Voltar um nível',
+        icone: ICONE_RECUAR,
+        acionar: () => alternar(ed => { ed.chain().liftListItem(item).run(); }),
+      },
+    ];
+  }
   const total = acoes.length + 1; // + Concluir
+  // Os botões de recuo entram e saem com a lista: o índice guardado não pode
+  // apontar para além do último, senão nenhum botão fica alcançável pelo Tab.
+  const focoAtual = Math.min(foco, total - 1);
 
   /** Fim da edição: o editor perde o foco, o teclado desce e a barra sai junto. */
   function concluir() {
@@ -365,8 +394,8 @@ function Barra({ editor }: { editor: Editor }) {
 
   function navegar(event: ReactKeyboardEvent<HTMLDivElement>) {
     switch (event.key) {
-      case 'ArrowRight': irPara(foco + 1); break;
-      case 'ArrowLeft': irPara(foco - 1); break;
+      case 'ArrowRight': irPara(focoAtual + 1); break;
+      case 'ArrowLeft': irPara(focoAtual - 1); break;
       case 'Home': irPara(0); break;
       case 'End': irPara(total - 1); break;
       default: return;
@@ -387,7 +416,7 @@ function Barra({ editor }: { editor: Editor }) {
         className={`nota-formato-btn${classe}`}
         aria-label={acao.rotulo}
         aria-pressed={acao.pressionado}
-        tabIndex={indice === foco ? 0 : -1}
+        tabIndex={indice === focoAtual ? 0 : -1}
         onFocus={() => setFoco(indice)}
         onClick={acao.acionar}
       >

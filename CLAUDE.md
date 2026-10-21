@@ -100,7 +100,11 @@ Os `.dc.html` são **referência de design, não código de produção**. Recrie
   duas. A barra segue o `visualViewport` e, enquanto aparece, tira a
   `.nav-bottom` por `:has()`, empurra o snackbar para cima dela
   (`--nota-formato-topo`) e limita o menu "/" (`janelaVisivel`); é o único
-  lugar que muda as margens de rolagem do ProseMirror. O que vira `<a href>` é
+  lugar que muda as margens de rolagem do ProseMirror. Sub-item de lista é o
+  Tab/Shift+Tab do próprio TipTap; o teclado do celular não tem Tab, então a
+  barra mostra "Transformar em sub-item" e "Voltar um nível" só com o cursor
+  numa lista. O nível se lê pelo marcador (1 → a → i; • → ◦ → ▪), em
+  `notas-editor.css`. O que vira `<a href>` é
   `src/lib/links.ts` (só http(s) e mailto), lido pelo editor e pela bolha.
   Imagens: o item acima. Remover o bloco de imagem **não** pede confirmação — é
   a exceção a `useConfirmacao`, porque o Ctrl+Z o traz de volta (é para isso
