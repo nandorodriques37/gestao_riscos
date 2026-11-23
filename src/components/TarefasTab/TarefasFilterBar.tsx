@@ -174,6 +174,7 @@ export function TarefasFilterBar({
         >
           <option value="prioridade">Agrupar por prioridade</option>
           <option value="status">Agrupar por status</option>
+          <option value="responsavel">Agrupar por responsável</option>
         </select>
       )}
 

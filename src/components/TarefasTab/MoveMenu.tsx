@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { TASK_STATUSES, type TaskStatus } from '../../types';
 
 export interface MoveOption {
   /** Identificador da coluna de destino. */
@@ -13,6 +14,14 @@ interface MoveMenuProps {
   onMove: (id: string) => void;
   /** Nome da tarefa, para o rótulo acessível do gatilho. */
   taskLabel: string;
+  /** Cabeçalho da lista de destinos. */
+  titulo?: string;
+  /**
+   * Segunda seção, "Mudar status". Existe quando as colunas são pessoas: aí o
+   * arraste troca o dono, e o status precisa de outro caminho que não seja
+   * abrir o modal inteiro.
+   */
+  status?: { atual: string; onEscolher: (s: TaskStatus) => void };
 }
 
 /**
@@ -26,7 +35,7 @@ const ALTURA_EXTRA = 44;
 /** Quanto o gatilho pode andar antes de o painel deixar de apontar para ele. */
 const TOLERANCIA_ANCORA = 12;
 
-export function MoveMenu({ options, currentId, onMove, taskLabel }: MoveMenuProps) {
+export function MoveMenu({ options, currentId, onMove, taskLabel, titulo = 'Mover para', status }: MoveMenuProps) {
   const [open, setOpen] = useState(false);
   // Coordenadas de viewport: o painel é `fixed` porque o corpo da coluna rola e
   // recortaria um popover posicionado dentro dele.
@@ -88,7 +97,8 @@ export function MoveMenu({ options, currentId, onMove, taskLabel }: MoveMenuProp
     }
     const r = triggerRef.current?.getBoundingClientRect();
     if (r) {
-      const altura = options.length * ALTURA_ITEM + ALTURA_EXTRA;
+      const itens = options.length + (status ? TASK_STATUSES.length : 0);
+      const altura = itens * ALTURA_ITEM + ALTURA_EXTRA * (status ? 2 : 1);
       // Abre para cima quando cabe; senão para baixo. O card costuma estar na
       // metade de baixo da coluna, então "para cima" é o caso comum.
       setCoords(r.top >= altura
@@ -102,6 +112,12 @@ export function MoveMenu({ options, currentId, onMove, taskLabel }: MoveMenuProp
     setOpen(false);
     triggerRef.current?.focus();
     onMove(id);
+  }
+
+  function handleStatus(s: TaskStatus) {
+    setOpen(false);
+    triggerRef.current?.focus();
+    status?.onEscolher(s);
   }
 
   return (
@@ -122,14 +138,14 @@ export function MoveMenu({ options, currentId, onMove, taskLabel }: MoveMenuProp
         <div
           className="move-menu-panel"
           role="menu"
-          aria-label="Mover para"
+          aria-label={titulo}
           // Enter num item também é Enter no card, que abriria o modal por cima.
           // O Esc continua funcionando: é ouvido no documento, em captura.
           onKeyDown={e => e.stopPropagation()}
           // Coordenadas medidas em runtime; a aparência toda vem do CSS.
           style={{ left: coords.left, top: coords.top, bottom: coords.bottom }}
         >
-          <div className="move-menu-title">Mover para</div>
+          <div className="move-menu-title">{titulo}</div>
           {options.map(opt => (
             <button
               key={opt.id}
@@ -141,6 +157,22 @@ export function MoveMenu({ options, currentId, onMove, taskLabel }: MoveMenuProp
               {opt.label}
             </button>
           ))}
+          {status && (
+            <>
+              <div className="move-menu-title">Mudar status</div>
+              {TASK_STATUSES.map(s => (
+                <button
+                  key={s}
+                  role="menuitem"
+                  className="move-menu-item"
+                  disabled={s === status.atual}
+                  onClick={() => handleStatus(s)}
+                >
+                  {s}
+                </button>
+              ))}
+            </>
+          )}
         </div>
       )}
     </div>

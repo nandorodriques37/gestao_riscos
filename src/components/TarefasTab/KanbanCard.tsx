@@ -7,6 +7,7 @@ import { MoveMenu, type MoveOption } from './MoveMenu';
 import { AnexosBadge } from './AnexosBadge';
 import { VinculoChip } from './VinculoChip';
 import { PrazoCell } from './PrazoCell';
+import type { TaskStatus } from '../../types';
 
 interface KanbanCardProps {
   row: EnrichedTaskRow;
@@ -14,6 +15,10 @@ interface KanbanCardProps {
   currentColumnId: string;
   moveOptions: readonly MoveOption[];
   onMove: (idx: number, columnId: string) => void;
+  /** Título do menu ⋯ — "Passar para" quando as colunas são pessoas. */
+  moveTitulo?: string;
+  /** Presente quando a coluna não é o status: o menu ganha "Mudar status". */
+  onStatus?: (idx: number, status: TaskStatus) => void;
   onOpen: (idx: number) => void;
   onToggleConcluida: (idx: number) => void;
 }
@@ -24,7 +29,7 @@ interface KanbanCardProps {
  * mesmos dados, não outra linguagem.
  */
 export function KanbanCardFace({
-  row, currentColumnId, moveOptions, onMove, onToggleConcluida,
+  row, currentColumnId, moveOptions, onMove, onToggleConcluida, moveTitulo, onStatus,
 }: Omit<KanbanCardProps, 'onOpen'>) {
   const { task: t, gut, rank, normSt, idx, vinculo, dono, atrasada } = row;
   const concluida = normSt === 'Concluída';
@@ -73,6 +78,8 @@ export function KanbanCardFace({
             currentId={currentColumnId}
             onMove={col => onMove(idx, col)}
             taskLabel={titulo}
+            titulo={moveTitulo}
+            status={onStatus ? { atual: normSt, onEscolher: st => onStatus(idx, st) } : undefined}
           />
           <button
             className="done-btn"

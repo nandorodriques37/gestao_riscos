@@ -8,6 +8,10 @@ interface KanbanColumnProps {
   /** Faixa que colore o ponto do cabeçalho; ausente nas colunas de status. */
   tier?: TierKind;
   count: number;
+  /** Linha de apoio sob o nome (coluna por pessoa: atrasadas, GUT crítico). */
+  sub?: string;
+  /** Coluna "Sem dono": o nome sai em coral, é elo partido. */
+  semDono?: boolean;
   /** Texto da coluna vazia, que também é a promessa do que o drop vai fazer. */
   emptyHint: string;
   onAdd?: () => void;
@@ -19,7 +23,7 @@ interface KanbanColumnProps {
  * corpo rolável no meio. O corpo inteiro é a zona de drop — uma coluna vazia
  * continua sendo alvo válido, com altura mínima para poder ser acertada.
  */
-export function KanbanColumn({ id, label, tier, count, emptyHint, onAdd, children }: KanbanColumnProps) {
+export function KanbanColumn({ id, label, tier, count, sub, semDono, emptyHint, onAdd, children }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id });
 
   return (
@@ -27,8 +31,9 @@ export function KanbanColumn({ id, label, tier, count, emptyHint, onAdd, childre
       <header className="kanban-column-header">
         {/* A cor nunca identifica sozinha: o nome da faixa vem escrito ao lado do ponto. */}
         {tier && <span className="tier-dot" data-tier={tier} aria-hidden="true" />}
-        <span className="kanban-column-label">{label}</span>
+        <span className="kanban-column-label" data-sem-dono={semDono || undefined}>{label}</span>
         <span className="kanban-column-count">{count}</span>
+        {sub && <span className="kanban-column-sub">{sub}</span>}
       </header>
 
       <div className="kanban-column-body" ref={setNodeRef} data-over={isOver || undefined}>

@@ -46,6 +46,7 @@
 
 .kanban-column-header {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--sp-2);
   flex: none;
@@ -56,6 +57,26 @@
   font-size: var(--fs-md);
   font-weight: var(--fw-heavy);
   color: var(--ink-1);
+  /* Nome de pessoa é texto livre: sem o piso zerado, um nome longo esticaria
+     a coluna (ver "flex-basis é base, não teto" no CLAUDE.md). */
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Coluna "Sem dono" no quadro por responsável: elo partido, em coral. */
+.kanban-column-label[data-sem-dono] {
+  color: var(--coral-texto);
+}
+
+/* Apoio sob o nome: atrasadas e GUT crítico da pessoa. Quebra para a própria
+   linha, para o nome e a contagem continuarem na primeira. */
+.kanban-column-sub {
+  flex-basis: 100%;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  color: var(--coral-texto);
 }
 
 .kanban-column-count {
@@ -324,6 +345,9 @@
   border-radius: var(--r-float);
   box-shadow: var(--elev-2);
   cursor: default;
+  /* Com uma pessoa por destino mais os status, a lista pode passar da tela. */
+  max-height: min(420px, 70dvh);
+  overflow-y: auto;
 }
 
 .move-menu-title {

@@ -6,7 +6,7 @@ import type { UseTasks } from '../../hooks/useTasks';
 import type { UsePortfolio } from '../../hooks/usePortfolio';
 import { buildTaskRows, type EnrichedTaskRow } from '../../lib/taskRows';
 import { chaveDoNome } from '../../lib/nomes';
-import { agruparPorDono, grupoDaLinha, opcoesDeDono, pessoaDoAutor } from '../../lib/agrupamentoDono';
+import { SEM_DONO, agruparPorDono, grupoDaLinha, opcoesDeDono, pessoaDoAutor } from '../../lib/agrupamentoDono';
 import { computeAvaliacao, normTaskStatus } from '../../lib/taskCalculations';
 import {
   SEM_NOTA, adjustGutToBand, bandOf, describeChanges, type PriorityBand,
@@ -283,6 +283,11 @@ export function TarefasTab({ records, pf, tarefas, selecionada, onSelecionar, id
     const t = tasks[idx];
     if (!t) return;
 
+    if (groupBy === 'responsavel') {
+      void passarPara(idx, columnId);
+      return;
+    }
+
     if (groupBy === 'status') {
       updateTaskById(t.id, { status: columnId });
       void flushPending();
@@ -308,6 +313,41 @@ export function TarefasTab({ records, pf, tarefas, selecionada, onSelecionar, id
       before,
       message: `Prioridade: ${t.tarefa || 'tarefa'} → ${columnId} (${describeChanges(ajuste.changes)}).`,
     });
+  }
+
+  /**
+   * Quadro por responsável: soltar o card em outra coluna troca o dono. Pede
+   * confirmação porque o arraste é fácil de errar e a troca muda de quem se
+   * cobra a entrega — o diálogo nomeia as duas pessoas.
+   */
+  async function passarPara(idx: number, destino: string) {
+    const t = tasks[idx];
+    const row = rows.find(r => r.idx === idx);
+    if (!t || !row || grupoDaLinha(row) === destino) return;
+    const novo = destino === SEM_DONO ? null : destino;
+    const nomeNovo = novo ? pf.portfolio.pessoas.find(p => p.id === novo)?.nome ?? 'outra pessoa' : null;
+    const nome = t.tarefa || 'tarefa sem título';
+    const de = row.task.dono_id ? `sai de ${row.dono}` : 'está sem dono';
+    const ok = await confirmar({
+      titulo: nomeNovo ? `Passar para ${nomeNovo}?` : 'Deixar sem dono?',
+      consequencia: nomeNovo
+        ? `"${nome}" ${de} e passa para ${nomeNovo}. O status continua ${row.normSt}.`
+        : `"${nome}" sai de ${row.dono} e passa a contar como sem dono. O status continua ${row.normSt}.`,
+      rotuloConfirmar: nomeNovo ? `Passar para ${nomeNovo.split(' ')[0]}` : 'Deixar sem dono',
+      // Trocar de dono não destrói nada: botão da marca, não de perigo.
+      perigo: false,
+    });
+    if (!ok) return;
+    updateTaskById(t.id, { dono_id: novo });
+    void flushPending();
+  }
+
+  /** Status pelo menu ⋯ do card, quando as colunas do quadro são pessoas. */
+  function handleStatus(idx: number, status: TaskStatus) {
+    const t = tasks[idx];
+    if (!t || normTaskStatus(t.status) === status) return;
+    updateTaskById(t.id, { status });
+    void flushPending();
   }
 
   function handleUndoPriority() {
@@ -524,6 +564,9 @@ export function TarefasTab({ records, pf, tarefas, selecionada, onSelecionar, id
               onToggleConcluida={handleToggleConcluida}
               onAdd={handleAddRow}
               onDraggingChange={d => { draggingRef.current = d; }}
+              pessoas={pf.portfolio.pessoas}
+              opcoesDono={pessoaOptions}
+              onStatus={handleStatus}
             />
           ) : (
             <TarefasTable
