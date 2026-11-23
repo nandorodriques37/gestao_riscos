@@ -168,6 +168,34 @@ Os `.dc.html` são **referência de design, não código de produção**. Recrie
   hook por prop e continua dono do próprio polling; o `App` só sincroniza as
   tarefas quando está FORA da aba Tarefas, senão são dois relógios sobre a
   mesma lista.
+- **Tarefas por responsável:** a regra é uma só, `src/lib/agrupamentoDono.ts`
+  (`agruparPorDono`, `opcoesDeDono`, `filtrarPorDono`, `alternarDono`,
+  `pessoaDoAutor`), lida pela Lista, pelo Quadro e pelo filtro. **Sem dono é
+  `dono_id` nulo** — a régua de `saudeTrabalho`, para o grupo bater com o "N
+  sem dono" do título; linha legada só com `responsavel` em texto cai ali, e
+  não vira um segundo "Derylson". Ordem dos grupos: atrasadas, GUT crítico
+  (`prioridadeLabel`), nome; "Sem dono" sempre no fim, em `--coral-texto`.
+  - **Filtro de pessoas** (`FiltroPessoas`): lista vazia = todas, como o de
+    status; `alternarDono` faz "todas menos ela" e volta ao vazio quando todas
+    ficam marcadas (por isso não há "Limpar"). Vive em `useSessionState`, não
+    na URL. "Só as minhas" casa o autor com a ficha por `chaveDoNome` e some
+    quando o autor não tem ficha. Ficha mesclada ou excluída sai do recorte.
+  - **Lista agrupada** (`listGroupBy`, `riskMatrix.tasks.listGroupBy.v1`): um
+    `<tbody>` por pessoa com `<th scope="rowgroup">` e botão de recolher
+    (`GrupoCabecalho`, o mesmo nos cartões do celular); a coluna Responsável
+    sai. O cabeçalho conta as linhas NA TELA ("6 tarefas"), não as abertas — o
+    filtro de status pode mostrar concluídas. Sem "Carga %": `cargaPorPessoa`
+    mede iniciativas, não tarefas. Agrupar é só apresentação: CSV, busca e
+    filtros seguem `visibleRows`.
+  - **Quadro por responsável** (`KanbanGroupBy = 'responsavel'`): coluna por
+    pessoa que TEM tarefa na tela; quem não tem recebe pelo menu ⋯, que vira
+    "Passar para" com todo o cadastro ativo e ganha "Mudar status" (o arraste
+    passou a trocar o dono). Soltar em outra coluna passa por
+    `useConfirmacao` com `perigo: false`, nomeando as duas pessoas, e grava
+    `dono_id` pelo `updateTaskById` de sempre.
+  - **Compacto é linha única:** título, selo de anexo e chip do risco dividem
+    a linha em `.tarefa-cell-corpo` (flex com `min-width: 0`). O título não é
+    mais bloco que empurra os selos para baixo.
 - **Sequência de esquema:** só existe em `api/_schema.ts` (`ensureTudo`). A ordem é dependência, não gosto — `risk_records` antes das FKs de `tasks`, `acoes_risco` congelada antes da cópia. Produção, `vite-plugin-dev-api.ts` e os testes chamam a mesma função; uma segunda versão da sequência faz o teste passar sobre um esquema que a produção não tem.
 - **Dev:** `npm run dev` sobe a mesma API com Postgres embarcado (pglite) via `vite-plugin-dev-api.ts` — sem precisar de banco. Produção usa Neon (`DATABASE_URL`).
 - Sem lib de charts obrigatória — heatmap/donuts/barras são CSS (grid, conic-gradient, larguras %).
