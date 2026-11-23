@@ -6,16 +6,16 @@ import type { UseTasks } from '../../hooks/useTasks';
 import type { UsePortfolio } from '../../hooks/usePortfolio';
 import { buildTaskRows, type EnrichedTaskRow } from '../../lib/taskRows';
 import { chaveDoNome } from '../../lib/nomes';
-import { grupoDaLinha, opcoesDeDono, pessoaDoAutor } from '../../lib/agrupamentoDono';
+import { agruparPorDono, grupoDaLinha, opcoesDeDono, pessoaDoAutor } from '../../lib/agrupamentoDono';
 import { computeAvaliacao, normTaskStatus } from '../../lib/taskCalculations';
 import {
   SEM_NOTA, adjustGutToBand, bandOf, describeChanges, type PriorityBand,
 } from '../../lib/taskPriority';
 import { downloadTasksCSV } from '../../lib/taskCsv';
 import {
-  KANBAN_GROUP_BYS, TASK_VIEWS, readColWidths, readDensity, readEnumPref, readStatusFilter,
+  KANBAN_GROUP_BYS, LIST_GROUP_BYS, TASK_VIEWS, readColWidths, readDensity, readEnumPref, readStatusFilter,
   writeDensity, writePref,
-  type KanbanGroupBy, type TaskView,
+  type KanbanGroupBy, type ListGroupBy, type TaskView,
 } from '../../lib/uiPrefs';
 import { Kpi, KpiRow } from '../common/Kpi';
 import { useConfirmacao } from '../common/Confirmacao';
@@ -33,6 +33,7 @@ const COL_WIDTHS_KEY = 'riskMatrix.tasks.colWidths.v1';
 const STATUS_FILTER_KEY = 'riskMatrix.tasks.statusFilter.v1';
 const VIEW_KEY = 'riskMatrix.tasks.view.v1';
 const GROUP_BY_KEY = 'riskMatrix.tasks.groupBy.v1';
+const LIST_GROUP_BY_KEY = 'riskMatrix.tasks.listGroupBy.v1';
 // Chave própria, não a do Registro: as duas tabelas são lidas em rituais
 // diferentes e quem quer a de riscos apertada nem sempre quer esta.
 const DENSITY_KEY = 'riskMatrix.tasks.density.v1';
@@ -113,6 +114,11 @@ export function TarefasTab({ records, pf, tarefas, selecionada, onSelecionar, id
   const [groupBy, setGroupBy] = useState<KanbanGroupBy>(
     () => readEnumPref(GROUP_BY_KEY, KANBAN_GROUP_BYS, 'prioridade'),
   );
+  const [listGroupBy, setListGroupBy] = useState<ListGroupBy>(
+    () => readEnumPref(LIST_GROUP_BY_KEY, LIST_GROUP_BYS, 'nenhum'),
+  );
+  // Recolher é o que se faz para ler outra pessoa; dura a sessão, como os filtros.
+  const [gruposFechados, setGruposFechados] = useSessionState<string[]>('tarefas.gruposFechados', []);
   const [pendingUndo, setPendingUndo] = useState<PendingPriorityUndo | null>(null);
   // Ref, não estado: só o efeito de polling lê isso, e re-renderizar o quadro no
   // meio de um arraste embaralharia os cards por baixo do cursor.
@@ -128,6 +134,7 @@ export function TarefasTab({ records, pf, tarefas, selecionada, onSelecionar, id
   useEffect(() => { writePref(STATUS_FILTER_KEY, statusFilter); }, [statusFilter]);
   useEffect(() => { writePref(VIEW_KEY, view); }, [view]);
   useEffect(() => { writePref(GROUP_BY_KEY, groupBy); }, [groupBy]);
+  useEffect(() => { writePref(LIST_GROUP_BY_KEY, listGroupBy); }, [listGroupBy]);
   useEffect(() => { writePref(VINCULO_KEY, vinculoFilter); }, [vinculoFilter]);
   useEffect(() => { writeDensity(DENSITY_KEY, density); }, [density]);
 
@@ -221,6 +228,17 @@ export function TarefasTab({ records, pf, tarefas, selecionada, onSelecionar, id
     }
     return result;
   }, [rows, idsDoRecorte, search, statusFilter, tipoFilter, vinculoFilter, pessoasNoFiltro, sortKey, sortDir]);
+
+  // Agrupar é só apresentação: os grupos saem das linhas que já passaram pela
+  // busca, pelos filtros e pela ordenação — e o CSV continua sendo visibleRows.
+  const grupos = useMemo(
+    () => (listGroupBy === 'responsavel' ? agruparPorDono(visibleRows, pf.portfolio.pessoas) : null),
+    [listGroupBy, visibleRows, pf.portfolio.pessoas],
+  );
+
+  function handleToggleGrupo(id: string) {
+    setGruposFechados(prev => (prev.includes(id) ? prev.filter(g => g !== id) : [...prev, id]));
+  }
 
   function handleSort(key: NonNullable<TaskSortKey>) {
     if (sortKey === key) {
@@ -490,6 +508,11 @@ export function TarefasTab({ records, pf, tarefas, selecionada, onSelecionar, id
             pessoaFilter={pessoasNoFiltro}
             onPessoaFilterChange={setPessoaFilter}
             autorId={autorId}
+            listGroupBy={listGroupBy}
+            onListGroupByChange={setListGroupBy}
+            grupos={grupos}
+            gruposFechados={gruposFechados}
+            onGruposFechadosChange={setGruposFechados}
           />
 
           {view === 'kanban' ? (
@@ -516,6 +539,9 @@ export function TarefasTab({ records, pf, tarefas, selecionada, onSelecionar, id
               emptyMessage={emptyMessage}
               emptyHint={emptyHint}
               density={density}
+              grupos={grupos}
+              fechados={gruposFechados}
+              onToggleGrupo={handleToggleGrupo}
             />
           )}
         </>

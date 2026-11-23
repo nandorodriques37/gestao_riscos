@@ -50,6 +50,10 @@ export const TASK_VIEWS: readonly TaskView[] = ['lista', 'kanban'];
 export type KanbanGroupBy = 'prioridade' | 'status';
 export const KANBAN_GROUP_BYS: readonly KanbanGroupBy[] = ['prioridade', 'status'];
 
+/** Agrupamento da vista Lista. O Quadro tem o seu, porque lá vira coluna. */
+export type ListGroupBy = 'nenhum' | 'responsavel';
+export const LIST_GROUP_BYS: readonly ListGroupBy[] = ['nenhum', 'responsavel'];
+
 /** Preferência de valor único (modo de visualização, agrupamento…) validada contra a lista permitida. */
 export function readEnumPref<T extends string>(key: string, allowed: readonly T[], fallback: T): T {
   try {

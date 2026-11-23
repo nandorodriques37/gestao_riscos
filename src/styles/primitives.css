@@ -225,6 +225,22 @@
   border-color: var(--brand-text);
 }
 
+/* Ação dentro da linha de contagem ("Recolher todos"): texto azul, sem caixa,
+   do tamanho da própria linha. */
+.filter-count-acao {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--brand-text);
+  font: inherit;
+  font-weight: var(--fw-semibold);
+  cursor: pointer;
+}
+
+.filter-count-acao:hover {
+  text-decoration: underline;
+}
+
 /* ---------- Filtro de pessoas (aba Tarefas) ----------
    Gatilho com a mesma régua do .select-filter; com recorte ativo ganha a borda
    da marca e o selo de contagem do botão "Filtros", para filtro escondido não
