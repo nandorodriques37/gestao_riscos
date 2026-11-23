@@ -131,6 +131,22 @@ export function filtrarPorDono(rows: EnrichedTaskRow[], selecionados: readonly s
 }
 
 /**
+ * Marca ou desmarca uma pessoa no filtro.
+ *
+ * Lista vazia quer dizer "todas", e a tela mostra todas as caixas marcadas.
+ * Desmarcar uma, então, é "todas menos ela"; e marcar a última que faltava
+ * volta à lista vazia — senão o filtro ficaria preso numa lista completa que
+ * deixa de fora quem entrar no cadastro depois.
+ */
+export function alternarDono(
+  selecionados: readonly string[], id: string, todos: readonly string[],
+): string[] {
+  const atual = selecionados.length === 0 ? [...todos] : selecionados.filter(s => todos.includes(s));
+  const proxima = atual.includes(id) ? atual.filter(s => s !== id) : [...atual, id];
+  return todos.every(t => proxima.includes(t)) ? [] : proxima;
+}
+
+/**
  * A ficha de quem está usando o app, para "Só as minhas". Casa o nome de autor
  * com a ficha ignorando acento e caixa (`chaveDoNome`), como o resto do app.
  * Nulo quando o autor não tem ficha — a tela então não oferece o atalho.

@@ -3,7 +3,7 @@ import type { Pessoa, StoredTask } from '../types';
 import { buildTaskRows } from './taskRows';
 import { saudeTrabalho } from './portfolioMetrics';
 import {
-  SEM_DONO, agruparPorDono, filtrarPorDono, grupoDaLinha, opcoesDeDono, pessoaDoAutor,
+  SEM_DONO, agruparPorDono, alternarDono, filtrarPorDono, grupoDaLinha, opcoesDeDono, pessoaDoAutor,
 } from './agrupamentoDono';
 
 function tarefa(p: Partial<StoredTask> = {}): StoredTask {
@@ -122,6 +122,27 @@ describe('filtrarPorDono', () => {
 
   it('grupoDaLinha devolve a ficha ou SEM_DONO', () => {
     expect(rows.map(grupoDaLinha)).toEqual(['p1', 'p2', SEM_DONO]);
+  });
+});
+
+describe('alternarDono', () => {
+  const TODOS = ['p1', 'p2', SEM_DONO];
+
+  it('desmarcar a partir de "todas" vira todas menos ela', () => {
+    expect(alternarDono([], 'p2', TODOS)).toEqual(['p1', SEM_DONO]);
+  });
+
+  it('marcar a última que faltava volta a lista vazia', () => {
+    expect(alternarDono(['p1', SEM_DONO], 'p2', TODOS)).toEqual([]);
+  });
+
+  it('marca e desmarca dentro de um recorte parcial', () => {
+    expect(alternarDono(['p1'], 'p2', ['p1', 'p2', 'p3'])).toEqual(['p1', 'p2']);
+    expect(alternarDono(['p1', 'p2'], 'p1', ['p1', 'p2', 'p3'])).toEqual(['p2']);
+  });
+
+  it('descarta id que não existe mais', () => {
+    expect(alternarDono(['fantasma', 'p1'], 'p2', ['p1', 'p2', 'p3'])).toEqual(['p1', 'p2']);
   });
 });
 

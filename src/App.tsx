@@ -538,7 +538,7 @@ function App() {
             />
           )}
 
-          {tab === 'tarefas' && <TarefasTab records={records} pf={pf} tarefas={tarefas} idsDoRecorte={idsDoRecorte} selecionada={route.tarefa} onSelecionar={id => navigate({ ...route, tarefa: id })} />}
+          {tab === 'tarefas' && <TarefasTab records={records} pf={pf} tarefas={tarefas} idsDoRecorte={idsDoRecorte} autor={autor} selecionada={route.tarefa} onSelecionar={id => navigate({ ...route, tarefa: id })} />}
 
           {tab === 'pessoas' && <PessoasTab pf={pf} onIrPara={irPara} />}
 

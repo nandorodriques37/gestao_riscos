@@ -4,6 +4,8 @@ import { DensityToggle } from '../common/DensityToggle';
 import { FiltrosDobraveis } from '../common/FiltrosDobraveis';
 import type { KanbanGroupBy, TaskView } from '../../lib/uiPrefs';
 import type { FiltroVinculo } from './TarefasTab';
+import type { OpcaoDono } from '../../lib/agrupamentoDono';
+import { EtiquetasPessoas, FiltroPessoas } from './FiltroPessoas';
 
 /** Rótulos do recorte por origem. "Livres" e não "Tarefas": desde a unificação
  *  as duas coisas são tarefa, e o que muda é ter ou não risco atrás. */
@@ -38,6 +40,10 @@ interface TarefasFilterBarProps {
   vinculadasCount: number;
   density: Density;
   onDensityChange: (v: Density) => void;
+  pessoaOptions: OpcaoDono[];
+  pessoaFilter: string[];
+  onPessoaFilterChange: (ids: string[]) => void;
+  autorId: string | null;
 }
 
 export function TarefasFilterBar({
@@ -48,13 +54,15 @@ export function TarefasFilterBar({
   visibleCount, totalCount,
   vinculoFilter, onVinculoFilterChange, vinculadasCount,
   density, onDensityChange,
+  pessoaOptions, pessoaFilter, onPessoaFilterChange, autorId,
 }: TarefasFilterBarProps) {
   // Recortes ativos, para o selo do botão "Filtros" no celular. Modo de
   // visualização e agrupamento ficam de fora: eles mudam como a lista aparece,
   // não quais linhas entram nela.
   const ativos = (statusFilter.length > 0 ? 1 : 0)
     + (tipoFilter !== 'Todos' ? 1 : 0)
-    + (vinculoFilter !== 'todas' ? 1 : 0);
+    + (vinculoFilter !== 'todas' ? 1 : 0)
+    + (pessoaFilter.length > 0 ? 1 : 0);
 
   return (
     <FiltrosDobraveis
@@ -69,6 +77,7 @@ export function TarefasFilterBar({
       }
       contagem={
         <div className="filter-count">
+          <EtiquetasPessoas opcoes={pessoaOptions} selecionados={pessoaFilter} onChange={onPessoaFilterChange} />
           {visibleCount} de {totalCount} tarefas · clique {view === 'kanban' ? 'em um card' : 'em uma linha'} para editar
         </div>
       }
@@ -115,6 +124,13 @@ export function TarefasFilterBar({
           );
         })}
       </div>
+      <FiltroPessoas
+        opcoes={pessoaOptions}
+        selecionados={pessoaFilter}
+        onChange={onPessoaFilterChange}
+        autorId={autorId}
+      />
+
       <select className="select-filter" value={tipoFilter} onChange={e => onTipoFilterChange(e.target.value)}>
         <option value="Todos">Todos os tipos</option>
         {tipoOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}

@@ -6,6 +6,7 @@ import type { UseTasks } from '../../hooks/useTasks';
 import type { UsePortfolio } from '../../hooks/usePortfolio';
 import { buildTaskRows, type EnrichedTaskRow } from '../../lib/taskRows';
 import { chaveDoNome } from '../../lib/nomes';
+import { grupoDaLinha, opcoesDeDono, pessoaDoAutor } from '../../lib/agrupamentoDono';
 import { computeAvaliacao, normTaskStatus } from '../../lib/taskCalculations';
 import {
   SEM_NOTA, adjustGutToBand, bandOf, describeChanges, type PriorityBand,
@@ -69,6 +70,8 @@ interface TarefasTabProps {
   selecionada: string | null;
   onSelecionar: (id: string | null) => void;
   idsDoRecorte?: Set<string> | null;
+  /** Nome de quem usa o app — é como "Só as minhas" acha a ficha. */
+  autor?: string;
   /** Para o cartão dizer QUAL risco a mitigação segura, e com que criticidade. */
   records: StoredRiskRecord[];
   /** Iniciativas e pessoas: o vínculo de execução e o dono de verdade. */
@@ -82,7 +85,7 @@ interface TarefasTabProps {
   tarefas: UseTasks;
 }
 
-export function TarefasTab({ records, pf, tarefas, selecionada, onSelecionar, idsDoRecorte }: TarefasTabProps) {
+export function TarefasTab({ records, pf, tarefas, selecionada, onSelecionar, idsDoRecorte, autor = '' }: TarefasTabProps) {
   const {
     tasks, loading, error,
     hasPendingWrites, saveStatus, updateTaskById, saveTask, addTask, deleteTaskById,
@@ -96,6 +99,9 @@ export function TarefasTab({ records, pf, tarefas, selecionada, onSelecionar, id
   // Seleção múltipla de status persistida entre sessões; array vazio = todos.
   const [statusFilter, setStatusFilter] = useState<TaskStatus[]>(() => readStatusFilter(STATUS_FILTER_KEY, TASK_STATUSES));
   const [tipoFilter, setTipoFilter] = useSessionState('tarefas.tipo', 'Todos');
+  // Lista vazia = todas as pessoas. Sessão, como busca e tipo: a URL guarda só
+  // destino e seleção.
+  const [pessoaFilter, setPessoaFilter] = useSessionState<string[]>('tarefas.pessoas', []);
   const [vinculoFilter, setVinculoFilter] = useState<FiltroVinculo>(
     () => readEnumPref(VINCULO_KEY, FILTROS_VINCULO, 'todas'),
   );
@@ -163,6 +169,15 @@ export function TarefasTab({ records, pf, tarefas, selecionada, onSelecionar, id
     [pf.portfolio.pessoas],
   );
 
+  const pessoaOptions = useMemo(() => opcoesDeDono(rows, pf.portfolio.pessoas), [rows, pf.portfolio.pessoas]);
+  const autorId = useMemo(() => pessoaDoAutor(autor, pf.portfolio.pessoas)?.id ?? null, [autor, pf.portfolio.pessoas]);
+  // Ficha mesclada ou excluída sai do recorte: filtrar por ela esvaziaria a
+  // tela sem nada à vista que explique.
+  const pessoasNoFiltro = useMemo(() => {
+    const ids = new Set(pessoaOptions.map(o => o.id));
+    return pessoaFilter.filter(id => ids.has(id));
+  }, [pessoaFilter, pessoaOptions]);
+
   const total = tasks.length;
   const aFazer = useMemo(() => rows.filter(r => r.normSt === 'A fazer').length, [rows]);
   const emAndamento = useMemo(() => rows.filter(r => r.normSt === 'Em andamento').length, [rows]);
@@ -175,12 +190,14 @@ export function TarefasTab({ records, pf, tarefas, selecionada, onSelecionar, id
 
   const visibleRows = useMemo(() => {
     const q = search.toLowerCase().trim();
+    const pessoas = pessoasNoFiltro.length > 0 ? new Set(pessoasNoFiltro) : null;
     let result = rows.filter(row => {
       if (idsDoRecorte) return idsDoRecorte.has(row.task.id);
       if (statusFilter.length > 0 && !statusFilter.includes(row.normSt as TaskStatus)) return false;
       if (tipoFilter !== 'Todos' && row.task.tipo !== tipoFilter) return false;
       if (vinculoFilter === 'risco' && row.vinculo == null) return false;
       if (vinculoFilter === 'livres' && row.vinculo != null) return false;
+      if (pessoas && !pessoas.has(grupoDaLinha(row))) return false;
       if (!q) return true;
       // O nome do risco entra na busca: procurar pelo risco é como se chega à
       // mitigação, e era o caminho que existia antes de as duas listas virarem
@@ -203,7 +220,7 @@ export function TarefasTab({ records, pf, tarefas, selecionada, onSelecionar, id
       });
     }
     return result;
-  }, [rows, idsDoRecorte, search, statusFilter, tipoFilter, vinculoFilter, sortKey, sortDir]);
+  }, [rows, idsDoRecorte, search, statusFilter, tipoFilter, vinculoFilter, pessoasNoFiltro, sortKey, sortDir]);
 
   function handleSort(key: NonNullable<TaskSortKey>) {
     if (sortKey === key) {
@@ -469,6 +486,10 @@ export function TarefasTab({ records, pf, tarefas, selecionada, onSelecionar, id
             vinculadasCount={vinculadas}
             density={density}
             onDensityChange={setDensity}
+            pessoaOptions={pessoaOptions}
+            pessoaFilter={pessoasNoFiltro}
+            onPessoaFilterChange={setPessoaFilter}
+            autorId={autorId}
           />
 
           {view === 'kanban' ? (
