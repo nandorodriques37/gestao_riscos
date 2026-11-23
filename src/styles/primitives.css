@@ -225,6 +225,204 @@
   border-color: var(--brand-text);
 }
 
+/* Ação dentro da linha de contagem ("Recolher todos"): texto azul, sem caixa,
+   do tamanho da própria linha. */
+.filter-count-acao {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--brand-text);
+  font: inherit;
+  font-weight: var(--fw-semibold);
+  cursor: pointer;
+}
+
+.filter-count-acao:hover {
+  text-decoration: underline;
+}
+
+/* ---------- Filtro de pessoas (aba Tarefas) ----------
+   Gatilho com a mesma régua do .select-filter; com recorte ativo ganha a borda
+   da marca e o selo de contagem do botão "Filtros", para filtro escondido não
+   parecer lista curta. */
+.filtro-pessoas {
+  position: relative;
+}
+
+.filtro-pessoas-gatilho {
+  height: var(--control-h);
+  min-height: var(--tap-min);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 0 var(--sp-3);
+  border-radius: var(--r-control);
+  border: 1px solid var(--line-strong);
+  background: var(--bg-surface);
+  color: var(--ink-2);
+  font: inherit;
+  font-size: var(--fs-field);
+  font-weight: var(--fw-medium);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease);
+}
+
+.filtro-pessoas-gatilho:hover,
+.filtro-pessoas-gatilho[data-ativo] {
+  border-color: var(--brand-text);
+}
+
+.filtro-pessoas-gatilho[data-ativo] {
+  color: var(--brand-text);
+  font-weight: var(--fw-semibold);
+}
+
+.filtro-pessoas-painel {
+  position: absolute;
+  top: calc(100% + var(--sp-2));
+  left: 0;
+  z-index: 30;
+  width: min(320px, calc(100vw - 2 * var(--sp-4)));
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-3);
+  border-radius: var(--r-float);
+  border: 1px solid var(--line-hairline);
+  background: var(--bg-surface);
+  box-shadow: var(--elev-2);
+}
+
+.filtro-pessoas-painel[data-alinhamento='fim'] {
+  left: auto;
+  right: 0;
+}
+
+.filtro-pessoas-painel .search-input {
+  width: 100%;
+}
+
+.filtro-pessoas-atalhos {
+  display: flex;
+  gap: var(--sp-1);
+  padding-bottom: var(--sp-2);
+  border-bottom: 1px solid var(--line-hairline);
+}
+
+.filtro-pessoas-atalhos button {
+  min-height: max(28px, var(--tap-min));
+  padding: 0 var(--sp-2);
+  border: 0;
+  border-radius: var(--r-control);
+  background: transparent;
+  color: var(--brand-text);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  cursor: pointer;
+}
+
+.filtro-pessoas-atalhos button:hover:not(:disabled) {
+  background: var(--brand-soft);
+}
+
+.filtro-pessoas-atalhos button:disabled {
+  color: var(--ink-3);
+  cursor: default;
+}
+
+.filtro-pessoas-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: min(320px, 50dvh);
+  overflow-y: auto;
+}
+
+.filtro-pessoas-lista label {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: max(36px, var(--tap-min));
+  padding: 0 var(--sp-2);
+  border-radius: var(--r-control);
+  font-size: var(--fs-sm);
+  color: var(--ink-1);
+  cursor: pointer;
+}
+
+.filtro-pessoas-lista label:hover {
+  background: var(--bg-hover);
+}
+
+.filtro-pessoas-lista input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--brand);
+}
+
+.filtro-pessoas-nome {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.filtro-pessoas-lista label[data-sem-dono] .filtro-pessoas-nome {
+  font-style: italic;
+}
+
+.filtro-pessoas-qtd {
+  font-size: var(--fs-xs);
+  color: var(--ink-3);
+}
+
+.filtro-pessoas-vazio {
+  padding: var(--sp-2);
+  font-size: var(--fs-sm);
+  color: var(--ink-3);
+}
+
+.filtro-pessoas-etiquetas {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1);
+  margin: 0 var(--sp-2) 0 0;
+  padding: 0;
+  list-style: none;
+  vertical-align: middle;
+}
+
+.filtro-pessoas-etiquetas li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: 0 var(--sp-1) 0 var(--sp-2);
+  border-radius: var(--r-full);
+  background: var(--brand-soft);
+  color: var(--brand-text);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+}
+
+.filtro-pessoas-etiquetas button {
+  min-width: max(20px, var(--tap-min));
+  min-height: max(20px, var(--tap-min));
+  border: 0;
+  border-radius: var(--r-full);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.filtro-pessoas-etiquetas button:hover {
+  background: var(--bg-hover);
+}
+
 /* Campo nativo em qualquer lugar: borda de controle (3:1), cantos do papel
    "controle" e anel de foco sólido. */
 input,

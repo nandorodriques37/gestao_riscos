@@ -11,9 +11,11 @@ interface TarefasTableRowProps {
   onOpen: (idx: number) => void;
   onToggleConcluida: (idx: number) => void;
   onDelete: (idx: number) => void;
+  /** Agrupada por responsável, a coluna sai: o cabeçalho do grupo já diz quem é. */
+  semResponsavel?: boolean;
 }
 
-export function TarefasTableRow({ row, onOpen, onToggleConcluida, onDelete }: TarefasTableRowProps) {
+export function TarefasTableRow({ row, onOpen, onToggleConcluida, onDelete, semResponsavel = false }: TarefasTableRowProps) {
   const { task: t, gut, prioridade, prioridadeHerdada, normSt, idx, vinculo, dono, atrasada } = row;
   const concluida = normSt === 'Concluída';
   const titulo = t.tarefa || 'sem título';
@@ -38,9 +40,13 @@ export function TarefasTableRow({ row, onOpen, onToggleConcluida, onDelete }: Ta
         {t.tipo ? <span className="type-tag">{t.tipo}</span> : '—'}
       </td>
       <td className="tarefa-cell" title={t.tarefa}>
-        <span className="clamp-2">{t.tarefa}</span>
-        <AnexosBadge quantidade={t.anexos?.length ?? 0} />
-        {vinculo && <VinculoChip vinculo={vinculo} />}
+        {/* Envelope próprio porque a <td> não pode virar flex: no Compacto o
+            título, o selo e o chip do risco dividem UMA linha (table.css). */}
+        <div className="tarefa-cell-corpo">
+          <span className="clamp-2">{t.tarefa}</span>
+          <AnexosBadge quantidade={t.anexos?.length ?? 0} />
+          {vinculo && <VinculoChip vinculo={vinculo} />}
+        </div>
       </td>
       <td className="center">
         {/* O tooltip mostra a conta: um "126" solto não diz de onde veio. */}
@@ -71,14 +77,16 @@ export function TarefasTableRow({ row, onOpen, onToggleConcluida, onDelete }: Ta
       <td className="center">
         <PrazoCell prazo={t.prazo} atrasada={atrasada} rotina={!!vinculo?.rotina} />
       </td>
-      <td title={dono}>
-        {dono ? (
-          <div className="owner-cell">
-            <span className="owner-avatar" aria-hidden="true">{initials(dono)}</span>
-            <span className="owner-name">{dono}</span>
-          </div>
-        ) : '—'}
-      </td>
+      {!semResponsavel && (
+        <td title={dono}>
+          {dono ? (
+            <div className="owner-cell">
+              <span className="owner-avatar" aria-hidden="true">{initials(dono)}</span>
+              <span className="owner-name">{dono}</span>
+            </div>
+          ) : '—'}
+        </td>
+      )}
       <td className="center">
         {/* Conclui direto da linha, sem abrir os detalhes. Clicar de novo reabre. */}
         <button

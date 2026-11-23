@@ -2,8 +2,10 @@ import type { Density, TaskStatus } from '../../types';
 import { TASK_STATUSES } from '../../types';
 import { DensityToggle } from '../common/DensityToggle';
 import { FiltrosDobraveis } from '../common/FiltrosDobraveis';
-import type { KanbanGroupBy, TaskView } from '../../lib/uiPrefs';
+import type { KanbanGroupBy, ListGroupBy, TaskView } from '../../lib/uiPrefs';
 import type { FiltroVinculo } from './TarefasTab';
+import type { GrupoDono, OpcaoDono } from '../../lib/agrupamentoDono';
+import { EtiquetasPessoas, FiltroPessoas } from './FiltroPessoas';
 
 /** Rótulos do recorte por origem. "Livres" e não "Tarefas": desde a unificação
  *  as duas coisas são tarefa, e o que muda é ter ou não risco atrás. */
@@ -11,6 +13,11 @@ const VINCULO_OPTIONS: { value: FiltroVinculo; label: string; title: string }[] 
   { value: 'todas', label: 'Todas', title: 'Tarefas livres e mitigações de risco' },
   { value: 'risco', label: 'De risco', title: 'Só o que mitiga um risco do registro' },
   { value: 'livres', label: 'Livres', title: 'Só o que não está ligado a risco nenhum' },
+];
+
+const LIST_GROUP_OPTIONS: { value: ListGroupBy; label: string; title: string }[] = [
+  { value: 'nenhum', label: 'Sem grupo', title: 'Uma lista corrida, na ordem da tabela' },
+  { value: 'responsavel', label: 'Por responsável', title: 'Um grupo por pessoa, com atrasadas e GUT crítico de cada uma' },
 ];
 
 const VIEW_OPTIONS: { value: TaskView; label: string; title: string }[] = [
@@ -38,6 +45,16 @@ interface TarefasFilterBarProps {
   vinculadasCount: number;
   density: Density;
   onDensityChange: (v: Density) => void;
+  pessoaOptions: OpcaoDono[];
+  pessoaFilter: string[];
+  onPessoaFilterChange: (ids: string[]) => void;
+  autorId: string | null;
+  listGroupBy: ListGroupBy;
+  onListGroupByChange: (v: ListGroupBy) => void;
+  /** Grupos na tela, para o "Recolher todos / Abrir todos". */
+  grupos: GrupoDono[] | null;
+  gruposFechados: string[];
+  onGruposFechadosChange: (ids: string[]) => void;
 }
 
 export function TarefasFilterBar({
@@ -48,13 +65,18 @@ export function TarefasFilterBar({
   visibleCount, totalCount,
   vinculoFilter, onVinculoFilterChange, vinculadasCount,
   density, onDensityChange,
+  pessoaOptions, pessoaFilter, onPessoaFilterChange, autorId,
+  listGroupBy, onListGroupByChange, grupos, gruposFechados, onGruposFechadosChange,
 }: TarefasFilterBarProps) {
+  const agrupada = view === 'lista' && grupos != null && grupos.length > 0;
+  const todosFechados = agrupada && grupos.every(g => gruposFechados.includes(g.id));
   // Recortes ativos, para o selo do botão "Filtros" no celular. Modo de
   // visualização e agrupamento ficam de fora: eles mudam como a lista aparece,
   // não quais linhas entram nela.
   const ativos = (statusFilter.length > 0 ? 1 : 0)
     + (tipoFilter !== 'Todos' ? 1 : 0)
-    + (vinculoFilter !== 'todas' ? 1 : 0);
+    + (vinculoFilter !== 'todas' ? 1 : 0)
+    + (pessoaFilter.length > 0 ? 1 : 0);
 
   return (
     <FiltrosDobraveis
@@ -69,7 +91,22 @@ export function TarefasFilterBar({
       }
       contagem={
         <div className="filter-count">
-          {visibleCount} de {totalCount} tarefas · clique {view === 'kanban' ? 'em um card' : 'em uma linha'} para editar
+          <EtiquetasPessoas opcoes={pessoaOptions} selecionados={pessoaFilter} onChange={onPessoaFilterChange} />
+          {visibleCount} de {totalCount} tarefas
+          {agrupada ? (
+            <>
+              {' · '}{grupos.length} {grupos.length === 1 ? 'pessoa' : 'pessoas'} ·{' '}
+              <button
+                type="button"
+                className="filter-count-acao"
+                onClick={() => onGruposFechadosChange(todosFechados ? [] : grupos.map(g => g.id))}
+              >
+                {todosFechados ? 'Abrir todos' : 'Recolher todos'}
+              </button>
+            </>
+          ) : (
+            <> · clique {view === 'kanban' ? 'em um card' : 'em uma linha'} para editar</>
+          )}
         </div>
       }
     >
@@ -115,6 +152,13 @@ export function TarefasFilterBar({
           );
         })}
       </div>
+      <FiltroPessoas
+        opcoes={pessoaOptions}
+        selecionados={pessoaFilter}
+        onChange={onPessoaFilterChange}
+        autorId={autorId}
+      />
+
       <select className="select-filter" value={tipoFilter} onChange={e => onTipoFilterChange(e.target.value)}>
         <option value="Todos">Todos os tipos</option>
         {tipoOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
@@ -130,7 +174,26 @@ export function TarefasFilterBar({
         >
           <option value="prioridade">Agrupar por prioridade</option>
           <option value="status">Agrupar por status</option>
+          <option value="responsavel">Agrupar por responsável</option>
         </select>
+      )}
+
+      {/* Agrupar a Lista: segmentado como o modo de visualização, porque é a
+          mesma natureza de escolha. O Quadro agrupa pelo select acima. */}
+      {view === 'lista' && (
+        <div className="view-toggle" role="group" aria-label="Agrupar a lista">
+          {LIST_GROUP_OPTIONS.map(o => (
+            <button
+              key={o.value}
+              className={listGroupBy === o.value ? 'active' : ''}
+              onClick={() => onListGroupByChange(o.value)}
+              aria-pressed={listGroupBy === o.value}
+              title={o.title}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
       )}
 
       <div className="view-toggle" role="group" aria-label="Modo de visualização">

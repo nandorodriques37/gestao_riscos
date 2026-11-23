@@ -5,11 +5,17 @@ import { onActivateKey } from '../../lib/a11y';
 import { AnexosBadge } from './AnexosBadge';
 import { VinculoChip } from './VinculoChip';
 import { PrazoCell } from './PrazoCell';
+import type { GrupoDono } from '../../lib/agrupamentoDono';
+import { GrupoCabecalho } from './GrupoCabecalho';
 
 interface TarefaCardListProps {
   rows: EnrichedTaskRow[];
   onOpen: (idx: number) => void;
   onToggleConcluida: (idx: number) => void;
+  /** Mesmo agrupamento da tabela; ausente = lista corrida. */
+  grupos?: GrupoDono[] | null;
+  fechados?: readonly string[];
+  onToggleGrupo?: (id: string) => void;
 }
 
 /**
@@ -30,85 +36,113 @@ interface TarefaCardListProps {
  * O que o cartão mostra é o que se escaneia numa lista; G, U, T avulsos, rank e
  * detalhes ficam no modal, que abre ao toque como na tabela.
  */
-export function TarefaCardList({ rows, onOpen, onToggleConcluida }: TarefaCardListProps) {
+export function TarefaCardList({
+  rows, onOpen, onToggleConcluida, grupos = null, fechados = [], onToggleGrupo = () => {},
+}: TarefaCardListProps) {
+  const cartao = (row: EnrichedTaskRow) => (
+    <TarefaCard key={row.idx} row={row} onOpen={onOpen} onToggleConcluida={onToggleConcluida} />
+  );
+
+  if (grupos) {
+    return (
+      <div className="tarefa-card-list" data-agrupada>
+        {grupos.map(g => {
+          const aberto = !fechados.includes(g.id);
+          const corpoId = `tarefas-cartoes-grupo-${g.id}`;
+          return (
+            <section key={g.id} className="tarefa-card-grupo" aria-label={g.nome}>
+              <GrupoCabecalho grupo={g} aberto={aberto} onToggle={() => onToggleGrupo(g.id)} controla={corpoId} />
+              <div id={corpoId} className="tarefa-card-grupo-corpo" hidden={!aberto}>
+                {aberto && g.linhas.map(cartao)}
+              </div>
+            </section>
+          );
+        })}
+      </div>
+    );
+  }
+
+  return <div className="tarefa-card-list">{rows.map(cartao)}</div>;
+}
+
+interface TarefaCardProps {
+  row: EnrichedTaskRow;
+  onOpen: (idx: number) => void;
+  onToggleConcluida: (idx: number) => void;
+}
+
+function TarefaCard({ row, onOpen, onToggleConcluida }: TarefaCardProps) {
+  const { task: t, gut, prioridade, prioridadeHerdada, normSt, idx, vinculo, dono, atrasada } = row;
+  const concluida = normSt === 'Concluída';
+
   return (
-    <div className="tarefa-card-list">
-      {rows.map(row => {
-        const { task: t, gut, prioridade, prioridadeHerdada, normSt, idx, vinculo, dono, atrasada } = row;
-        const concluida = normSt === 'Concluída';
+    <div
+      className="risk-card"
+      data-tier={gutTier(gut)}
+      role="button"
+      tabIndex={0}
+      aria-label={`Editar tarefa: ${t.tarefa || 'sem título'}`}
+      onClick={() => onOpen(idx)}
+      onKeyDown={onActivateKey(() => onOpen(idx))}
+    >
+      <div className="risk-card-top">
+        <span className="risk-card-combo">{t.tipo || 'Sem tipo'}</span>
+        {/* Concluir sem abrir o modal: é a edição que mais se faz no
+            celular, e a que menos justifica um formulário inteiro. */}
+        <button
+          className="done-btn"
+          aria-pressed={concluida}
+          aria-label={concluida ? `Reabrir ${t.tarefa || 'tarefa'}` : `Concluir ${t.tarefa || 'tarefa'}`}
+          title={concluida ? 'Reabrir' : 'Concluir'}
+          onClick={e => { e.stopPropagation(); onToggleConcluida(idx); }}
+          onKeyDown={e => e.stopPropagation()}
+        >
+          <span className="done-check" aria-hidden="true" />
+        </button>
+      </div>
 
-        return (
-          <div
-            key={idx}
-            className="risk-card"
-            data-tier={gutTier(gut)}
-            role="button"
-            tabIndex={0}
-            aria-label={`Editar tarefa: ${t.tarefa || 'sem título'}`}
-            onClick={() => onOpen(idx)}
-            onKeyDown={onActivateKey(() => onOpen(idx))}
-          >
-            <div className="risk-card-top">
-              <span className="risk-card-combo">{t.tipo || 'Sem tipo'}</span>
-              {/* Concluir sem abrir o modal: é a edição que mais se faz no
-                  celular, e a que menos justifica um formulário inteiro. */}
-              <button
-                className="done-btn"
-                aria-pressed={concluida}
-                aria-label={concluida ? `Reabrir ${t.tarefa || 'tarefa'}` : `Concluir ${t.tarefa || 'tarefa'}`}
-                title={concluida ? 'Reabrir' : 'Concluir'}
-                onClick={e => { e.stopPropagation(); onToggleConcluida(idx); }}
-                onKeyDown={e => e.stopPropagation()}
-              >
-                <span className="done-check" aria-hidden="true" />
-              </button>
-            </div>
+      <div className="risk-card-risco" data-concluida={concluida || undefined}>
+        {t.tarefa || '(sem título)'}
+      </div>
 
-            <div className="risk-card-risco" data-concluida={concluida || undefined}>
-              {t.tarefa || '(sem título)'}
-            </div>
+      <div className="risk-card-badges">
+        <span
+          className="tier-chip"
+          data-tier={prioridadeHerdada ? vinculo?.tier : gutTier(gut)}
+          data-herdada={prioridadeHerdada}
+          title={prioridadeHerdada
+            ? 'Faixa herdada da criticidade do risco — esta linha não tem nota GUT'
+            : undefined}
+        >
+          <span className="tier-dot" />
+          {prioridade ?? 'Sem nota'}
+          {prioridadeHerdada && <span className="tier-chip-herdada" aria-label="herdada do risco">*</span>}
+        </span>
+        {/* GUT numérico só quando existe: um "—" ao lado da faixa não
+            informa nada e rouba largura de quem informa. */}
+        {gut != null && (
+          <span className="tier-chip" data-tier={gutTier(gut)}>
+            <span className="tier-dot" />
+            GUT {gut}
+          </span>
+        )}
+        <span className="badge" data-badge={taskStatusKind(normSt)}>{normSt}</span>
+        <PrazoCell prazo={t.prazo} atrasada={atrasada} rotina={!!vinculo?.rotina} />
+      </div>
 
-            <div className="risk-card-badges">
-              <span
-                className="tier-chip"
-                data-tier={prioridadeHerdada ? vinculo?.tier : gutTier(gut)}
-                data-herdada={prioridadeHerdada}
-                title={prioridadeHerdada
-                  ? 'Faixa herdada da criticidade do risco — esta linha não tem nota GUT'
-                  : undefined}
-              >
-                <span className="tier-dot" />
-                {prioridade ?? 'Sem nota'}
-                {prioridadeHerdada && <span className="tier-chip-herdada" aria-label="herdada do risco">*</span>}
-              </span>
-              {/* GUT numérico só quando existe: um "—" ao lado da faixa não
-                  informa nada e rouba largura de quem informa. */}
-              {gut != null && (
-                <span className="tier-chip" data-tier={gutTier(gut)}>
-                  <span className="tier-dot" />
-                  GUT {gut}
-                </span>
-              )}
-              <span className="badge" data-badge={taskStatusKind(normSt)}>{normSt}</span>
-              <PrazoCell prazo={t.prazo} atrasada={atrasada} rotina={!!vinculo?.rotina} />
-            </div>
+      {vinculo && <VinculoChip vinculo={vinculo} />}
 
-            {vinculo && <VinculoChip vinculo={vinculo} />}
-
-            <div className="risk-card-meta">
-              {dono ? (
-                <span className="owner-cell">
-                  <span className="owner-avatar" aria-hidden="true">{initials(dono)}</span>
-                  <span className="owner-name">{dono}</span>
-                </span>
-              ) : (
-                <span className="muted">Sem dono</span>
-              )}
-              <AnexosBadge quantidade={t.anexos?.length ?? 0} />
-            </div>
-          </div>
-        );
-      })}
+      <div className="risk-card-meta">
+        {dono ? (
+          <span className="owner-cell">
+            <span className="owner-avatar" aria-hidden="true">{initials(dono)}</span>
+            <span className="owner-name">{dono}</span>
+          </span>
+        ) : (
+          <span className="muted">Sem dono</span>
+        )}
+        <AnexosBadge quantidade={t.anexos?.length ?? 0} />
+      </div>
     </div>
   );
 }

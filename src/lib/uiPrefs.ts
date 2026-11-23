@@ -47,8 +47,12 @@ export type TaskView = 'lista' | 'kanban';
 export const TASK_VIEWS: readonly TaskView[] = ['lista', 'kanban'];
 
 /** Critério que vira coluna no quadro Kanban. */
-export type KanbanGroupBy = 'prioridade' | 'status';
-export const KANBAN_GROUP_BYS: readonly KanbanGroupBy[] = ['prioridade', 'status'];
+export type KanbanGroupBy = 'prioridade' | 'status' | 'responsavel';
+export const KANBAN_GROUP_BYS: readonly KanbanGroupBy[] = ['prioridade', 'status', 'responsavel'];
+
+/** Agrupamento da vista Lista. O Quadro tem o seu, porque lá vira coluna. */
+export type ListGroupBy = 'nenhum' | 'responsavel';
+export const LIST_GROUP_BYS: readonly ListGroupBy[] = ['nenhum', 'responsavel'];
 
 /** Preferência de valor único (modo de visualização, agrupamento…) validada contra a lista permitida. */
 export function readEnumPref<T extends string>(key: string, allowed: readonly T[], fallback: T): T {

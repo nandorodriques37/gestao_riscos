@@ -13,6 +13,9 @@ import type { KanbanGroupBy } from '../../lib/uiPrefs';
 import { KanbanColumn } from './KanbanColumn';
 import { KanbanCard, KanbanCardFace } from './KanbanCard';
 import type { MoveOption } from './MoveMenu';
+import type { Pessoa, TaskStatus } from '../../types';
+import { agruparPorDono, grupoDaLinha, type OpcaoDono } from '../../lib/agrupamentoDono';
+import { plural } from '../../lib/portfolioLabels';
 
 interface TarefasKanbanProps {
   rows: EnrichedTaskRow[];
@@ -23,6 +26,15 @@ interface TarefasKanbanProps {
   onToggleConcluida: (idx: number) => void;
   onAdd: () => void;
   onDraggingChange: (dragging: boolean) => void;
+  /** Fichas, para nomear as colunas quando o quadro é por responsável. */
+  pessoas: Pessoa[];
+  /**
+   * Para quem a tarefa pode ser passada pelo menu ⋯ — todo o cadastro ativo,
+   * não só quem já tem coluna: passar para quem está livre é o caso comum.
+   */
+  opcoesDono: OpcaoDono[];
+  /** Mudança de status pelo menu, quando a coluna não é o status. */
+  onStatus: (idx: number, status: TaskStatus) => void;
 }
 
 interface Column {
@@ -30,6 +42,9 @@ interface Column {
   label: string;
   tier?: TierKind;
   rows: EnrichedTaskRow[];
+  /** Linha de apoio do cabeçalho (atrasadas, GUT crítico). */
+  sub?: string;
+  semDono?: boolean;
 }
 
 const TIER_POR_FAIXA: Record<string, TierKind> = {
@@ -48,8 +63,24 @@ function porGutDesc(a: EnrichedTaskRow, b: EnrichedTaskRow): number {
   return b.gut - a.gut;
 }
 
-function buildColumns(rows: EnrichedTaskRow[], groupBy: KanbanGroupBy): Column[] {
+function buildColumns(rows: EnrichedTaskRow[], groupBy: KanbanGroupBy, pessoas: Pessoa[]): Column[] {
   const ordenadas = rows.slice().sort(porGutDesc);
+
+  // Uma coluna por pessoa que tem tarefa na tela, na ordem da Lista agrupada:
+  // mais atrasadas primeiro, "Sem dono" no fim. Quem não tem tarefa não vira
+  // coluna vazia — recebe pelo menu ⋯ do card.
+  if (groupBy === 'responsavel') {
+    return agruparPorDono(ordenadas, pessoas).map(g => ({
+      id: g.id,
+      label: g.nome,
+      rows: g.linhas,
+      semDono: g.semDono,
+      sub: [
+        g.atrasadas > 0 ? plural(g.atrasadas, 'atrasada', 'atrasadas') : '',
+        g.criticas > 0 ? `${g.criticas} GUT crítico` : '',
+      ].filter(Boolean).join(' · ') || undefined,
+    }));
+  }
 
   if (groupBy === 'prioridade') {
     const ids = [...PRIORITY_BANDS, SEM_NOTA];
@@ -76,6 +107,7 @@ function buildColumns(rows: EnrichedTaskRow[], groupBy: KanbanGroupBy): Column[]
 
 /** Coluna vazia diz o que o drop vai fazer, não só que está vazia. */
 function dicaDeDrop(groupBy: KanbanGroupBy, id: string, label: string): string {
+  if (groupBy === 'responsavel') return `Solte aqui para passar a tarefa para ${label}`;
   if (groupBy === 'status') return `Solte aqui para marcar como ${label}`;
   if (id === SEM_NOTA) return 'Solte aqui para apagar as notas G, U e T';
   return `Solte aqui para priorizar como ${label}`;
@@ -88,7 +120,7 @@ const instrucoes = {
 };
 
 export function TarefasKanban({
-  rows, groupBy, onMove, onOpen, onToggleConcluida, onAdd, onDraggingChange,
+  rows, groupBy, onMove, onOpen, onToggleConcluida, onAdd, onDraggingChange, pessoas, opcoesDono, onStatus,
 }: TarefasKanbanProps) {
   const [draggingIdx, setDraggingIdx] = useState<number | null>(null);
   const boardRef = useRef<HTMLDivElement>(null);
@@ -117,16 +149,24 @@ export function TarefasKanban({
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 6 } }),
   );
 
-  const columns = useMemo(() => buildColumns(rows, groupBy), [rows, groupBy]);
+  const columns = useMemo(() => buildColumns(rows, groupBy, pessoas), [rows, groupBy, pessoas]);
+  const porResponsavel = groupBy === 'responsavel';
 
   const moveOptions: MoveOption[] = useMemo(
-    () => columns.map(c => ({ id: c.id, label: c.label })),
-    [columns],
+    () => (porResponsavel
+      ? opcoesDono.map(o => ({ id: o.id, label: o.nome }))
+      : columns.map(c => ({ id: c.id, label: c.label }))),
+    [porResponsavel, opcoesDono, columns],
   );
+
+  // O leitor de tela anuncia a coluna pelo nome, não pelo id (que é um uuid
+  // quando a coluna é uma pessoa).
+  const nomeDaColuna = (id: string | number) => columns.find(c => c.id === String(id))?.label ?? String(id);
 
   const draggingRow = draggingIdx != null ? rows.find(r => r.idx === draggingIdx) ?? null : null;
 
   function colunaDe(row: EnrichedTaskRow): string {
+    if (groupBy === 'responsavel') return grupoDaLinha(row);
     return groupBy === 'prioridade' ? row.prioridade ?? SEM_NOTA : row.normSt;
   }
 
@@ -155,11 +195,11 @@ export function TarefasKanban({
       const row = rows.find(r => r.idx === Number(active.id));
       return `Pegou a tarefa ${row?.task.tarefa || 'sem título'}.`;
     },
-    onDragOver: ({ over }) => (over ? `Sobre a coluna ${over.id}.` : 'Fora de qualquer coluna.'),
+    onDragOver: ({ over }) => (over ? `Sobre a coluna ${nomeDaColuna(over.id)}.` : 'Fora de qualquer coluna.'),
     onDragEnd: ({ active, over }) => {
       const row = rows.find(r => r.idx === Number(active.id));
       const nome = row?.task.tarefa || 'sem título';
-      return over ? `Tarefa ${nome} movida para ${over.id}.` : `Tarefa ${nome} devolvida ao lugar.`;
+      return over ? `Tarefa ${nome} levada para ${nomeDaColuna(over.id)}.` : `Tarefa ${nome} devolvida ao lugar.`;
     },
     onDragCancel: () => 'Movimento cancelado.',
   };
@@ -180,6 +220,8 @@ export function TarefasKanban({
             id={col.id}
             label={col.label}
             tier={col.tier}
+            sub={col.sub}
+            semDono={col.semDono}
             count={col.rows.length}
             emptyHint={dicaDeDrop(groupBy, col.id, col.label)}
             onAdd={onAdd}
@@ -190,7 +232,9 @@ export function TarefasKanban({
                 row={row}
                 currentColumnId={col.id}
                 moveOptions={moveOptions}
+                moveTitulo={porResponsavel ? 'Passar para' : 'Mover para'}
                 onMove={onMove}
+                onStatus={porResponsavel ? onStatus : undefined}
                 onOpen={onOpen}
                 onToggleConcluida={onToggleConcluida}
               />
@@ -207,6 +251,7 @@ export function TarefasKanban({
               row={draggingRow}
               currentColumnId={colunaDe(draggingRow)}
               moveOptions={moveOptions}
+              moveTitulo={porResponsavel ? 'Passar para' : 'Mover para'}
               onMove={onMove}
               onToggleConcluida={onToggleConcluida}
             />

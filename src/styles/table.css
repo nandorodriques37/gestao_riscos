@@ -411,6 +411,24 @@ tbody tr:last-child td {
    o mesmo que a linha da tabela leva em `.gut-accent`, e pelo mesmo motivo
    (prioridade escaneável sem ler o chip). A cor vem do data-tier do próprio
    cartão, então claro e escuro trocam sozinhos. */
+/* Celular agrupado: cada pessoa é um bloco com o mesmo cabeçalho da tabela.
+   O cartão do grupo é o próprio bloco; os cartões das tarefas ficam dentro. */
+.tarefa-card-grupo {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line-hairline);
+  border-radius: var(--r-card);
+  background: var(--bg-sunken);
+  overflow: hidden;
+}
+
+.tarefa-card-grupo-corpo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: 0 var(--sp-2) var(--sp-2);
+}
+
 .tarefa-card-list .risk-card {
   position: relative;
   padding-left: calc(var(--sp-3) + 3px);
@@ -528,6 +546,155 @@ tbody tr:last-child td {
 
 .tarefas-table-wrap.density-compact .risk-table .vinculo-chip {
   margin-top: 0;
+}
+
+/* Linha única de verdade: título, selo de anexo e chip do risco dividem a
+   linha, e quem cede é o texto, com reticências. Antes o título era um bloco
+   (clamp) e os dois selos desciam — a linha com risco media ~48px ao lado das
+   de ~31px. `min-width: 0` em todo item: sem ele o flex estica pelo
+   min-content do nome do risco (ver o caso da coluna do Kanban no CLAUDE.md). */
+.tarefas-table-wrap.density-compact .tarefa-cell-corpo {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+
+.tarefas-table-wrap.density-compact .tarefa-cell-corpo .clamp-2 {
+  display: block;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tarefas-table-wrap.density-compact .tarefa-cell-corpo .anexos-badge {
+  flex: none;
+  margin-top: 0;
+}
+
+.tarefas-table-wrap.density-compact .tarefa-cell-corpo .vinculo-chip {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 45%;
+}
+
+/* ---------- Tarefas agrupadas por responsável ----------
+   O cabeçalho do grupo é uma linha da tabela (<th scope="rowgroup">) com um
+   botão inteiro dentro: clicar em qualquer ponto recolhe. Fundo afundado e
+   hairline mais forte separam pessoas sem repetir a faixa azul do thead a
+   cada grupo — repetir pesa mais que informa (mesma decisão de Iniciativas). */
+.risk-table .grupo-linha th {
+  padding: 0;
+  background: var(--bg-sunken);
+  border-top: 1px solid var(--line-strong);
+  border-bottom: 1px solid var(--line-hairline);
+  text-align: left;
+  font-weight: inherit;
+}
+
+.risk-table tbody.grupo-tbody:first-of-type .grupo-linha th {
+  border-top: 0;
+}
+
+.grupo-cabecalho {
+  width: 100%;
+  min-height: max(40px, var(--tap-min));
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--sp-2) var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  border: 0;
+  background: transparent;
+  color: var(--ink-1);
+  font: inherit;
+  font-size: var(--fs-sm);
+  text-align: left;
+  cursor: pointer;
+}
+
+.grupo-cabecalho:hover {
+  background: var(--bg-hover);
+}
+
+.grupo-seta {
+  width: var(--sp-3);
+  color: var(--ink-3);
+}
+
+.grupo-avatar {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-full);
+  background: var(--brand-soft);
+  color: var(--brand-text);
+  font-size: var(--fs-3xs);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--tracking-rotulo);
+}
+
+.grupo-nome {
+  font-weight: var(--fw-bold);
+  min-width: 0;
+}
+
+/* "Sem dono" é elo partido — o único lugar do cabeçalho que leva coral. */
+.grupo-nome[data-sem-dono] {
+  color: var(--coral-texto);
+}
+
+.grupo-avatar[data-sem-dono] {
+  background: var(--bg-surface);
+  color: var(--coral-texto);
+  box-shadow: inset 0 0 0 1px currentColor;
+}
+
+.grupo-qtd {
+  color: var(--ink-3);
+  font-size: var(--fs-xs);
+}
+
+.grupo-alertas {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1);
+}
+
+.grupo-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-left: auto;
+  min-width: 0;
+}
+
+.grupo-status-barra {
+  display: flex;
+  gap: var(--viz-gap);
+  width: 96px;
+  height: 6px;
+  border-radius: var(--r-xs);
+  overflow: hidden;
+}
+
+.grupo-status-barra > span {
+  min-width: 2px;
+  background: var(--c);
+}
+
+.grupo-status-barra > [data-status='fazer'] { --c: var(--ink-4); }
+.grupo-status-barra > [data-status='andamento'] { --c: var(--badge-atencao); }
+.grupo-status-barra > [data-status='concluida'] { --c: var(--badge-ok); }
+
+.grupo-status-legenda {
+  color: var(--ink-3);
+  font-size: var(--fs-xs);
+  white-space: nowrap;
 }
 
 .tarefa-cell {

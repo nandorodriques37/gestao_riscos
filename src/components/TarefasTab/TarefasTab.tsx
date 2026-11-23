@@ -6,15 +6,16 @@ import type { UseTasks } from '../../hooks/useTasks';
 import type { UsePortfolio } from '../../hooks/usePortfolio';
 import { buildTaskRows, type EnrichedTaskRow } from '../../lib/taskRows';
 import { chaveDoNome } from '../../lib/nomes';
+import { SEM_DONO, agruparPorDono, grupoDaLinha, opcoesDeDono, pessoaDoAutor } from '../../lib/agrupamentoDono';
 import { computeAvaliacao, normTaskStatus } from '../../lib/taskCalculations';
 import {
   SEM_NOTA, adjustGutToBand, bandOf, describeChanges, type PriorityBand,
 } from '../../lib/taskPriority';
 import { downloadTasksCSV } from '../../lib/taskCsv';
 import {
-  KANBAN_GROUP_BYS, TASK_VIEWS, readColWidths, readDensity, readEnumPref, readStatusFilter,
+  KANBAN_GROUP_BYS, LIST_GROUP_BYS, TASK_VIEWS, readColWidths, readDensity, readEnumPref, readStatusFilter,
   writeDensity, writePref,
-  type KanbanGroupBy, type TaskView,
+  type KanbanGroupBy, type ListGroupBy, type TaskView,
 } from '../../lib/uiPrefs';
 import { Kpi, KpiRow } from '../common/Kpi';
 import { useConfirmacao } from '../common/Confirmacao';
@@ -32,6 +33,7 @@ const COL_WIDTHS_KEY = 'riskMatrix.tasks.colWidths.v1';
 const STATUS_FILTER_KEY = 'riskMatrix.tasks.statusFilter.v1';
 const VIEW_KEY = 'riskMatrix.tasks.view.v1';
 const GROUP_BY_KEY = 'riskMatrix.tasks.groupBy.v1';
+const LIST_GROUP_BY_KEY = 'riskMatrix.tasks.listGroupBy.v1';
 // Chave própria, não a do Registro: as duas tabelas são lidas em rituais
 // diferentes e quem quer a de riscos apertada nem sempre quer esta.
 const DENSITY_KEY = 'riskMatrix.tasks.density.v1';
@@ -69,6 +71,8 @@ interface TarefasTabProps {
   selecionada: string | null;
   onSelecionar: (id: string | null) => void;
   idsDoRecorte?: Set<string> | null;
+  /** Nome de quem usa o app — é como "Só as minhas" acha a ficha. */
+  autor?: string;
   /** Para o cartão dizer QUAL risco a mitigação segura, e com que criticidade. */
   records: StoredRiskRecord[];
   /** Iniciativas e pessoas: o vínculo de execução e o dono de verdade. */
@@ -82,7 +86,7 @@ interface TarefasTabProps {
   tarefas: UseTasks;
 }
 
-export function TarefasTab({ records, pf, tarefas, selecionada, onSelecionar, idsDoRecorte }: TarefasTabProps) {
+export function TarefasTab({ records, pf, tarefas, selecionada, onSelecionar, idsDoRecorte, autor = '' }: TarefasTabProps) {
   const {
     tasks, loading, error,
     hasPendingWrites, saveStatus, updateTaskById, saveTask, addTask, deleteTaskById,
@@ -96,6 +100,9 @@ export function TarefasTab({ records, pf, tarefas, selecionada, onSelecionar, id
   // Seleção múltipla de status persistida entre sessões; array vazio = todos.
   const [statusFilter, setStatusFilter] = useState<TaskStatus[]>(() => readStatusFilter(STATUS_FILTER_KEY, TASK_STATUSES));
   const [tipoFilter, setTipoFilter] = useSessionState('tarefas.tipo', 'Todos');
+  // Lista vazia = todas as pessoas. Sessão, como busca e tipo: a URL guarda só
+  // destino e seleção.
+  const [pessoaFilter, setPessoaFilter] = useSessionState<string[]>('tarefas.pessoas', []);
   const [vinculoFilter, setVinculoFilter] = useState<FiltroVinculo>(
     () => readEnumPref(VINCULO_KEY, FILTROS_VINCULO, 'todas'),
   );
@@ -107,6 +114,11 @@ export function TarefasTab({ records, pf, tarefas, selecionada, onSelecionar, id
   const [groupBy, setGroupBy] = useState<KanbanGroupBy>(
     () => readEnumPref(GROUP_BY_KEY, KANBAN_GROUP_BYS, 'prioridade'),
   );
+  const [listGroupBy, setListGroupBy] = useState<ListGroupBy>(
+    () => readEnumPref(LIST_GROUP_BY_KEY, LIST_GROUP_BYS, 'nenhum'),
+  );
+  // Recolher é o que se faz para ler outra pessoa; dura a sessão, como os filtros.
+  const [gruposFechados, setGruposFechados] = useSessionState<string[]>('tarefas.gruposFechados', []);
   const [pendingUndo, setPendingUndo] = useState<PendingPriorityUndo | null>(null);
   // Ref, não estado: só o efeito de polling lê isso, e re-renderizar o quadro no
   // meio de um arraste embaralharia os cards por baixo do cursor.
@@ -122,6 +134,7 @@ export function TarefasTab({ records, pf, tarefas, selecionada, onSelecionar, id
   useEffect(() => { writePref(STATUS_FILTER_KEY, statusFilter); }, [statusFilter]);
   useEffect(() => { writePref(VIEW_KEY, view); }, [view]);
   useEffect(() => { writePref(GROUP_BY_KEY, groupBy); }, [groupBy]);
+  useEffect(() => { writePref(LIST_GROUP_BY_KEY, listGroupBy); }, [listGroupBy]);
   useEffect(() => { writePref(VINCULO_KEY, vinculoFilter); }, [vinculoFilter]);
   useEffect(() => { writeDensity(DENSITY_KEY, density); }, [density]);
 
@@ -163,6 +176,15 @@ export function TarefasTab({ records, pf, tarefas, selecionada, onSelecionar, id
     [pf.portfolio.pessoas],
   );
 
+  const pessoaOptions = useMemo(() => opcoesDeDono(rows, pf.portfolio.pessoas), [rows, pf.portfolio.pessoas]);
+  const autorId = useMemo(() => pessoaDoAutor(autor, pf.portfolio.pessoas)?.id ?? null, [autor, pf.portfolio.pessoas]);
+  // Ficha mesclada ou excluída sai do recorte: filtrar por ela esvaziaria a
+  // tela sem nada à vista que explique.
+  const pessoasNoFiltro = useMemo(() => {
+    const ids = new Set(pessoaOptions.map(o => o.id));
+    return pessoaFilter.filter(id => ids.has(id));
+  }, [pessoaFilter, pessoaOptions]);
+
   const total = tasks.length;
   const aFazer = useMemo(() => rows.filter(r => r.normSt === 'A fazer').length, [rows]);
   const emAndamento = useMemo(() => rows.filter(r => r.normSt === 'Em andamento').length, [rows]);
@@ -175,12 +197,14 @@ export function TarefasTab({ records, pf, tarefas, selecionada, onSelecionar, id
 
   const visibleRows = useMemo(() => {
     const q = search.toLowerCase().trim();
+    const pessoas = pessoasNoFiltro.length > 0 ? new Set(pessoasNoFiltro) : null;
     let result = rows.filter(row => {
       if (idsDoRecorte) return idsDoRecorte.has(row.task.id);
       if (statusFilter.length > 0 && !statusFilter.includes(row.normSt as TaskStatus)) return false;
       if (tipoFilter !== 'Todos' && row.task.tipo !== tipoFilter) return false;
       if (vinculoFilter === 'risco' && row.vinculo == null) return false;
       if (vinculoFilter === 'livres' && row.vinculo != null) return false;
+      if (pessoas && !pessoas.has(grupoDaLinha(row))) return false;
       if (!q) return true;
       // O nome do risco entra na busca: procurar pelo risco é como se chega à
       // mitigação, e era o caminho que existia antes de as duas listas virarem
@@ -203,7 +227,18 @@ export function TarefasTab({ records, pf, tarefas, selecionada, onSelecionar, id
       });
     }
     return result;
-  }, [rows, idsDoRecorte, search, statusFilter, tipoFilter, vinculoFilter, sortKey, sortDir]);
+  }, [rows, idsDoRecorte, search, statusFilter, tipoFilter, vinculoFilter, pessoasNoFiltro, sortKey, sortDir]);
+
+  // Agrupar é só apresentação: os grupos saem das linhas que já passaram pela
+  // busca, pelos filtros e pela ordenação — e o CSV continua sendo visibleRows.
+  const grupos = useMemo(
+    () => (listGroupBy === 'responsavel' ? agruparPorDono(visibleRows, pf.portfolio.pessoas) : null),
+    [listGroupBy, visibleRows, pf.portfolio.pessoas],
+  );
+
+  function handleToggleGrupo(id: string) {
+    setGruposFechados(prev => (prev.includes(id) ? prev.filter(g => g !== id) : [...prev, id]));
+  }
 
   function handleSort(key: NonNullable<TaskSortKey>) {
     if (sortKey === key) {
@@ -248,6 +283,11 @@ export function TarefasTab({ records, pf, tarefas, selecionada, onSelecionar, id
     const t = tasks[idx];
     if (!t) return;
 
+    if (groupBy === 'responsavel') {
+      void passarPara(idx, columnId);
+      return;
+    }
+
     if (groupBy === 'status') {
       updateTaskById(t.id, { status: columnId });
       void flushPending();
@@ -273,6 +313,41 @@ export function TarefasTab({ records, pf, tarefas, selecionada, onSelecionar, id
       before,
       message: `Prioridade: ${t.tarefa || 'tarefa'} → ${columnId} (${describeChanges(ajuste.changes)}).`,
     });
+  }
+
+  /**
+   * Quadro por responsável: soltar o card em outra coluna troca o dono. Pede
+   * confirmação porque o arraste é fácil de errar e a troca muda de quem se
+   * cobra a entrega — o diálogo nomeia as duas pessoas.
+   */
+  async function passarPara(idx: number, destino: string) {
+    const t = tasks[idx];
+    const row = rows.find(r => r.idx === idx);
+    if (!t || !row || grupoDaLinha(row) === destino) return;
+    const novo = destino === SEM_DONO ? null : destino;
+    const nomeNovo = novo ? pf.portfolio.pessoas.find(p => p.id === novo)?.nome ?? 'outra pessoa' : null;
+    const nome = t.tarefa || 'tarefa sem título';
+    const de = row.task.dono_id ? `sai de ${row.dono}` : 'está sem dono';
+    const ok = await confirmar({
+      titulo: nomeNovo ? `Passar para ${nomeNovo}?` : 'Deixar sem dono?',
+      consequencia: nomeNovo
+        ? `"${nome}" ${de} e passa para ${nomeNovo}. O status continua ${row.normSt}.`
+        : `"${nome}" sai de ${row.dono} e passa a contar como sem dono. O status continua ${row.normSt}.`,
+      rotuloConfirmar: nomeNovo ? `Passar para ${nomeNovo.split(' ')[0]}` : 'Deixar sem dono',
+      // Trocar de dono não destrói nada: botão da marca, não de perigo.
+      perigo: false,
+    });
+    if (!ok) return;
+    updateTaskById(t.id, { dono_id: novo });
+    void flushPending();
+  }
+
+  /** Status pelo menu ⋯ do card, quando as colunas do quadro são pessoas. */
+  function handleStatus(idx: number, status: TaskStatus) {
+    const t = tasks[idx];
+    if (!t || normTaskStatus(t.status) === status) return;
+    updateTaskById(t.id, { status });
+    void flushPending();
   }
 
   function handleUndoPriority() {
@@ -469,6 +544,15 @@ export function TarefasTab({ records, pf, tarefas, selecionada, onSelecionar, id
             vinculadasCount={vinculadas}
             density={density}
             onDensityChange={setDensity}
+            pessoaOptions={pessoaOptions}
+            pessoaFilter={pessoasNoFiltro}
+            onPessoaFilterChange={setPessoaFilter}
+            autorId={autorId}
+            listGroupBy={listGroupBy}
+            onListGroupByChange={setListGroupBy}
+            grupos={grupos}
+            gruposFechados={gruposFechados}
+            onGruposFechadosChange={setGruposFechados}
           />
 
           {view === 'kanban' ? (
@@ -480,6 +564,9 @@ export function TarefasTab({ records, pf, tarefas, selecionada, onSelecionar, id
               onToggleConcluida={handleToggleConcluida}
               onAdd={handleAddRow}
               onDraggingChange={d => { draggingRef.current = d; }}
+              pessoas={pf.portfolio.pessoas}
+              opcoesDono={pessoaOptions}
+              onStatus={handleStatus}
             />
           ) : (
             <TarefasTable
@@ -495,6 +582,9 @@ export function TarefasTab({ records, pf, tarefas, selecionada, onSelecionar, id
               emptyMessage={emptyMessage}
               emptyHint={emptyHint}
               density={density}
+              grupos={grupos}
+              fechados={gruposFechados}
+              onToggleGrupo={handleToggleGrupo}
             />
           )}
         </>
